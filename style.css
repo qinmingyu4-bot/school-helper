@@ -1,0 +1,638 @@
+:root {
+  color-scheme: light;
+  --ink: #172033;
+  --muted: #657085;
+  --line: #d8dee8;
+  --panel: #ffffff;
+  --surface: #f4f6f9;
+  --navy: #1f3a5f;
+  --green: #2f7d62;
+  --blue: #3867d6;
+  --gold: #b6862c;
+  --shadow: 0 18px 48px rgba(25, 36, 58, 0.12);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(31, 58, 95, 0.04), rgba(47, 125, 98, 0.05)),
+    #eef1f5;
+  color: var(--ink);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.workspace-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 100vh;
+  padding: 24px;
+  border-right: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.brand,
+.coach-profile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: var(--navy);
+  color: white;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0;
+  box-shadow: inset 0 -9px 0 rgba(0, 0, 0, 0.12);
+}
+
+.brand h1,
+.brand p,
+.topbar h2,
+.eyebrow {
+  margin: 0;
+}
+
+.brand h1 {
+  font-size: 21px;
+  line-height: 1.15;
+}
+
+.brand p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.upload-zone input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.upload-zone label {
+  display: grid;
+  place-items: center;
+  min-height: 150px;
+  padding: 18px;
+  border: 1.5px dashed #9aa8ba;
+  border-radius: 8px;
+  background: #f8fafc;
+  text-align: center;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.upload-zone.dragging label {
+  border-color: var(--green);
+  background: #edf7f3;
+  transform: translateY(-1px);
+}
+
+.upload-zone strong {
+  margin-top: 10px;
+  font-size: 16px;
+}
+
+.upload-zone small {
+  display: block;
+  max-width: 250px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.upload-glyph {
+  position: relative;
+  width: 40px;
+  height: 36px;
+  border: 2px solid var(--navy);
+  border-radius: 6px;
+}
+
+.upload-glyph::before {
+  content: "";
+  position: absolute;
+  top: 9px;
+  left: 9px;
+  width: 18px;
+  height: 2px;
+  background: var(--navy);
+  box-shadow: 0 8px 0 var(--navy);
+}
+
+.panel-block {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 8px 28px rgba(25, 36, 58, 0.05);
+}
+
+.panel-block.pinned {
+  margin-top: auto;
+}
+
+.block-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.block-title h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.block-title span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.document-list {
+  display: grid;
+  gap: 8px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.doc-item {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid #e4e9f0;
+  border-radius: 7px;
+  background: #fbfcfe;
+}
+
+.doc-item strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.doc-item span,
+.empty-state {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.empty-state {
+  margin: 0;
+  font-size: 13px;
+}
+
+#noteInput {
+  width: 100%;
+  min-height: 112px;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  outline: none;
+}
+
+#noteInput:focus,
+#messageInput:focus,
+#goalInput:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(56, 103, 214, 0.12);
+}
+
+.primary-line-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 42px;
+  margin-top: 10px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--navy);
+  color: white;
+  font-weight: 700;
+}
+
+.plus-glyph {
+  position: relative;
+  width: 14px;
+  height: 14px;
+}
+
+.plus-glyph::before,
+.plus-glyph::after {
+  content: "";
+  position: absolute;
+  background: currentColor;
+}
+
+.plus-glyph::before {
+  width: 14px;
+  height: 2px;
+  top: 6px;
+}
+
+.plus-glyph::after {
+  width: 2px;
+  height: 14px;
+  left: 6px;
+}
+
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mode-button {
+  min-height: 42px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #f8fafc;
+  color: var(--ink);
+}
+
+.mode-button.active {
+  border-color: var(--green);
+  background: #edf7f3;
+  color: #23644e;
+  font-weight: 800;
+}
+
+.conversation-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  min-width: 0;
+  min-height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 28px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.coach-avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.coach-avatar::before,
+.coach-avatar::after,
+.coach-avatar span {
+  content: "";
+  position: absolute;
+  background: var(--navy);
+}
+
+.coach-avatar::before {
+  width: 28px;
+  height: 20px;
+  top: 13px;
+  border-radius: 3px;
+  background: var(--green);
+}
+
+.coach-avatar::after {
+  width: 34px;
+  height: 3px;
+  top: 37px;
+  border-radius: 999px;
+}
+
+.coach-avatar span {
+  width: 18px;
+  height: 3px;
+  top: 22px;
+  background: white;
+  box-shadow: 0 7px 0 white;
+}
+
+.eyebrow {
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.topbar h2 {
+  margin-top: 2px;
+  font-size: 22px;
+}
+
+#coachStatus {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.course-goal {
+  display: grid;
+  gap: 7px;
+  width: min(390px, 42vw);
+}
+
+.course-goal label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+#goalInput {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  outline: none;
+}
+
+.chat-area {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 0;
+  padding: 28px;
+  overflow-y: auto;
+}
+
+.message {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: min(820px, 90%);
+}
+
+.message.user-message {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: var(--green);
+  color: white;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.user-message .avatar {
+  background: var(--blue);
+}
+
+.bubble {
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 8px 24px rgba(35, 45, 60, 0.08);
+  line-height: 1.65;
+}
+
+.user-message .bubble {
+  border-color: #cbd8f4;
+  background: #f0f5ff;
+}
+
+.bubble p {
+  margin: 0;
+}
+
+.bubble ul,
+.bubble ol {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.bubble li + li {
+  margin-top: 4px;
+}
+
+.source-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.source-chip {
+  max-width: 230px;
+  overflow: hidden;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #edf7f3;
+  color: #23644e;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prompt-row {
+  display: flex;
+  gap: 8px;
+  padding: 12px 28px;
+  overflow-x: auto;
+  border-top: 1px solid rgba(216, 222, 232, 0.7);
+}
+
+.prompt-row button {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #c8d0dc;
+  border-radius: 999px;
+  background: white;
+  color: #334155;
+}
+
+.composer {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 48px;
+  gap: 10px;
+  padding: 14px 28px 24px;
+  background: rgba(244, 246, 249, 0.92);
+}
+
+#messageInput {
+  min-height: 48px;
+  max-height: 150px;
+  resize: none;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  outline: none;
+}
+
+.icon-button,
+.send-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 48px;
+  border: 0;
+  border-radius: 8px;
+}
+
+.icon-button {
+  background: #e4e9f0;
+  color: #536176;
+}
+
+.send-button {
+  width: 48px;
+  background: var(--green);
+  color: white;
+}
+
+.send-glyph {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border-top: 3px solid currentColor;
+  border-right: 3px solid currentColor;
+  transform: rotate(45deg) translateX(-2px);
+}
+
+.send-glyph::after {
+  content: "";
+  position: absolute;
+  width: 22px;
+  height: 3px;
+  top: 7px;
+  right: -2px;
+  background: currentColor;
+  transform: rotate(-45deg);
+  transform-origin: right center;
+}
+
+.trash-glyph {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-top: 0;
+  border-radius: 0 0 3px 3px;
+}
+
+.trash-glyph::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: -5px;
+  width: 22px;
+  height: 2px;
+  background: currentColor;
+}
+
+.trash-glyph::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: -8px;
+  width: 6px;
+  height: 2px;
+  background: currentColor;
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-panel {
+    min-height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .conversation-panel {
+    min-height: 720px;
+  }
+
+  .topbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .course-goal {
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .workspace-panel,
+  .topbar,
+  .chat-area,
+  .prompt-row,
+  .composer {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .message {
+    max-width: 100%;
+  }
+
+  .composer {
+    grid-template-columns: 40px minmax(0, 1fr) 44px;
+  }
+
+  .icon-button,
+  .send-button {
+    width: 40px;
+  }
+}

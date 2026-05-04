@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StudyBridge</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="workspace-panel" aria-label="课程资料">
+        <header class="brand">
+          <div class="brand-mark" aria-hidden="true">SB</div>
+          <div>
+            <h1>StudyBridge</h1>
+            <p>给留学生的北美课程学习助手</p>
+          </div>
+        </header>
+
+        <section class="upload-zone" id="dropZone">
+          <input
+            id="fileInput"
+            type="file"
+            multiple
+            accept=".txt,.md,.csv,.json,.html,.htm,.pdf,.doc,.docx,.ppt,.pptx"
+          />
+          <label for="fileInput">
+            <span class="upload-glyph" aria-hidden="true"></span>
+            <strong>上传课程资料</strong>
+            <small>Syllabus、Slides、Reading、Rubric、Assignment brief</small>
+          </label>
+        </section>
+
+        <section class="panel-block">
+          <div class="block-title">
+            <h2>Course Pack</h2>
+            <span id="docCount">0 files</span>
+          </div>
+          <div class="document-list" id="documentList">
+            <p class="empty-state">先上传或粘贴课程资料。我会按北美课程常见结构理解：learning outcomes、deadlines、rubric、readings 和 assignments。</p>
+          </div>
+        </section>
+
+        <section class="panel-block">
+          <div class="block-title">
+            <h2>Quick Paste</h2>
+          </div>
+          <textarea id="noteInput" placeholder="粘贴 syllabus 段落、assignment 要求、rubric、lecture notes 或 professor 的邮件"></textarea>
+          <button class="primary-line-button" id="addNoteButton" type="button">
+            <span class="plus-glyph" aria-hidden="true"></span>
+            加入 Course Pack
+          </button>
+        </section>
+
+        <section class="panel-block pinned">
+          <div class="block-title">
+            <h2>Study Mode</h2>
+          </div>
+          <div class="mode-grid" role="group" aria-label="选择学习模式">
+            <button class="mode-button active" data-mode="office" type="button">Office Hours</button>
+            <button class="mode-button" data-mode="assignment" type="button">Assignment</button>
+            <button class="mode-button" data-mode="quiz" type="button">Quiz Prep</button>
+            <button class="mode-button" data-mode="writing" type="button">Writing</button>
+          </div>
+        </section>
+      </aside>
+
+      <section class="conversation-panel" aria-label="学习对话">
+        <header class="topbar">
+          <div class="coach-profile">
+            <div class="coach-avatar" aria-hidden="true">
+              <span></span>
+            </div>
+            <div>
+              <p class="eyebrow">Academic Coach</p>
+              <h2>留学生课程助理</h2>
+              <span id="coachStatus">准备好帮你拆解课程要求</span>
+            </div>
+          </div>
+
+          <div class="course-goal">
+            <label for="goalInput">本周目标</label>
+            <input id="goalInput" type="text" value="看懂要求，按 rubric 完成作业" />
+          </div>
+        </header>
+
+        <div class="chat-area" id="chatArea" aria-live="polite">
+          <article class="message coach-message">
+            <div class="avatar">AI</div>
+            <div class="bubble">
+              <p>你好，我可以用中文帮你理解北美课程里的英文资料：syllabus、rubric、assignment prompt、lecture notes。你可以问我“这个 assignment 到底要我做什么？”“rubric 怎么拿高分？”或“帮我准备 office hours 要问的问题”。</p>
+            </div>
+          </article>
+        </div>
+
+        <div class="prompt-row" aria-label="快捷问题">
+          <button type="button" data-prompt="帮我把这份 syllabus 拆成：课程目标、评分方式、deadline、每周任务。">拆 syllabus</button>
+          <button type="button" data-prompt="根据 assignment brief 和 rubric，告诉我这次作业到底要交什么、怎么拿高分。">看作业要求</button>
+          <button type="button" data-prompt="帮我准备下次 office hours 可以问 professor 或 TA 的问题。">准备 office hours</button>
+          <button type="button" data-prompt="把这些 lecture notes 转成 quiz prep 复习清单和练习题。">Quiz prep</button>
+        </div>
+
+        <form class="composer" id="chatForm">
+          <button class="icon-button" type="button" id="clearButton" title="清空对话" aria-label="清空对话">
+            <span class="trash-glyph" aria-hidden="true"></span>
+          </button>
+          <textarea id="messageInput" rows="1" placeholder="用中文问：这份 rubric 重点是什么？"></textarea>
+          <button class="send-button" type="submit" aria-label="发送">
+            <span class="send-glyph" aria-hidden="true"></span>
+          </button>
+        </form>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

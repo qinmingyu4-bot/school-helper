@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI 教学助手</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="library-panel" aria-label="资料与学习设置">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <span></span>
+          </div>
+          <div>
+            <h1>AI 教学助手</h1>
+            <p>上传资料，像跟老师一样学习</p>
+          </div>
+        </div>
+
+        <section class="upload-zone" id="dropZone">
+          <input
+            id="fileInput"
+            type="file"
+            multiple
+            accept=".txt,.md,.csv,.json,.html,.htm,.pdf,.doc,.docx,.ppt,.pptx"
+          />
+          <label for="fileInput">
+            <span class="upload-icon" aria-hidden="true"></span>
+            <strong>上传学校资料</strong>
+            <small>课件、讲义、笔记、作业说明</small>
+          </label>
+        </section>
+
+        <section class="panel-section">
+          <div class="section-header">
+            <h2>资料库</h2>
+            <span id="docCount">0 份</span>
+          </div>
+          <div class="document-list" id="documentList">
+            <p class="empty-state">还没有资料。先上传一份讲义或粘贴课堂笔记。</p>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <div class="section-header">
+            <h2>粘贴笔记</h2>
+          </div>
+          <textarea id="noteInput" placeholder="把老师发的重点、课堂板书或复习范围粘贴到这里"></textarea>
+          <button class="secondary-action" id="addNoteButton" type="button">
+            <span class="plus-icon" aria-hidden="true"></span>
+            加入资料库
+          </button>
+        </section>
+
+        <section class="panel-section compact">
+          <div class="section-header">
+            <h2>学习模式</h2>
+          </div>
+          <div class="mode-grid" role="group" aria-label="选择学习模式">
+            <button class="mode-button active" data-mode="explain" type="button">讲解</button>
+            <button class="mode-button" data-mode="quiz" type="button">测验</button>
+            <button class="mode-button" data-mode="review" type="button">复习</button>
+            <button class="mode-button" data-mode="homework" type="button">作业</button>
+          </div>
+        </section>
+      </aside>
+
+      <section class="conversation-panel" aria-label="AI 老师对话区">
+        <header class="teacher-header">
+          <div class="teacher-card">
+            <div class="teacher-portrait" aria-hidden="true">
+              <div class="portrait-board"></div>
+              <div class="portrait-face"></div>
+            </div>
+            <div>
+              <p class="kicker">课堂助教</p>
+              <h2>林老师</h2>
+              <span id="teacherStatus">等待资料，随时可以开始</span>
+            </div>
+          </div>
+          <div class="goal-box">
+            <label for="goalInput">本次目标</label>
+            <input id="goalInput" type="text" value="理解重点，能独立完成练习" />
+          </div>
+        </header>
+
+        <div class="chat-area" id="chatArea" aria-live="polite">
+          <article class="message teacher-message">
+            <div class="avatar">师</div>
+            <div class="bubble">
+              <p>你好，我是林老师。上传课程资料后，我会先读重点，再用适合你的节奏讲解。你也可以直接问：“这章重点是什么？”或“帮我出 5 道题”。</p>
+            </div>
+          </article>
+        </div>
+
+        <div class="suggestion-bar" aria-label="快捷问题">
+          <button type="button" data-prompt="请根据我的资料，用初学者能懂的方式讲解核心概念。">讲一遍重点</button>
+          <button type="button" data-prompt="请根据资料出 5 道练习题，并在我回答后批改。">出练习题</button>
+          <button type="button" data-prompt="帮我整理考试前最该复习的清单。">复习清单</button>
+          <button type="button" data-prompt="我有哪里容易混淆？请举例说明。">易错点</button>
+        </div>
+
+        <form class="composer" id="chatForm">
+          <button class="tool-button" type="button" id="clearButton" title="清空对话" aria-label="清空对话">
+            <span class="trash-icon" aria-hidden="true"></span>
+          </button>
+          <textarea id="messageInput" rows="1" placeholder="问林老师一个问题"></textarea>
+          <button class="send-button" type="submit" aria-label="发送">
+            <span class="send-icon" aria-hidden="true"></span>
+          </button>
+        </form>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

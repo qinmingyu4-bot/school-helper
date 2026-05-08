@@ -5,6 +5,7 @@
 ### Added
 
 - Added Semester Courses so each course has its own Course Pack, Past Chats, and study workflow section.
+- Added Semester Course deletion with cleanup for that course's Course Pack and Past Chats.
 - Added customizable Learning Style controls for bilingual teaching preferences.
 - Added browser-local preference memory that adapts to English-answer, Chinese-explanation, problem-solving, and cheatsheet usage signals.
 - Added image attachments in the chat composer with local preview and saved conversation history.

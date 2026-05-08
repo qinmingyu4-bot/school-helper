@@ -510,22 +510,71 @@ function renderCourses() {
       const docCountForCourse = state.documents.filter((document) => document.courseId === course.id).length;
       const sessionCountForCourse = state.sessions.filter((session) => session.courseId === course.id).length;
       return `
-        <button class="course-item${active}" type="button" data-course-id="${course.id}">
-          <strong>${escapeHtml(course.name)}</strong>
-          <span>${docCountForCourse} files · ${sessionCountForCourse} chats</span>
-        </button>
+        <div class="course-item${active}" data-course-id="${course.id}">
+          <button class="course-open" type="button" data-course-id="${course.id}">
+            <strong>${escapeHtml(course.name)}</strong>
+            <span>${docCountForCourse} files · ${sessionCountForCourse} chats</span>
+          </button>
+          <button class="course-delete" type="button" data-course-id="${course.id}" aria-label="删除课程">×</button>
+        </div>
       `;
     })
     .join("");
 
-  courseList.querySelectorAll(".course-item").forEach((button) => {
+  courseList.querySelectorAll(".course-open").forEach((button) => {
     button.addEventListener("click", () => {
       switchCourse(button.dataset.courseId);
     });
   });
 
+  courseList.querySelectorAll(".course-delete").forEach((button) => {
+    button.addEventListener("click", () => {
+      deleteCourse(button.dataset.courseId);
+    });
+  });
+
   const activeCourse = getActiveCourse();
   activeCourseTitle.textContent = activeCourse ? activeCourse.name : "留学生课程助理";
+}
+
+function deleteCourse(courseId) {
+  const course = state.courses.find((item) => item.id === courseId);
+  if (!course) return;
+
+  const confirmed = confirm(`删除 ${course.name}？这会同时删除这门课的 Course Pack 和 Past Chats。`);
+  if (!confirmed) return;
+
+  state.courses = state.courses.filter((item) => item.id !== courseId);
+  state.documents = state.documents.filter((document) => document.courseId !== courseId);
+  state.sessions = state.sessions.filter((session) => session.courseId !== courseId);
+
+  if (!state.courses.length) {
+    state.courses = [
+      {
+        id: DEFAULT_COURSE_ID,
+        name: "Course 1",
+        term: "Current term",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+    ];
+  }
+
+  if (state.activeCourseId === courseId) {
+    state.activeCourseId = state.courses[0].id;
+    state.activeSessionId = null;
+    state.messages = [];
+  }
+
+  saveCourses();
+  saveDocuments();
+  saveSessions();
+  ensureActiveCourseSession();
+  renderCourses();
+  renderDocuments();
+  renderHistory();
+  renderMessages();
+  coachStatus.textContent = `已删除课程：${course.name}`;
 }
 
 function switchCourse(courseId) {

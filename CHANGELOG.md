@@ -8,6 +8,7 @@
 - Added a welcome cover page that appears on each app open before entering the workspace.
 - Added Semester Course deletion with cleanup for that course's Course Pack and Past Chats.
 - Added customizable Learning Style controls for bilingual teaching preferences.
+- Added fast and thoughtful AI answer modes, including visible thinking time and expandable high-level thinking directions.
 - Added browser-local preference memory that adapts to English-answer, Chinese-explanation, problem-solving, and cheatsheet usage signals.
 - Added image attachments in the chat composer with local preview and saved conversation history.
 - Added drag-and-drop plus paste support for screenshot/image attachments in the chat composer.

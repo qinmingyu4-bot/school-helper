@@ -863,6 +863,44 @@ button {
   outline: none;
 }
 
+.answer-mode-control {
+  display: grid;
+  gap: 7px;
+  min-width: 220px;
+}
+
+.answer-mode-control > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.answer-mode-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.answer-mode-button {
+  min-height: 32px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.answer-mode-button.active {
+  background: linear-gradient(135deg, var(--navy), var(--green));
+  color: white;
+}
+
 .chat-area {
   display: flex;
   flex-direction: column;
@@ -928,6 +966,27 @@ button {
 
 .bubble li + li {
   margin-top: 4px;
+}
+
+.thinking-summary {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: 1px solid #cfe0f2;
+  border-radius: 8px;
+  background: #f6f9fd;
+}
+
+.thinking-summary summary {
+  color: var(--navy);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.thinking-summary p {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .source-strip {

@@ -3,6 +3,7 @@ const state = {
   activeCourseId: null,
   documents: [],
   mode: "preview",
+  answerMode: "fast",
   sessions: [],
   activeSessionId: null,
   messages: [],
@@ -69,6 +70,7 @@ const activeCourseTitle = document.querySelector("#activeCourseTitle");
 const coverPage = document.querySelector("#coverPage");
 const appShell = document.querySelector("#appShell");
 const startButton = document.querySelector("#startButton");
+const answerModeButtons = document.querySelectorAll(".answer-mode-button");
 const englishTermsToggle = document.querySelector("#englishTermsToggle");
 const englishAnswersToggle = document.querySelector("#englishAnswersToggle");
 const chineseExplanationsToggle = document.querySelector("#chineseExplanationsToggle");
@@ -235,6 +237,16 @@ document.querySelectorAll(".mode-button").forEach((button) => {
   });
 });
 
+answerModeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    answerModeButtons.forEach((item) => item.classList.remove("active"));
+    button.classList.add("active");
+    state.answerMode = button.dataset.answerMode;
+    coachStatus.textContent =
+      state.answerMode === "thoughtful" ? "当前回答模式：思考模式" : "当前回答模式：快速应答";
+  });
+});
+
 messageInput.addEventListener("input", resizeComposer);
 
 messageInput.addEventListener("keydown", (event) => {
@@ -257,9 +269,7 @@ chatForm.addEventListener("submit", (event) => {
   renderPendingImages();
   resizeComposer();
 
-  setTimeout(() => {
-    appendCoachAnswer(question || "请参考我刚上传的图片。");
-  }, 260);
+  queueCoachAnswer(question || "请参考我刚上传的图片。");
 });
 
 clearButton.addEventListener("click", () => {
@@ -999,12 +1009,37 @@ function deleteDocument(documentId) {
   coachStatus.textContent = "已从当前课程 Course Pack 删除资料";
 }
 
-function appendCoachAnswer(question) {
+function queueCoachAnswer(question) {
+  if (state.answerMode !== "thoughtful") {
+    setTimeout(() => {
+      appendCoachAnswer(question);
+    }, 260);
+    return;
+  }
+
+  const startedAt = Date.now();
+  coachStatus.textContent = "思考模式：AI 正在自习思考 0s";
+
+  const timer = setInterval(() => {
+    const seconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+    coachStatus.textContent = `思考模式：AI 正在自习思考 ${seconds}s`;
+  }, 500);
+
+  setTimeout(() => {
+    clearInterval(timer);
+    const seconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+    appendCoachAnswer(question, { thinkingSeconds: seconds });
+    coachStatus.textContent = `思考完成：${seconds}s`;
+  }, 3200);
+}
+
+function appendCoachAnswer(question, options = {}) {
   const context = findRelevantContext(question);
   context.memory = buildConversationMemory();
   const goal = goalInput.value.trim() || "理解课程结构，跟上进度，准备考试";
   const answer = generateCoachReply(question, context, goal);
-  appendMessage("coach", answer.text, context.sources);
+  const thinkingSummary = options.thinkingSeconds ? buildThinkingSummary(question, context, options.thinkingSeconds) : "";
+  appendMessage("coach", `${thinkingSummary}${answer.text}`, context.sources);
 }
 
 function generateCoachReply(question, context, goal) {
@@ -1305,6 +1340,25 @@ function renderDeadlineGroups(groups) {
 
 function buildTeachingPreferenceHtml() {
   return `<p><strong>教学方式：</strong>${escapeHtml(buildTeachingPreferenceText())}</p>`;
+}
+
+function buildThinkingSummary(question, context, seconds) {
+  const directions = [
+    `先判断问题属于 ${escapeHtml(modeLabels[state.mode] || "当前学习")} 场景`,
+    context.excerpts.length ? "再从 Course Pack 中找最相关的 syllabus / notes / exam material" : "先检查是否有可阅读课程资料",
+    "然后决定回答应偏向概念解释、做题步骤、deadline planning 还是 exam language",
+    "最后按你的 Learning Style 输出：中文解释、英文关键词和考试作答表达",
+  ];
+
+  return `
+    <details class="thinking-summary">
+      <summary>思考 ${Number(seconds || 1)}s</summary>
+      <ul>
+        ${directions.map((direction) => `<li>${direction}</li>`).join("")}
+      </ul>
+      <p>问题入口：${escapeHtml(question).slice(0, 120)}</p>
+    </details>
+  `;
 }
 
 function buildTeachingPreferenceText() {

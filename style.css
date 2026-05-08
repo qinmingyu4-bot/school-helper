@@ -42,6 +42,117 @@ button {
   cursor: pointer;
 }
 
+.cover-page {
+  display: grid;
+  min-height: 100vh;
+  padding: 32px;
+  place-items: center;
+}
+
+.cover-page[hidden],
+.app-shell[hidden] {
+  display: none;
+}
+
+.cover-shell {
+  width: min(760px, 100%);
+  padding: clamp(24px, 5vw, 46px);
+  border: 1px solid rgba(216, 222, 232, 0.9);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.9)),
+    white;
+  box-shadow: var(--shadow);
+}
+
+.cover-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.cover-brand h1 {
+  margin: 2px 0 0;
+  font-size: clamp(30px, 5vw, 50px);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.cover-copy {
+  max-width: 620px;
+  margin: 22px 0 0;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.75;
+}
+
+.cover-form {
+  display: grid;
+  gap: 9px;
+  margin-top: 30px;
+}
+
+.cover-form label {
+  color: var(--navy);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.cover-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.cover-input-row input {
+  min-width: 0;
+  height: 52px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  outline: none;
+}
+
+.cover-input-row input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(56, 103, 214, 0.12);
+}
+
+.cover-input-row button {
+  min-height: 52px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--navy), var(--green));
+  color: white;
+  font-weight: 800;
+}
+
+.cover-error {
+  margin: 0;
+  color: var(--red);
+  font-size: 13px;
+}
+
+.cover-notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.cover-notes span {
+  padding: 7px 10px;
+  border: 1px solid #d7dee8;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: var(--navy);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
@@ -1048,6 +1159,26 @@ button {
 }
 
 @media (max-width: 560px) {
+  .cover-page {
+    padding: 16px;
+  }
+
+  .cover-shell {
+    padding: 22px;
+  }
+
+  .cover-brand {
+    align-items: flex-start;
+  }
+
+  .cover-input-row {
+    grid-template-columns: 1fr;
+  }
+
+  .cover-input-row button {
+    width: 100%;
+  }
+
   .workspace-panel,
   .topbar,
   .chat-area,

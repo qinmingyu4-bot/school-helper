@@ -65,6 +65,11 @@ const pendingImages = document.querySelector("#pendingImages");
 const courseList = document.querySelector("#courseList");
 const addCourseButton = document.querySelector("#addCourseButton");
 const activeCourseTitle = document.querySelector("#activeCourseTitle");
+const coverPage = document.querySelector("#coverPage");
+const appShell = document.querySelector("#appShell");
+const firstCourseForm = document.querySelector("#firstCourseForm");
+const firstCourseInput = document.querySelector("#firstCourseInput");
+const firstCourseError = document.querySelector("#firstCourseError");
 const englishTermsToggle = document.querySelector("#englishTermsToggle");
 const englishAnswersToggle = document.querySelector("#englishAnswersToggle");
 const chineseExplanationsToggle = document.querySelector("#chineseExplanationsToggle");
@@ -158,6 +163,20 @@ addCourseButton.addEventListener("click", () => {
   const name = prompt("Course name, e.g. MAT223H1F");
   if (!name?.trim()) return;
   addCourse(name.trim());
+});
+
+firstCourseForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const name = firstCourseInput.value.trim();
+  if (!name) {
+    firstCourseError.hidden = false;
+    firstCourseInput.focus();
+    return;
+  }
+
+  firstCourseError.hidden = true;
+  addCourse(name);
+  firstCourseInput.value = "";
 });
 
 [englishTermsToggle, englishAnswersToggle, chineseExplanationsToggle].forEach((toggle) => {
@@ -449,19 +468,8 @@ function updatePreferenceMemory(text) {
 
 function initializeCourses() {
   state.courses = loadCourses();
-  if (!state.courses.length) {
-    state.courses = [
-      {
-        id: DEFAULT_COURSE_ID,
-        name: "Course 1",
-        term: "Current term",
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      },
-    ];
-    saveCourses();
-  }
-  state.activeCourseId = state.courses[0].id;
+  state.activeCourseId = state.courses[0]?.id || null;
+  updateAppView();
   renderCourses();
 }
 
@@ -476,6 +484,16 @@ function loadCourses() {
 
 function saveCourses() {
   localStorage.setItem(COURSES_STORAGE_KEY, JSON.stringify(state.courses));
+}
+
+function updateAppView() {
+  const hasCourses = state.courses.length > 0;
+  coverPage.hidden = hasCourses;
+  appShell.hidden = !hasCourses;
+  if (!hasCourses) {
+    firstCourseError.hidden = true;
+    requestAnimationFrame(() => firstCourseInput.focus());
+  }
 }
 
 function getActiveCourse() {
@@ -495,6 +513,7 @@ function addCourse(name) {
   state.messages = [];
   state.activeSessionId = null;
   saveCourses();
+  updateAppView();
   renderCourses();
   ensureActiveCourseSession();
   renderDocuments();
@@ -504,6 +523,12 @@ function addCourse(name) {
 }
 
 function renderCourses() {
+  if (!state.courses.length) {
+    courseList.innerHTML = '<p class="empty-state">还没有课程。请先在封面页创建第一门课。</p>';
+    activeCourseTitle.textContent = "留学生课程助理";
+    return;
+  }
+
   courseList.innerHTML = state.courses
     .map((course) => {
       const active = course.id === state.activeCourseId ? " active" : "";
@@ -548,20 +573,8 @@ function deleteCourse(courseId) {
   state.documents = state.documents.filter((document) => document.courseId !== courseId);
   state.sessions = state.sessions.filter((session) => session.courseId !== courseId);
 
-  if (!state.courses.length) {
-    state.courses = [
-      {
-        id: DEFAULT_COURSE_ID,
-        name: "Course 1",
-        term: "Current term",
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      },
-    ];
-  }
-
   if (state.activeCourseId === courseId) {
-    state.activeCourseId = state.courses[0].id;
+    state.activeCourseId = state.courses[0]?.id || null;
     state.activeSessionId = null;
     state.messages = [];
   }
@@ -569,6 +582,7 @@ function deleteCourse(courseId) {
   saveCourses();
   saveDocuments();
   saveSessions();
+  updateAppView();
   ensureActiveCourseSession();
   renderCourses();
   renderDocuments();
@@ -579,6 +593,7 @@ function deleteCourse(courseId) {
 
 function switchCourse(courseId) {
   if (courseId === state.activeCourseId) return;
+  if (!state.courses.some((course) => course.id === courseId)) return;
   state.activeCourseId = courseId;
   ensureActiveCourseSession();
   renderCourses();
@@ -589,10 +604,12 @@ function switchCourse(courseId) {
 }
 
 function currentCourseDocuments() {
+  if (!state.activeCourseId) return [];
   return state.documents.filter((document) => document.courseId === state.activeCourseId);
 }
 
 function currentCourseSessions() {
+  if (!state.activeCourseId) return [];
   return state.sessions.filter((session) => session.courseId === state.activeCourseId);
 }
 
@@ -601,7 +618,9 @@ function initializeConversations() {
     courseId: session.courseId || DEFAULT_COURSE_ID,
     ...session,
   }));
-  ensureActiveCourseSession(false);
+  if (state.activeCourseId) {
+    ensureActiveCourseSession(false);
+  }
   renderMessages();
   renderHistory();
   renderCourses();
@@ -667,6 +686,12 @@ function saveDocuments() {
 }
 
 function ensureActiveCourseSession(shouldSave = true) {
+  if (!state.activeCourseId) {
+    state.activeSessionId = null;
+    state.messages = [];
+    return;
+  }
+
   const sessions = currentCourseSessions();
   if (!sessions.length) {
     createSession("New study session", shouldSave);
@@ -678,6 +703,8 @@ function ensureActiveCourseSession(shouldSave = true) {
 }
 
 function createSession(title = "New study session", shouldSave = true) {
+  if (!state.activeCourseId) return;
+
   const session = {
     id: crypto.randomUUID(),
     courseId: state.activeCourseId,
@@ -713,6 +740,11 @@ function updateActiveSession(updates = {}) {
 }
 
 function renderHistory() {
+  if (!state.activeCourseId) {
+    historyList.innerHTML = '<p class="empty-state">创建第一门课程后，对话会自动保存在这台浏览器里。</p>';
+    return;
+  }
+
   const sessions = currentCourseSessions();
   if (!sessions.length) {
     historyList.innerHTML = '<p class="empty-state">当前课程还没有对话。</p>';
@@ -775,6 +807,7 @@ function deleteSession(sessionId) {
 
 function renderMessages() {
   chatArea.innerHTML = "";
+  if (!state.activeCourseId) return;
   state.messages.forEach((message) => {
     renderMessageElement(message.role, message.content, message.sources || [], message.attachments || []);
   });
@@ -782,6 +815,7 @@ function renderMessages() {
 
 async function ingestFiles(files) {
   if (!files.length) return;
+  if (!state.activeCourseId) return;
 
   for (const file of files) {
     const extension = file.name.split(".").pop().toLowerCase();
@@ -864,6 +898,8 @@ async function extractPdfText(file) {
 }
 
 function addDocument(documentItem) {
+  if (!state.activeCourseId) return;
+
   state.documents.unshift({
     id: crypto.randomUUID(),
     courseId: state.activeCourseId,
@@ -894,6 +930,13 @@ function addDocument(documentItem) {
 }
 
 function renderDocuments() {
+  if (!state.activeCourseId) {
+    docCount.textContent = "0 files";
+    documentList.innerHTML =
+      '<p class="empty-state">创建第一门课程后，就可以上传或粘贴 syllabus、slides、readings、midterm/final。</p>';
+    return;
+  }
+
   const documents = currentCourseDocuments();
   docCount.textContent = `${documents.length} files`;
 

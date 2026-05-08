@@ -7,7 +7,36 @@
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <main class="app-shell">
+    <section class="cover-page" id="coverPage" aria-label="StudyBridge first course setup">
+      <div class="cover-shell">
+        <div class="cover-brand">
+          <div class="brand-mark" aria-hidden="true">SB</div>
+          <div>
+            <p class="eyebrow">StudyBridge</p>
+            <h1>建立你的第一个 semester course</h1>
+          </div>
+        </div>
+        <p class="cover-copy">
+          面向留学生的整学期多课程学习工作台。先添加一门课，之后每门课都可以单独保存 syllabus、PDF、slides、midterm/final、deadline 和学习记录。
+        </p>
+        <form class="cover-form" id="firstCourseForm">
+          <label for="firstCourseInput">Course name</label>
+          <div class="cover-input-row">
+            <input id="firstCourseInput" type="text" placeholder="例如 MAT223H1F" autocomplete="off" />
+            <button type="submit">创建第一门课程</button>
+          </div>
+          <p id="firstCourseError" class="cover-error" hidden>请输入课程名。</p>
+        </form>
+        <div class="cover-notes" aria-label="创建后可用功能">
+          <span>PDF text reading</span>
+          <span>Past Chats</span>
+          <span>Exam prep</span>
+          <span>Deadline planning</span>
+        </div>
+      </div>
+    </section>
+
+    <main class="app-shell" id="appShell" hidden>
       <aside class="workspace-panel" aria-label="课程资料">
         <header class="brand">
           <div class="brand-mark" aria-hidden="true">SB</div>

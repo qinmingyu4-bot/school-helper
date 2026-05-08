@@ -55,7 +55,6 @@ const addNoteButton = document.querySelector("#addNoteButton");
 const chatArea = document.querySelector("#chatArea");
 const chatForm = document.querySelector("#chatForm");
 const messageInput = document.querySelector("#messageInput");
-const goalInput = document.querySelector("#goalInput");
 const coachStatus = document.querySelector("#coachStatus");
 const clearButton = document.querySelector("#clearButton");
 const historyList = document.querySelector("#historyList");
@@ -1036,7 +1035,7 @@ function queueCoachAnswer(question) {
 function appendCoachAnswer(question, options = {}) {
   const context = findRelevantContext(question);
   context.memory = buildConversationMemory();
-  const goal = goalInput.value.trim() || "理解课程结构，跟上进度，准备考试";
+  const goal = "理解课程结构，跟上进度，准备考试";
   const answer = generateCoachReply(question, context, goal);
   const thinkingSummary = options.thinkingSeconds ? buildThinkingSummary(question, context, options.thinkingSeconds) : "";
   appendMessage("coach", `${thinkingSummary}${answer.text}`, context.sources);

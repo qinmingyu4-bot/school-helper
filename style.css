@@ -676,8 +676,7 @@ button {
 
 #noteInput:focus,
 #customPreferenceInput:focus,
-#messageInput:focus,
-#goalInput:focus {
+#messageInput:focus {
   border-color: var(--blue);
   box-shadow: 0 0 0 3px rgba(56, 103, 214, 0.12);
 }
@@ -839,28 +838,6 @@ button {
   margin-top: 4px;
   color: var(--muted);
   font-size: 13px;
-}
-
-.course-goal {
-  display: grid;
-  gap: 7px;
-  width: min(390px, 42vw);
-}
-
-.course-goal label {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-#goalInput {
-  width: 100%;
-  height: 40px;
-  padding: 0 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: white;
-  outline: none;
 }
 
 .answer-mode-control {
@@ -1323,9 +1300,6 @@ button {
     flex-direction: column;
   }
 
-  .course-goal {
-    width: 100%;
-  }
 }
 
 @media (max-width: 560px) {

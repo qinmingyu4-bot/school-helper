@@ -4,6 +4,7 @@ const state = {
   sessions: [],
   activeSessionId: null,
   messages: [],
+  pendingImages: [],
 };
 
 const modeLabels = {
@@ -40,6 +41,9 @@ const clearButton = document.querySelector("#clearButton");
 const historyList = document.querySelector("#historyList");
 const newSessionButton = document.querySelector("#newSessionButton");
 const promptRow = document.querySelector("#promptRow");
+const imageButton = document.querySelector("#imageButton");
+const imageInput = document.querySelector("#imageInput");
+const pendingImages = document.querySelector("#pendingImages");
 
 const quickPrompts = {
   preview: [
@@ -111,6 +115,15 @@ dropZone.addEventListener("drop", async (event) => {
   await ingestFiles(Array.from(event.dataTransfer.files || []));
 });
 
+imageButton.addEventListener("click", () => {
+  imageInput.click();
+});
+
+imageInput.addEventListener("change", async (event) => {
+  await addPendingImages(Array.from(event.target.files || []));
+  imageInput.value = "";
+});
+
 addNoteButton.addEventListener("click", () => {
   const text = noteInput.value.trim();
   if (!text) return;
@@ -146,14 +159,17 @@ messageInput.addEventListener("keydown", (event) => {
 chatForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const question = messageInput.value.trim();
-  if (!question) return;
+  const attachments = [...state.pendingImages];
+  if (!question && !attachments.length) return;
 
-  appendMessage("user", question);
+  appendMessage("user", question || "上传了图片。", [], attachments);
   messageInput.value = "";
+  state.pendingImages = [];
+  renderPendingImages();
   resizeComposer();
 
   setTimeout(() => {
-    appendCoachAnswer(question);
+    appendCoachAnswer(question || "请参考我刚上传的图片。");
   }, 260);
 });
 
@@ -168,6 +184,75 @@ clearButton.addEventListener("click", () => {
 newSessionButton.addEventListener("click", () => {
   createSession();
 });
+
+async function addPendingImages(files) {
+  const imageFiles = files.filter((file) => isImageFile(file));
+  if (!imageFiles.length) return;
+
+  const attachments = await Promise.all(imageFiles.map(readImageAttachment));
+  state.pendingImages.push(...attachments);
+  renderPendingImages();
+  coachStatus.textContent = `已准备 ${state.pendingImages.length} 张图片，发送后会进入对话记录`;
+}
+
+function isImageFile(file) {
+  const extension = file.name.split(".").pop().toLowerCase();
+  return (
+    file.type.startsWith("image/") ||
+    ["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif", "heic", "heif", "tif", "tiff"].includes(extension)
+  );
+}
+
+function readImageAttachment(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      resolve({
+        id: crypto.randomUUID(),
+        kind: "image",
+        name: file.name,
+        type: file.type || "image file",
+        size: file.size,
+        dataUrl: String(reader.result || ""),
+        createdAt: Date.now(),
+      });
+    };
+    reader.onerror = () => {
+      resolve({
+        id: crypto.randomUUID(),
+        kind: "image",
+        name: file.name,
+        type: file.type || "image file",
+        size: file.size,
+        dataUrl: "",
+        createdAt: Date.now(),
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderPendingImages() {
+  pendingImages.hidden = state.pendingImages.length === 0;
+  pendingImages.innerHTML = state.pendingImages
+    .map(
+      (image) => `
+        <div class="pending-image">
+          ${renderImagePreview(image)}
+          <span>${escapeHtml(image.name)}</span>
+          <button type="button" data-image-id="${image.id}" aria-label="移除图片">×</button>
+        </div>
+      `
+    )
+    .join("");
+
+  pendingImages.querySelectorAll("button").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.pendingImages = state.pendingImages.filter((image) => image.id !== button.dataset.imageId);
+      renderPendingImages();
+    });
+  });
+}
 
 function renderQuickPrompts() {
   const prompts = [
@@ -287,7 +372,7 @@ function renderHistory() {
 function renderMessages() {
   chatArea.innerHTML = "";
   state.messages.forEach((message) => {
-    renderMessageElement(message.role, message.content, message.sources || []);
+    renderMessageElement(message.role, message.content, message.sources || [], message.attachments || []);
   });
 }
 
@@ -436,9 +521,12 @@ function generateCoachReply(question, context, goal) {
   const lowerQuestion = question.toLowerCase();
 
   if (!hasContext) {
+    const recentImages = getRecentImageNames();
     return {
       text:
-        "我现在还没有可阅读的课程正文。你可以上传 TXT、MD、CSV、JSON、HTML，或粘贴 syllabus、lecture notes、reading guide、rubric、midterm/final 样卷和 deadline。拿到内容后，我可以帮你做课程介绍、预习路线、带学讲解、复习清单、模拟试题和日期汇总。",
+        recentImages.length
+          ? `我已经收到图片：${recentImages.map(escapeHtml).join("、")}。当前静态版本可以上传、展示并保存图片到本地对话记录，但还不能真正识别图片里的题目内容。你可以把图片里的题目文字也粘贴出来，我就能继续带你做题、复习或整理。`
+          : "我现在还没有可阅读的课程正文。你可以上传 PDF、TXT、MD、CSV、JSON、HTML，粘贴 syllabus/lecture notes，或在对话框上传图片。文字资料可以直接分析；图片会保存到对话记录，若要解读图片内容，请同时粘贴题目文字。",
       sources: [],
     };
   }
@@ -760,15 +848,16 @@ function buildDocumentLoadedReply(documentItem) {
   `;
 }
 
-function appendMessage(role, content, sources = []) {
+function appendMessage(role, content, sources = [], attachments = []) {
   const messageRecord = {
     role,
     content,
     sources,
+    attachments,
     createdAt: Date.now(),
   };
   state.messages.push(messageRecord);
-  renderMessageElement(role, content, sources);
+  renderMessageElement(role, content, sources, attachments);
 
   const firstUserMessage = state.messages.find((message) => message.role === "user");
   const title = firstUserMessage ? firstUserMessage.content.replace(/<[^>]+>/g, "").slice(0, 36) : "New study session";
@@ -777,10 +866,13 @@ function appendMessage(role, content, sources = []) {
   saveSessions();
 }
 
-function renderMessageElement(role, content, sources = []) {
+function renderMessageElement(role, content, sources = [], attachments = []) {
   const message = document.createElement("article");
   message.className = `message ${role === "user" ? "user-message" : "coach-message"}`;
   const safeContent = content.trim().startsWith("<") ? content : `<p>${escapeHtml(content)}</p>`;
+  const attachmentHtml = attachments.length
+    ? `<div class="message-attachments">${attachments.map(renderImageAttachment).join("")}</div>`
+    : "";
   const sourceHtml = sources.length
     ? `<div class="source-strip">${unique(sources)
         .map((source) => `<span class="source-chip">${escapeHtml(source)}</span>`)
@@ -789,10 +881,31 @@ function renderMessageElement(role, content, sources = []) {
 
   message.innerHTML = `
     <div class="avatar">${role === "user" ? "我" : "AI"}</div>
-    <div class="bubble">${safeContent}${sourceHtml}</div>
+    <div class="bubble">${safeContent}${attachmentHtml}${sourceHtml}</div>
   `;
   chatArea.appendChild(message);
   chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function renderImageAttachment(image) {
+  return `
+    <figure class="image-attachment">
+      ${renderImagePreview(image)}
+      <figcaption>${escapeHtml(image.name)} · ${formatSize(image.size)}</figcaption>
+    </figure>
+  `;
+}
+
+function renderImagePreview(image) {
+  if (image.dataUrl && /^data:image\//.test(image.dataUrl) && isPreviewableImageType(image)) {
+    return `<img src="${image.dataUrl}" alt="${escapeHtml(image.name)}" loading="lazy" />`;
+  }
+  return `<div class="image-fallback">IMG</div>`;
+}
+
+function isPreviewableImageType(image) {
+  const extension = image.name.split(".").pop().toLowerCase();
+  return !["heic", "heif", "tif", "tiff"].includes(extension);
 }
 
 function resizeComposer() {
@@ -893,12 +1006,22 @@ function scoreText(text, queryTerms) {
 function buildConversationMemory() {
   const recentMessages = state.sessions
     .flatMap((session) => session.messages || [])
-    .filter((message) => message.role === "user")
     .slice(-6)
-    .map((message) => message.content.replace(/<[^>]+>/g, "").slice(0, 80));
+    .map((message) => {
+      const text = message.content.replace(/<[^>]+>/g, "").slice(0, 80);
+      const imageNames = (message.attachments || []).map((image) => `图片:${image.name}`).join("、");
+      return [text, imageNames].filter(Boolean).join(" ");
+    });
 
   if (!recentMessages.length) return "";
   return unique(recentMessages).slice(-4).join("；");
+}
+
+function getRecentImageNames() {
+  return state.messages
+    .flatMap((message) => message.attachments || [])
+    .slice(-4)
+    .map((image) => image.name);
 }
 
 function formatRelativeTime(timestamp) {

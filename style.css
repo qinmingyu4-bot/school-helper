@@ -601,10 +601,56 @@ button {
 
 .composer {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) 48px;
+  grid-template-columns: 44px 44px minmax(0, 1fr) 48px;
   gap: 10px;
   padding: 14px 28px 24px;
   background: rgba(244, 246, 249, 0.92);
+}
+
+#imageInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pending-images {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.pending-image {
+  display: grid;
+  grid-template-columns: 44px minmax(80px, 150px) 24px;
+  align-items: center;
+  gap: 8px;
+  min-width: 180px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.pending-image span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pending-image button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: #edf1f5;
+  color: var(--muted);
 }
 
 #messageInput {
@@ -689,6 +735,88 @@ button {
   background: currentColor;
 }
 
+.image-glyph {
+  position: relative;
+  width: 20px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+}
+
+.image-glyph::before {
+  content: "";
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.image-glyph::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  bottom: 3px;
+  width: 12px;
+  height: 8px;
+  background: currentColor;
+  clip-path: polygon(0 100%, 42% 35%, 62% 62%, 78% 42%, 100% 100%);
+}
+
+.message-attachments {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 220px));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.image-attachment {
+  margin: 0;
+}
+
+.image-attachment img,
+.pending-image img {
+  display: block;
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.pending-image img {
+  width: 44px;
+  height: 44px;
+}
+
+.image-attachment figcaption {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.image-fallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 140px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pending-image .image-fallback {
+  width: 44px;
+  height: 44px;
+  border-radius: 7px;
+}
+
 @media (max-width: 900px) {
   body {
     overflow: auto;
@@ -740,7 +868,7 @@ button {
   }
 
   .composer {
-    grid-template-columns: 40px minmax(0, 1fr) 44px;
+    grid-template-columns: 40px 40px minmax(0, 1fr) 44px;
   }
 
   .icon-button,

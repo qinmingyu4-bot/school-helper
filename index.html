@@ -106,6 +106,16 @@
           <button class="icon-button" type="button" id="clearButton" title="清空当前对话" aria-label="清空当前对话">
             <span class="trash-glyph" aria-hidden="true"></span>
           </button>
+          <button class="icon-button" type="button" id="imageButton" title="上传图片" aria-label="上传图片">
+            <span class="image-glyph" aria-hidden="true"></span>
+          </button>
+          <input
+            id="imageInput"
+            type="file"
+            multiple
+            accept="image/*,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.heic,.heif,.tif,.tiff"
+          />
+          <div class="pending-images" id="pendingImages" hidden></div>
           <textarea id="messageInput" rows="1" placeholder="用中文问：这门课怎么学？下周要准备什么？"></textarea>
           <button class="send-button" type="submit" aria-label="发送">
             <span class="send-glyph" aria-hidden="true"></span>

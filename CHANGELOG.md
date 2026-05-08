@@ -5,6 +5,8 @@
 ### Added
 
 - Added Semester Courses so each course has its own Course Pack, Past Chats, and study workflow section.
+- Added customizable Learning Style controls for bilingual teaching preferences.
+- Added browser-local preference memory that adapts to English-answer, Chinese-explanation, problem-solving, and cheatsheet usage signals.
 - Added image attachments in the chat composer with local preview and saved conversation history.
 - Added drag-and-drop plus paste support for screenshot/image attachments in the chat composer.
 - Added local Course Pack persistence for extracted text from uploaded and pasted course materials.
@@ -21,6 +23,7 @@
 - Replaced the previous mode set with preview, guided study, review, mock exam generation, course overview, and deadline summary.
 - Updated prompts and default goal to focus on understanding the course, keeping pace, preparing for exams, and planning deadlines.
 - Refined the visual design with a richer workspace sidebar, chat history list, and stronger study-mode controls.
+- Updated coaching responses to explain concepts in Chinese while preserving English exam terms and English answer formats.
 
 ### Added
 

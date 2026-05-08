@@ -378,7 +378,61 @@ button {
   outline: none;
 }
 
+.learning-style-block {
+  background:
+    linear-gradient(135deg, rgba(56, 103, 214, 0.08), rgba(47, 125, 98, 0.07)),
+    var(--panel);
+}
+
+.preference-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.preference-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid #d7dee8;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.preference-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--green);
+}
+
+#customPreferenceInput {
+  width: 100%;
+  min-height: 74px;
+  margin-top: 10px;
+  resize: vertical;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  outline: none;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.preference-memory {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 #noteInput:focus,
+#customPreferenceInput:focus,
 #messageInput:focus,
 #goalInput:focus {
   border-color: var(--blue);

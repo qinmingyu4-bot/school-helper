@@ -25,6 +25,32 @@
           <div class="course-list" id="courseList"></div>
         </section>
 
+        <section class="panel-block learning-style-block">
+          <div class="block-title">
+            <h2>Learning Style</h2>
+            <span id="preferenceStatus">Saved</span>
+          </div>
+          <div class="preference-grid" aria-label="教学偏好">
+            <label class="preference-toggle">
+              <input id="englishTermsToggle" type="checkbox" checked />
+              <span>英文关键词</span>
+            </label>
+            <label class="preference-toggle">
+              <input id="englishAnswersToggle" type="checkbox" checked />
+              <span>英文答案</span>
+            </label>
+            <label class="preference-toggle">
+              <input id="chineseExplanationsToggle" type="checkbox" checked />
+              <span>中文解释</span>
+            </label>
+          </div>
+          <textarea
+            id="customPreferenceInput"
+            placeholder="客制化教学要求：例如先给 English final answer，再用中文解释步骤和易错点。"
+          ></textarea>
+          <p class="preference-memory" id="preferenceMemory">StudyBridge 会根据你的常用问法更新本地记忆。</p>
+        </section>
+
         <section class="upload-zone" id="dropZone">
           <input
             id="fileInput"

@@ -7,6 +7,18 @@ const state = {
   activeSessionId: null,
   messages: [],
   pendingImages: [],
+  preferences: {
+    englishTerms: true,
+    englishAnswers: true,
+    chineseExplanations: true,
+    customInstruction: "",
+    habits: {
+      englishAnswerRequests: 0,
+      chineseExplanationRequests: 0,
+      problemSolvingRequests: 0,
+      cheatsheetRequests: 0,
+    },
+  },
 };
 
 const modeLabels = {
@@ -21,6 +33,7 @@ const modeLabels = {
 const STORAGE_KEY = "studybridge.sessions.v2";
 const DOCUMENTS_STORAGE_KEY = "studybridge.documents.v1";
 const COURSES_STORAGE_KEY = "studybridge.courses.v1";
+const PREFERENCES_STORAGE_KEY = "studybridge.preferences.v1";
 const DEFAULT_COURSE_ID = "default-course";
 
 const supportedTextTypes = [
@@ -52,6 +65,12 @@ const pendingImages = document.querySelector("#pendingImages");
 const courseList = document.querySelector("#courseList");
 const addCourseButton = document.querySelector("#addCourseButton");
 const activeCourseTitle = document.querySelector("#activeCourseTitle");
+const englishTermsToggle = document.querySelector("#englishTermsToggle");
+const englishAnswersToggle = document.querySelector("#englishAnswersToggle");
+const chineseExplanationsToggle = document.querySelector("#chineseExplanationsToggle");
+const customPreferenceInput = document.querySelector("#customPreferenceInput");
+const preferenceStatus = document.querySelector("#preferenceStatus");
+const preferenceMemory = document.querySelector("#preferenceMemory");
 
 const quickPrompts = {
   preview: [
@@ -64,7 +83,7 @@ const quickPrompts = {
     ["一步步教", "请带着我学习这部分内容，按概念、例子、检查理解的顺序来。"],
     ["举例讲解", "请用一个北美课堂常见例子解释这部分内容。"],
     ["检查理解", "请问我几个问题来检查我是否真的理解了。"],
-    ["中英对照", "请用中文解释核心逻辑，并给我关键英文表达。"],
+    ["中英对照", "请用中文解释核心逻辑，并给我关键英文术语和考试表达。"],
   ],
   review: [
     ["复习清单", "请把这些资料整理成复习清单、易错点和主动回忆问题。"],
@@ -73,10 +92,10 @@ const quickPrompts = {
     ["考前路线", "请按重要性排序，告诉我复习顺序。"],
   ],
   exam: [
-    ["单独题目", "请根据上传资料出 8 道单独练习题，覆盖不同题型。"],
-    ["完整试卷", "请模仿上传的 midterm/final 格式生成一份完整练习卷。"],
+    ["单独题目", "请根据上传资料出 8 道单独练习题，覆盖不同题型，并提供英文作答要求。"],
+    ["完整试卷", "请模仿上传的 midterm/final 格式生成一份完整英文练习卷。"],
     ["按题型出题", "请按 definition、short answer、application、long response 分类出题。"],
-    ["批改标准", "请给每道题配一个简短评分标准。"],
+    ["批改标准", "请给每道题配一个简短英文评分标准和中文解释。"],
   ],
   cheatsheet: [
     ["一页版", "请帮我做一页 cheatsheet：公式/概念/步骤/易错点/题型套路都要压缩得适合考前看。"],
@@ -97,6 +116,7 @@ const globalPrompts = [
   ["Deadline 汇总", "请汇总 syllabus 和课程资料中的所有 deadline、考试日期和需要提前准备的事项。"],
 ];
 
+initializePreferences();
 initializeCourses();
 initializeDocuments();
 initializeConversations();
@@ -138,6 +158,21 @@ addCourseButton.addEventListener("click", () => {
   const name = prompt("Course name, e.g. MAT223H1F");
   if (!name?.trim()) return;
   addCourse(name.trim());
+});
+
+[englishTermsToggle, englishAnswersToggle, chineseExplanationsToggle].forEach((toggle) => {
+  toggle.addEventListener("change", () => {
+    readPreferencesFromControls();
+    savePreferences();
+    renderPreferences();
+    coachStatus.textContent = "已更新教学偏好";
+  });
+});
+
+customPreferenceInput.addEventListener("input", () => {
+  readPreferencesFromControls();
+  savePreferences();
+  renderPreferences();
 });
 
 ["dragenter", "dragover"].forEach((eventName) => {
@@ -207,6 +242,7 @@ chatForm.addEventListener("submit", (event) => {
   const attachments = [...state.pendingImages];
   if (!question && !attachments.length) return;
 
+  updatePreferenceMemory(question);
   appendMessage("user", question || "上传了图片。", [], attachments);
   messageInput.value = "";
   state.pendingImages = [];
@@ -324,6 +360,91 @@ function renderQuickPrompts() {
       resizeComposer();
     });
   });
+}
+
+function initializePreferences() {
+  const defaults = state.preferences;
+  try {
+    const saved = JSON.parse(localStorage.getItem(PREFERENCES_STORAGE_KEY) || "{}");
+    state.preferences = {
+      ...defaults,
+      ...saved,
+      habits: {
+        ...defaults.habits,
+        ...(saved.habits || {}),
+      },
+    };
+  } catch {
+    state.preferences = defaults;
+  }
+  renderPreferences();
+}
+
+function readPreferencesFromControls() {
+  state.preferences.englishTerms = englishTermsToggle.checked;
+  state.preferences.englishAnswers = englishAnswersToggle.checked;
+  state.preferences.chineseExplanations = chineseExplanationsToggle.checked;
+  state.preferences.customInstruction = customPreferenceInput.value.trim();
+}
+
+function renderPreferences() {
+  englishTermsToggle.checked = state.preferences.englishTerms;
+  englishAnswersToggle.checked = state.preferences.englishAnswers;
+  chineseExplanationsToggle.checked = state.preferences.chineseExplanations;
+  customPreferenceInput.value = state.preferences.customInstruction || "";
+  preferenceStatus.textContent = "Saved";
+
+  const habits = state.preferences.habits || {};
+  const total =
+    Number(habits.englishAnswerRequests || 0) +
+    Number(habits.chineseExplanationRequests || 0) +
+    Number(habits.problemSolvingRequests || 0) +
+    Number(habits.cheatsheetRequests || 0);
+  preferenceMemory.textContent = total
+    ? `本地记忆：已根据 ${total} 次学习偏好信号调整教学方式。`
+    : "StudyBridge 会根据你的常用问法更新本地记忆。";
+}
+
+function savePreferences() {
+  localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(state.preferences));
+}
+
+function updatePreferenceMemory(text) {
+  if (!text) return;
+  const lower = text.toLowerCase();
+  const habits = state.preferences.habits;
+  let changed = false;
+
+  if (/英文答案|英文作答|english answer|answer in english|final answer/.test(lower)) {
+    state.preferences.englishAnswers = true;
+    habits.englishAnswerRequests += 1;
+    changed = true;
+  }
+
+  if (/中文解释|中文讲|中文解析|用中文|chinese explanation/.test(lower)) {
+    state.preferences.chineseExplanations = true;
+    habits.chineseExplanationRequests += 1;
+    changed = true;
+  }
+
+  if (/做题|解题|题目|problem|solve|question|exam|midterm|final|quiz/.test(lower)) {
+    habits.problemSolvingRequests += 1;
+    changed = true;
+  }
+
+  if (/cheatsheet|cheat sheet|公式表|一页纸|速查/.test(lower)) {
+    habits.cheatsheetRequests += 1;
+    changed = true;
+  }
+
+  if (/关键词|术语|key term|vocab|terminology/.test(lower)) {
+    state.preferences.englishTerms = true;
+    changed = true;
+  }
+
+  if (!changed) return;
+  savePreferences();
+  renderPreferences();
 }
 
 function initializeCourses() {
@@ -529,7 +650,7 @@ function createWelcomeMessage() {
   return {
     role: "coach",
     content:
-      `你好，这是 ${courseName} 的学习 section。我可以用中文帮你理解这门课的 syllabus、lecture slides、readings、rubric、midterm、final 和 deadline。每门课都会有自己的资料、对话记录和学习模式。`,
+      `你好，这是 ${courseName} 的学习 section。我会用中文帮你理解知识点，同时保留英文关键词；做题时可以给 English answer / final answer，再用中文解释步骤和 reasoning。每门课都会有自己的资料、对话记录、学习模式和客制化教学偏好。`,
     sources: [],
     createdAt: Date.now(),
   };
@@ -775,14 +896,15 @@ function appendCoachAnswer(question) {
 function generateCoachReply(question, context, goal) {
   const hasContext = context.excerpts.length > 0;
   const lowerQuestion = question.toLowerCase();
+  const teachingNote = buildTeachingPreferenceHtml();
 
   if (!hasContext) {
     const recentImages = getRecentImageNames();
     return {
       text:
         recentImages.length
-          ? `我已经收到图片：${recentImages.map(escapeHtml).join("、")}。当前静态版本可以上传、展示并保存图片到本地对话记录，但还不能真正识别图片里的题目内容。你可以把图片里的题目文字也粘贴出来，我就能继续带你做题、复习或整理。`
-          : "我现在还没有可阅读的课程正文。你可以上传 PDF、TXT、MD、CSV、JSON、HTML，粘贴 syllabus/lecture notes，或在对话框上传图片。文字资料可以直接分析；图片会保存到对话记录，若要解读图片内容，请同时粘贴题目文字。",
+          ? `${teachingNote}<p>我已经收到图片：${recentImages.map(escapeHtml).join("、")}。当前静态版本可以上传、展示并保存图片到本地对话记录，但还不能真正识别图片里的题目内容。你可以把图片里的题目文字也粘贴出来，我就能继续带你做题、复习或整理。</p>`
+          : `${teachingNote}<p>我现在还没有可阅读的课程正文。你可以上传 PDF、TXT、MD、CSV、JSON、HTML，粘贴 syllabus/lecture notes，或在对话框上传图片。文字资料可以直接分析；图片会保存到对话记录，若要解读图片内容，请同时粘贴题目文字。</p>`,
       sources: [],
     };
   }
@@ -848,6 +970,7 @@ function buildPreviewReply(question, context, goal) {
 
   return `
     <p>我会按北美课堂的预习方式来处理：先知道这节课要解决什么问题，再带着关键词和问题去上课。</p>
+    ${buildTeachingPreferenceHtml()}
     <ol>
       <li><strong>预习入口：</strong>${escapeHtml(question)}</li>
       <li><strong>资料里最相关的信息：</strong>${escapeHtml(mainIdea)}</li>
@@ -870,6 +993,7 @@ function buildGuidedReply(question, context, goal) {
 
   return `
     <p>我们按“带着学习”的节奏来，不急着背，先建立理解框架。</p>
+    ${buildTeachingPreferenceHtml()}
     <ol>
       <li><strong>先用一句话理解：</strong>${escapeHtml(mainIdea)}</li>
       <li><strong>再拆成三块：</strong>定义是什么、课堂上怎么用、考试或讨论可能怎么问。</li>
@@ -888,6 +1012,7 @@ function buildReviewReply(context, goal) {
 
   return `
     <p>复习时不要只重读资料。我们用 active recall 的方式整理：</p>
+    ${buildTeachingPreferenceHtml()}
     <ul>
       ${points.map((point) => `<li>${escapeHtml(point)}</li>`).join("")}
     </ul>
@@ -904,8 +1029,9 @@ function buildCheatsheetReply(context, goal) {
 
   return `
     <p>我会把 cheatsheet 做成“考试时能快速用”的一页结构，不是长笔记。建议分成 5 块：</p>
+    ${buildTeachingPreferenceHtml()}
     <ol>
-      <li><strong>Core ideas：</strong>${keywords.slice(0, 5).map(escapeHtml).join("、") || "先补充 lecture notes 后生成"}</li>
+      <li><strong>Core ideas / 核心概念：</strong>${keywords.slice(0, 5).map(escapeHtml).join("、") || "先补充 lecture notes 后生成"}</li>
       <li><strong>Steps / Methods：</strong>把常见题型写成步骤，例如 identify → choose method → solve → check units/logic。</li>
       <li><strong>Common traps：</strong>列出最容易混淆的定义、条件、例外和 professor 强调过的点。</li>
       <li><strong>Mini examples：</strong>每个重要方法只保留一个最短例子，重点写“第一步怎么判断”。</li>
@@ -923,11 +1049,12 @@ function buildCramReply(context, goal) {
 
   return `
     <p>进入考前急救模式。现在重点不是完整学完，而是在短时间内把“会做题”放到第一位。</p>
+    ${buildTeachingPreferenceHtml()}
     <ol>
       <li><strong>最低必要知识：</strong>${points[0] ? escapeHtml(points[0]) : "先锁定 syllabus/lecture notes 里最高频的概念。"}</li>
       <li><strong>必须会识别的题型：</strong>definition、short answer、application、case/problem solving、comparison。</li>
       <li><strong>做题第一步：</strong>先判断题目在考哪个关键词：${keywords.map(escapeHtml).join("、") || "继续补充资料后生成"}。</li>
-      <li><strong>解题模板：</strong>读题圈 action verb → 写出相关概念/公式 → 套入条件 → 解释 why → 检查是否回答了问题。</li>
+      <li><strong>解题模板：</strong>读题圈 action verb → 写出相关概念/公式 → 套入条件 → 先写 English final answer → 用中文解释 why → 检查是否回答了问题。</li>
       <li><strong>训练顺序：</strong>先看 1 个例题怎么做，再立刻做 3 个同类题；错题只记录“第一步错在哪里”。</li>
     </ol>
     <p><strong>接下来 45 分钟安排：</strong>10 分钟补最低知识，25 分钟做题，10 分钟复盘错题模式。最后阶段以题带知识，不再重新读整章。</p>
@@ -944,18 +1071,20 @@ function buildExamReply(question, context, goal) {
   if (wantsFullExam) {
     return `
       <p>我会按“模仿 midterm/final 格式”的方向生成一份练习卷。静态原型会根据已读资料推断题型；如果你上传了样卷，我会优先模仿它的结构。</p>
+      ${buildTeachingPreferenceHtml()}
       <ol>
         <li><strong>Section A: Key Terms</strong> 解释 5 个关键词：${terms.slice(0, 5).map(escapeHtml).join("、")}。</li>
         <li><strong>Section B: Short Answer</strong> 任选 3 题，每题用 4-6 句话回答，要求包含定义和例子。</li>
         <li><strong>Section C: Application</strong> 给一个课堂情境，要求把概念应用进去并解释 reasoning。</li>
         <li><strong>Section D: Longer Response</strong> 写一题综合题，比较两个概念或分析一个 case。</li>
       </ol>
-      <p><strong>建议时长：</strong>60-90 分钟。做完后把答案发给我，我可以按清晰度、概念准确度和 evidence 使用来反馈。</p>
+      <p><strong>建议时长：</strong>60-90 分钟。正式作答建议用英文；复盘时我会用中文解释哪里扣分、怎么改。</p>
     `;
   }
 
   return `
     <p>我先给你一组单独练习题，用来检查是否真的理解资料，而不是只看过。</p>
+    ${buildTeachingPreferenceHtml()}
     <ol>
       <li>Define「${escapeHtml(terms[0])}」and give one course-based example.</li>
       <li>Explain why「${escapeHtml(terms[1])}」matters in this course.</li>
@@ -963,6 +1092,7 @@ function buildExamReply(question, context, goal) {
       <li>Design one possible short-answer question your professor might ask from this material.</li>
       <li>List one point you are still unsure about and turn it into an office hours question.</li>
     </ol>
+    <p><strong>Answer format：</strong>请先尝试用英文写 final answer；如果卡住，我会用中文拆解 reasoning。</p>
     <p>当前目标是「${escapeHtml(goal)}」。如果你想要完整试卷，可以直接说“按 final 格式出一整套”。</p>
   `;
 }
@@ -973,6 +1103,7 @@ function buildOverviewReply(context, goal) {
 
   return `
     <p>我会像选课前/开学第一周那样介绍这门课，重点不是某一次作业，而是课程整体地图。</p>
+    ${buildTeachingPreferenceHtml()}
     <ol>
       <li><strong>这门课大概在学什么：</strong>${escapeHtml(points[0] || "需要更多 syllabus 或 course description 来判断。")}</li>
       <li><strong>你会反复遇到的主题：</strong>${keywords.map(escapeHtml).join("、") || "继续补充资料后生成"}</li>
@@ -990,6 +1121,7 @@ function buildDeadlineReply(context, goal) {
 
   return `
     <p>我会把课程资料里的时间点当成 planning system 来整理：due dates、exam dates、reading schedule 和提前准备事项。</p>
+    ${buildTeachingPreferenceHtml()}
     ${
       deadlineItems.length
         ? renderDeadlineGroups(grouped)
@@ -1057,6 +1189,32 @@ function renderDeadlineGroups(groups) {
     .join("");
 }
 
+function buildTeachingPreferenceHtml() {
+  return `<p><strong>教学方式：</strong>${escapeHtml(buildTeachingPreferenceText())}</p>`;
+}
+
+function buildTeachingPreferenceText() {
+  const preference = state.preferences;
+  const parts = [];
+
+  if (preference.chineseExplanations) {
+    parts.push("知识点用中文解释，先帮你理解逻辑");
+  }
+  if (preference.englishTerms) {
+    parts.push("关键概念保留 English terms / exam vocabulary");
+  }
+  if (preference.englishAnswers) {
+    parts.push("做题时优先给 English final answer，再用中文解释步骤");
+  }
+  if (preference.customInstruction) {
+    parts.push(`你的客制化要求：${preference.customInstruction}`);
+  }
+
+  return parts.length
+    ? parts.join("；")
+    : "按你的设置提供教学；你可以在左侧 Learning Style 里调整。";
+}
+
 function buildMemoryNote(context) {
   if (!context.memory) return "";
   return `<p><strong>结合最近对话：</strong>${escapeHtml(context.memory)}</p>`;
@@ -1097,6 +1255,7 @@ function buildDocumentLoadedReply(documentItem) {
   const summary = summarizeText(documentItem.text);
   return `
     <p>我读完了《${escapeHtml(documentItem.title)}》。我会按北美课程语境先抓这些信息：</p>
+    ${buildTeachingPreferenceHtml()}
     <ul>
       ${summary.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
     </ul>

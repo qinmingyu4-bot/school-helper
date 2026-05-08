@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-05-08
+
+### Added
+
+- Added a local server start command so StudyBridge can be opened at `http://127.0.0.1:5173`.
+- Documented that the local server uses the same static app files as the direct `index.html` version.
+- Added a macOS `start.command` launcher so the app can run locally without npm.
+
 ## 2026-05-07
 
 ### Added

@@ -602,9 +602,21 @@ button {
 .composer {
   display: grid;
   grid-template-columns: 44px 44px minmax(0, 1fr) 48px;
+  grid-template-areas:
+    "pending pending pending pending"
+    "clear image input send";
+  align-items: end;
   gap: 10px;
   padding: 14px 28px 24px;
   background: rgba(244, 246, 249, 0.92);
+}
+
+#clearButton {
+  grid-area: clear;
+}
+
+#imageButton {
+  grid-area: image;
 }
 
 #imageInput {
@@ -617,7 +629,7 @@ button {
 
 .pending-images {
   display: flex;
-  grid-column: 1 / -1;
+  grid-area: pending;
   gap: 8px;
   overflow-x: auto;
 }
@@ -654,6 +666,8 @@ button {
 }
 
 #messageInput {
+  grid-area: input;
+  width: 100%;
   min-height: 48px;
   max-height: 150px;
   resize: none;
@@ -680,6 +694,7 @@ button {
 }
 
 .send-button {
+  grid-area: send;
   width: 48px;
   background: var(--green);
   color: white;

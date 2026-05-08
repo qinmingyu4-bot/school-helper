@@ -585,6 +585,12 @@ button {
   color: #334155;
 }
 
+.prompt-row .global-prompt {
+  border-style: dashed;
+  background: #f8fafc;
+  color: var(--navy);
+}
+
 .prompt-row button:hover,
 .history-item:hover,
 .small-action:hover,

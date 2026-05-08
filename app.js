@@ -39,8 +39,54 @@ const coachStatus = document.querySelector("#coachStatus");
 const clearButton = document.querySelector("#clearButton");
 const historyList = document.querySelector("#historyList");
 const newSessionButton = document.querySelector("#newSessionButton");
+const promptRow = document.querySelector("#promptRow");
+
+const quickPrompts = {
+  preview: [
+    ["预习下一节", "请帮我预习下一节课：先讲背景、关键词、我上课前应该带着哪些问题。"],
+    ["课前关键词", "请从资料中提取下一节课最需要先懂的关键词，并用中文解释。"],
+    ["上课问题", "请帮我准备 5 个上课时应该听答案的问题。"],
+    ["10 分钟预习", "我只有 10 分钟，请给我一个超短预习路线。"],
+  ],
+  guided: [
+    ["一步步教", "请带着我学习这部分内容，按概念、例子、检查理解的顺序来。"],
+    ["举例讲解", "请用一个北美课堂常见例子解释这部分内容。"],
+    ["检查理解", "请问我几个问题来检查我是否真的理解了。"],
+    ["中英对照", "请用中文解释核心逻辑，并给我关键英文表达。"],
+  ],
+  review: [
+    ["复习清单", "请把这些资料整理成复习清单、易错点和主动回忆问题。"],
+    ["主动回忆", "请生成 active recall 问题，不要直接给答案，先让我答。"],
+    ["易错点", "请列出这部分最容易混淆或考试容易错的点。"],
+    ["考前路线", "请按重要性排序，告诉我复习顺序。"],
+  ],
+  exam: [
+    ["单独题目", "请根据上传资料出 8 道单独练习题，覆盖不同题型。"],
+    ["完整试卷", "请模仿上传的 midterm/final 格式生成一份完整练习卷。"],
+    ["按题型出题", "请按 definition、short answer、application、long response 分类出题。"],
+    ["批改标准", "请给每道题配一个简短评分标准。"],
+  ],
+  cheatsheet: [
+    ["一页版", "请帮我做一页 cheatsheet：公式/概念/步骤/易错点/题型套路都要压缩得适合考前看。"],
+    ["公式步骤", "请把能放进 cheatsheet 的公式、步骤和使用条件整理出来。"],
+    ["题型触发词", "请整理看到哪些题目关键词就该用哪个概念、公式或方法。"],
+    ["压缩改写", "请把现有内容压缩成更短、更适合写在 cheatsheet 上的版本。"],
+  ],
+  cram: [
+    ["45 分钟急救", "我马上要考试了，请用紧急考前复习模式：先讲最低必要知识，然后直接教我怎么做题。"],
+    ["只教做题", "请不要展开太多知识点，直接教我这类题考试时怎么下手。"],
+    ["题型套路", "请总结最可能考的题型，以及每种题型第一步该做什么。"],
+    ["错题复盘", "我会发错题，请帮我只分析第一步错在哪里和下次怎么避免。"],
+  ],
+};
+
+const globalPrompts = [
+  ["课程介绍", "请根据课程资料，告诉我这门课大概是什么样、主要学什么、怎么被评分。"],
+  ["Deadline 汇总", "请汇总 syllabus 和课程资料中的所有 deadline、考试日期和需要提前准备的事项。"],
+];
 
 initializeConversations();
+renderQuickPrompts();
 
 fileInput.addEventListener("change", async (event) => {
   await ingestFiles(Array.from(event.target.files || []));
@@ -84,14 +130,7 @@ document.querySelectorAll(".mode-button").forEach((button) => {
     button.classList.add("active");
     state.mode = button.dataset.mode;
     coachStatus.textContent = `当前模式：${modeLabels[state.mode]}`;
-  });
-});
-
-document.querySelectorAll(".prompt-row button").forEach((button) => {
-  button.addEventListener("click", () => {
-    messageInput.value = button.dataset.prompt;
-    messageInput.focus();
-    resizeComposer();
+    renderQuickPrompts();
   });
 });
 
@@ -129,6 +168,27 @@ clearButton.addEventListener("click", () => {
 newSessionButton.addEventListener("click", () => {
   createSession();
 });
+
+function renderQuickPrompts() {
+  const prompts = [
+    ...(quickPrompts[state.mode] || []).map((prompt) => [...prompt, "mode"]),
+    ...globalPrompts.map((prompt) => [...prompt, "global"]),
+  ];
+  promptRow.innerHTML = prompts
+    .map(([label, prompt, type]) => {
+      const className = type === "global" ? ' class="global-prompt"' : "";
+      return `<button${className} type="button" data-prompt="${escapeHtml(prompt)}">${escapeHtml(label)}</button>`;
+    })
+    .join("");
+
+  promptRow.querySelectorAll("button").forEach((button) => {
+    button.addEventListener("click", () => {
+      messageInput.value = button.dataset.prompt;
+      messageInput.focus();
+      resizeComposer();
+    });
+  });
+}
 
 function initializeConversations() {
   state.sessions = loadSessions();

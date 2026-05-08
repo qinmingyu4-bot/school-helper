@@ -99,15 +99,7 @@
         <div class="chat-area" id="chatArea" aria-live="polite">
         </div>
 
-        <div class="prompt-row" aria-label="快捷问题">
-          <button type="button" data-prompt="请根据课程资料，告诉我这门课大概是什么样、主要学什么、怎么被评分。">课程介绍</button>
-          <button type="button" data-prompt="请帮我预习下一节课：先讲背景、关键词、我上课前应该带着哪些问题。">预习下一节</button>
-          <button type="button" data-prompt="请带着我学习这部分内容，按概念、例子、检查理解的顺序来。">带着学习</button>
-          <button type="button" data-prompt="请把这些资料整理成复习清单、易错点和主动回忆问题。">复习</button>
-          <button type="button" data-prompt="请根据上传资料模拟出题；如果有 midterm/final 样卷，请模仿格式生成一份完整试卷。">模拟出题</button>
-          <button type="button" data-prompt="请汇总 syllabus 和课程资料中的所有 deadline、考试日期和需要提前准备的事项。">Deadline 汇总</button>
-          <button type="button" data-prompt="请帮我做一页 cheatsheet：公式/概念/步骤/易错点/题型套路都要压缩得适合考前看。">Cheatsheet</button>
-          <button type="button" data-prompt="我马上要考试了，请用紧急考前复习模式：先讲最低必要知识，然后直接教我怎么做题。">考前急救</button>
+        <div class="prompt-row" id="promptRow" aria-label="当前模式快捷问题">
         </div>
 
         <form class="composer" id="chatForm">

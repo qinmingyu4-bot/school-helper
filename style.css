@@ -551,6 +551,11 @@ button {
   white-space: nowrap;
 }
 
+.inline-source {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .prompt-row {
   display: flex;
   gap: 8px;

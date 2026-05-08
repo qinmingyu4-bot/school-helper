@@ -582,13 +582,17 @@ function buildOverviewReply(context, goal) {
 }
 
 function buildDeadlineReply(context, goal) {
-  const deadlineLines = extractDeadlineLines(context.excerpts.join(" "));
+  const deadlineItems = extractDeadlineItemsFromDocuments();
+  const fallbackLines = extractDeadlineLines(context.excerpts.join(" "));
+  const grouped = groupDeadlineItems(deadlineItems);
 
   return `
     <p>我会把课程资料里的时间点当成 planning system 来整理：due dates、exam dates、reading schedule 和提前准备事项。</p>
     ${
-      deadlineLines.length
-        ? `<ul>${deadlineLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>`
+      deadlineItems.length
+        ? renderDeadlineGroups(grouped)
+        : fallbackLines.length
+          ? `<ul>${fallbackLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>`
         : `<p>我在可读片段里还没有抓到明确日期。你可以粘贴 syllabus 的 schedule/calendar 部分，我会整理成清单。</p>`
     }
     <ol>
@@ -599,6 +603,56 @@ function buildDeadlineReply(context, goal) {
     ${buildMemoryNote(context)}
     <p>当前目标是「${escapeHtml(goal)}」。</p>
   `;
+}
+
+function extractDeadlineItemsFromDocuments() {
+  return state.documents
+    .filter((document) => !document.unreadable && document.text)
+    .flatMap((document) =>
+      extractDeadlineLines(document.text).map((line) => ({
+        line,
+        source: document.title,
+        category: classifyDeadlineLine(line),
+      }))
+    )
+    .slice(0, 30);
+}
+
+function classifyDeadlineLine(line) {
+  const lower = line.toLowerCase();
+  if (/midterm|final|exam|test|考试/.test(lower)) return "Exams";
+  if (/quiz|测验/.test(lower)) return "Quizzes";
+  if (/due|deadline|submit|submission|assignment|project|paper|report|截止|提交/.test(lower)) return "Due dates";
+  if (/read|reading|chapter|module|lecture|slides|week|class|课前|预习/.test(lower)) return "Readings / class prep";
+  return "Other dates";
+}
+
+function groupDeadlineItems(items) {
+  return items.reduce((groups, item) => {
+    groups[item.category] ||= [];
+    groups[item.category].push(item);
+    return groups;
+  }, {});
+}
+
+function renderDeadlineGroups(groups) {
+  const order = ["Exams", "Quizzes", "Due dates", "Readings / class prep", "Other dates"];
+  return order
+    .filter((category) => groups[category]?.length)
+    .map(
+      (category) => `
+        <p><strong>${escapeHtml(category)}</strong></p>
+        <ul>
+          ${groups[category]
+            .map(
+              (item) =>
+                `<li>${escapeHtml(item.line)} <span class="inline-source">(${escapeHtml(item.source)})</span></li>`
+            )
+            .join("")}
+        </ul>
+      `
+    )
+    .join("");
 }
 
 function buildMemoryNote(context) {
@@ -707,10 +761,25 @@ function summarizeText(text) {
 
 function extractDeadlineLines(text) {
   const datePattern =
-    /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:,\s*\d{4})?|\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?|\b\d{4}-\d{1,2}-\d{1,2}/i;
-  return splitSentences(text)
-    .filter((sentence) => datePattern.test(sentence) || /deadline|due|midterm|final|exam|quiz|submit|截止|考试/.test(sentence.toLowerCase()))
+    /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:,\s*\d{4})?|\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?|\b\d{4}-\d{1,2}-\d{1,2}|\bweek\s+\d{1,2}\b/i;
+  return splitScheduleLines(text)
+    .filter((line) => datePattern.test(line) || /deadline|due|midterm|final|exam|quiz|submit|submission|assignment|project|paper|test|reading|schedule|截止|考试|提交|测验/.test(line.toLowerCase()))
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter((line, index, lines) => line.length > 8 && lines.indexOf(line) === index)
     .slice(0, 8);
+}
+
+function splitScheduleLines(text) {
+  const cleaned = cleanText(text);
+  const lineLike = cleaned
+    .replace(/(Page \d+:)/g, "\n$1 ")
+    .replace(/(\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2})/gi, "\n$1")
+    .replace(/(\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?)/g, "\n$1")
+    .replace(/(\bWeek\s+\d{1,2}\b)/gi, "\n$1")
+    .split(/\n+|(?<=[。！？.!?])\s+/)
+    .map((line) => line.trim());
+
+  return lineLike.filter(Boolean);
 }
 
 function splitSentences(text) {

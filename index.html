@@ -7,31 +7,71 @@
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <section class="cover-page" id="coverPage" aria-label="StudyBridge first course setup">
+    <section class="cover-page" id="coverPage" aria-label="StudyBridge welcome">
       <div class="cover-shell">
-        <div class="cover-brand">
-          <div class="brand-mark" aria-hidden="true">SB</div>
-          <div>
-            <p class="eyebrow">StudyBridge</p>
-            <h1>建立你的第一个 semester course</h1>
+        <div class="cover-content">
+          <div class="cover-brand">
+            <div class="brand-mark" aria-hidden="true">SB</div>
+            <div>
+              <p class="eyebrow">StudyBridge</p>
+              <h1>欢迎回来，准备好进入这个学期了吗？</h1>
+            </div>
           </div>
+
+          <p class="cover-copy">
+            StudyBridge 是给留学生使用的整学期学习工作台：用中文更快理解知识点，用 English terms 和 exam language 对齐北美课堂考试。
+          </p>
+
+          <div class="cover-feature-grid" aria-label="StudyBridge 功能介绍">
+            <article>
+              <strong>Semester courses</strong>
+              <span>每门课都有独立 Course Pack、Past Chats 和 study mode。</span>
+            </article>
+            <article>
+              <strong>Course material memory</strong>
+              <span>保存 syllabus、PDF、slides、readings、deadline 和样卷文字。</span>
+            </article>
+            <article>
+              <strong>Exam-ready coaching</strong>
+              <span>支持预习、复习、模拟出题、cheatsheet 和考前急救。</span>
+            </article>
+            <article>
+              <strong>Personalized style</strong>
+              <span>根据你的习惯调整中文解释、英文答案和关键术语标注。</span>
+            </article>
+          </div>
+
+          <button class="cover-start-button" id="startButton" type="button">开始</button>
         </div>
-        <p class="cover-copy">
-          面向留学生的整学期多课程学习工作台。先添加一门课，之后每门课都可以单独保存 syllabus、PDF、slides、midterm/final、deadline 和学习记录。
-        </p>
-        <form class="cover-form" id="firstCourseForm">
-          <label for="firstCourseInput">Course name</label>
-          <div class="cover-input-row">
-            <input id="firstCourseInput" type="text" placeholder="例如 MAT223H1F" autocomplete="off" />
-            <button type="submit">创建第一门课程</button>
+
+        <div class="cover-visual" aria-hidden="true">
+          <div class="visual-card visual-card-main">
+            <div class="visual-window">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <div class="visual-chart">
+              <i></i>
+              <i></i>
+              <i></i>
+              <i></i>
+            </div>
+            <div class="visual-lines">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
           </div>
-          <p id="firstCourseError" class="cover-error" hidden>请输入课程名。</p>
-        </form>
-        <div class="cover-notes" aria-label="创建后可用功能">
-          <span>PDF text reading</span>
-          <span>Past Chats</span>
-          <span>Exam prep</span>
-          <span>Deadline planning</span>
+          <div class="visual-card visual-card-small">
+            <strong>MAT223</strong>
+            <span>Midterm prep</span>
+            <em>English answer + 中文解析</em>
+          </div>
+          <div class="visual-card visual-card-floating">
+            <strong>Deadline</strong>
+            <span>Final review checkpoint</span>
+          </div>
         </div>
       </div>
     </section>

@@ -5,7 +5,7 @@
 ### Added
 
 - Added Semester Courses so each course has its own Course Pack, Past Chats, and study workflow section.
-- Added a first-run cover page that creates the first semester course before entering the workspace.
+- Added a welcome cover page that appears on each app open before entering the workspace.
 - Added Semester Course deletion with cleanup for that course's Course Pack and Past Chats.
 - Added customizable Learning Style controls for bilingual teaching preferences.
 - Added browser-local preference memory that adapts to English-answer, Chinese-explanation, problem-solving, and cheatsheet usage signals.

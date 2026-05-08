@@ -67,9 +67,7 @@ const addCourseButton = document.querySelector("#addCourseButton");
 const activeCourseTitle = document.querySelector("#activeCourseTitle");
 const coverPage = document.querySelector("#coverPage");
 const appShell = document.querySelector("#appShell");
-const firstCourseForm = document.querySelector("#firstCourseForm");
-const firstCourseInput = document.querySelector("#firstCourseInput");
-const firstCourseError = document.querySelector("#firstCourseError");
+const startButton = document.querySelector("#startButton");
 const englishTermsToggle = document.querySelector("#englishTermsToggle");
 const englishAnswersToggle = document.querySelector("#englishAnswersToggle");
 const chineseExplanationsToggle = document.querySelector("#chineseExplanationsToggle");
@@ -165,18 +163,8 @@ addCourseButton.addEventListener("click", () => {
   addCourse(name.trim());
 });
 
-firstCourseForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const name = firstCourseInput.value.trim();
-  if (!name) {
-    firstCourseError.hidden = false;
-    firstCourseInput.focus();
-    return;
-  }
-
-  firstCourseError.hidden = true;
-  addCourse(name);
-  firstCourseInput.value = "";
+startButton.addEventListener("click", () => {
+  enterWorkspace();
 });
 
 [englishTermsToggle, englishAnswersToggle, chineseExplanationsToggle].forEach((toggle) => {
@@ -487,13 +475,21 @@ function saveCourses() {
 }
 
 function updateAppView() {
-  const hasCourses = state.courses.length > 0;
-  coverPage.hidden = hasCourses;
-  appShell.hidden = !hasCourses;
-  if (!hasCourses) {
-    firstCourseError.hidden = true;
-    requestAnimationFrame(() => firstCourseInput.focus());
+  coverPage.hidden = false;
+  appShell.hidden = true;
+  requestAnimationFrame(() => startButton.focus());
+}
+
+function enterWorkspace() {
+  coverPage.hidden = true;
+  appShell.hidden = false;
+  if (!state.activeCourseId && state.courses[0]) {
+    state.activeCourseId = state.courses[0].id;
   }
+  renderCourses();
+  renderDocuments();
+  renderHistory();
+  renderMessages();
 }
 
 function getActiveCourse() {
@@ -513,7 +509,7 @@ function addCourse(name) {
   state.messages = [];
   state.activeSessionId = null;
   saveCourses();
-  updateAppView();
+  enterWorkspace();
   renderCourses();
   ensureActiveCourseSession();
   renderDocuments();
@@ -582,13 +578,17 @@ function deleteCourse(courseId) {
   saveCourses();
   saveDocuments();
   saveSessions();
-  updateAppView();
   ensureActiveCourseSession();
   renderCourses();
   renderDocuments();
   renderHistory();
   renderMessages();
-  coachStatus.textContent = `已删除课程：${course.name}`;
+  if (state.activeCourseId) {
+    coachStatus.textContent = `已删除课程：${course.name}`;
+  } else {
+    enterWorkspace();
+    coachStatus.textContent = `已删除课程：${course.name}。可以从左侧添加下一门课。`;
+  }
 }
 
 function switchCourse(courseId) {

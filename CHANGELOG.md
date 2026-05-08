@@ -26,6 +26,7 @@
 - Updated prompts and default goal to focus on understanding the course, keeping pace, preparing for exams, and planning deadlines.
 - Refined the visual design with a richer workspace sidebar, chat history list, and stronger study-mode controls.
 - Updated coaching responses to explain concepts in Chinese while preserving English exam terms and English answer formats.
+- Changed the welcome cover behavior so it appears once per day after the user clicks start, instead of on every refresh.
 
 ### Added
 

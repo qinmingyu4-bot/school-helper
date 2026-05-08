@@ -34,6 +34,7 @@ const STORAGE_KEY = "studybridge.sessions.v2";
 const DOCUMENTS_STORAGE_KEY = "studybridge.documents.v1";
 const COURSES_STORAGE_KEY = "studybridge.courses.v1";
 const PREFERENCES_STORAGE_KEY = "studybridge.preferences.v1";
+const COVER_SEEN_DATE_KEY = "studybridge.cover.lastSeenDate";
 const DEFAULT_COURSE_ID = "default-course";
 
 const supportedTextTypes = [
@@ -164,7 +165,7 @@ addCourseButton.addEventListener("click", () => {
 });
 
 startButton.addEventListener("click", () => {
-  enterWorkspace();
+  enterWorkspace({ rememberToday: true });
 });
 
 [englishTermsToggle, englishAnswersToggle, chineseExplanationsToggle].forEach((toggle) => {
@@ -475,12 +476,25 @@ function saveCourses() {
 }
 
 function updateAppView() {
+  if (hasSeenCoverToday()) {
+    enterWorkspace();
+    return;
+  }
+
+  showCoverPage();
+}
+
+function showCoverPage() {
   coverPage.hidden = false;
   appShell.hidden = true;
   requestAnimationFrame(() => startButton.focus());
 }
 
-function enterWorkspace() {
+function enterWorkspace(options = {}) {
+  if (options.rememberToday) {
+    localStorage.setItem(COVER_SEEN_DATE_KEY, getTodayKey());
+  }
+
   coverPage.hidden = true;
   appShell.hidden = false;
   if (!state.activeCourseId && state.courses[0]) {
@@ -490,6 +504,14 @@ function enterWorkspace() {
   renderDocuments();
   renderHistory();
   renderMessages();
+}
+
+function hasSeenCoverToday() {
+  return localStorage.getItem(COVER_SEEN_DATE_KEY) === getTodayKey();
+}
+
+function getTodayKey() {
+  return new Date().toLocaleDateString("en-CA");
 }
 
 function getActiveCourse() {

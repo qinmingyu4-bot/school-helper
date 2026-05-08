@@ -1,16 +1,28 @@
 # StudyBridge
 
-StudyBridge 是一个面向留学生的对话型课程学习助手网页原型。界面使用中文，但默认围绕北美学校教育模式设计，重点处理 syllabus、assignment prompt、rubric、lecture notes、office hours 和 quiz prep 等常见学习场景。
+StudyBridge 是一个面向留学生的对话型课程学习助手网页原型。界面使用中文，但默认围绕北美学校教育模式设计，重点处理 syllabus、lecture notes、readings、rubric、deadline、midterm 和 final 等常见学习场景。
 
 ## Features
 
-- 上传 TXT、MD、CSV、JSON、HTML 等可读课程资料
-- 粘贴 syllabus、rubric、作业要求、课堂笔记或教授邮件
-- 自动识别资料类型：Syllabus、Assignment、Rubric、Lecture notes
-- 支持 Office Hours、Assignment、Quiz Prep、Writing 四种学习模式
-- 用中文解释英文课程材料，帮助学生理解教授期待和评分标准
+- 上传 PDF、TXT、MD、CSV、JSON、HTML 等可读课程资料
+- 粘贴 syllabus、lecture notes、reading guide、rubric、midterm/final 样卷、deadline 或教授邮件
+- 自动识别资料类型：Syllabus、Schedule、Rubric、Lecture notes、Exam material
+- 支持预习、带着学习、复习、模拟出题、课程介绍、Deadline 汇总等学习模式
+- 模拟出题既可以生成单独题目，也可以模仿上传的 midterm/final 格式生成完整练习卷
+- 自动保存浏览器本地历史对话，并在后续回答中参考最近学习记录
+- 提供 cheatsheet 辅助，把概念、步骤、易错点和题型套路压缩成考前速查结构
+- 提供紧急考前复习模式，先补最低必要知识，再快速进入做题方法和题型训练
+- 用中文解释英文课程材料，帮助学生理解课程结构、每周节奏、考试准备和重要日期
 - 基于已上传资料生成答疑内容，并显示引用来源
 - 纯前端运行，不需要后端
+
+## Local Memory
+
+对话历史保存在当前浏览器的 localStorage 中。它可以帮助 StudyBridge 在后续对话中参考最近学习记录；这些记录不会自动同步到其他设备或其他用户。
+
+## PDF Support
+
+PDF 会在浏览器本地用 PDF.js 提取文字，不会上传到服务器。普通文字版 PDF 可以读取；扫描版 PDF 或图片型 PDF 需要 OCR，当前版本会提示粘贴关键文字。
 
 ## How to Use
 

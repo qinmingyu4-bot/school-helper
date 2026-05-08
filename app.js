@@ -1,14 +1,23 @@
 const state = {
   documents: [],
-  mode: "office",
+  mode: "preview",
+  sessions: [],
+  activeSessionId: null,
+  messages: [],
 };
 
 const modeLabels = {
-  office: "Office Hours",
-  assignment: "Assignment",
-  quiz: "Quiz Prep",
-  writing: "Writing",
+  preview: "预习",
+  guided: "带着学习",
+  review: "复习",
+  exam: "模拟出题",
+  overview: "课程介绍",
+  deadlines: "Deadline 汇总",
+  cheatsheet: "Cheatsheet",
+  cram: "考前急救",
 };
+
+const STORAGE_KEY = "studybridge.sessions.v2";
 
 const supportedTextTypes = [
   "text/plain",
@@ -30,6 +39,10 @@ const messageInput = document.querySelector("#messageInput");
 const goalInput = document.querySelector("#goalInput");
 const coachStatus = document.querySelector("#coachStatus");
 const clearButton = document.querySelector("#clearButton");
+const historyList = document.querySelector("#historyList");
+const newSessionButton = document.querySelector("#newSessionButton");
+
+initializeConversations();
 
 fileInput.addEventListener("change", async (event) => {
   await ingestFiles(Array.from(event.target.files || []));
@@ -108,12 +121,117 @@ chatForm.addEventListener("submit", (event) => {
 });
 
 clearButton.addEventListener("click", () => {
-  chatArea.innerHTML = "";
-  appendMessage(
-    "coach",
-    "对话已清空。Course Pack 还保留着。你可以继续问我 syllabus、rubric、assignment 或 quiz prep 相关问题。"
-  );
+  state.messages = [createWelcomeMessage()];
+  updateActiveSession({ title: "New study session", messages: state.messages });
+  renderMessages();
+  renderHistory();
+  saveSessions();
 });
+
+newSessionButton.addEventListener("click", () => {
+  createSession();
+});
+
+function initializeConversations() {
+  state.sessions = loadSessions();
+  if (!state.sessions.length) {
+    createSession("New study session", false);
+  } else {
+    const latest = state.sessions[0];
+    state.activeSessionId = latest.id;
+    state.messages = latest.messages?.length ? latest.messages : [createWelcomeMessage()];
+  }
+  renderMessages();
+  renderHistory();
+}
+
+function loadSessions() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveSessions() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.sessions.slice(0, 24)));
+  } catch {
+    coachStatus.textContent = "浏览器存储空间不足，当前对话可能无法保存";
+  }
+}
+
+function createSession(title = "New study session", shouldSave = true) {
+  const session = {
+    id: crypto.randomUUID(),
+    title,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    messages: [createWelcomeMessage()],
+  };
+  state.sessions.unshift(session);
+  state.activeSessionId = session.id;
+  state.messages = session.messages;
+  renderMessages();
+  renderHistory();
+  if (shouldSave) saveSessions();
+}
+
+function createWelcomeMessage() {
+  return {
+    role: "coach",
+    content:
+      "你好，我可以用中文帮你理解北美课程里的英文资料：syllabus、lecture slides、readings、rubric、midterm、final 和 deadline。我会保存这台浏览器里的学习记录，之后可以参考过去对话继续帮你预习、复习、做 cheatsheet、模拟出题或考前急救。",
+    sources: [],
+    createdAt: Date.now(),
+  };
+}
+
+function updateActiveSession(updates = {}) {
+  const session = state.sessions.find((item) => item.id === state.activeSessionId);
+  if (!session) return;
+  Object.assign(session, updates, { updatedAt: Date.now() });
+  state.sessions = [session, ...state.sessions.filter((item) => item.id !== session.id)];
+}
+
+function renderHistory() {
+  if (!state.sessions.length) {
+    historyList.innerHTML = '<p class="empty-state">对话会自动保存在这台浏览器里。</p>';
+    return;
+  }
+
+  historyList.innerHTML = state.sessions
+    .map((session) => {
+      const active = session.id === state.activeSessionId ? " active" : "";
+      const count = Math.max((session.messages?.length || 1) - 1, 0);
+      return `
+        <button class="history-item${active}" type="button" data-session-id="${session.id}">
+          <strong>${escapeHtml(session.title || "Study session")}</strong>
+          <span>${count} messages · ${formatRelativeTime(session.updatedAt)}</span>
+        </button>
+      `;
+    })
+    .join("");
+
+  historyList.querySelectorAll(".history-item").forEach((button) => {
+    button.addEventListener("click", () => {
+      const session = state.sessions.find((item) => item.id === button.dataset.sessionId);
+      if (!session) return;
+      state.activeSessionId = session.id;
+      state.messages = session.messages?.length ? session.messages : [createWelcomeMessage()];
+      renderMessages();
+      renderHistory();
+    });
+  });
+}
+
+function renderMessages() {
+  chatArea.innerHTML = "";
+  state.messages.forEach((message) => {
+    renderMessageElement(message.role, message.content, message.sources || []);
+  });
+}
 
 async function ingestFiles(files) {
   if (!files.length) return;
@@ -124,7 +242,28 @@ async function ingestFiles(files) {
       supportedTextTypes.includes(file.type) ||
       ["txt", "md", "csv", "json", "html", "htm"].includes(extension);
 
-    if (canRead) {
+    coachStatus.textContent = `正在读取 ${file.name}...`;
+
+    if (extension === "pdf") {
+      try {
+        const text = await extractPdfText(file);
+        addDocument({
+          title: file.name,
+          text: cleanText(text),
+          type: detectCourseType(text, "PDF"),
+          size: file.size,
+        });
+      } catch (error) {
+        addDocument({
+          title: file.name,
+          text: "",
+          type: "PDF file",
+          size: file.size,
+          unreadable: true,
+          error: error.message,
+        });
+      }
+    } else if (canRead) {
       const text = await file.text();
       addDocument({
         title: file.name,
@@ -144,6 +283,39 @@ async function ingestFiles(files) {
   }
 }
 
+async function extractPdfText(file) {
+  const pdfjsLib =
+    window.pdfjsLib || (await import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs"));
+
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
+
+  const data = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data }).promise;
+  const pageTexts = [];
+
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const content = await page.getTextContent();
+    const text = content.items
+      .map((item) => item.str)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (text) {
+      pageTexts.push(`Page ${pageNumber}: ${text}`);
+    }
+  }
+
+  const joined = pageTexts.join("\n\n").trim();
+  if (!joined) {
+    throw new Error("No selectable text found. This PDF may be scanned and needs OCR.");
+  }
+
+  return joined;
+}
+
 function addDocument(documentItem) {
   state.documents.unshift({
     id: crypto.randomUUID(),
@@ -160,9 +332,10 @@ function addDocument(documentItem) {
     : "已记录文件名，可粘贴正文让我分析";
 
   if (documentItem.unreadable) {
+    const reason = documentItem.error ? `原因：${documentItem.error}` : "原因：暂时无法读取正文。";
     appendMessage(
       "coach",
-      `我收到了《${documentItem.title}》。这个静态原型暂时不能直接解析 ${documentItem.type} 正文。你可以把 syllabus、rubric 或 assignment prompt 的关键文字粘贴到左侧，我会按北美课程语境帮你拆解。`
+      `我收到了《${documentItem.title}》，但没有读到可分析的正文。${reason} 你可以换文字版 PDF，或把 syllabus、lecture notes、deadline、rubric、midterm/final 的关键文字粘贴到左侧。`
     );
   } else {
     appendMessage("coach", buildDocumentLoadedReply(documentItem));
@@ -174,7 +347,7 @@ function renderDocuments() {
 
   if (!state.documents.length) {
     documentList.innerHTML =
-      '<p class="empty-state">先上传或粘贴课程资料。我会按北美课程常见结构理解：learning outcomes、deadlines、rubric、readings 和 assignments。</p>';
+      '<p class="empty-state">先上传或粘贴课程资料。我会按北美课程常见结构理解：course overview、learning outcomes、weekly topics、deadlines、rubric、readings、midterm 和 final。</p>';
     return;
   }
 
@@ -194,7 +367,8 @@ function renderDocuments() {
 
 function appendCoachAnswer(question) {
   const context = findRelevantContext(question);
-  const goal = goalInput.value.trim() || "理解课程要求并完成学习任务";
+  context.memory = buildConversationMemory();
+  const goal = goalInput.value.trim() || "理解课程结构，跟上进度，准备考试";
   const answer = generateCoachReply(question, context, goal);
   appendMessage("coach", answer.text, context.sources);
 }
@@ -206,102 +380,230 @@ function generateCoachReply(question, context, goal) {
   if (!hasContext) {
     return {
       text:
-        "我现在还没有可阅读的课程正文。你可以上传 TXT、MD、CSV、JSON、HTML，或粘贴 syllabus、rubric、assignment brief、lecture notes。拿到内容后，我会先帮你判断：课程在考什么、教授期待什么、作业如何评分、下一步该做什么。",
+        "我现在还没有可阅读的课程正文。你可以上传 TXT、MD、CSV、JSON、HTML，或粘贴 syllabus、lecture notes、reading guide、rubric、midterm/final 样卷和 deadline。拿到内容后，我可以帮你做课程介绍、预习路线、带学讲解、复习清单、模拟试题和日期汇总。",
       sources: [],
     };
   }
 
-  if (state.mode === "assignment" || /assignment|rubric|作业|评分|deadline|due/.test(lowerQuestion)) {
+  if (state.mode === "cram" || /cram|急救|临时抱佛脚|马上考试|考前|短时间|速成/.test(lowerQuestion)) {
     return {
-      text: buildAssignmentReply(question, context, goal),
+      text: buildCramReply(context, goal),
       sources: context.sources,
     };
   }
 
-  if (state.mode === "quiz" || /quiz|exam|test|midterm|final|测验|考试|复习/.test(lowerQuestion)) {
+  if (state.mode === "cheatsheet" || /cheatsheet|cheat sheet|小抄|公式表|一页纸|速查/.test(lowerQuestion)) {
     return {
-      text: buildQuizReply(context, goal),
+      text: buildCheatsheetReply(context, goal),
       sources: context.sources,
     };
   }
 
-  if (state.mode === "writing" || /essay|paper|writing|thesis|citation|论文|写作/.test(lowerQuestion)) {
+  if (state.mode === "deadlines" || /deadline|due|date|schedule|calendar|考试日期|截止|日期|什么时候交/.test(lowerQuestion)) {
     return {
-      text: buildWritingReply(question, context, goal),
+      text: buildDeadlineReply(context, goal),
+      sources: context.sources,
+    };
+  }
+
+  if (state.mode === "exam" || /quiz|exam|test|midterm|final|mock|practice|模拟|出题|试卷|考试/.test(lowerQuestion)) {
+    return {
+      text: buildExamReply(question, context, goal),
+      sources: context.sources,
+    };
+  }
+
+  if (state.mode === "review" || /review|复习|总结|考前|知识点|易错/.test(lowerQuestion)) {
+    return {
+      text: buildReviewReply(context, goal),
+      sources: context.sources,
+    };
+  }
+
+  if (state.mode === "overview" || /overview|介绍|这门课|课程是什么|评分方式|syllabus/.test(lowerQuestion)) {
+    return {
+      text: buildOverviewReply(context, goal),
+      sources: context.sources,
+    };
+  }
+
+  if (state.mode === "guided" || /带着|教我|讲解|一步步|learn|study/.test(lowerQuestion)) {
+    return {
+      text: buildGuidedReply(question, context, goal),
       sources: context.sources,
     };
   }
 
   return {
-    text: buildOfficeHoursReply(question, context, goal),
+    text: buildPreviewReply(question, context, goal),
     sources: context.sources,
   };
 }
 
-function buildOfficeHoursReply(question, context, goal) {
+function buildPreviewReply(question, context, goal) {
   const mainIdea = context.excerpts[0];
   const supporting = context.excerpts.slice(1, 3);
 
   return `
-    <p>我们用 office hours 的方式来处理：先明确问题，再准备能问 professor 或 TA 的具体点。</p>
+    <p>我会按北美课堂的预习方式来处理：先知道这节课要解决什么问题，再带着关键词和问题去上课。</p>
     <ol>
-      <li><strong>你现在的问题：</strong>${escapeHtml(question)}</li>
+      <li><strong>预习入口：</strong>${escapeHtml(question)}</li>
       <li><strong>资料里最相关的信息：</strong>${escapeHtml(mainIdea)}</li>
-      <li><strong>我建议你先确认：</strong>这是在问 concept、application、evidence，还是 grading expectation。</li>
-      <li><strong>可以这样问 TA：</strong>“For this part, should I focus more on explaining the concept, applying it to an example, or connecting it to the rubric?”</li>
+      <li><strong>上课前先抓：</strong>核心概念、为什么重要、它和上一节/下一节的关系。</li>
+      <li><strong>带去课堂的问题：</strong>教授会如何应用这个概念？它可能怎么出现在 quiz、midterm 或 discussion 里？</li>
     </ol>
     ${
       supporting.length
         ? `<p>补充线索：${supporting.map(escapeHtml).join("；")}。</p>`
         : ""
     }
-    <p>本周目标是「${escapeHtml(goal)}」。下一步你可以让我把它改成一封给 professor/TA 的英文邮件。</p>
+    ${buildMemoryNote(context)}
+    <p>当前目标是「${escapeHtml(goal)}」。下一步你可以让我把这部分变成 10 分钟预习清单。</p>
   `;
 }
 
-function buildAssignmentReply(question, context, goal) {
-  const keywords = unique(context.keywords).slice(0, 7);
+function buildGuidedReply(question, context, goal) {
+  const mainIdea = context.excerpts[0];
+  const examples = context.excerpts.slice(1, 4);
+
   return `
-    <p>我会按北美作业常见评分逻辑来拆：deliverable、requirements、rubric、evidence、deadline。</p>
+    <p>我们按“带着学习”的节奏来，不急着背，先建立理解框架。</p>
     <ol>
-      <li><strong>要交什么：</strong>从资料看，先锁定 prompt 中的 action verbs，例如 analyze、compare、reflect、argue、apply。</li>
-      <li><strong>怎么拿分：</strong>把 rubric 变成 checklist，每一段都要对应一个评分点。</li>
-      <li><strong>容易丢分：</strong>只总结资料、没有 thesis、没有引用 evidence、没有回应 prompt 的关键词。</li>
-      <li><strong>下一步：</strong>先写一个 3 行 plan：claim、evidence、why it matters。</li>
+      <li><strong>先用一句话理解：</strong>${escapeHtml(mainIdea)}</li>
+      <li><strong>再拆成三块：</strong>定义是什么、课堂上怎么用、考试或讨论可能怎么问。</li>
+      <li><strong>检查理解：</strong>你能不能不用原文，把它讲给一个没上这门课的人听？</li>
+      <li><strong>下一步练习：</strong>请你先回答“这部分最重要的关键词是什么”，我再帮你修正。</li>
     </ol>
-    <p><strong>当前相关关键词：</strong>${keywords.map(escapeHtml).join("、") || "继续补充 rubric 或 prompt 后生成"}</p>
-    <p>你的目标是「${escapeHtml(goal)}」。如果你贴上 rubric，我可以直接帮你生成提交前 checklist。</p>
+    ${examples.length ? `<p>可以一起看的材料线索：${examples.map(escapeHtml).join("；")}。</p>` : ""}
+    ${buildMemoryNote(context)}
+    <p>当前目标是「${escapeHtml(goal)}」。</p>
   `;
 }
 
-function buildQuizReply(context, goal) {
-  const keywords = unique(context.keywords).slice(0, 5);
-  const terms = keywords.length >= 3 ? keywords : ["learning outcome", "definition", "application", "example", "mistake"];
+function buildReviewReply(context, goal) {
+  const keywords = unique(context.keywords).slice(0, 8);
+  const points = context.excerpts.slice(0, 4);
 
   return `
-    <p>Quiz prep 不只是背内容，而是预测教授会怎么考。先做这组主动回忆练习：</p>
-    <ol>
-      <li>用中文解释「${escapeHtml(terms[0])}」，再试着用一句英文表达。</li>
-      <li>「${escapeHtml(terms[1])}」可能会以 definition、short answer 还是 application 形式出现？</li>
-      <li>给「${escapeHtml(terms[2])}」配一个课堂例子。</li>
-      <li>如果教授问 “Why does this matter?” 你会怎么答？</li>
-      <li>列出一个你现在最不确定的点，准备带去 office hours。</li>
-    </ol>
-    <p>复习目标：${escapeHtml(goal)}。你答完后发给我，我可以按北美课堂的 grading expectation 帮你改。</p>
+    <p>复习时不要只重读资料。我们用 active recall 的方式整理：</p>
+    <ul>
+      ${points.map((point) => `<li>${escapeHtml(point)}</li>`).join("")}
+    </ul>
+    <p><strong>关键词：</strong>${keywords.map(escapeHtml).join("、") || "继续补充 lecture notes 后生成"}</p>
+    <p><strong>复习顺序：</strong>先解释概念，再补例子，再做自测，最后标出不确定点带去 office hours 或 discussion。</p>
+    ${buildMemoryNote(context)}
+    <p>当前目标是「${escapeHtml(goal)}」。</p>
   `;
 }
 
-function buildWritingReply(question, context, goal) {
+function buildCheatsheetReply(context, goal) {
+  const keywords = unique(context.keywords).slice(0, 10);
+  const keyLines = context.excerpts.slice(0, 5);
+
   return `
-    <p>写作任务我会先帮你避免“中文思路直译成英文 essay”的问题。北美 academic writing 通常更重视 claim、structure、evidence 和 citation。</p>
+    <p>我会把 cheatsheet 做成“考试时能快速用”的一页结构，不是长笔记。建议分成 5 块：</p>
     <ol>
-      <li><strong>Prompt：</strong>${escapeHtml(question)}</li>
-      <li><strong>可用资料：</strong>${escapeHtml(context.excerpts[0])}</li>
-      <li><strong>建议结构：</strong>thesis → topic sentence → evidence → analysis → link back to thesis。</li>
-      <li><strong>提交前检查：</strong>每一段是否回应 prompt？有没有 evidence？有没有解释 evidence 为什么支持你的观点？</li>
+      <li><strong>Core ideas：</strong>${keywords.slice(0, 5).map(escapeHtml).join("、") || "先补充 lecture notes 后生成"}</li>
+      <li><strong>Steps / Methods：</strong>把常见题型写成步骤，例如 identify → choose method → solve → check units/logic。</li>
+      <li><strong>Common traps：</strong>列出最容易混淆的定义、条件、例外和 professor 强调过的点。</li>
+      <li><strong>Mini examples：</strong>每个重要方法只保留一个最短例子，重点写“第一步怎么判断”。</li>
+      <li><strong>Exam triggers：</strong>看到哪些关键词就该用哪个公式、概念或解题套路。</li>
     </ol>
-    <p>目标是「${escapeHtml(goal)}」。你可以贴一段草稿，我帮你看逻辑、语气和 rubric 对齐度。</p>
+    <p><strong>可直接放入 cheatsheet 的材料：</strong>${keyLines.map(escapeHtml).join("；")}</p>
+    ${buildMemoryNote(context)}
+    <p>下一步你可以说“把它压缩成一页版”或“按 final 允许的 cheatsheet 格式整理”。</p>
   `;
+}
+
+function buildCramReply(context, goal) {
+  const keywords = unique(context.keywords).slice(0, 8);
+  const points = context.excerpts.slice(0, 4);
+
+  return `
+    <p>进入考前急救模式。现在重点不是完整学完，而是在短时间内把“会做题”放到第一位。</p>
+    <ol>
+      <li><strong>最低必要知识：</strong>${points[0] ? escapeHtml(points[0]) : "先锁定 syllabus/lecture notes 里最高频的概念。"}</li>
+      <li><strong>必须会识别的题型：</strong>definition、short answer、application、case/problem solving、comparison。</li>
+      <li><strong>做题第一步：</strong>先判断题目在考哪个关键词：${keywords.map(escapeHtml).join("、") || "继续补充资料后生成"}。</li>
+      <li><strong>解题模板：</strong>读题圈 action verb → 写出相关概念/公式 → 套入条件 → 解释 why → 检查是否回答了问题。</li>
+      <li><strong>训练顺序：</strong>先看 1 个例题怎么做，再立刻做 3 个同类题；错题只记录“第一步错在哪里”。</li>
+    </ol>
+    <p><strong>接下来 45 分钟安排：</strong>10 分钟补最低知识，25 分钟做题，10 分钟复盘错题模式。最后阶段以题带知识，不再重新读整章。</p>
+    ${buildMemoryNote(context)}
+    <p>你现在可以把一道题发来，我会只按“考试中怎么下手”的方式带你做。</p>
+  `;
+}
+
+function buildExamReply(question, context, goal) {
+  const keywords = unique(context.keywords).slice(0, 6);
+  const terms = keywords.length >= 4 ? keywords : ["concept", "application", "short answer", "case analysis", "calculation", "essay"];
+  const wantsFullExam = /完整|整套|final|midterm|exam|试卷|format|格式/.test(question.toLowerCase());
+
+  if (wantsFullExam) {
+    return `
+      <p>我会按“模仿 midterm/final 格式”的方向生成一份练习卷。静态原型会根据已读资料推断题型；如果你上传了样卷，我会优先模仿它的结构。</p>
+      <ol>
+        <li><strong>Section A: Key Terms</strong> 解释 5 个关键词：${terms.slice(0, 5).map(escapeHtml).join("、")}。</li>
+        <li><strong>Section B: Short Answer</strong> 任选 3 题，每题用 4-6 句话回答，要求包含定义和例子。</li>
+        <li><strong>Section C: Application</strong> 给一个课堂情境，要求把概念应用进去并解释 reasoning。</li>
+        <li><strong>Section D: Longer Response</strong> 写一题综合题，比较两个概念或分析一个 case。</li>
+      </ol>
+      <p><strong>建议时长：</strong>60-90 分钟。做完后把答案发给我，我可以按清晰度、概念准确度和 evidence 使用来反馈。</p>
+    `;
+  }
+
+  return `
+    <p>我先给你一组单独练习题，用来检查是否真的理解资料，而不是只看过。</p>
+    <ol>
+      <li>Define「${escapeHtml(terms[0])}」and give one course-based example.</li>
+      <li>Explain why「${escapeHtml(terms[1])}」matters in this course.</li>
+      <li>Compare「${escapeHtml(terms[2])}」and「${escapeHtml(terms[3])}」in 5-7 sentences.</li>
+      <li>Design one possible short-answer question your professor might ask from this material.</li>
+      <li>List one point you are still unsure about and turn it into an office hours question.</li>
+    </ol>
+    <p>当前目标是「${escapeHtml(goal)}」。如果你想要完整试卷，可以直接说“按 final 格式出一整套”。</p>
+  `;
+}
+
+function buildOverviewReply(context, goal) {
+  const keywords = unique(context.keywords).slice(0, 8);
+  const points = context.excerpts.slice(0, 4);
+
+  return `
+    <p>我会像选课前/开学第一周那样介绍这门课，重点不是某一次作业，而是课程整体地图。</p>
+    <ol>
+      <li><strong>这门课大概在学什么：</strong>${escapeHtml(points[0] || "需要更多 syllabus 或 course description 来判断。")}</li>
+      <li><strong>你会反复遇到的主题：</strong>${keywords.map(escapeHtml).join("、") || "继续补充资料后生成"}</li>
+      <li><strong>北美课堂常见要求：</strong>reading before class、participation/discussion、quiz/midterm/final、project 或 writing task。</li>
+      <li><strong>建议学习方式：</strong>每周先看 learning outcomes，再读 slides/readings，最后用题目或讨论问题检查理解。</li>
+    </ol>
+    <p>当前目标是「${escapeHtml(goal)}」。</p>
+  `;
+}
+
+function buildDeadlineReply(context, goal) {
+  const deadlineLines = extractDeadlineLines(context.excerpts.join(" "));
+
+  return `
+    <p>我会把课程资料里的时间点当成 planning system 来整理：due dates、exam dates、reading schedule 和提前准备事项。</p>
+    ${
+      deadlineLines.length
+        ? `<ul>${deadlineLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>`
+        : `<p>我在可读片段里还没有抓到明确日期。你可以粘贴 syllabus 的 schedule/calendar 部分，我会整理成清单。</p>`
+    }
+    <ol>
+      <li><strong>建议做法：</strong>把每个 deadline 往前拆成 start date、draft/checkpoint、final review。</li>
+      <li><strong>考试准备：</strong>midterm/final 至少提前 7-10 天开始做 active recall 和模拟题。</li>
+      <li><strong>上课节奏：</strong>每周固定看 readings/slides，避免只在 due date 前补。</li>
+    </ol>
+    ${buildMemoryNote(context)}
+    <p>当前目标是「${escapeHtml(goal)}」。</p>
+  `;
+}
+
+function buildMemoryNote(context) {
+  if (!context.memory) return "";
+  return `<p><strong>结合最近对话：</strong>${escapeHtml(context.memory)}</p>`;
 }
 
 function findRelevantContext(question) {
@@ -342,11 +644,28 @@ function buildDocumentLoadedReply(documentItem) {
     <ul>
       ${summary.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
     </ul>
-    <p>你可以继续问：“这个 assignment 要我交什么？”“rubric 怎么转 checklist？”“怎么准备 office hours？”</p>
+    <p>你可以继续问：“这门课是什么样？”“帮我预习下一节”“带着我学这一章”“按 final 格式出一套题”“汇总所有 deadline”。</p>
   `;
 }
 
 function appendMessage(role, content, sources = []) {
+  const messageRecord = {
+    role,
+    content,
+    sources,
+    createdAt: Date.now(),
+  };
+  state.messages.push(messageRecord);
+  renderMessageElement(role, content, sources);
+
+  const firstUserMessage = state.messages.find((message) => message.role === "user");
+  const title = firstUserMessage ? firstUserMessage.content.replace(/<[^>]+>/g, "").slice(0, 36) : "New study session";
+  updateActiveSession({ title, messages: state.messages });
+  renderHistory();
+  saveSessions();
+}
+
+function renderMessageElement(role, content, sources = []) {
   const message = document.createElement("article");
   message.className = `message ${role === "user" ? "user-message" : "coach-message"}`;
   const safeContent = content.trim().startsWith("<") ? content : `<p>${escapeHtml(content)}</p>`;
@@ -371,6 +690,8 @@ function resizeComposer() {
 
 function detectCourseType(text, fallback = "TEXT") {
   const lower = text.toLowerCase();
+  if (/midterm|final|exam|practice test|sample exam/.test(lower)) return "Exam material";
+  if (/deadline|due date|course schedule|calendar|weekly schedule/.test(lower)) return "Schedule";
   if (/rubric|criteria|grading|points|marking/.test(lower)) return "Rubric";
   if (/assignment|prompt|submit|deadline|due date/.test(lower)) return "Assignment";
   if (/syllabus|course schedule|office hours|learning outcomes/.test(lower)) return "Syllabus";
@@ -381,7 +702,15 @@ function detectCourseType(text, fallback = "TEXT") {
 function summarizeText(text) {
   const sentences = splitSentences(text).slice(0, 5);
   if (sentences.length) return sentences.map((sentence) => sentence.slice(0, 126));
-  return ["内容较短。你可以继续补充 syllabus、rubric 或 assignment prompt，我会一起纳入后续答疑。"];
+  return ["内容较短。你可以继续补充 syllabus、lecture notes、midterm/final 样卷或 deadline，我会一起纳入后续学习。"];
+}
+
+function extractDeadlineLines(text) {
+  const datePattern =
+    /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:,\s*\d{4})?|\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?|\b\d{4}-\d{1,2}-\d{1,2}/i;
+  return splitSentences(text)
+    .filter((sentence) => datePattern.test(sentence) || /deadline|due|midterm|final|exam|quiz|submit|截止|考试/.test(sentence.toLowerCase()))
+    .slice(0, 8);
 }
 
 function splitSentences(text) {
@@ -432,6 +761,26 @@ function scoreText(text, queryTerms) {
   if (!queryTerms.length) return 1;
   const lowerText = text.toLowerCase();
   return queryTerms.reduce((score, term) => score + (lowerText.includes(term.toLowerCase()) ? 2 : 0), 0);
+}
+
+function buildConversationMemory() {
+  const recentMessages = state.sessions
+    .flatMap((session) => session.messages || [])
+    .filter((message) => message.role === "user")
+    .slice(-6)
+    .map((message) => message.content.replace(/<[^>]+>/g, "").slice(0, 80));
+
+  if (!recentMessages.length) return "";
+  return unique(recentMessages).slice(-4).join("；");
+}
+
+function formatRelativeTime(timestamp) {
+  const diff = Date.now() - Number(timestamp || Date.now());
+  const minutes = Math.max(1, Math.round(diff / 60000));
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hr ago`;
+  return `${Math.round(hours / 24)} day ago`;
 }
 
 function formatSize(bytes) {

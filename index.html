@@ -27,7 +27,7 @@
           <label for="fileInput">
             <span class="upload-glyph" aria-hidden="true"></span>
             <strong>上传课程资料</strong>
-            <small>Syllabus、Slides、Reading、Rubric、Assignment brief</small>
+            <small>PDF Syllabus、Slides、Readings、Rubric、Midterm、Final、Course schedule</small>
           </label>
         </section>
 
@@ -37,7 +37,7 @@
             <span id="docCount">0 files</span>
           </div>
           <div class="document-list" id="documentList">
-            <p class="empty-state">先上传或粘贴课程资料。我会按北美课程常见结构理解：learning outcomes、deadlines、rubric、readings 和 assignments。</p>
+            <p class="empty-state">先上传或粘贴课程资料。我会按北美课程常见结构理解：course overview、learning outcomes、weekly topics、deadlines、rubric、readings、midterm 和 final。</p>
           </div>
         </section>
 
@@ -45,11 +45,21 @@
           <div class="block-title">
             <h2>Quick Paste</h2>
           </div>
-          <textarea id="noteInput" placeholder="粘贴 syllabus 段落、assignment 要求、rubric、lecture notes 或 professor 的邮件"></textarea>
+          <textarea id="noteInput" placeholder="粘贴 syllabus、lecture notes、reading guide、rubric、midterm/final 样卷、deadline 或 professor 的邮件"></textarea>
           <button class="primary-line-button" id="addNoteButton" type="button">
             <span class="plus-glyph" aria-hidden="true"></span>
             加入 Course Pack
           </button>
+        </section>
+
+        <section class="panel-block history-block">
+          <div class="block-title">
+            <h2>Past Chats</h2>
+            <button class="small-action" id="newSessionButton" type="button">New</button>
+          </div>
+          <div class="history-list" id="historyList">
+            <p class="empty-state">对话会自动保存在这台浏览器里，之后的问题会参考最近学习记录。</p>
+          </div>
         </section>
 
         <section class="panel-block pinned">
@@ -57,10 +67,14 @@
             <h2>Study Mode</h2>
           </div>
           <div class="mode-grid" role="group" aria-label="选择学习模式">
-            <button class="mode-button active" data-mode="office" type="button">Office Hours</button>
-            <button class="mode-button" data-mode="assignment" type="button">Assignment</button>
-            <button class="mode-button" data-mode="quiz" type="button">Quiz Prep</button>
-            <button class="mode-button" data-mode="writing" type="button">Writing</button>
+            <button class="mode-button active" data-mode="preview" type="button">预习</button>
+            <button class="mode-button" data-mode="guided" type="button">带着学习</button>
+            <button class="mode-button" data-mode="review" type="button">复习</button>
+            <button class="mode-button" data-mode="exam" type="button">模拟出题</button>
+            <button class="mode-button" data-mode="overview" type="button">课程介绍</button>
+            <button class="mode-button" data-mode="deadlines" type="button">Deadline 汇总</button>
+            <button class="mode-button" data-mode="cheatsheet" type="button">Cheatsheet</button>
+            <button class="mode-button urgent" data-mode="cram" type="button">考前急救</button>
           </div>
         </section>
       </aside>
@@ -74,37 +88,35 @@
             <div>
               <p class="eyebrow">Academic Coach</p>
               <h2>留学生课程助理</h2>
-              <span id="coachStatus">准备好帮你拆解课程要求</span>
+              <span id="coachStatus">会参考课程资料和最近对话来辅助学习</span>
             </div>
           </div>
 
           <div class="course-goal">
-            <label for="goalInput">本周目标</label>
-            <input id="goalInput" type="text" value="看懂要求，按 rubric 完成作业" />
+            <label for="goalInput">当前学习目标</label>
+            <input id="goalInput" type="text" value="理解课程结构，跟上进度，准备考试" />
           </div>
         </header>
 
         <div class="chat-area" id="chatArea" aria-live="polite">
-          <article class="message coach-message">
-            <div class="avatar">AI</div>
-            <div class="bubble">
-              <p>你好，我可以用中文帮你理解北美课程里的英文资料：syllabus、rubric、assignment prompt、lecture notes。你可以问我“这个 assignment 到底要我做什么？”“rubric 怎么拿高分？”或“帮我准备 office hours 要问的问题”。</p>
-            </div>
-          </article>
         </div>
 
         <div class="prompt-row" aria-label="快捷问题">
-          <button type="button" data-prompt="帮我把这份 syllabus 拆成：课程目标、评分方式、deadline、每周任务。">拆 syllabus</button>
-          <button type="button" data-prompt="根据 assignment brief 和 rubric，告诉我这次作业到底要交什么、怎么拿高分。">看作业要求</button>
-          <button type="button" data-prompt="帮我准备下次 office hours 可以问 professor 或 TA 的问题。">准备 office hours</button>
-          <button type="button" data-prompt="把这些 lecture notes 转成 quiz prep 复习清单和练习题。">Quiz prep</button>
+          <button type="button" data-prompt="请根据课程资料，告诉我这门课大概是什么样、主要学什么、怎么被评分。">课程介绍</button>
+          <button type="button" data-prompt="请帮我预习下一节课：先讲背景、关键词、我上课前应该带着哪些问题。">预习下一节</button>
+          <button type="button" data-prompt="请带着我学习这部分内容，按概念、例子、检查理解的顺序来。">带着学习</button>
+          <button type="button" data-prompt="请把这些资料整理成复习清单、易错点和主动回忆问题。">复习</button>
+          <button type="button" data-prompt="请根据上传资料模拟出题；如果有 midterm/final 样卷，请模仿格式生成一份完整试卷。">模拟出题</button>
+          <button type="button" data-prompt="请汇总 syllabus 和课程资料中的所有 deadline、考试日期和需要提前准备的事项。">Deadline 汇总</button>
+          <button type="button" data-prompt="请帮我做一页 cheatsheet：公式/概念/步骤/易错点/题型套路都要压缩得适合考前看。">Cheatsheet</button>
+          <button type="button" data-prompt="我马上要考试了，请用紧急考前复习模式：先讲最低必要知识，然后直接教我怎么做题。">考前急救</button>
         </div>
 
         <form class="composer" id="chatForm">
-          <button class="icon-button" type="button" id="clearButton" title="清空对话" aria-label="清空对话">
+          <button class="icon-button" type="button" id="clearButton" title="清空当前对话" aria-label="清空当前对话">
             <span class="trash-glyph" aria-hidden="true"></span>
           </button>
-          <textarea id="messageInput" rows="1" placeholder="用中文问：这份 rubric 重点是什么？"></textarea>
+          <textarea id="messageInput" rows="1" placeholder="用中文问：这门课怎么学？下周要准备什么？"></textarea>
           <button class="send-button" type="submit" aria-label="发送">
             <span class="send-glyph" aria-hidden="true"></span>
           </button>

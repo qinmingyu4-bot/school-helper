@@ -1,4 +1,6 @@
 const state = {
+  courses: [],
+  activeCourseId: null,
   documents: [],
   mode: "preview",
   sessions: [],
@@ -18,6 +20,8 @@ const modeLabels = {
 
 const STORAGE_KEY = "studybridge.sessions.v2";
 const DOCUMENTS_STORAGE_KEY = "studybridge.documents.v1";
+const COURSES_STORAGE_KEY = "studybridge.courses.v1";
+const DEFAULT_COURSE_ID = "default-course";
 
 const supportedTextTypes = [
   "text/plain",
@@ -45,6 +49,9 @@ const promptRow = document.querySelector("#promptRow");
 const imageButton = document.querySelector("#imageButton");
 const imageInput = document.querySelector("#imageInput");
 const pendingImages = document.querySelector("#pendingImages");
+const courseList = document.querySelector("#courseList");
+const addCourseButton = document.querySelector("#addCourseButton");
+const activeCourseTitle = document.querySelector("#activeCourseTitle");
 
 const quickPrompts = {
   preview: [
@@ -90,8 +97,9 @@ const globalPrompts = [
   ["Deadline 汇总", "请汇总 syllabus 和课程资料中的所有 deadline、考试日期和需要提前准备的事项。"],
 ];
 
-initializeConversations();
+initializeCourses();
 initializeDocuments();
+initializeConversations();
 renderQuickPrompts();
 
 fileInput.addEventListener("change", async (event) => {
@@ -124,6 +132,12 @@ imageButton.addEventListener("click", () => {
 imageInput.addEventListener("change", async (event) => {
   await addPendingImages(Array.from(event.target.files || []));
   imageInput.value = "";
+});
+
+addCourseButton.addEventListener("click", () => {
+  const name = prompt("Course name, e.g. MAT223H1F");
+  if (!name?.trim()) return;
+  addCourse(name.trim());
 });
 
 ["dragenter", "dragover"].forEach((eventName) => {
@@ -312,17 +326,115 @@ function renderQuickPrompts() {
   });
 }
 
-function initializeConversations() {
-  state.sessions = loadSessions();
-  if (!state.sessions.length) {
-    createSession("New study session", false);
-  } else {
-    const latest = state.sessions[0];
-    state.activeSessionId = latest.id;
-    state.messages = latest.messages?.length ? latest.messages : [createWelcomeMessage()];
+function initializeCourses() {
+  state.courses = loadCourses();
+  if (!state.courses.length) {
+    state.courses = [
+      {
+        id: DEFAULT_COURSE_ID,
+        name: "Course 1",
+        term: "Current term",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+    ];
+    saveCourses();
   }
+  state.activeCourseId = state.courses[0].id;
+  renderCourses();
+}
+
+function loadCourses() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(COURSES_STORAGE_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCourses() {
+  localStorage.setItem(COURSES_STORAGE_KEY, JSON.stringify(state.courses));
+}
+
+function getActiveCourse() {
+  return state.courses.find((course) => course.id === state.activeCourseId) || state.courses[0];
+}
+
+function addCourse(name) {
+  const course = {
+    id: crypto.randomUUID(),
+    name,
+    term: "Current term",
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+  state.courses.unshift(course);
+  state.activeCourseId = course.id;
+  state.messages = [];
+  state.activeSessionId = null;
+  saveCourses();
+  renderCourses();
+  ensureActiveCourseSession();
+  renderDocuments();
+  renderHistory();
+  renderMessages();
+  coachStatus.textContent = `已创建课程：${course.name}`;
+}
+
+function renderCourses() {
+  courseList.innerHTML = state.courses
+    .map((course) => {
+      const active = course.id === state.activeCourseId ? " active" : "";
+      const docCountForCourse = state.documents.filter((document) => document.courseId === course.id).length;
+      const sessionCountForCourse = state.sessions.filter((session) => session.courseId === course.id).length;
+      return `
+        <button class="course-item${active}" type="button" data-course-id="${course.id}">
+          <strong>${escapeHtml(course.name)}</strong>
+          <span>${docCountForCourse} files · ${sessionCountForCourse} chats</span>
+        </button>
+      `;
+    })
+    .join("");
+
+  courseList.querySelectorAll(".course-item").forEach((button) => {
+    button.addEventListener("click", () => {
+      switchCourse(button.dataset.courseId);
+    });
+  });
+
+  const activeCourse = getActiveCourse();
+  activeCourseTitle.textContent = activeCourse ? activeCourse.name : "留学生课程助理";
+}
+
+function switchCourse(courseId) {
+  if (courseId === state.activeCourseId) return;
+  state.activeCourseId = courseId;
+  ensureActiveCourseSession();
+  renderCourses();
+  renderDocuments();
+  renderHistory();
+  renderMessages();
+  coachStatus.textContent = `当前课程：${getActiveCourse()?.name || "Course"}`;
+}
+
+function currentCourseDocuments() {
+  return state.documents.filter((document) => document.courseId === state.activeCourseId);
+}
+
+function currentCourseSessions() {
+  return state.sessions.filter((session) => session.courseId === state.activeCourseId);
+}
+
+function initializeConversations() {
+  state.sessions = loadSessions().map((session) => ({
+    courseId: session.courseId || DEFAULT_COURSE_ID,
+    ...session,
+  }));
+  ensureActiveCourseSession(false);
   renderMessages();
   renderHistory();
+  renderCourses();
 }
 
 function loadSessions() {
@@ -343,12 +455,16 @@ function saveSessions() {
 }
 
 function initializeDocuments() {
-  state.documents = loadDocuments();
+  state.documents = loadDocuments().map((document) => ({
+    courseId: document.courseId || DEFAULT_COURSE_ID,
+    ...document,
+  }));
   renderDocuments();
-  if (state.documents.length) {
-    const readableDocs = state.documents.filter((document) => !document.unreadable).length;
+  if (currentCourseDocuments().length) {
+    const readableDocs = currentCourseDocuments().filter((document) => !document.unreadable).length;
     coachStatus.textContent = `已恢复 ${readableDocs} 份本地课程资料`;
   }
+  renderCourses();
 }
 
 function loadDocuments() {
@@ -371,6 +487,7 @@ function saveDocuments() {
       unreadable: document.unreadable,
       summary: document.summary,
       keywords: document.keywords,
+      courseId: document.courseId || DEFAULT_COURSE_ID,
       savedAt: document.savedAt || Date.now(),
     }));
     localStorage.setItem(DOCUMENTS_STORAGE_KEY, JSON.stringify(documentsToStore));
@@ -379,9 +496,21 @@ function saveDocuments() {
   }
 }
 
+function ensureActiveCourseSession(shouldSave = true) {
+  const sessions = currentCourseSessions();
+  if (!sessions.length) {
+    createSession("New study session", shouldSave);
+    return;
+  }
+  const latest = sessions[0];
+  state.activeSessionId = latest.id;
+  state.messages = latest.messages?.length ? latest.messages : [createWelcomeMessage()];
+}
+
 function createSession(title = "New study session", shouldSave = true) {
   const session = {
     id: crypto.randomUUID(),
+    courseId: state.activeCourseId,
     title,
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -396,10 +525,11 @@ function createSession(title = "New study session", shouldSave = true) {
 }
 
 function createWelcomeMessage() {
+  const courseName = getActiveCourse()?.name || "这门课";
   return {
     role: "coach",
     content:
-      "你好，我可以用中文帮你理解北美课程里的英文资料：syllabus、lecture slides、readings、rubric、midterm、final 和 deadline。我会保存这台浏览器里的学习记录，之后可以参考过去对话继续帮你预习、复习、做 cheatsheet、模拟出题或考前急救。",
+      `你好，这是 ${courseName} 的学习 section。我可以用中文帮你理解这门课的 syllabus、lecture slides、readings、rubric、midterm、final 和 deadline。每门课都会有自己的资料、对话记录和学习模式。`,
     sources: [],
     createdAt: Date.now(),
   };
@@ -413,12 +543,13 @@ function updateActiveSession(updates = {}) {
 }
 
 function renderHistory() {
-  if (!state.sessions.length) {
-    historyList.innerHTML = '<p class="empty-state">对话会自动保存在这台浏览器里。</p>';
+  const sessions = currentCourseSessions();
+  if (!sessions.length) {
+    historyList.innerHTML = '<p class="empty-state">当前课程还没有对话。</p>';
     return;
   }
 
-  historyList.innerHTML = state.sessions
+  historyList.innerHTML = sessions
     .map((session) => {
       const active = session.id === state.activeSessionId ? " active" : "";
       const count = Math.max((session.messages?.length || 1) - 1, 0);
@@ -456,13 +587,13 @@ function deleteSession(sessionId) {
   const deletingActive = sessionId === state.activeSessionId;
   state.sessions = state.sessions.filter((session) => session.id !== sessionId);
 
-  if (!state.sessions.length) {
+  if (!currentCourseSessions().length) {
     createSession("New study session");
     return;
   }
 
   if (deletingActive) {
-    const nextSession = state.sessions[0];
+    const nextSession = currentCourseSessions()[0];
     state.activeSessionId = nextSession.id;
     state.messages = nextSession.messages?.length ? nextSession.messages : [createWelcomeMessage()];
     renderMessages();
@@ -565,6 +696,7 @@ async function extractPdfText(file) {
 function addDocument(documentItem) {
   state.documents.unshift({
     id: crypto.randomUUID(),
+    courseId: state.activeCourseId,
     summary: summarizeText(documentItem.text),
     keywords: extractKeywords(documentItem.text),
     savedAt: Date.now(),
@@ -573,8 +705,9 @@ function addDocument(documentItem) {
 
   renderDocuments();
   saveDocuments();
+  renderCourses();
 
-  const readableDocs = state.documents.filter((document) => !document.unreadable).length;
+  const readableDocs = currentCourseDocuments().filter((document) => !document.unreadable).length;
   coachStatus.textContent = readableDocs
     ? `已读取 ${readableDocs} 份可分析课程资料`
     : "已记录文件名，可粘贴正文让我分析";
@@ -591,15 +724,16 @@ function addDocument(documentItem) {
 }
 
 function renderDocuments() {
-  docCount.textContent = `${state.documents.length} files`;
+  const documents = currentCourseDocuments();
+  docCount.textContent = `${documents.length} files`;
 
-  if (!state.documents.length) {
+  if (!documents.length) {
     documentList.innerHTML =
-      '<p class="empty-state">先上传或粘贴课程资料。我会按北美课程常见结构理解：course overview、learning outcomes、weekly topics、deadlines、rubric、readings、midterm 和 final。</p>';
+      '<p class="empty-state">当前课程还没有资料。上传或粘贴 syllabus、slides、readings、midterm/final 后，这门课会单独记住。</p>';
     return;
   }
 
-  documentList.innerHTML = state.documents
+  documentList.innerHTML = documents
     .map(
       (document) => `
         <article class="doc-item">
@@ -857,7 +991,7 @@ function buildDeadlineReply(context, goal) {
 }
 
 function extractDeadlineItemsFromDocuments() {
-  return state.documents
+  return currentCourseDocuments()
     .filter((document) => !document.unreadable && document.text)
     .flatMap((document) =>
       extractDeadlineLines(document.text).map((line) => ({
@@ -913,7 +1047,7 @@ function buildMemoryNote(context) {
 
 function findRelevantContext(question) {
   const queryTerms = tokenize(question);
-  const readableDocuments = state.documents.filter((document) => !document.unreadable && document.text);
+  const readableDocuments = currentCourseDocuments().filter((document) => !document.unreadable && document.text);
   const scored = readableDocuments
     .map((document) => {
       const sentences = splitSentences(document.text);
@@ -1109,7 +1243,7 @@ function scoreText(text, queryTerms) {
 }
 
 function buildConversationMemory() {
-  const recentMessages = state.sessions
+  const recentMessages = currentCourseSessions()
     .flatMap((session) => session.messages || [])
     .slice(-6)
     .map((message) => {

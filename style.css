@@ -207,11 +207,46 @@ button {
   font-weight: 800;
 }
 
+.course-list,
 .document-list {
   display: grid;
   gap: 8px;
   max-height: 260px;
   overflow: auto;
+}
+
+.course-list {
+  max-height: 190px;
+}
+
+.course-item {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #e4e9f0;
+  border-radius: 7px;
+  background: #fbfcfe;
+  color: inherit;
+  text-align: left;
+}
+
+.course-item strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-item span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.course-item.active {
+  border-color: rgba(56, 103, 214, 0.55);
+  background: #eef4ff;
+  box-shadow: inset 3px 0 0 var(--blue);
 }
 
 .history-list {

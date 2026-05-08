@@ -13,9 +13,17 @@
           <div class="brand-mark" aria-hidden="true">SB</div>
           <div>
             <h1>StudyBridge</h1>
-            <p>给留学生的北美课程学习助手</p>
+            <p>整学期多课程学习工作台</p>
           </div>
         </header>
+
+        <section class="panel-block course-block">
+          <div class="block-title">
+            <h2>Semester Courses</h2>
+            <button class="small-action" id="addCourseButton" type="button">Add</button>
+          </div>
+          <div class="course-list" id="courseList"></div>
+        </section>
 
         <section class="upload-zone" id="dropZone">
           <input
@@ -26,8 +34,8 @@
           />
           <label for="fileInput">
             <span class="upload-glyph" aria-hidden="true"></span>
-            <strong>上传课程资料</strong>
-            <small>PDF Syllabus、Slides、Readings、Rubric、Midterm、Final、Course schedule</small>
+            <strong>上传当前课程资料</strong>
+            <small>会加入当前选中的 course section</small>
           </label>
         </section>
 
@@ -48,7 +56,7 @@
           <textarea id="noteInput" placeholder="粘贴 syllabus、lecture notes、reading guide、rubric、midterm/final 样卷、deadline 或 professor 的邮件"></textarea>
           <button class="primary-line-button" id="addNoteButton" type="button">
             <span class="plus-glyph" aria-hidden="true"></span>
-            加入 Course Pack
+            加入当前课程
           </button>
         </section>
 
@@ -85,7 +93,7 @@
             </div>
             <div>
               <p class="eyebrow">Academic Coach</p>
-              <h2>留学生课程助理</h2>
+              <h2 id="activeCourseTitle">留学生课程助理</h2>
               <span id="coachStatus">会参考课程资料和最近对话来辅助学习</span>
             </div>
           </div>

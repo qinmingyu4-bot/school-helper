@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added Semester Courses so each course has its own Course Pack, Past Chats, and study workflow section.
 - Added image attachments in the chat composer with local preview and saved conversation history.
 - Added drag-and-drop plus paste support for screenshot/image attachments in the chat composer.
 - Added local Course Pack persistence for extracted text from uploaded and pasted course materials.

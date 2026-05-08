@@ -11,9 +11,7 @@ const modeLabels = {
   guided: "带着学习",
   review: "复习",
   exam: "模拟出题",
-  overview: "课程介绍",
-  deadlines: "Deadline 汇总",
-  cheatsheet: "Cheatsheet",
+  cheatsheet: "Cheatsheet 制作",
   cram: "考前急救",
 };
 

@@ -737,14 +737,31 @@ function renderDocuments() {
     .map(
       (document) => `
         <article class="doc-item">
-          <strong title="${escapeHtml(document.title)}">${escapeHtml(document.title)}</strong>
-          <span>${escapeHtml(document.type)} · ${formatSize(document.size)}${
-            document.unreadable ? " · paste text needed" : ""
-          }</span>
+          <div class="doc-main">
+            <strong title="${escapeHtml(document.title)}">${escapeHtml(document.title)}</strong>
+            <span>${escapeHtml(document.type)} · ${formatSize(document.size)}${
+              document.unreadable ? " · paste text needed" : ""
+            }</span>
+          </div>
+          <button class="doc-delete" type="button" data-document-id="${document.id}" aria-label="删除资料">×</button>
         </article>
       `
     )
     .join("");
+
+  documentList.querySelectorAll(".doc-delete").forEach((button) => {
+    button.addEventListener("click", () => {
+      deleteDocument(button.dataset.documentId);
+    });
+  });
+}
+
+function deleteDocument(documentId) {
+  state.documents = state.documents.filter((document) => document.id !== documentId);
+  renderDocuments();
+  renderCourses();
+  saveDocuments();
+  coachStatus.textContent = "已从当前课程 Course Pack 删除资料";
 }
 
 function appendCoachAnswer(question) {

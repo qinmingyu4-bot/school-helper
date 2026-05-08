@@ -423,15 +423,18 @@ function renderHistory() {
       const active = session.id === state.activeSessionId ? " active" : "";
       const count = Math.max((session.messages?.length || 1) - 1, 0);
       return `
-        <button class="history-item${active}" type="button" data-session-id="${session.id}">
-          <strong>${escapeHtml(session.title || "Study session")}</strong>
-          <span>${count} messages · ${formatRelativeTime(session.updatedAt)}</span>
-        </button>
+        <div class="history-item${active}" data-session-id="${session.id}">
+          <button class="history-open" type="button" data-session-id="${session.id}">
+            <strong>${escapeHtml(session.title || "Study session")}</strong>
+            <span>${count} messages · ${formatRelativeTime(session.updatedAt)}</span>
+          </button>
+          <button class="history-delete" type="button" data-session-id="${session.id}" aria-label="删除对话">×</button>
+        </div>
       `;
     })
     .join("");
 
-  historyList.querySelectorAll(".history-item").forEach((button) => {
+  historyList.querySelectorAll(".history-open").forEach((button) => {
     button.addEventListener("click", () => {
       const session = state.sessions.find((item) => item.id === button.dataset.sessionId);
       if (!session) return;
@@ -441,6 +444,32 @@ function renderHistory() {
       renderHistory();
     });
   });
+
+  historyList.querySelectorAll(".history-delete").forEach((button) => {
+    button.addEventListener("click", () => {
+      deleteSession(button.dataset.sessionId);
+    });
+  });
+}
+
+function deleteSession(sessionId) {
+  const deletingActive = sessionId === state.activeSessionId;
+  state.sessions = state.sessions.filter((session) => session.id !== sessionId);
+
+  if (!state.sessions.length) {
+    createSession("New study session");
+    return;
+  }
+
+  if (deletingActive) {
+    const nextSession = state.sessions[0];
+    state.activeSessionId = nextSession.id;
+    state.messages = nextSession.messages?.length ? nextSession.messages : [createWelcomeMessage()];
+    renderMessages();
+  }
+
+  renderHistory();
+  saveSessions();
 }
 
 function renderMessages() {

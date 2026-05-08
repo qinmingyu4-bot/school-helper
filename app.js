@@ -124,6 +124,35 @@ imageInput.addEventListener("change", async (event) => {
   imageInput.value = "";
 });
 
+["dragenter", "dragover"].forEach((eventName) => {
+  chatForm.addEventListener(eventName, (event) => {
+    if (!hasDraggedImages(event)) return;
+    event.preventDefault();
+    chatForm.classList.add("image-dragging");
+    coachStatus.textContent = "松开即可把截图加入对话";
+  });
+});
+
+["dragleave", "drop"].forEach((eventName) => {
+  chatForm.addEventListener(eventName, (event) => {
+    if (!hasDraggedImages(event)) return;
+    event.preventDefault();
+    chatForm.classList.remove("image-dragging");
+  });
+});
+
+chatForm.addEventListener("drop", async (event) => {
+  if (!hasDraggedImages(event)) return;
+  await addPendingImages(Array.from(event.dataTransfer.files || []));
+});
+
+document.addEventListener("paste", async (event) => {
+  const files = Array.from(event.clipboardData?.files || []).filter((file) => isImageFile(file));
+  if (!files.length) return;
+  event.preventDefault();
+  await addPendingImages(files);
+});
+
 addNoteButton.addEventListener("click", () => {
   const text = noteInput.value.trim();
   if (!text) return;
@@ -201,6 +230,12 @@ function isImageFile(file) {
     file.type.startsWith("image/") ||
     ["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif", "heic", "heif", "tif", "tiff"].includes(extension)
   );
+}
+
+function hasDraggedImages(event) {
+  const items = Array.from(event.dataTransfer?.items || []);
+  if (items.some((item) => item.kind === "file" && item.type.startsWith("image/"))) return true;
+  return Array.from(event.dataTransfer?.files || []).some((file) => isImageFile(file));
 }
 
 function readImageAttachment(file) {

@@ -6,6 +6,7 @@
 
 - Added image attachments in the chat composer with local preview and saved conversation history.
 - Added drag-and-drop plus paste support for screenshot/image attachments in the chat composer.
+- Added local Course Pack persistence for extracted text from uploaded and pasted course materials.
 - Added local conversation history with session switching and browser-local memory.
 - Added answer generation that can reference recent past conversations.
 - Added cheatsheet support for compact exam-facing study sheets.

@@ -17,6 +17,7 @@ const modeLabels = {
 };
 
 const STORAGE_KEY = "studybridge.sessions.v2";
+const DOCUMENTS_STORAGE_KEY = "studybridge.documents.v1";
 
 const supportedTextTypes = [
   "text/plain",
@@ -90,6 +91,7 @@ const globalPrompts = [
 ];
 
 initializeConversations();
+initializeDocuments();
 renderQuickPrompts();
 
 fileInput.addEventListener("change", async (event) => {
@@ -340,6 +342,43 @@ function saveSessions() {
   }
 }
 
+function initializeDocuments() {
+  state.documents = loadDocuments();
+  renderDocuments();
+  if (state.documents.length) {
+    const readableDocs = state.documents.filter((document) => !document.unreadable).length;
+    coachStatus.textContent = `已恢复 ${readableDocs} 份本地课程资料`;
+  }
+}
+
+function loadDocuments() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(DOCUMENTS_STORAGE_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveDocuments() {
+  try {
+    const documentsToStore = state.documents.slice(0, 18).map((document) => ({
+      id: document.id,
+      title: document.title,
+      text: document.text,
+      type: document.type,
+      size: document.size,
+      unreadable: document.unreadable,
+      summary: document.summary,
+      keywords: document.keywords,
+      savedAt: document.savedAt || Date.now(),
+    }));
+    localStorage.setItem(DOCUMENTS_STORAGE_KEY, JSON.stringify(documentsToStore));
+  } catch {
+    coachStatus.textContent = "浏览器本地存储空间不足，课程资料可能无法完整保存";
+  }
+}
+
 function createSession(title = "New study session", shouldSave = true) {
   const session = {
     id: crypto.randomUUID(),
@@ -499,10 +538,12 @@ function addDocument(documentItem) {
     id: crypto.randomUUID(),
     summary: summarizeText(documentItem.text),
     keywords: extractKeywords(documentItem.text),
+    savedAt: Date.now(),
     ...documentItem,
   });
 
   renderDocuments();
+  saveDocuments();
 
   const readableDocs = state.documents.filter((document) => !document.unreadable).length;
   coachStatus.textContent = readableDocs

@@ -59,6 +59,9 @@ const coachStatus = document.querySelector("#coachStatus");
 const clearButton = document.querySelector("#clearButton");
 const historyList = document.querySelector("#historyList");
 const newSessionButton = document.querySelector("#newSessionButton");
+const quickPromptDrawer = document.querySelector("#quickPromptDrawer");
+const quickPromptTitle = document.querySelector("#quickPromptTitle");
+const quickPromptClose = document.querySelector("#quickPromptClose");
 const promptRow = document.querySelector("#promptRow");
 const imageButton = document.querySelector("#imageButton");
 const imageInput = document.querySelector("#imageInput");
@@ -121,11 +124,13 @@ const globalPrompts = [
   ["Deadline 汇总", "请汇总 syllabus 和课程资料中的所有 deadline、考试日期和需要提前准备的事项。"],
 ];
 
+let quickPromptAnimationTimer;
+
 initializePreferences();
 initializeCourses();
 initializeDocuments();
 initializeConversations();
-renderQuickPrompts();
+renderQuickPrompts({ open: true });
 
 fileInput.addEventListener("change", async (event) => {
   await ingestFiles(Array.from(event.target.files || []));
@@ -232,8 +237,12 @@ document.querySelectorAll(".mode-button").forEach((button) => {
     button.classList.add("active");
     state.mode = button.dataset.mode;
     coachStatus.textContent = `当前模式：${modeLabels[state.mode]}`;
-    renderQuickPrompts();
+    renderQuickPrompts({ open: true, animate: true });
   });
+});
+
+quickPromptClose.addEventListener("click", () => {
+  quickPromptDrawer.classList.remove("is-visible", "is-switching");
 });
 
 answerModeButtons.forEach((button) => {
@@ -358,11 +367,12 @@ function renderPendingImages() {
   });
 }
 
-function renderQuickPrompts() {
+function renderQuickPrompts(options = {}) {
   const prompts = [
     ...(quickPrompts[state.mode] || []).map((prompt) => [...prompt, "mode"]),
     ...globalPrompts.map((prompt) => [...prompt, "global"]),
   ];
+  quickPromptTitle.textContent = `${modeLabels[state.mode] || "学习"}模式`;
   promptRow.innerHTML = prompts
     .map(([label, prompt, type]) => {
       const className = type === "global" ? ' class="global-prompt"' : "";
@@ -374,9 +384,25 @@ function renderQuickPrompts() {
     button.addEventListener("click", () => {
       messageInput.value = button.dataset.prompt;
       messageInput.focus();
+      quickPromptDrawer.classList.remove("is-visible", "is-switching");
       resizeComposer();
     });
   });
+
+  if (options.open) {
+    quickPromptDrawer.classList.add("is-visible");
+  }
+
+  if (options.animate) {
+    quickPromptDrawer.classList.remove("is-switching");
+    window.clearTimeout(quickPromptAnimationTimer);
+    requestAnimationFrame(() => {
+      quickPromptDrawer.classList.add("is-switching");
+      quickPromptAnimationTimer = window.setTimeout(() => {
+        quickPromptDrawer.classList.remove("is-switching");
+      }, 420);
+    });
+  }
 }
 
 function initializePreferences() {

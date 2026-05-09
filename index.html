@@ -205,8 +205,17 @@
         <div class="chat-area" id="chatArea" aria-live="polite">
         </div>
 
-        <div class="prompt-row" id="promptRow" aria-label="当前模式快捷问题">
-        </div>
+        <section class="quick-prompt-drawer is-visible" id="quickPromptDrawer" aria-label="当前模式快捷问题">
+          <div class="quick-prompt-header">
+            <div>
+              <span>快捷指令</span>
+              <strong id="quickPromptTitle">预习模式</strong>
+            </div>
+            <button class="quick-prompt-close" id="quickPromptClose" type="button" aria-label="收起快捷指令">收起</button>
+          </div>
+          <div class="prompt-row" id="promptRow">
+          </div>
+        </section>
 
         <form class="composer" id="chatForm">
           <button class="icon-button" type="button" id="clearButton" title="清空当前对话" aria-label="清空当前对话">

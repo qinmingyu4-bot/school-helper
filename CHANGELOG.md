@@ -8,6 +8,7 @@
 - Documented that the local server uses the same static app files as the direct `index.html` version.
 - Added a macOS `start.command` launcher so the app can run locally without npm.
 - Changed study-mode quick prompts into a slide-out drawer so mode-specific shortcuts are easier to notice.
+- Kept the quick prompt drawer open after selecting a shortcut until the user manually closes it.
 
 ## 2026-05-07
 

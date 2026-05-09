@@ -384,7 +384,6 @@ function renderQuickPrompts(options = {}) {
     button.addEventListener("click", () => {
       messageInput.value = button.dataset.prompt;
       messageInput.focus();
-      quickPromptDrawer.classList.remove("is-visible", "is-switching");
       resizeComposer();
     });
   });

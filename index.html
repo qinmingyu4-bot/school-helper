@@ -209,13 +209,17 @@
         <div class="chat-area" id="chatArea" aria-live="polite">
         </div>
 
+        <button class="quick-prompt-toggle" id="quickPromptToggle" type="button" hidden>快捷指令</button>
         <section class="quick-prompt-drawer is-visible" id="quickPromptDrawer" aria-label="当前模式快捷问题">
           <div class="quick-prompt-header">
             <div>
               <span>快捷指令</span>
               <strong id="quickPromptTitle">预习模式</strong>
             </div>
-            <button class="quick-prompt-close" id="quickPromptClose" type="button" aria-label="收起快捷指令">收起</button>
+            <div class="quick-prompt-actions">
+              <button class="quick-prompt-clear" id="quickPromptClear" type="button" aria-label="清空当前输入框文字">清空输入</button>
+              <button class="quick-prompt-close" id="quickPromptClose" type="button" aria-label="收起快捷指令">收起</button>
+            </div>
           </div>
           <div class="prompt-row" id="promptRow">
           </div>

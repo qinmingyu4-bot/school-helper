@@ -62,8 +62,10 @@ const clearButton = document.querySelector("#clearButton");
 const historyList = document.querySelector("#historyList");
 const historySearchInput = document.querySelector("#historySearchInput");
 const newSessionButton = document.querySelector("#newSessionButton");
+const quickPromptToggle = document.querySelector("#quickPromptToggle");
 const quickPromptDrawer = document.querySelector("#quickPromptDrawer");
 const quickPromptTitle = document.querySelector("#quickPromptTitle");
+const quickPromptClear = document.querySelector("#quickPromptClear");
 const quickPromptClose = document.querySelector("#quickPromptClose");
 const promptRow = document.querySelector("#promptRow");
 const imageButton = document.querySelector("#imageButton");
@@ -252,6 +254,17 @@ document.querySelectorAll(".mode-button").forEach((button) => {
 
 quickPromptClose.addEventListener("click", () => {
   quickPromptDrawer.classList.remove("is-visible", "is-switching");
+  quickPromptToggle.hidden = false;
+});
+
+quickPromptToggle.addEventListener("click", () => {
+  renderQuickPrompts({ open: true, animate: true });
+});
+
+quickPromptClear.addEventListener("click", () => {
+  messageInput.value = "";
+  messageInput.focus();
+  resizeComposer();
 });
 
 answerModeButtons.forEach((button) => {
@@ -404,6 +417,7 @@ function renderQuickPrompts(options = {}) {
 
   if (options.open) {
     quickPromptDrawer.classList.add("is-visible");
+    quickPromptToggle.hidden = true;
   }
 
   if (options.animate) {

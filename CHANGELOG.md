@@ -11,6 +11,7 @@
 - Kept the quick prompt drawer open after selecting a shortcut until the user manually closes it.
 - Added per-course Past Chats keyword search across titles, messages, and image attachment names.
 - Added an assignment assistance study mode focused on prompts, rubrics, task breakdown, and draft checking.
+- Added quick prompt drawer controls to clear only the current typed text and reopen shortcuts after closing.
 
 ## 2026-05-07
 

@@ -27,6 +27,7 @@ const modeLabels = {
   preview: "预习",
   guided: "带着学习",
   review: "复习",
+  assignment: "作业辅助",
   exam: "模拟出题",
   cheatsheet: "Cheatsheet 制作",
   cram: "考前急救",
@@ -100,6 +101,12 @@ const quickPrompts = {
     ["主动回忆", "请生成 active recall 问题，不要直接给答案，先让我答。"],
     ["易错点", "请列出这部分最容易混淆或考试容易错的点。"],
     ["考前路线", "请按重要性排序，告诉我复习顺序。"],
+  ],
+  assignment: [
+    ["读懂题目", "请帮我读懂这份作业要求：任务是什么、限制是什么、rubric 在看什么。"],
+    ["拆解步骤", "请把这份作业拆成可执行步骤，但不要直接替我写最终提交内容。"],
+    ["检查思路", "我会发我的思路或草稿，请帮我检查是否符合要求、哪里需要补证据。"],
+    ["Office hours 问题", "请根据这份作业帮我准备可以问 professor/TA 的高质量问题。"],
   ],
   exam: [
     ["单独题目", "请根据上传资料出 8 道单独练习题，覆盖不同题型，并提供英文作答要求。"],
@@ -1154,6 +1161,18 @@ function generateCoachReply(question, context, goal) {
     };
   }
 
+  if (
+    state.mode === "assignment" ||
+    /assignment|homework|problem set|pset|essay|paper|project|rubric|prompt|submit|作业|论文|报告|草稿/.test(
+      lowerQuestion
+    )
+  ) {
+    return {
+      text: buildAssignmentReply(question, context, goal),
+      sources: context.sources,
+    };
+  }
+
   if (state.mode === "review" || /review|复习|总结|考前|知识点|易错/.test(lowerQuestion)) {
     return {
       text: buildReviewReply(context, goal),
@@ -1237,6 +1256,26 @@ function buildReviewReply(context, goal) {
     <p><strong>复习顺序：</strong>先解释概念，再补例子，再做自测，最后标出不确定点带去 office hours 或 discussion。</p>
     ${buildMemoryNote(context)}
     <p>当前目标是「${escapeHtml(goal)}」。</p>
+  `;
+}
+
+function buildAssignmentReply(question, context, goal) {
+  const keywords = unique(context.keywords).slice(0, 8);
+  const points = context.excerpts.slice(0, 5);
+
+  return `
+    <p>进入作业辅助模式。我会帮你理解要求、拆解任务、检查思路和改进草稿，但不会直接替你完成可提交的最终作业。</p>
+    ${buildTeachingPreferenceHtml()}
+    <ol>
+      <li><strong>先确认任务：</strong>${escapeHtml(points[0] || question || "请上传 assignment prompt 或 rubric 后继续。")}</li>
+      <li><strong>Rubric / grading focus：</strong>先找 professor 真正在评分的点，例如 accuracy、evidence、method、format、citation、reasoning。</li>
+      <li><strong>可执行步骤：</strong>读题圈 action verbs → 列 required components → 找课程资料证据 → 先写 outline → 再完成 draft → 最后按 rubric 检查。</li>
+      <li><strong>需要保留英文的地方：</strong>${keywords.map(escapeHtml).join("、") || "assignment prompt 里的 key terms、method names、rubric language"}。</li>
+      <li><strong>我可以帮你检查：</strong>你的 thesis/approach 是否回答题目、步骤是否漏掉、英文表达是否更像北美课堂作答。</li>
+    </ol>
+    ${points.length > 1 ? `<p><strong>资料线索：</strong>${points.slice(1).map(escapeHtml).join("；")}</p>` : ""}
+    ${buildMemoryNote(context)}
+    <p>下一步你可以把作业题目、rubric 或你的 draft 发来；我会先帮你判断“这题到底要你做什么”。当前目标是「${escapeHtml(goal)}」。</p>
   `;
 }
 

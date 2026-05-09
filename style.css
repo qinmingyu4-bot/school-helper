@@ -1245,88 +1245,20 @@ button {
   color: white;
 }
 
-.send-glyph {
-  position: relative;
-  width: 22px;
-  height: 18px;
-  border-top: 4px solid currentColor;
-  border-right: 4px solid currentColor;
-  transform: rotate(45deg) translate(-2px, 2px);
+.composer-icon {
+  width: 23px;
+  height: 23px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.15;
 }
 
-.send-glyph::after {
-  content: "";
-  position: absolute;
-  width: 25px;
-  height: 4px;
-  top: 6px;
-  right: -3px;
-  border-radius: 999px;
-  background: currentColor;
-  transform: rotate(-45deg);
-  transform-origin: right center;
-}
-
-.trash-glyph {
-  position: relative;
-  width: 18px;
-  height: 19px;
-  border: 3px solid currentColor;
-  border-top: 0;
-  border-radius: 0 0 4px 4px;
-  transform: translateY(3px);
-}
-
-.trash-glyph::before {
-  content: "";
-  position: absolute;
-  left: -5px;
-  top: -7px;
-  width: 22px;
-  height: 3px;
-  border-radius: 999px;
-  background: currentColor;
-}
-
-.trash-glyph::after {
-  content: "";
-  position: absolute;
-  left: 4px;
-  top: -12px;
-  width: 8px;
-  height: 3px;
-  border-radius: 999px;
-  background: currentColor;
-}
-
-.image-glyph {
-  position: relative;
-  width: 22px;
-  height: 20px;
-  border: 3px solid currentColor;
-  border-radius: 5px;
-}
-
-.image-glyph::before {
-  content: "";
-  position: absolute;
-  right: 3px;
-  top: 3px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.image-glyph::after {
-  content: "";
-  position: absolute;
-  left: 3px;
-  bottom: 3px;
-  width: 14px;
-  height: 9px;
-  background: currentColor;
-  clip-path: polygon(0 100%, 40% 38%, 58% 62%, 74% 44%, 100% 100%);
+.send-icon {
+  width: 27px;
+  height: 27px;
+  stroke-width: 2.7;
 }
 
 .message-attachments {

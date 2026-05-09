@@ -8,6 +8,7 @@ const state = {
   activeSessionId: null,
   messages: [],
   pendingImages: [],
+  historySearchQuery: "",
   preferences: {
     englishTerms: true,
     englishAnswers: true,
@@ -58,6 +59,7 @@ const messageInput = document.querySelector("#messageInput");
 const coachStatus = document.querySelector("#coachStatus");
 const clearButton = document.querySelector("#clearButton");
 const historyList = document.querySelector("#historyList");
+const historySearchInput = document.querySelector("#historySearchInput");
 const newSessionButton = document.querySelector("#newSessionButton");
 const quickPromptDrawer = document.querySelector("#quickPromptDrawer");
 const quickPromptTitle = document.querySelector("#quickPromptTitle");
@@ -290,6 +292,11 @@ clearButton.addEventListener("click", () => {
 
 newSessionButton.addEventListener("click", () => {
   createSession();
+});
+
+historySearchInput.addEventListener("input", () => {
+  state.historySearchQuery = historySearchInput.value.trim();
+  renderHistory();
 });
 
 async function addPendingImages(files) {
@@ -651,6 +658,8 @@ function switchCourse(courseId) {
   if (courseId === state.activeCourseId) return;
   if (!state.courses.some((course) => course.id === courseId)) return;
   state.activeCourseId = courseId;
+  state.historySearchQuery = "";
+  historySearchInput.value = "";
   ensureActiveCourseSession();
   renderCourses();
   renderDocuments();
@@ -797,25 +806,40 @@ function updateActiveSession(updates = {}) {
 
 function renderHistory() {
   if (!state.activeCourseId) {
+    historySearchInput.disabled = true;
     historyList.innerHTML = '<p class="empty-state">创建第一门课程后，对话会自动保存在这台浏览器里。</p>';
     return;
   }
 
   const sessions = currentCourseSessions();
+  historySearchInput.disabled = false;
+  historySearchInput.value = state.historySearchQuery;
+
   if (!sessions.length) {
     historyList.innerHTML = '<p class="empty-state">当前课程还没有对话。</p>';
     return;
   }
 
-  historyList.innerHTML = sessions
+  const query = normalizeSearchText(state.historySearchQuery);
+  const filteredSessions = query
+    ? sessions.filter((session) => normalizeSearchText(getSessionSearchText(session)).includes(query))
+    : sessions;
+
+  if (!filteredSessions.length) {
+    historyList.innerHTML = '<p class="empty-state">没有找到匹配的 past chat。换一个关键词试试。</p>';
+    return;
+  }
+
+  historyList.innerHTML = filteredSessions
     .map((session) => {
       const active = session.id === state.activeSessionId ? " active" : "";
       const count = Math.max((session.messages?.length || 1) - 1, 0);
+      const searchLabel = query ? ` · 匹配 “${escapeHtml(state.historySearchQuery)}”` : "";
       return `
         <div class="history-item${active}" data-session-id="${session.id}">
           <button class="history-open" type="button" data-session-id="${session.id}">
             <strong>${escapeHtml(session.title || "Study session")}</strong>
-            <span>${count} messages · ${formatRelativeTime(session.updatedAt)}</span>
+            <span>${count} messages · ${formatRelativeTime(session.updatedAt)}${searchLabel}</span>
           </button>
           <button class="history-delete" type="button" data-session-id="${session.id}" aria-label="删除对话">×</button>
         </div>
@@ -839,6 +863,26 @@ function renderHistory() {
       deleteSession(button.dataset.sessionId);
     });
   });
+}
+
+function getSessionSearchText(session) {
+  const messages = session.messages || [];
+  const messageText = messages
+    .map((message) => {
+      const attachmentNames = (message.attachments || []).map((attachment) => attachment.name).join(" ");
+      return `${message.role || ""} ${message.content || ""} ${attachmentNames}`;
+    })
+    .join(" ");
+
+  return `${session.title || ""} ${messageText}`;
+}
+
+function normalizeSearchText(text) {
+  return String(text || "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
 }
 
 function deleteSession(sessionId) {

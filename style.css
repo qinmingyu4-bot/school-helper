@@ -499,6 +499,27 @@ button {
   overflow: auto;
 }
 
+.history-search {
+  margin-bottom: 10px;
+}
+
+.history-search input {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: var(--ink);
+  outline: none;
+}
+
+.history-search input:focus {
+  border-color: var(--blue);
+  background: white;
+  box-shadow: 0 0 0 3px rgba(56, 103, 214, 0.12);
+}
+
 .history-item {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 28px;

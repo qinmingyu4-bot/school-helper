@@ -12,6 +12,7 @@
 - Added per-course Past Chats keyword search across titles, messages, and image attachment names.
 - Added an assignment assistance study mode focused on prompts, rubrics, task breakdown, and draft checking.
 - Added quick prompt drawer controls to clear only the current typed text and reopen shortcuts after closing.
+- Reduced the quick prompt drawer height for a slimmer toolbar-style layout.
 
 ## 2026-05-07
 

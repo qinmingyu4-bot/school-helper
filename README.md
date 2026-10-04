@@ -1,73 +1,71 @@
-# StudyBridge
+# StudyBridge Cloud
 
-StudyBridge 是一个面向留学生的整学期多课程学习工作台。界面使用中文，但默认围绕北美学校教育模式设计；每门课都是一个独立 section，可以分别保存 syllabus、lecture notes、readings、rubric、deadline、midterm 和 final 等材料。
+StudyBridge Cloud 是 StudyBridge 的云端版本：它加入了登录系统、服务端数据库、AI 后端，以及每个学生独立保存的课程资料和聊天记录。
 
-## Features
+## 已加入的能力
 
-- 上传 PDF、TXT、MD、CSV、JSON、HTML 等可读课程资料
-- 每天第一次打开先进入欢迎封面页，点击开始后当天刷新会直接留在学习工作台
-- 创建多个 semester courses，每门课都有自己的 Course Pack、Past Chats 和学习模式
-- 支持删除 semester course，并同步清理该课程的 Course Pack 和 Past Chats
-- 支持客制化 Learning Style：知识点中文解释、关键内容保留 English terms、做题优先 English final answer 并配中文 reasoning
-- 支持快速应答和思考模式；思考模式会显示用时，并可展开查看高层次思考方向
-- 根据用户常用问法更新浏览器本地偏好记忆，后续回答会参考这些教学习惯
-- 在对话框上传、拖拽或粘贴 PNG、JPG、WEBP、GIF、BMP、AVIF、HEIC、TIFF 等图片附件
-- 粘贴 syllabus、lecture notes、reading guide、rubric、midterm/final 样卷、deadline 或教授邮件
-- 自动识别资料类型：Syllabus、Schedule、Rubric、Lecture notes、Exam material
-- 支持预习、带着学习、复习、模拟出题、课程介绍、Deadline 汇总等学习模式
-- 模拟出题既可以生成单独题目，也可以模仿上传的 midterm/final 格式生成完整练习卷
-- 自动保存浏览器本地历史对话和 Course Pack 文字内容，并在后续回答中参考最近学习记录
-- 提供 cheatsheet 辅助，把概念、步骤、易错点和题型套路压缩成考前速查结构
-- 提供紧急考前复习模式，先补最低必要知识，再快速进入做题方法和题型训练
-- 用中文解释英文课程材料，同时保留考试需要使用的英文术语、作答表达和 rubric 语言
-- 基于已上传资料生成答疑内容，并显示引用来源
-- 纯前端运行，不需要后端
+- 注册和登录
+- 密码用 `scrypt` 加盐哈希保存
+- HttpOnly session cookie
+- 每个学生只能访问自己的课程、资料和聊天记录
+- 云端保存课程列表
+- 云端保存 syllabus、lecture notes、rubric、deadline 等资料文字
+- 云端保存 AI 对话记录
+- 后端调用 AI，浏览器不会看到 API key
+- 本地开发数据库：`.data/studybridge.json`
+- AWS 生产数据库：DynamoDB
+- Dockerfile 和 AWS DynamoDB CloudFormation 模板
 
-## Local Memory
-
-每门课的对话历史和 Course Pack 中可读取的文字内容会保存在当前浏览器的 localStorage 中。它可以帮助 StudyBridge 在后续对话中参考该课程的最近学习记录和之前上传过的课程资料；这些记录不会自动同步到其他设备或其他用户。PDF 原文件不会被保存，系统只保存提取出的文字。
-
-## PDF Support
-
-PDF 会在浏览器本地用 PDF.js 提取文字，不会上传到服务器。普通文字版 PDF 可以读取；扫描版 PDF 或图片型 PDF 需要 OCR，当前版本会提示粘贴关键文字。
-
-## Image Attachments
-
-对话框支持上传、拖拽和粘贴常见图片格式。图片会显示在聊天记录中，并保存在当前浏览器的本地对话历史里。当前静态版本不会自动识别图片内容；如果需要解题或讲解，请同时粘贴图片里的题目文字。
-
-## How to Use
-
-直接打开 `index.html` 即可使用。
-
-也可以用本地服务器运行，然后通过浏览器网址访问。推荐方式：
+## 本地运行
 
 ```bash
-./start.command
-```
-
-如果上面的方式被 macOS 拦住，也可以直接运行：
-
-```bash
-python3 -m http.server 5173 --bind 127.0.0.1
+cp .env.example .env
+node server.js
 ```
 
 打开：
 
 ```text
-http://127.0.0.1:5173
+http://localhost:3000
 ```
 
-本地服务器版本不会重新打包或改动页面，它仍然直接使用同一份 `index.html`、`style.css` 和 `app.js`。需要注意的是，浏览器会把 `file://` 和 `http://127.0.0.1:5173` 当成两个不同位置，所以之前在 `file://` 下保存的本地课程和聊天记录不会自动出现在本地服务器网址下；新网址下保存的内容会继续保存在这个网址自己的浏览器本地记忆里。
+没有配置 `OPENAI_API_KEY` 时，聊天接口仍然会保存消息，并返回内置提示。配置后才会调用真正的 AI。
 
-如果部署到 GitHub Pages，可以在仓库 Settings → Pages 中选择 `main` 分支和 root 目录。
+## 环境变量
 
-## Files
+复制 `.env.example` 为 `.env`，至少设置：
 
 ```text
-index.html    页面结构
-style.css     视觉设计
-app.js        上传、资料分析和对话逻辑
-start.command macOS 本地服务器启动脚本
-README.md     项目说明
-CHANGELOG.md  更新记录
+SESSION_SECRET=replace-with-a-long-random-secret
+OPENAI_API_KEY=你的 key
+```
+
+AWS 上使用 DynamoDB：
+
+```text
+STUDYBRIDGE_DB=dynamodb
+AWS_REGION=us-east-1
+DYNAMODB_TABLE=StudyBridge
+```
+
+## 部署
+
+见：
+
+```text
+docs/aws-deploy.md
+```
+
+## 文件结构
+
+```text
+server.js                 后端 API 和静态文件服务
+lib/security.js           密码、session、cookie 工具
+lib/database.js           本地数据库和 DynamoDB 数据接口
+lib/aws-dynamodb.js       无第三方依赖的 DynamoDB SigV4 调用
+public/index.html         登录和学习工作台界面
+public/app.js             前端交互和 API 调用
+public/style.css          视觉样式
+aws/dynamodb-table.yml    DynamoDB 表模板
+docs/aws-deploy.md        AWS 部署说明
 ```

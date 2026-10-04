@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StudyBridge Cloud</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="auth-panel" id="authPanel">
+        <div class="brand-row">
+          <div class="brand-mark">SB</div>
+          <div>
+            <p class="eyebrow">StudyBridge Cloud</p>
+            <h1>登录后，学习资料会保存到云端。</h1>
+          </div>
+        </div>
+        <p class="lead">
+          为每个学生保存课程、syllabus、lecture notes、deadline 和 AI 对话记录。AI key 只放在后端，浏览器里不会暴露。
+        </p>
+
+        <form class="auth-card" id="authForm">
+          <div class="tabs" role="tablist" aria-label="登录或注册">
+            <button class="tab active" type="button" data-auth-mode="login">登录</button>
+            <button class="tab" type="button" data-auth-mode="register">注册</button>
+          </div>
+          <label id="nameField" hidden>
+            <span>姓名</span>
+            <input id="nameInput" autocomplete="name" placeholder="你的名字" />
+          </label>
+          <label>
+            <span>Email</span>
+            <input id="emailInput" type="email" autocomplete="email" placeholder="you@example.com" required />
+          </label>
+          <label>
+            <span>密码</span>
+            <input id="passwordInput" type="password" autocomplete="current-password" placeholder="至少 8 位" required />
+          </label>
+          <button class="primary-button" id="authSubmit" type="submit">登录</button>
+          <p class="form-message" id="authMessage"></p>
+        </form>
+      </section>
+
+      <section class="app-shell" id="appShell" hidden>
+        <aside class="sidebar">
+          <header class="sidebar-header">
+            <div class="brand-row compact">
+              <div class="brand-mark">SB</div>
+              <div>
+                <h2>StudyBridge</h2>
+                <p id="userLine">Cloud workspace</p>
+              </div>
+            </div>
+            <button class="ghost-button" id="logoutButton" type="button">退出</button>
+          </header>
+
+          <section class="panel">
+            <div class="panel-title">
+              <h3>课程</h3>
+              <button class="small-button" id="addCourseButton" type="button">新增</button>
+            </div>
+            <div class="course-list" id="courseList"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-title">
+              <h3>课程资料</h3>
+              <span id="documentCount">0</span>
+            </div>
+            <textarea id="documentInput" placeholder="粘贴 syllabus、lecture notes、rubric、deadline 或样卷文字"></textarea>
+            <div class="row">
+              <input id="documentTitleInput" placeholder="资料标题" />
+              <button class="small-button" id="saveDocumentButton" type="button">保存</button>
+            </div>
+            <div class="document-list" id="documentList"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-title">
+              <h3>Learning Style</h3>
+              <span id="preferenceStatus">Saved</span>
+            </div>
+            <label class="check-row"><input id="englishTermsToggle" type="checkbox" checked />保留 English terms</label>
+            <label class="check-row"><input id="englishAnswersToggle" type="checkbox" checked />做题先给 English answer</label>
+            <label class="check-row"><input id="chineseExplanationsToggle" type="checkbox" checked />用中文解释 reasoning</label>
+            <textarea id="customInstructionInput" placeholder="例如：先给结论，再用中文拆步骤，最后列考试易错点。"></textarea>
+          </section>
+        </aside>
+
+        <section class="workspace">
+          <header class="topbar">
+            <div>
+              <p class="eyebrow">Academic Coach</p>
+              <h2 id="activeCourseTitle">请选择课程</h2>
+              <span id="statusLine">资料、对话和偏好会通过后端保存。</span>
+            </div>
+            <select id="modeSelect" aria-label="学习模式">
+              <option value="preview">预习</option>
+              <option value="guided">带着学习</option>
+              <option value="review">复习</option>
+              <option value="assignment">作业辅助</option>
+              <option value="exam">模拟出题</option>
+              <option value="cheatsheet">Cheatsheet</option>
+              <option value="cram">考前急救</option>
+            </select>
+          </header>
+
+          <div class="chat" id="chatArea"></div>
+
+          <form class="composer" id="chatForm">
+            <textarea id="messageInput" rows="1" placeholder="问：帮我根据这门课资料做一个 final 复习计划"></textarea>
+            <button class="send-button" id="sendButton" type="submit">发送</button>
+          </form>
+        </section>
+      </section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>

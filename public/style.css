@@ -25,7 +25,11 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: linear-gradient(180deg, #eef3f7, #f8fafc);
+  background:
+    linear-gradient(rgba(31, 58, 95, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(31, 58, 95, 0.045) 1px, transparent 1px),
+    linear-gradient(180deg, #eef3f7, #f8fafc);
+  background-size: 34px 34px, 34px 34px, auto;
   color: var(--ink);
 }
 
@@ -46,12 +50,65 @@ button {
 
 .auth-panel {
   display: grid;
+  position: relative;
+  isolation: isolate;
   min-height: 100vh;
   place-items: center;
   align-content: center;
   width: min(520px, calc(100% - 32px));
   margin: 0 auto;
   padding: 32px 0;
+}
+
+.auth-decoration {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.study-card {
+  position: absolute;
+  display: block;
+  width: 118px;
+  height: 82px;
+  border: 1px solid rgba(128, 146, 172, 0.28);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(47, 125, 98, 0.18) 0 28%, transparent 28%),
+    repeating-linear-gradient(180deg, transparent 0 18px, rgba(101, 112, 133, 0.16) 18px 19px),
+    rgba(255, 255, 255, 0.62);
+  box-shadow: 0 18px 42px rgba(25, 36, 58, 0.08);
+}
+
+.study-card::after {
+  content: "";
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  width: 34px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(31, 58, 95, 0.14);
+}
+
+.card-one {
+  top: 16%;
+  left: -116px;
+  transform: rotate(-8deg);
+}
+
+.card-two {
+  right: -126px;
+  top: 28%;
+  transform: rotate(7deg);
+}
+
+.card-three {
+  left: -82px;
+  bottom: 18%;
+  transform: rotate(5deg);
+  opacity: 0.72;
 }
 
 .brand-row {
@@ -118,6 +175,8 @@ h1 {
   gap: 14px;
   width: min(460px, 100%);
   padding: 22px;
+  border-color: rgba(151, 164, 184, 0.68);
+  backdrop-filter: blur(10px);
 }
 
 .auth-card-heading {

@@ -1,0 +1,355 @@
+name: Apply StudyBridge community directory hotfix
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch community directory channels
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+
+          function read(file) { return fs.readFileSync(file, 'utf8'); }
+          function write(file, text) { fs.writeFileSync(file, text); }
+
+          let server = read('server.js');
+          const communityFn = `function communityChannelForUser(user, requestedType = "all", requestedValue = "") {
+            const channelType = String(requestedType || "all").toLowerCase();
+            const profileSchool = String(user.profile?.school || "").trim();
+            const profileMajor = String(user.profile?.major || "").trim();
+            if (channelType === "school") {
+              const school = String(requestedValue || profileSchool).trim().slice(0, 120);
+              const schoolKey = communitySchoolKey(school);
+              if (!schoolKey) throw new Error("Please choose a school community first.");
+              return { type: "school", label: school, key: communityChannelKey("school", school) };
+            }
+            if (channelType === "major") {
+              const major = String(requestedValue || profileMajor).trim().slice(0, 120);
+              const majorKey = communitySchoolKey(major);
+              if (!majorKey) throw new Error("Please choose a major community first.");
+              return { type: "major", label: major, key: communityChannelKey("major", major) };
+            }
+            return { type: "all", label: "StudyBridge", key: "all" };
+          }`;
+
+          server = server.replace(
+            /function communityChannelForUser\(user, requestedType = "all"(?:, requestedValue = "")?\) \{[\s\S]*?\n\}\n\nfunction publicCommunityPost/,
+            `${communityFn}\n\nfunction publicCommunityPost`
+          );
+          server = server.replaceAll(
+            'communityChannelForUser(user, url.searchParams.get("channel") || "all")',
+            'communityChannelForUser(user, url.searchParams.get("channel") || "all", url.searchParams.get("value") || "")'
+          );
+          server = server.replaceAll(
+            'communityChannelForUser(user, body.channel || "all")',
+            'communityChannelForUser(user, body.channel || "all", body.value || "")'
+          );
+          write('server.js', server);
+
+          let layout = read('public/layout-fix.js');
+          layout = layout.replace(/\/school-community-patch\.js\?v=20261005-\d+/g, '/school-community-patch.js?v=20261005-4');
+          write('public/layout-fix.js', layout);
+          NODE
+
+          cat > public/school-community-patch.js <<'JS'
+          (() => {
+            let currentUser = null;
+            let communitySection = null;
+            let activeChannel = "all";
+            let activeValue = "";
+
+            const SCHOOL_LIBRARY = [
+              "University of Toronto", "University of British Columbia", "McGill University", "University of Waterloo", "McMaster University", "University of Alberta", "Queen's University", "Western University", "University of Calgary", "University of Ottawa", "York University", "Simon Fraser University", "University of Victoria", "Dalhousie University", "University of Manitoba", "University of Saskatchewan", "Concordia University", "Toronto Metropolitan University", "Carleton University", "University of Guelph", "Wilfrid Laurier University", "Brock University", "University of Windsor", "Memorial University of Newfoundland", "Centennial College", "George Brown College", "Seneca Polytechnic", "Humber College", "Sheridan College", "Fanshawe College", "MIT", "Harvard University", "Stanford University", "UC Berkeley", "UCLA", "University of Southern California", "New York University", "Columbia University", "University of Pennsylvania", "Cornell University", "Yale University", "Princeton University", "University of Chicago", "Northwestern University", "Duke University", "University of Michigan", "University of Illinois Urbana-Champaign", "University of Texas at Austin", "Georgia Tech", "Carnegie Mellon University", "University of Washington", "Purdue University", "Boston University", "Northeastern University", "Penn State", "Ohio State University", "Arizona State University", "University of Florida", "University of Wisconsin-Madison", "Texas A&M University", "University of California San Diego", "UC Irvine", "UC Davis", "UC Santa Barbara"
+            ];
+
+            const MAJOR_LIBRARY = [
+              "Business", "Commerce", "Finance", "Accounting", "Economics", "Marketing", "Management", "Entrepreneurship", "International Business", "Supply Chain Management", "Engineering", "Computer Engineering", "Electrical Engineering", "Mechanical Engineering", "Civil Engineering", "Chemical Engineering", "Industrial Engineering", "Software Engineering", "Computer Science", "Data Science", "Artificial Intelligence", "Information Systems", "Mathematics", "Statistics", "Actuarial Science", "Physics", "Chemistry", "Biology", "Biochemistry", "Health Sciences", "Nursing", "Public Health", "Psychology", "Sociology", "Political Science", "International Relations", "History", "Philosophy", "English", "Education", "Architecture", "Urban Planning", "Design", "Fine Arts", "Communication", "Journalism", "Media Studies", "Law", "Criminology", "Environmental Science", "Kinesiology", "Hospitality", "Tourism"
+            ];
+
+            function escapeHtml(value) {
+              return String(value ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+            }
+
+            async function api(path, options = {}) {
+              const response = await fetch(path, {
+                method: options.method || "GET",
+                headers: options.body ? { "content-type": "application/json" } : undefined,
+                body: options.body ? JSON.stringify(options.body) : undefined
+              });
+              const payload = await response.json().catch(() => ({}));
+              if (!response.ok) throw new Error(payload.error || "Request failed.");
+              return payload;
+            }
+
+            async function refreshMe() {
+              try {
+                const result = await api("/api/me");
+                currentUser = result.user;
+              } catch {
+                currentUser = null;
+              }
+              return currentUser;
+            }
+
+            function profileSchool() { return currentUser?.profile?.school || ""; }
+            function profileMajor() { return currentUser?.profile?.major || ""; }
+            function optionList() { return activeChannel === "major" ? MAJOR_LIBRARY : SCHOOL_LIBRARY; }
+            function activeLabel() { return activeChannel === "all" ? "StudyBridge" : activeValue || (activeChannel === "major" ? profileMajor() : profileSchool()); }
+
+            function listWithProfileFirst(base, profileValue) {
+              const clean = String(profileValue || "").trim();
+              const set = new Set();
+              const list = [];
+              [clean, ...base].filter(Boolean).forEach((item) => {
+                const key = item.toLowerCase();
+                if (!set.has(key)) { set.add(key); list.push(item); }
+              });
+              return list;
+            }
+
+            function installStyle() {
+              if (document.querySelector("#studybridge-open-community-style")) return;
+              const style = document.createElement("style");
+              style.id = "studybridge-open-community-style";
+              style.textContent = `
+                .school-community-page { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100vh; min-height: 0; background: #f4f6f9; }
+                .school-community-page[hidden] { display: none; }
+                .community-body { display: grid; grid-template-columns: minmax(270px, 380px) minmax(0, 1fr); gap: 18px; min-height: 0; padding: 22px 28px; overflow: auto; }
+                .community-composer, .community-feed-shell { border: 1px solid var(--line); border-radius: 8px; background: white; box-shadow: 0 12px 30px rgba(25, 36, 58, 0.05); }
+                .community-composer { align-self: start; display: grid; gap: 12px; padding: 18px; }
+                .community-composer h3, .community-feed-shell h3 { margin: 0; color: var(--navy); }
+                .community-composer p { margin: 0; color: var(--muted); line-height: 1.45; font-size: 13px; }
+                .community-composer textarea, .community-composer select, .community-directory-search { width: 100%; border: 1px solid var(--line); border-radius: 8px; background: white; }
+                .community-composer textarea { min-height: 150px; resize: vertical; }
+                .community-channel-tabs { display: grid; gap: 8px; }
+                .community-channel-tab { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid #dfe7f1; border-radius: 8px; background: #fbfdff; color: var(--navy); text-align: left; cursor: pointer; }
+                .community-channel-tab.active { border-color: rgba(47, 125, 98, 0.75); box-shadow: inset 3px 0 0 var(--green); }
+                .community-channel-tab strong { display: block; font-size: 13px; }
+                .community-channel-tab span { display: block; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+                .community-directory { display: none; gap: 8px; }
+                .community-directory.active { display: grid; }
+                .community-directory-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 12px; }
+                .community-directory-search { height: 38px; padding: 0 11px; }
+                .community-directory-list { display: grid; gap: 6px; max-height: 220px; overflow: auto; padding-right: 2px; }
+                .community-directory-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 38px; padding: 8px 10px; border: 1px solid #dfe7f1; border-radius: 8px; background: #fbfdff; color: var(--navy); text-align: left; cursor: pointer; }
+                .community-directory-item.active { border-color: rgba(47, 125, 98, 0.8); background: #f0fbf6; }
+                .community-directory-item span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--muted); }
+                .community-feed-shell { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; padding: 18px; }
+                .community-feed-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+                .community-feed { display: grid; gap: 12px; min-height: 0; padding-top: 14px; overflow: auto; }
+                .community-post { display: grid; gap: 10px; padding: 14px; border: 1px solid #dbe3ee; border-radius: 8px; background: #fbfdff; }
+                .community-post-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+                .community-post-head strong { color: var(--navy); }
+                .community-post-meta, .community-tag { color: var(--muted); font-size: 12px; }
+                .community-tag-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+                .community-tag { display: inline-grid; place-items: center; min-height: 24px; padding: 0 8px; border-radius: 999px; background: #eef5ff; color: var(--navy); font-weight: 850; }
+                .community-tag.channel { background: #e9f6ef; color: #1f6f55; }
+                .community-post-content { white-space: pre-wrap; line-height: 1.55; color: #24324b; }
+                .community-post-actions { display: flex; align-items: center; gap: 8px; }
+                .community-message { min-height: 18px; margin: 0; color: var(--muted); font-size: 12px; }
+                @media (max-width: 900px) { .school-community-page { height: auto; min-height: 680px; } .community-body { grid-template-columns: 1fr; padding: 16px; } }
+              `;
+              document.head.appendChild(style);
+            }
+
+            function ensureButton() {
+              const profileEntry = document.querySelector("#openProfilePageButton");
+              if (!profileEntry || document.querySelector("#openSchoolCommunityButton")) return;
+              const button = document.createElement("button");
+              button.id = "openSchoolCommunityButton";
+              button.type = "button";
+              button.className = "community-entry";
+              button.innerHTML = `<span class="community-entry-icon">社</span><span><strong>社区</strong><span id="communityEntrySchool">全部、学校和专业频道</span></span>`;
+              profileEntry.insertAdjacentElement("afterend", button);
+              button.addEventListener("click", showCommunityPage);
+            }
+
+            function ensureCommunityPage() {
+              const workspace = document.querySelector(".workspace");
+              if (!workspace) return;
+              communitySection = document.querySelector("#schoolCommunityPage");
+              if (communitySection) return;
+              communitySection = document.createElement("section");
+              communitySection.id = "schoolCommunityPage";
+              communitySection.className = "school-community-page";
+              communitySection.hidden = true;
+              communitySection.innerHTML = `
+                <header class="topbar"><div><p class="eyebrow">Community</p><h2 id="communityTitle">社区</h2><span id="communitySubtitle">所有人都能浏览，也可以按学校或专业筛选。</span></div><button class="ghost-button" id="backFromCommunityButton" type="button">返回学习区</button></header>
+                <div class="community-body">
+                  <form class="community-composer" id="communityComposer"><h3>发一条动态</h3><p>先选择全部、学校或专业频道。学校和专业只是分类，不属于该学校或专业的人也可以进入查看。</p><div class="community-channel-tabs" id="communityChannelTabs"></div><div class="community-directory" id="communityDirectory"><div class="community-directory-head"><strong id="communityDirectoryTitle">选择频道</strong><span id="communityDirectoryCount"></span></div><input class="community-directory-search" id="communityDirectorySearch" placeholder="搜索学校或专业" autocomplete="off" /><div class="community-directory-list" id="communityDirectoryList"></div></div><select id="communityTopicInput"><option value="问问题">问问题</option><option value="选课建议">选课建议</option><option value="复习搭子">复习搭子</option><option value="Deadline">Deadline</option><option value="资料经验">资料经验</option><option value="校园生活">校园生活</option></select><textarea id="communityContentInput" placeholder="例如：有没有同学上过 ECO101？midterm 复习重点应该怎么抓？"></textarea><label class="check-row"><input id="communityAnonymousInput" type="checkbox" />匿名发布</label><button class="primary-button" type="submit">发布到当前频道</button><p class="community-message" id="communityMessage"></p></form>
+                  <section class="community-feed-shell"><div class="community-feed-head"><div><h3 id="communityFeedTitle">全部动态</h3><span class="community-message" id="communityFeedSubtitle">StudyBridge 全部公开帖子。</span></div><button class="small-button" id="refreshCommunityButton" type="button">刷新</button></div><div class="community-feed" id="communityFeed"></div></section>
+                </div>`;
+              workspace.appendChild(communitySection);
+              communitySection.querySelector("#backFromCommunityButton")?.addEventListener("click", showStudyPage);
+              communitySection.querySelector("#refreshCommunityButton")?.addEventListener("click", loadCommunity);
+              communitySection.querySelector("#communityComposer")?.addEventListener("submit", submitPost);
+              communitySection.querySelector("#communityDirectorySearch")?.addEventListener("input", renderDirectory);
+            }
+
+            function channelOptions() {
+              return [
+                { key: "all", title: "全部社区", subtitle: "所有公开讨论" },
+                { key: "school", title: "学校社区", subtitle: activeChannel === "school" ? activeLabel() || "选择一个学校" : "选择学校频道" },
+                { key: "major", title: "专业社区", subtitle: activeChannel === "major" ? activeLabel() || "选择一个专业" : "选择专业频道" }
+              ];
+            }
+
+            function renderChannelTabs() {
+              const tabs = document.querySelector("#communityChannelTabs");
+              if (!tabs) return;
+              tabs.innerHTML = channelOptions().map((channel) => `<button class="community-channel-tab ${activeChannel === channel.key ? "active" : ""}" type="button" data-community-channel="${channel.key}"><span><strong>${escapeHtml(channel.title)}</strong><span>${escapeHtml(channel.subtitle)}</span></span><span>${activeChannel === channel.key ? "当前" : "切换"}</span></button>`).join("");
+              tabs.querySelectorAll("[data-community-channel]").forEach((button) => button.addEventListener("click", async () => {
+                activeChannel = button.dataset.communityChannel || "all";
+                if (activeChannel === "school" && !activeValue) activeValue = profileSchool() || SCHOOL_LIBRARY[0];
+                if (activeChannel === "major" && (!activeValue || SCHOOL_LIBRARY.includes(activeValue))) activeValue = profileMajor() || MAJOR_LIBRARY[0];
+                if (activeChannel === "all") activeValue = "";
+                renderChannelTabs();
+                renderDirectory();
+                await loadCommunity();
+              }));
+            }
+
+            function renderDirectory() {
+              const directory = document.querySelector("#communityDirectory");
+              if (!directory) return;
+              directory.classList.toggle("active", activeChannel === "school" || activeChannel === "major");
+              if (activeChannel === "all") return;
+              const title = document.querySelector("#communityDirectoryTitle");
+              const count = document.querySelector("#communityDirectoryCount");
+              const search = document.querySelector("#communityDirectorySearch");
+              const list = document.querySelector("#communityDirectoryList");
+              const profileValue = activeChannel === "major" ? profileMajor() : profileSchool();
+              const base = activeChannel === "major" ? MAJOR_LIBRARY : SCHOOL_LIBRARY;
+              const allItems = listWithProfileFirst(base, profileValue);
+              const query = String(search?.value || "").trim().toLowerCase();
+              const filtered = allItems.filter((item) => item.toLowerCase().includes(query)).slice(0, 60);
+              if (title) title.textContent = activeChannel === "major" ? "选择专业社区" : "选择学校社区";
+              if (count) count.textContent = `${filtered.length} 个可选`;
+              if (!list) return;
+              list.innerHTML = filtered.map((item) => `<button class="community-directory-item ${item === activeValue ? "active" : ""}" type="button" data-community-value="${escapeHtml(item)}"><strong>${escapeHtml(item)}</strong><span>${item === profileValue ? "你的 Profile" : "公开频道"}</span></button>`).join("");
+              list.querySelectorAll("[data-community-value]").forEach((button) => button.addEventListener("click", async () => {
+                activeValue = button.dataset.communityValue || "";
+                renderChannelTabs();
+                renderDirectory();
+                await loadCommunity();
+              }));
+            }
+
+            function showStudyPage() {
+              document.querySelector("#profilePage")?.setAttribute("hidden", "");
+              document.querySelector("#schoolCommunityPage")?.setAttribute("hidden", "");
+              const workspacePage = document.querySelector("#workspacePage");
+              if (workspacePage) workspacePage.hidden = false;
+            }
+
+            async function showCommunityPage() {
+              await refreshMe();
+              ensureCommunityPage();
+              renderChannelTabs();
+              renderDirectory();
+              ["#workspacePage", "#profilePage", "#classmatesPage", "#emailReplyPage", "#schedulePage"].forEach((selector) => document.querySelector(selector)?.setAttribute("hidden", ""));
+              const page = document.querySelector("#schoolCommunityPage");
+              if (page) page.hidden = false;
+              await loadCommunity();
+            }
+
+            function channelLabel(post) {
+              if (post.channelType === "school") return post.channelLabel || post.school || "学校频道";
+              if (post.channelType === "major") return post.channelLabel || post.major || "专业频道";
+              return "全部社区";
+            }
+
+            function renderPosts(posts = []) {
+              const feed = document.querySelector("#communityFeed");
+              if (!feed) return;
+              if (!posts.length) { feed.innerHTML = '<p class="empty">这个频道还没有帖子。你可以发第一条。</p>'; return; }
+              feed.innerHTML = posts.map((post) => `<article class="community-post"><div class="community-post-head"><div><strong>${escapeHtml(post.authorName || "StudyBridge 同学")}</strong><div class="community-post-meta">${escapeHtml(new Date(post.createdAt).toLocaleString("zh-CN"))}</div></div><div class="community-tag-row"><span class="community-tag channel">${escapeHtml(channelLabel(post))}</span><span class="community-tag">${escapeHtml(post.topic || "问问题")}</span></div></div><div class="community-post-content">${escapeHtml(post.content || "")}</div><div class="community-post-actions"><button class="small-button" type="button" data-like-community-post="${escapeHtml(post.id)}">${post.likedByMe ? "已赞" : "点赞"}</button><span class="community-post-meta">${Number(post.likeCount || 0)} likes</span></div></article>`).join("");
+              feed.querySelectorAll("[data-like-community-post]").forEach((button) => button.addEventListener("click", async () => { button.disabled = true; try { await api(`/api/community/posts/${button.dataset.likeCommunityPost}/like?channel=${encodeURIComponent(activeChannel)}&value=${encodeURIComponent(activeValue)}`, { method: "PATCH" }); await loadCommunity(); } catch (error) { setMessage(error.message, true); } finally { button.disabled = false; } }));
+            }
+
+            function setMessage(text, isError = false) {
+              const message = document.querySelector("#communityMessage");
+              if (!message) return;
+              message.textContent = text || "";
+              message.style.color = isError ? "var(--red)" : "var(--muted)";
+            }
+
+            function syncTitle(result = {}) {
+              const title = document.querySelector("#communityFeedTitle");
+              const subtitle = document.querySelector("#communityFeedSubtitle");
+              const label = result.channel?.label || activeLabel();
+              if (title) title.textContent = activeChannel === "all" ? "全部动态" : `${label || "频道"} 动态`;
+              if (subtitle) subtitle.textContent = activeChannel === "all" ? "StudyBridge 全部公开帖子。" : "这是公开频道，不在这个学校或专业的人也可以浏览。";
+            }
+
+            async function loadCommunity() {
+              renderChannelTabs();
+              renderDirectory();
+              setMessage("正在加载社区...");
+              try {
+                const result = await api(`/api/community?channel=${encodeURIComponent(activeChannel)}&value=${encodeURIComponent(activeValue)}&t=${Date.now()}`);
+                syncTitle(result);
+                renderPosts(result.posts || []);
+                setMessage(`已加载 ${result.posts?.length || 0} 条帖子。`);
+              } catch (error) {
+                syncTitle();
+                renderPosts([]);
+                setMessage(error.message, true);
+              }
+            }
+
+            async function submitPost(event) {
+              event.preventDefault();
+              const contentInput = document.querySelector("#communityContentInput");
+              const topicInput = document.querySelector("#communityTopicInput");
+              const anonymousInput = document.querySelector("#communityAnonymousInput");
+              const content = contentInput?.value.trim() || "";
+              if (!content) return setMessage("先写一点内容再发布。", true);
+              setMessage("正在发布...");
+              try {
+                await api("/api/community/posts", { method: "POST", body: { channel: activeChannel, value: activeValue, content, topic: topicInput?.value || "问问题", anonymous: Boolean(anonymousInput?.checked) } });
+                if (contentInput) contentInput.value = "";
+                if (anonymousInput) anonymousInput.checked = false;
+                await loadCommunity();
+                setMessage("已发布。");
+              } catch (error) {
+                setMessage(error.message, true);
+              }
+            }
+
+            async function init() { installStyle(); ensureButton(); ensureCommunityPage(); await refreshMe(); renderChannelTabs(); renderDirectory(); }
+            init();
+            setInterval(() => { ensureButton(); ensureCommunityPage(); renderChannelTabs(); renderDirectory(); }, 1200);
+          })();
+          JS
+
+          node --check server.js
+          node --check public/school-community-patch.js
+          node --check public/layout-fix.js
+
+      - name: Commit hotfix
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No hotfix changes needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.js public/school-community-patch.js public/layout-fix.js
+          git commit -m "Add selectable school and major community directories"
+          git push

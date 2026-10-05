@@ -273,10 +273,14 @@ select:focus {
 }
 
 .small-button {
+  display: inline-grid;
+  place-items: center;
+  align-content: center;
   padding: 0 12px;
   border: 1px solid #c8d0dc;
   background: #f8fafc;
   color: var(--navy);
+  line-height: 1;
 }
 
 .ghost-button {
@@ -379,6 +383,14 @@ select:focus {
 .panel-title span {
   color: var(--muted);
   font-size: 12px;
+}
+
+.course-list,
+document-list {
+  display: grid;
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
 }
 
 .course-list,

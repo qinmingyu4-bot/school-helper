@@ -253,6 +253,35 @@ select:focus {
   font-size: 12px;
 }
 
+.role-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.role-switch[hidden] {
+  display: none;
+}
+
+.role-switch-button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 850;
+}
+
+.role-switch-button.active {
+  background: var(--panel);
+  color: var(--navy);
+  box-shadow: 0 6px 16px rgba(25, 36, 58, 0.08);
+}
+
 .panel {
   padding: 14px;
   box-shadow: 0 8px 26px rgba(25, 36, 58, 0.05);

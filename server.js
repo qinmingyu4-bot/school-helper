@@ -19,6 +19,13 @@ const {
 } = require("./lib/security");
 const { StudyBridgeDatabase } = require("./lib/database");
 
+let nodemailer = null;
+try {
+  nodemailer = require("nodemailer");
+} catch {
+  nodemailer = null;
+}
+
 function loadEnvFile(filePath = path.join(__dirname, ".env")) {
   if (!fsSync.existsSync(filePath)) return;
   const lines = fsSync.readFileSync(filePath, "utf8").split(/\r?\n/);
@@ -43,6 +50,8 @@ const db = new StudyBridgeDatabase();
 const publicDir = path.join(__dirname, "public");
 const port = Number(process.env.PORT || 3000);
 const requireInviteCode = process.env.REQUIRE_INVITE_CODE !== "false";
+const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION !== "false";
+const emailCodeTtlMs = Number(process.env.EMAIL_CODE_TTL_MINUTES || 15) * 60 * 1000;
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -162,8 +171,83 @@ function validatePassword(password) {
   return typeof password === "string" && password.length >= 8;
 }
 
+function validatePasswordPair(password, passwordConfirm) {
+  if (!validatePassword(password)) throw new Error("Password must be at least 8 characters.");
+  if (password !== passwordConfirm) throw new Error("The two passwords do not match.");
+}
+
 function compactDocumentText(text) {
   return String(text || "").replace(/\s+/g, " ").trim().slice(0, 12000);
+}
+
+function generateEmailCode() {
+  return String(crypto.randomInt(100000, 1000000));
+}
+
+function emailCodeHash(email, purpose, code) {
+  return hashToken(`${purpose}:${email}:${String(code || "").trim()}`);
+}
+
+function mailSetupMessage() {
+  return "Email sending is not configured yet. Add SMTP_HOST, SMTP_USER, SMTP_PASS, and MAIL_FROM in the server .env file first.";
+}
+
+async function sendEmail({ to, subject, text }) {
+  if (!nodemailer) throw new Error("Email sender is not installed yet. Please wait for the server deploy to finish and try again.");
+  const host = process.env.SMTP_HOST;
+  const portNumber = Number(process.env.SMTP_PORT || 587);
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const from = process.env.MAIL_FROM || process.env.SMTP_FROM || user;
+  if (!host || !from || (user && !pass)) throw new Error(mailSetupMessage());
+
+  const transporter = nodemailer.createTransport({
+    host,
+    port: portNumber,
+    secure: process.env.SMTP_SECURE === "true" || portNumber === 465,
+    auth: user ? { user, pass } : undefined
+  });
+
+  await transporter.sendMail({ from, to, subject, text });
+}
+
+async function issueEmailCode(email, purpose) {
+  const code = generateEmailCode();
+  await db.createAuthCode({
+    email,
+    purpose,
+    codeHash: emailCodeHash(email, purpose, code),
+    expiresAt: Date.now() + emailCodeTtlMs,
+    attempts: 0
+  });
+
+  const action = purpose === "password-reset" ? "reset your StudyBridge password" : "create your StudyBridge account";
+  await sendEmail({
+    to: email,
+    subject: `Your StudyBridge verification code: ${code}`,
+    text: `Your StudyBridge code is ${code}. Use it within ${Math.round(emailCodeTtlMs / 60000)} minutes to ${action}. If you did not request this, you can ignore this email.`
+  });
+}
+
+async function verifyEmailCode(email, purpose, code) {
+  const cleanCode = String(code || "").trim();
+  if (!/^\d{6}$/.test(cleanCode)) throw new Error("Please enter the 6-digit email verification code.");
+  const record = await db.getAuthCode(email, purpose);
+  if (!record) throw new Error("Please send an email verification code first.");
+  if (Number(record.expiresAt || 0) < Date.now()) {
+    await db.deleteAuthCode(email, purpose);
+    throw new Error("The email verification code expired. Please send a new one.");
+  }
+  if (Number(record.attempts || 0) >= 5) throw new Error("Too many incorrect code attempts. Please send a new code.");
+
+  const expected = Buffer.from(String(record.codeHash || ""), "hex");
+  const candidate = Buffer.from(emailCodeHash(email, purpose, cleanCode), "hex");
+  const matches = expected.length === candidate.length && crypto.timingSafeEqual(expected, candidate);
+  if (!matches) {
+    await db.createAuthCode({ ...record, attempts: Number(record.attempts || 0) + 1 });
+    throw new Error("Email verification code is incorrect.");
+  }
+  await db.deleteAuthCode(email, purpose);
 }
 
 function buildStudyPrompt({ user, course, documents, history, mode, message }) {
@@ -238,18 +322,68 @@ async function routeApi(req, res) {
     return sendJson(res, 200, { ok: true, db: process.env.STUDYBRIDGE_DB || "local" });
   }
 
+  if (url.pathname === "/api/auth/send-verification" && method === "POST") {
+    const body = await readJson(req);
+    const email = normalizeEmail(body.email);
+    if (!email.includes("@")) return sendError(res, 400, "Please enter a valid email address first.");
+    if (await db.findUserByEmail(email)) return sendError(res, 409, "This email is already registered.");
+    try {
+      await validateInviteForRegistration(body.inviteCode, email);
+      if (requireEmailVerification) await issueEmailCode(email, "register");
+      return sendJson(res, 200, { ok: true, message: "Verification code sent." });
+    } catch (error) {
+      const status = String(error.message || "").includes("configured") || String(error.message || "").includes("installed") ? 503 : 400;
+      return sendError(res, status, error.message);
+    }
+  }
+
+  if (url.pathname === "/api/auth/request-password-reset" && method === "POST") {
+    const body = await readJson(req);
+    const email = normalizeEmail(body.email);
+    if (!email.includes("@")) return sendError(res, 400, "Please enter a valid email address first.");
+    const user = await db.findUserByEmail(email);
+    try {
+      if (user) await issueEmailCode(email, "password-reset");
+      return sendJson(res, 200, { ok: true, message: "If this email exists, a reset code has been sent." });
+    } catch (error) {
+      const status = String(error.message || "").includes("configured") || String(error.message || "").includes("installed") ? 503 : 400;
+      return sendError(res, status, error.message);
+    }
+  }
+
+  if (url.pathname === "/api/auth/reset-password" && method === "POST") {
+    const body = await readJson(req);
+    const email = normalizeEmail(body.email);
+    const user = await db.findUserByEmail(email);
+    if (!user) return sendError(res, 400, "Email verification code is incorrect or expired.");
+    try {
+      validatePasswordPair(body.password, body.passwordConfirm);
+      await verifyEmailCode(email, "password-reset", body.emailCode);
+      await db.updateUser(user.id, { passwordHash: hashPassword(body.password) });
+      return sendJson(res, 200, { ok: true });
+    } catch (error) {
+      return sendError(res, 400, error.message);
+    }
+  }
+
   if (url.pathname === "/api/auth/register" && method === "POST") {
     const body = await readJson(req);
     const email = normalizeEmail(body.email);
     const name = String(body.name || "").trim().slice(0, 80);
-    if (!name || !email.includes("@") || !validatePassword(body.password)) {
-      return sendError(res, 400, "Please provide name, valid email, and password with at least 8 characters.");
+    try {
+      validatePasswordPair(body.password, body.passwordConfirm);
+    } catch (error) {
+      return sendError(res, 400, error.message);
+    }
+    if (!name || !email.includes("@")) {
+      return sendError(res, 400, "Please provide name and valid email.");
     }
     if (await db.findUserByEmail(email)) return sendError(res, 409, "This email is already registered.");
 
     let inviteGrant;
     try {
       inviteGrant = await validateInviteForRegistration(body.inviteCode, email);
+      if (requireEmailVerification) await verifyEmailCode(email, "register", body.emailCode);
     } catch (error) {
       return sendError(res, 403, error.message);
     }

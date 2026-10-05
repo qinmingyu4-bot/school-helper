@@ -43,9 +43,9 @@ button {
 .auth-panel {
   display: grid;
   min-height: 100vh;
+  place-items: center;
   align-content: center;
-  gap: 24px;
-  width: min(980px, calc(100% - 32px));
+  width: min(520px, calc(100% - 32px));
   margin: 0 auto;
   padding: 32px 0;
 }
@@ -114,6 +114,19 @@ h1 {
   gap: 14px;
   width: min(460px, 100%);
   padding: 22px;
+}
+
+.auth-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 4px;
+}
+
+.auth-card-heading h1 {
+  margin: 2px 0 0;
+  font-size: 26px;
+  line-height: 1.15;
 }
 
 .tabs {

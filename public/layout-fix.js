@@ -65,5 +65,6 @@
   loadScriptOnce("/school-autocomplete.js?v=20261005-1");
   loadScriptOnce("/admin-console-patch.js?v=20261005-1");
   loadScriptOnce("/profile-onboarding-patch.js?v=20261005-1");
+  loadScriptOnce("/school-datalist-patch.js?v=20261005-1");
   setInterval(installCreatorLayoutFix, 1000);
 })();

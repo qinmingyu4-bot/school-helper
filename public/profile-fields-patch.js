@@ -109,13 +109,40 @@
     }
   }
 
+  async function saveProfile(event) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const form = $("#profileForm");
+    const message = $("#profileMessage");
+    if (message) message.textContent = "正在保存...";
+    try {
+      const result = await api("/api/me/profile", {
+        method: "PUT",
+        body: {
+          name: $("#profileNameInput")?.value || "",
+          school: $("#schoolInput")?.value || "",
+          major: $("#majorInput")?.value || "",
+          sbId: $("#sbIdInput")?.value || "",
+          avatarUrl: $("#avatarUrlInput")?.value || "",
+          backgroundUrl: $("#backgroundUrlInput")?.value || ""
+        }
+      });
+      renderUser(result.user);
+      if ($("#profileName")) $("#profileName").textContent = result.user.name || "StudyBridge user";
+      if ($("#profileSchool")) $("#profileSchool").textContent = result.user.profile?.school || "添加学校后，AI 会更懂你的学习环境。";
+      if ($("#userLine")) $("#userLine").textContent = `${result.user.name} | ${result.user.email}`;
+      if (form) form.hidden = true;
+      if (message) message.textContent = "已保存";
+    } catch (error) {
+      if (message) message.textContent = error.message;
+    }
+  }
+
   function installSubmitSync() {
     const form = $("#profileForm");
     if (!form || form.dataset.profileFieldsPatch === "true") return;
     form.dataset.profileFieldsPatch = "true";
-    form.addEventListener("submit", () => {
-      setTimeout(refreshProfile, 300);
-    });
+    form.addEventListener("submit", saveProfile, true);
   }
 
   function boot() {

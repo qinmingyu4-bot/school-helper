@@ -58,6 +58,7 @@ const publicDir = path.join(__dirname, "public");
 const port = Number(process.env.PORT || 3000);
 const requireInviteCode = process.env.REQUIRE_INVITE_CODE !== "false";
 const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION !== "false";
+const allowEmailCodeFallback = process.env.ALLOW_EMAIL_CODE_FALLBACK !== "false";
 const emailCodeTtlMs = Number(process.env.EMAIL_CODE_TTL_MINUTES || 15) * 60 * 1000;
 const maxJsonBytes = 16 * 1024 * 1024;
 const maxPdfBytes = 8 * 1024 * 1024;
@@ -236,6 +237,11 @@ function mailSetupMessage() {
   return "Email sending is not configured yet. Add SMTP_HOST, SMTP_USER, SMTP_PASS, and MAIL_FROM in the server .env file first.";
 }
 
+function isEmailSetupError(error) {
+  const message = String(error?.message || "");
+  return message.includes("configured") || message.includes("installed");
+}
+
 async function sendEmail({ to, subject, text }) {
   if (!nodemailer) throw new Error("Email sender is not installed yet. Please wait for the server deploy to finish and try again.");
   const host = process.env.SMTP_HOST;
@@ -266,11 +272,24 @@ async function issueEmailCode(email, purpose) {
   });
 
   const action = purpose === "password-reset" ? "reset your StudyBridge password" : "create your StudyBridge account";
-  await sendEmail({
-    to: email,
-    subject: `Your StudyBridge verification code: ${code}`,
-    text: `Your StudyBridge code is ${code}. Use it within ${Math.round(emailCodeTtlMs / 60000)} minutes to ${action}. If you did not request this, you can ignore this email.`
-  });
+  try {
+    await sendEmail({
+      to: email,
+      subject: `Your StudyBridge verification code: ${code}`,
+      text: `Your StudyBridge code is ${code}. Use it within ${Math.round(emailCodeTtlMs / 60000)} minutes to ${action}. If you did not request this, you can ignore this email.`
+    });
+    return { sent: true };
+  } catch (error) {
+    if (allowEmailCodeFallback && isEmailSetupError(error)) {
+      console.warn(`Email delivery is not configured. Showing temporary verification code for ${email}.`);
+      return {
+        sent: false,
+        fallbackCode: code,
+        message: "Email sending is not configured yet, so a temporary verification code is shown on this page."
+      };
+    }
+    throw error;
+  }
 }
 
 async function verifyEmailCode(email, purpose, code) {
@@ -373,10 +392,15 @@ async function routeApi(req, res) {
     if (await db.findUserByEmail(email)) return sendError(res, 409, "This email is already registered.");
     try {
       await validateInviteForRegistration(body.inviteCode, email);
-      if (requireEmailVerification) await issueEmailCode(email, "register");
-      return sendJson(res, 200, { ok: true, message: "Verification code sent." });
+      const verification = requireEmailVerification ? await issueEmailCode(email, "register") : { sent: false };
+      return sendJson(res, 200, {
+        ok: true,
+        message: verification.message || "Verification code sent.",
+        emailCode: verification.fallbackCode || "",
+        emailDelivery: verification.sent ? "email" : verification.fallbackCode ? "page" : "disabled"
+      });
     } catch (error) {
-      const status = String(error.message || "").includes("configured") || String(error.message || "").includes("installed") ? 503 : 400;
+      const status = isEmailSetupError(error) ? 503 : 400;
       return sendError(res, status, error.message);
     }
   }
@@ -387,10 +411,15 @@ async function routeApi(req, res) {
     if (!email.includes("@")) return sendError(res, 400, "Please enter a valid email address first.");
     const user = await db.findUserByEmail(email);
     try {
-      if (user) await issueEmailCode(email, "password-reset");
-      return sendJson(res, 200, { ok: true, message: "If this email exists, a reset code has been sent." });
+      const verification = user ? await issueEmailCode(email, "password-reset") : { sent: false };
+      return sendJson(res, 200, {
+        ok: true,
+        message: verification.message || "If this email exists, a reset code has been sent.",
+        emailCode: verification.fallbackCode || "",
+        emailDelivery: verification.sent ? "email" : verification.fallbackCode ? "page" : "disabled"
+      });
     } catch (error) {
-      const status = String(error.message || "").includes("configured") || String(error.message || "").includes("installed") ? 503 : 400;
+      const status = isEmailSetupError(error) ? 503 : 400;
       return sendError(res, status, error.message);
     }
   }

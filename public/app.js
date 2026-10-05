@@ -12,6 +12,8 @@ const state = {
 
 const authPanel = document.querySelector("#authPanel");
 const appShell = document.querySelector("#appShell");
+const workspacePage = document.querySelector("#workspacePage");
+const profilePage = document.querySelector("#profilePage");
 const authForm = document.querySelector("#authForm");
 const authMessage = document.querySelector("#authMessage");
 const authSubmit = document.querySelector("#authSubmit");
@@ -29,6 +31,25 @@ const sendEmailCodeButton = document.querySelector("#sendEmailCodeButton");
 const forgotPasswordButton = document.querySelector("#forgotPasswordButton");
 const userLine = document.querySelector("#userLine");
 const logoutButton = document.querySelector("#logoutButton");
+const openProfilePageButton = document.querySelector("#openProfilePageButton");
+const backToStudyButton = document.querySelector("#backToStudyButton");
+const profileCover = document.querySelector("#profileCover");
+const profileAvatar = document.querySelector("#profileAvatar");
+const profileName = document.querySelector("#profileName");
+const profileSchool = document.querySelector("#profileSchool");
+const profilePreviewCover = document.querySelector("#profilePreviewCover");
+const profilePreviewAvatar = document.querySelector("#profilePreviewAvatar");
+const profilePreviewName = document.querySelector("#profilePreviewName");
+const profilePreviewSchool = document.querySelector("#profilePreviewSchool");
+const profileForm = document.querySelector("#profileForm");
+const profileNameInput = document.querySelector("#profileNameInput");
+const schoolInput = document.querySelector("#schoolInput");
+const avatarUrlInput = document.querySelector("#avatarUrlInput");
+const backgroundUrlInput = document.querySelector("#backgroundUrlInput");
+const avatarFileInput = document.querySelector("#avatarFileInput");
+const backgroundFileInput = document.querySelector("#backgroundFileInput");
+const clearProfileImagesButton = document.querySelector("#clearProfileImagesButton");
+const profileMessage = document.querySelector("#profileMessage");
 const addCourseButton = document.querySelector("#addCourseButton");
 const courseList = document.querySelector("#courseList");
 const activeCourseTitle = document.querySelector("#activeCourseTitle");
@@ -36,6 +57,8 @@ const statusLine = document.querySelector("#statusLine");
 const documentInput = document.querySelector("#documentInput");
 const documentTitleInput = document.querySelector("#documentTitleInput");
 const saveDocumentButton = document.querySelector("#saveDocumentButton");
+const documentFileInput = document.querySelector("#documentFileInput");
+const uploadDocumentButton = document.querySelector("#uploadDocumentButton");
 const documentList = document.querySelector("#documentList");
 const documentCount = document.querySelector("#documentCount");
 const chatArea = document.querySelector("#chatArea");
@@ -66,8 +89,21 @@ document.querySelectorAll("[data-auth-mode]").forEach((button) => {
   button.addEventListener("click", () => setAuthMode(button.dataset.authMode));
 });
 
+document.querySelectorAll("[data-quick-prompt]").forEach((button) => {
+  button.addEventListener("click", () => {
+    messageInput.value = button.dataset.quickPrompt || "";
+    messageInput.focus();
+  });
+});
+
 forgotPasswordButton?.addEventListener("click", () => setAuthMode("reset"));
 sendEmailCodeButton?.addEventListener("click", sendEmailCode);
+openProfilePageButton?.addEventListener("click", showProfilePage);
+backToStudyButton?.addEventListener("click", showStudyPage);
+clearProfileImagesButton?.addEventListener("click", clearProfileImages);
+avatarFileInput?.addEventListener("change", () => previewProfileImage(avatarFileInput, avatarUrlInput));
+backgroundFileInput?.addEventListener("change", () => previewProfileImage(backgroundFileInput, backgroundUrlInput));
+uploadDocumentButton?.addEventListener("click", uploadDocumentFile);
 
 authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -89,20 +125,14 @@ authForm.addEventListener("submit", async (event) => {
     };
 
     if (state.authMode === "reset") {
-      await api("/api/auth/reset-password", {
-        method: "POST",
-        body: payload
-      });
+      await api("/api/auth/reset-password", { method: "POST", body: payload });
       authForm.reset();
       setAuthMode("login");
       authMessage.textContent = "密码已更新，请用新密码登录。";
       return;
     }
 
-    const result = await api(`/api/auth/${state.authMode}`, {
-      method: "POST",
-      body: payload
-    });
+    const result = await api(`/api/auth/${state.authMode}`, { method: "POST", body: payload });
     state.user = result.user;
     authMessage.textContent = state.authMode === "register" ? "注册成功，正在进入 StudyBridge..." : "登录成功，正在进入 StudyBridge...";
     authForm.reset();
@@ -133,10 +163,7 @@ async function sendEmailCode() {
     const path = state.authMode === "reset" ? "/api/auth/request-password-reset" : "/api/auth/send-verification";
     await api(path, {
       method: "POST",
-      body: {
-        email,
-        inviteCode: inviteInput.value
-      }
+      body: { email, inviteCode: inviteInput.value }
     });
     authMessage.textContent = "验证码已发送，请查看邮箱。";
     startCodeCooldown(45);
@@ -173,8 +200,8 @@ logoutButton.addEventListener("click", async () => {
   showAuth();
 });
 
-studentViewButton.addEventListener("click", () => setWorkspaceMode("student"));
-creatorViewButton.addEventListener("click", () => setWorkspaceMode("creator"));
+studentViewButton.addEventListener("click", () => requestWorkspaceMode("student"));
+creatorViewButton.addEventListener("click", () => requestWorkspaceMode("creator"));
 
 addCourseButton.addEventListener("click", async () => {
   const name = prompt("课程名称，例如 MAT223H1F");
@@ -190,7 +217,7 @@ saveDocumentButton.addEventListener("click", async () => {
   const course = activeCourse();
   if (!course) return setStatus("请先创建或选择一门课程。");
   const text = documentInput.value.trim();
-  if (!text) return setStatus("先粘贴一点课程资料。");
+  if (!text) return setStatus("先粘贴一点课程资料，或直接上传 PDF/文本文件。");
   saveDocumentButton.disabled = true;
   try {
     const title = documentTitleInput.value.trim() || `Course note ${state.documents.length + 1}`;
@@ -211,11 +238,70 @@ saveDocumentButton.addEventListener("click", async () => {
   }
 });
 
+async function uploadDocumentFile() {
+  const course = activeCourse();
+  if (!course) return setStatus("请先创建或选择一门课程。");
+  const file = documentFileInput.files?.[0];
+  if (!file) return setStatus("请先选择一个 PDF 或文本文件。");
+  if (file.size > 8 * 1024 * 1024) return setStatus("文件太大了，请上传 8 MB 以下的文件。");
+
+  uploadDocumentButton.disabled = true;
+  try {
+    const fileName = file.name || "Uploaded file";
+    const isPdf = file.type === "application/pdf" || fileName.toLowerCase().endsWith(".pdf");
+    const payload = {
+      title: documentTitleInput.value.trim() || fileName,
+      fileName,
+      fileType: file.type,
+      type: isPdf ? "PDF" : detectType(fileName)
+    };
+    if (isPdf) {
+      payload.fileData = await readFileAsDataUrl(file);
+    } else {
+      payload.text = await file.text();
+      payload.type = detectType(payload.text || fileName);
+    }
+    const result = await api(`/api/courses/${course.id}/documents`, { method: "POST", body: payload });
+    state.documents.unshift(result.document);
+    documentFileInput.value = "";
+    documentTitleInput.value = "";
+    renderDocuments();
+    setStatus(isPdf ? "PDF 已上传并保存到云端。" : "文件内容已保存到云端。");
+    await maybeRefreshAdmin();
+  } catch (error) {
+    setStatus(error.message);
+  } finally {
+    uploadDocumentButton.disabled = false;
+  }
+}
+
 [englishTermsToggle, englishAnswersToggle, chineseExplanationsToggle, customInstructionInput].forEach((control) => {
   control.addEventListener("change", savePreferences);
   control.addEventListener("input", () => {
     preferenceStatus.textContent = "Editing";
   });
+});
+
+profileForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  profileMessage.textContent = "";
+  try {
+    const result = await api("/api/me/profile", {
+      method: "PUT",
+      body: {
+        name: profileNameInput.value,
+        school: schoolInput.value,
+        avatarUrl: avatarUrlInput.value,
+        backgroundUrl: backgroundUrlInput.value
+      }
+    });
+    state.user = result.user;
+    renderProfile();
+    syncSchoolPreference();
+    profileMessage.textContent = "已保存。AI 会用你的学校信息来辅助回答。";
+  } catch (error) {
+    profileMessage.textContent = error.message;
+  }
 });
 
 chatForm.addEventListener("submit", async (event) => {
@@ -282,7 +368,8 @@ async function boot() {
 async function enterApp() {
   authPanel.hidden = true;
   appShell.hidden = false;
-  userLine.textContent = `${state.user.name} | ${state.user.email}`;
+  showStudyPage();
+  renderProfile();
   renderPreferences();
   await loadCourses();
   if (!state.courses.length) {
@@ -305,6 +392,27 @@ function showAuth() {
   passwordConfirmInput.value = "";
   emailCodeInput.value = "";
   setAuthMode("login");
+}
+
+function showProfilePage() {
+  workspacePage.hidden = true;
+  profilePage.hidden = false;
+  renderProfileForm();
+}
+
+function showStudyPage() {
+  profilePage.hidden = true;
+  workspacePage.hidden = false;
+}
+
+function requestWorkspaceMode(mode) {
+  const nextMode = mode === "creator" && state.user?.role === "admin" ? "creator" : "student";
+  if ((localStorage.getItem("studybridgeWorkspaceMode") || "student") !== nextMode) {
+    localStorage.setItem("studybridgeWorkspaceMode", nextMode);
+    window.location.reload();
+    return;
+  }
+  setWorkspaceMode(nextMode);
 }
 
 async function setWorkspaceMode(mode) {
@@ -388,6 +496,97 @@ async function maybeRefreshAdmin() {
   if (state.user?.role === "admin") await loadAdminOverview();
 }
 
+function renderProfile() {
+  const profile = state.user?.profile || {};
+  const name = state.user?.name || "StudyBridge user";
+  const school = profile.school || "添加学校后，AI 会更懂你的学习环境。";
+  const initials = name.trim().slice(0, 1).toUpperCase() || "你";
+  userLine.textContent = `${name} | ${state.user.email}`;
+  profileName.textContent = name;
+  profileSchool.textContent = school;
+  profilePreviewName.textContent = name;
+  profilePreviewSchool.textContent = profile.school || "还没有填写学校。";
+  setImage(profileAvatar, profile.avatarUrl, initials);
+  setImage(profilePreviewAvatar, profile.avatarUrl, initials);
+  setBackground(profileCover, profile.backgroundUrl);
+  setBackground(profilePreviewCover, profile.backgroundUrl);
+}
+
+function renderProfileForm() {
+  const profile = state.user?.profile || {};
+  profileNameInput.value = state.user?.name || "";
+  schoolInput.value = profile.school || "";
+  avatarUrlInput.value = profile.avatarUrl || "";
+  backgroundUrlInput.value = profile.backgroundUrl || "";
+  avatarFileInput.value = "";
+  backgroundFileInput.value = "";
+  profileMessage.textContent = "";
+}
+
+async function previewProfileImage(fileInput, targetInput) {
+  const file = fileInput.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    profileMessage.textContent = "请选择图片文件。";
+    fileInput.value = "";
+    return;
+  }
+  if (file.size > 1500 * 1024) {
+    profileMessage.textContent = "图片太大了，请选择 1.5 MB 以下的图片。";
+    fileInput.value = "";
+    return;
+  }
+  targetInput.value = await readFileAsDataUrl(file);
+  const draftProfile = {
+    ...(state.user?.profile || {}),
+    avatarUrl: avatarUrlInput.value,
+    backgroundUrl: backgroundUrlInput.value,
+    school: schoolInput.value
+  };
+  const name = profileNameInput.value || state.user?.name || "StudyBridge user";
+  const initials = name.trim().slice(0, 1).toUpperCase() || "你";
+  setImage(profilePreviewAvatar, draftProfile.avatarUrl, initials);
+  setBackground(profilePreviewCover, draftProfile.backgroundUrl);
+}
+
+function clearProfileImages() {
+  avatarUrlInput.value = "";
+  backgroundUrlInput.value = "";
+  avatarFileInput.value = "";
+  backgroundFileInput.value = "";
+  const initials = (profileNameInput.value || state.user?.name || "你").trim().slice(0, 1).toUpperCase() || "你";
+  setImage(profilePreviewAvatar, "", initials);
+  setBackground(profilePreviewCover, "");
+  profileMessage.textContent = "图片已清空，点击保存后生效。";
+}
+
+function setImage(element, imageUrl, fallbackText) {
+  if (!element) return;
+  element.textContent = imageUrl ? "" : fallbackText;
+  element.style.backgroundImage = imageUrl ? `url("${imageUrl}")` : "";
+}
+
+function setBackground(element, imageUrl) {
+  if (!element) return;
+  element.style.backgroundImage = imageUrl ? `url("${imageUrl}")` : "";
+}
+
+function syncSchoolPreference() {
+  const marker = "[StudyBridge personal profile]";
+  const profile = state.user?.profile || {};
+  const base = customInstructionInput.value.split(marker)[0].trim();
+  const lines = [];
+  if (state.user?.name) lines.push(`Student preferred name: ${state.user.name}.`);
+  if (profile.school) {
+    lines.push(`Student school: ${profile.school}. When useful, tailor examples, terminology, academic expectations, campus context, and course-planning advice to this school.`);
+  }
+  const next = lines.length ? `${base}${base ? "\n\n" : ""}${marker}\n${lines.join("\n")}` : base;
+  if (customInstructionInput.value !== next) {
+    customInstructionInput.value = next;
+    savePreferences().catch(() => {});
+  }
+}
+
 function renderCourses() {
   if (!state.courses.length) {
     courseList.innerHTML = '<p class="empty">还没有课程。</p>';
@@ -434,7 +633,7 @@ function renderCourses() {
 function renderDocuments() {
   documentCount.textContent = String(state.documents.length);
   if (!state.documents.length) {
-    documentList.innerHTML = '<p class="empty">还没有云端课程资料。先粘贴 syllabus 或 lecture notes。</p>';
+    documentList.innerHTML = '<p class="empty">还没有云端课程资料。可以粘贴 syllabus，或直接上传 PDF。</p>';
     return;
   }
   documentList.innerHTML = state.documents
@@ -590,13 +789,22 @@ function setStatus(text) {
 }
 
 function detectType(text) {
-  const lower = text.toLowerCase();
+  const lower = String(text || "").toLowerCase();
   if (/syllabus|course schedule|office hours|learning outcomes/.test(lower)) return "Syllabus";
   if (/deadline|due date|calendar|weekly schedule/.test(lower)) return "Schedule";
   if (/rubric|grading|criteria|points/.test(lower)) return "Rubric";
   if (/midterm|final|exam|quiz|practice test/.test(lower)) return "Exam material";
   if (/lecture|slides|reading|chapter|module/.test(lower)) return "Lecture notes";
   return "Note";
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("文件读取失败，请重试。"));
+    reader.readAsDataURL(file);
+  });
 }
 
 async function api(path, options = {}) {

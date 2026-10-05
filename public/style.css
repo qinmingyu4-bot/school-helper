@@ -382,7 +382,7 @@ select:focus {
 }
 
 .course-list,
-document-list {
+.document-list {
   display: grid;
   gap: 8px;
   max-height: 220px;

@@ -159,6 +159,30 @@ function communitySchoolKey(school) {
     .slice(0, 90);
 }
 
+function communityChannelKey(type, value = "") {
+  const channelType = String(type || "all").toLowerCase();
+  if (channelType === "school") return `school:${communitySchoolKey(value)}`;
+  if (channelType === "major") return `major:${communitySchoolKey(value)}`;
+  return "all";
+}
+
+function communityChannelForUser(user, requestedType = "all") {
+  const channelType = String(requestedType || "all").toLowerCase();
+  if (channelType === "school") {
+    const school = String(user.profile?.school || "").trim();
+    const schoolKey = communitySchoolKey(school);
+    if (!schoolKey) throw new Error("Please fill in your school in Profile first.");
+    return { type: "school", label: school, key: communityChannelKey("school", school) };
+  }
+  if (channelType === "major") {
+    const major = String(user.profile?.major || "").trim();
+    const majorKey = communitySchoolKey(major);
+    if (!majorKey) throw new Error("Please fill in your major in Profile first.");
+    return { type: "major", label: major, key: communityChannelKey("major", major) };
+  }
+  return { type: "all", label: "StudyBridge", key: "all" };
+}
+
 function publicCommunityPost(post, viewer) {
   const likes = Array.isArray(post.likes) ? post.likes : [];
   const anonymous = post.anonymous === true;
@@ -166,6 +190,10 @@ function publicCommunityPost(post, viewer) {
     id: post.id,
     school: post.school || "",
     schoolKey: post.schoolKey || "",
+    major: post.major || "",
+    channelType: post.channelType || (post.schoolKey ? "school" : "all"),
+    channelKey: post.channelKey || post.schoolKey || "all",
+    channelLabel: post.channelLabel || post.school || "StudyBridge",
     topic: post.topic || "问问题",
     content: post.content || "",
     anonymous,
@@ -705,6 +733,72 @@ async function routeApi(req, res) {
     const updated = await db.updateUser(user.id, { name, profile });
     return sendJson(res, 200, { user: publicUser(withEffectiveRole(updated)) });
   }
+
+  if (url.pathname === "/api/community" && method === "GET") {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  let channel;
+  try {
+    channel = communityChannelForUser(user, url.searchParams.get("channel") || "all");
+  } catch (error) {
+    return sendError(res, 400, error.message);
+  }
+  const posts = await db.listCommunityPosts(channel.key);
+  return sendJson(res, 200, {
+    channel,
+    school: String(user.profile?.school || "").trim(),
+    major: String(user.profile?.major || "").trim(),
+    posts: posts.map((post) => publicCommunityPost(post, user))
+  });
+}
+
+if (url.pathname === "/api/community/posts" && method === "POST") {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  const body = await readJson(req);
+  let channel;
+  try {
+    channel = communityChannelForUser(user, body.channel || "all");
+  } catch (error) {
+    return sendError(res, 400, error.message);
+  }
+  const content = String(body.content || "").trim().slice(0, 1600);
+  const topic = String(body.topic || "Question").trim().slice(0, 40);
+  if (content.length < 3) return sendError(res, 400, "Post content is too short.");
+  const school = String(user.profile?.school || "").trim();
+  const major = String(user.profile?.major || "").trim();
+  const post = await db.createCommunityPost({
+    id: createId("post"),
+    school,
+    schoolKey: communitySchoolKey(school),
+    major,
+    channelType: channel.type,
+    channelKey: channel.key,
+    channelLabel: channel.label,
+    topic,
+    content,
+    anonymous: body.anonymous === true,
+    userId: user.id,
+    authorName: user.name,
+    authorRole: user.role || "student"
+  });
+  return sendJson(res, 201, { post: publicCommunityPost(post, user) });
+}
+
+const openCommunityLikeMatch = url.pathname.match(/^\/api\/community\/posts\/([^/]+)\/like$/);
+if (openCommunityLikeMatch && method === "PATCH") {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  let channel;
+  try {
+    channel = communityChannelForUser(user, url.searchParams.get("channel") || "all");
+  } catch (error) {
+    return sendError(res, 400, error.message);
+  }
+  const post = await db.toggleCommunityPostLike(channel.key, openCommunityLikeMatch[1], user.id);
+  if (!post) return sendError(res, 404, "Community post not found.");
+  return sendJson(res, 200, { post: publicCommunityPost(post, user) });
+}
 
   if (url.pathname === "/api/community/school" && method === "GET") {
     const user = await requireUser(req, res);

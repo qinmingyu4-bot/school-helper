@@ -104,6 +104,14 @@ function createInviteCode() {
   return `SB-${crypto.randomBytes(3).toString("hex").toUpperCase()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
 }
 
+function createTemporaryPassword() {
+  return `SB-${crypto.randomBytes(4).toString("hex").toUpperCase()}-${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
+}
+
+function isResetRequest(invite) {
+  return invite?.kind === "passwordReset";
+}
+
 function publicInvite(invite) {
   return {
     id: invite.id,
@@ -114,6 +122,19 @@ function publicInvite(invite) {
     active: invite.active !== false,
     createdAt: invite.createdAt,
     updatedAt: invite.updatedAt
+  };
+}
+
+function publicResetRequest(request) {
+  return {
+    id: request.id,
+    email: request.email || "",
+    name: request.requestName || request.label || "Student",
+    userId: request.userId || "",
+    status: request.status || (request.active === false ? "completed" : "pending"),
+    createdAt: request.createdAt,
+    updatedAt: request.updatedAt,
+    completedAt: request.completedAt || ""
   };
 }
 
@@ -405,6 +426,36 @@ async function routeApi(req, res) {
     }
   }
 
+  if (url.pathname === "/api/auth/request-manual-reset" && method === "POST") {
+    const body = await readJson(req);
+    const email = normalizeEmail(body.email);
+    if (!email.includes("@")) return sendError(res, 400, "Please enter a valid email address first.");
+    const user = await db.findUserByEmail(email);
+    if (user) {
+      const existingRequests = (await db.listInvites()).filter(
+        (item) => isResetRequest(item) && item.email === email && (item.status || "pending") === "pending"
+      );
+      if (!existingRequests.length) {
+        await db.createInvite({
+          id: createId("reset"),
+          code: `RESET-${crypto.randomBytes(5).toString("hex").toUpperCase()}`,
+          kind: "passwordReset",
+          label: `Password reset for ${user.name}`,
+          email,
+          userId: user.id,
+          requestName: user.name,
+          status: "pending",
+          maxUses: 1,
+          createdBy: "student-request"
+        });
+      }
+    }
+    return sendJson(res, 200, {
+      ok: true,
+      message: "如果这个邮箱已经注册，创作者会在开发者端看到重置申请。请联系创作者领取临时密码。"
+    });
+  }
+
   if (url.pathname === "/api/auth/request-password-reset" && method === "POST") {
     const body = await readJson(req);
     const email = normalizeEmail(body.email);
@@ -536,9 +587,11 @@ async function routeApi(req, res) {
         stats: await db.getUserStats(user.id)
       }))
     );
+    const resetRequests = invites.filter(isResetRequest).map(publicResetRequest);
     return sendJson(res, 200, {
       users: usersWithStats,
-      invites: invites.map(publicInvite),
+      invites: invites.filter((invite) => !isResetRequest(invite)).map(publicInvite),
+      resetRequests,
       creator: publicUser(admin)
     });
   }
@@ -556,6 +609,26 @@ async function routeApi(req, res) {
       createdBy: admin.id
     });
     return sendJson(res, 201, { invite: publicInvite(invite) });
+  }
+
+  const resetMatch = url.pathname.match(/^\/api\/admin\/password-resets\/([^/]+)$/);
+  if (resetMatch && method === "POST") {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+    const request = (await db.listInvites()).find((item) => item.id === resetMatch[1] && isResetRequest(item));
+    if (!request) return sendError(res, 404, "Password reset request not found.");
+    if ((request.status || "pending") !== "pending") return sendError(res, 400, "This request has already been completed.");
+    const user = request.userId ? await db.getUser(request.userId) : await db.findUserByEmail(request.email);
+    if (!user) return sendError(res, 404, "Student account not found.");
+    const temporaryPassword = createTemporaryPassword();
+    await db.updateUser(user.id, { passwordHash: hashPassword(temporaryPassword) });
+    const updated = await db.updateInvite(request.id, {
+      active: false,
+      status: "completed",
+      completedAt: new Date().toISOString(),
+      completedBy: admin.id
+    });
+    return sendJson(res, 200, { temporaryPassword, resetRequest: publicResetRequest(updated || request) });
   }
 
   const inviteMatch = url.pathname.match(/^\/api\/admin\/invites\/([^/]+)$/);

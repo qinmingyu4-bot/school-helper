@@ -59,6 +59,10 @@
         display: none !important;
       }
 
+      body.study-sidebar-hidden:not(.creator-clean-mode) .sidebar > .panel {
+        display: none !important;
+      }
+
       body.creator-clean-mode #workspacePage {
         display: block !important;
         overflow: auto !important;
@@ -233,6 +237,25 @@
     document.body.classList.toggle("creator-clean-mode", Boolean(developerPanel && !developerPanel.hidden));
   }
 
+  function syncStudySidebarPanels() {
+    const workspacePage = document.querySelector("#workspacePage");
+    const appShell = document.querySelector("#appShell");
+    const developerPanel = document.querySelector("#developerPanel");
+    const secondaryPageOpen = ["#profilePage", "#schoolCommunityPage", "#classmatesPage", "#emailReplyPage", "#schedulePage"].some((selector) => {
+      const page = document.querySelector(selector);
+      return Boolean(page && !page.hidden);
+    });
+    const inStudyArea = Boolean(
+      appShell &&
+        !appShell.hidden &&
+        workspacePage &&
+        !workspacePage.hidden &&
+        !secondaryPageOpen &&
+        !(developerPanel && !developerPanel.hidden)
+    );
+    document.body.classList.toggle("study-sidebar-hidden", !inStudyArea);
+  }
+
   function loadScriptOnce(src) {
     const cleanSrc = src.split("?")[0];
     if (document.querySelector(`script[src^="${cleanSrc}"]`)) return;
@@ -245,6 +268,7 @@
   installCreatorLayoutFix();
   ensureStudyEntry();
   syncCreatorCleanMode();
+  syncStudySidebarPanels();
   loadScriptOnce("/school-autocomplete.js?v=20261005-1");
   loadScriptOnce("/admin-console-patch.js?v=20261005-1");
   loadScriptOnce("/profile-onboarding-patch.js?v=20261005-1");
@@ -264,5 +288,6 @@
     installCreatorLayoutFix();
     ensureStudyEntry();
     syncCreatorCleanMode();
+    syncStudySidebarPanels();
   }, 1000);
 })();

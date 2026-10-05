@@ -4,8 +4,11 @@
   const SOURCE_PREFIX = "[SCHEDULE_SOURCE]";
   let page = null;
   let button = null;
+  let dashboard = null;
   let scheduleCourse = null;
   let scheduleItems = [];
+  let loadingSchedule = false;
+  let lastScheduleLoadAt = 0;
 
   async function api(path, options = {}) {
     const response = await fetch(path, {
@@ -75,6 +78,85 @@
       .schedule-entry span {
         color: var(--muted);
         font-size: 12px;
+      }
+
+      #workspacePage {
+        grid-template-rows: auto auto auto minmax(0, 1fr) auto auto !important;
+      }
+
+      .schedule-dashboard {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 18px;
+        margin: 12px 28px 0;
+        padding: 15px 18px;
+        border: 1px solid rgba(47, 125, 98, 0.24);
+        border-radius: 8px;
+        background:
+          linear-gradient(135deg, rgba(31, 58, 95, 0.08), rgba(47, 125, 98, 0.13)),
+          #fff;
+        color: var(--navy);
+        text-align: left;
+        box-shadow: 0 14px 34px rgba(25, 36, 58, 0.07);
+        cursor: pointer;
+      }
+
+      .schedule-dashboard:hover {
+        border-color: var(--green);
+      }
+
+      .schedule-dashboard[hidden] {
+        display: none;
+      }
+
+      .schedule-dashboard p,
+      .schedule-dashboard h3 {
+        margin: 0;
+      }
+
+      .schedule-dashboard h3 {
+        margin-top: 3px;
+        overflow: hidden;
+        color: var(--navy);
+        font-size: 18px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .schedule-dashboard-meta {
+        display: block;
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .schedule-dashboard-countdown {
+        display: grid;
+        place-items: center;
+        min-width: 136px;
+        padding: 12px 14px;
+        border-radius: 8px;
+        background: linear-gradient(145deg, #1f3a5f, #2f7d62);
+        color: white;
+        text-align: center;
+      }
+
+      .schedule-dashboard-countdown strong {
+        display: block;
+        font-size: 24px;
+        line-height: 1.05;
+      }
+
+      .schedule-dashboard-countdown span {
+        display: block;
+        margin-top: 4px;
+        font-size: 12px;
+        opacity: 0.9;
+      }
+
+      .schedule-dashboard.urgent .schedule-dashboard-countdown {
+        background: linear-gradient(145deg, #7a2e1f, #c66a2c);
       }
 
       .schedule-page {
@@ -184,6 +266,14 @@
         font-size: 12px;
       }
 
+      .schedule-item-top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 5px;
+        flex-wrap: wrap;
+      }
+
       .schedule-kind {
         display: inline-grid;
         place-items: center;
@@ -194,6 +284,29 @@
         color: var(--navy);
         font-size: 12px;
         font-weight: 850;
+      }
+
+      .schedule-countdown-pill {
+        display: inline-grid !important;
+        place-items: center;
+        min-height: 28px;
+        margin-top: 0 !important;
+        padding: 0 10px;
+        border-radius: 999px;
+        background: rgba(47, 125, 98, 0.11);
+        color: var(--green) !important;
+        font-size: 12px !important;
+        font-weight: 850;
+      }
+
+      .schedule-countdown-pill.urgent {
+        background: rgba(198, 106, 44, 0.14);
+        color: #9a4b20 !important;
+      }
+
+      .schedule-countdown-pill.past {
+        background: #eef1f5;
+        color: var(--muted) !important;
       }
 
       .schedule-actions {
@@ -217,6 +330,15 @@
         .schedule-body,
         .schedule-grid {
           grid-template-columns: 1fr;
+        }
+
+        .schedule-dashboard {
+          grid-template-columns: 1fr;
+          margin: 10px 16px 0;
+        }
+
+        .schedule-dashboard-countdown {
+          width: 100%;
         }
       }
     `;
@@ -244,6 +366,32 @@
     `;
     anchor.insertAdjacentElement("afterend", button);
     button.addEventListener("click", showSchedulePage);
+  }
+
+  function ensureDashboard() {
+    if (dashboard && document.body.contains(dashboard)) return dashboard;
+    const workspacePage = document.querySelector("#workspacePage");
+    const topbar = workspacePage?.querySelector(".topbar");
+    if (!workspacePage || !topbar) return null;
+    dashboard = document.createElement("button");
+    dashboard.id = "scheduleDashboard";
+    dashboard.className = "schedule-dashboard";
+    dashboard.type = "button";
+    dashboard.innerHTML = `
+      <div>
+        <p class="eyebrow">Next Due</p>
+        <h3>正在读取时间表...</h3>
+        <span class="schedule-dashboard-meta">会显示最近要到期的课、考试或 deadline。</span>
+      </div>
+      <div class="schedule-dashboard-countdown">
+        <strong>--</strong>
+        <span>倒计时</span>
+      </div>
+    `;
+    topbar.insertAdjacentElement("afterend", dashboard);
+    dashboard.addEventListener("click", showSchedulePage);
+    renderDashboard();
+    return dashboard;
   }
 
   function ensurePage() {
@@ -375,8 +523,12 @@
   }
 
   async function loadSchedule() {
-    const status = page.querySelector("#scheduleStatusLine");
-    status.textContent = "正在读取云端时间表...";
+    if (loadingSchedule) return;
+    loadingSchedule = true;
+    lastScheduleLoadAt = Date.now();
+    ensureDashboard();
+    const status = page?.querySelector("#scheduleStatusLine");
+    if (status) status.textContent = "正在读取云端时间表...";
     try {
       const course = await getScheduleCourse();
       const result = await api(`/api/courses/${course.id}/documents`);
@@ -386,11 +538,13 @@
         .filter(Boolean)
         .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
       renderSchedule();
-      status.textContent = `已读取 ${scheduleItems.length} 个时间节点。`;
+      if (status) status.textContent = `已读取 ${scheduleItems.length} 个时间节点。`;
     } catch (error) {
-      status.textContent = error.message;
+      if (status) status.textContent = error.message;
       scheduleItems = [];
       renderSchedule();
+    } finally {
+      loadingSchedule = false;
     }
   }
 
@@ -552,14 +706,50 @@
   }
 
   function renderSchedule() {
+    renderDashboard();
     renderNowBox();
     renderList();
     updateEntryHint();
     checkDueNotifications();
   }
 
+  function renderDashboard() {
+    const card = ensureDashboard();
+    if (!card) return;
+    const next = getUpcomingItems()[0];
+    if (!next) {
+      card.classList.remove("urgent");
+      card.innerHTML = `
+        <div>
+          <p class="eyebrow">Next Due</p>
+          <h3>暂时没有 upcoming deadline</h3>
+          <span class="schedule-dashboard-meta">添加作业、考试或上传 syllabus 后，这里会直接显示最近倒计时。</span>
+        </div>
+        <div class="schedule-dashboard-countdown">
+          <strong>--</strong>
+          <span>倒计时</span>
+        </div>
+      `;
+      return;
+    }
+    const countdown = countdownParts(next.startsAt);
+    card.classList.toggle("urgent", !countdown.past && countdown.totalMinutes <= 24 * 60);
+    card.innerHTML = `
+      <div>
+        <p class="eyebrow">最近要做</p>
+        <h3>${escapeHtml(next.title)}</h3>
+        <span class="schedule-dashboard-meta">${escapeHtml(formatItemMeta(next))}</span>
+      </div>
+      <div class="schedule-dashboard-countdown">
+        <strong>${escapeHtml(countdown.primary)}</strong>
+        <span>${escapeHtml(countdown.secondary)}</span>
+      </div>
+    `;
+  }
+
   function renderNowBox() {
-    const box = page.querySelector("#scheduleNowBox");
+    const box = page?.querySelector("#scheduleNowBox");
+    if (!box) return;
     const next = getUpcomingItems()[0];
     if (!next) {
       box.innerHTML = `<span>最近提醒</span><strong>暂时没有 upcoming deadline</strong><span>可以手动添加，或上传 syllabus 自动提取。</span>`;
@@ -574,7 +764,8 @@
   }
 
   function renderList() {
-    const list = page.querySelector("#scheduleList");
+    const list = page?.querySelector("#scheduleList");
+    if (!list) return;
     if (!scheduleItems.length) {
       list.innerHTML = `<p class="schedule-message">还没有时间节点。你可以手动添加，或上传 syllabus / 课程表 PDF 自动提取。</p>`;
       return;
@@ -583,10 +774,16 @@
     list.innerHTML = scheduleItems
       .map((item) => {
         const past = new Date(item.startsAt).getTime() < now;
+        const countdown = countdownParts(item.startsAt);
         return `
           <article class="schedule-item ${past ? "past" : ""}">
             <div>
-              <span class="schedule-kind">${escapeHtml(kindLabel(item.kind))}</span>
+              <div class="schedule-item-top">
+                <span class="schedule-kind">${escapeHtml(kindLabel(item.kind))}</span>
+                <span class="schedule-countdown-pill ${past ? "past" : countdown.totalMinutes <= 24 * 60 ? "urgent" : ""}">
+                  ${escapeHtml(past ? "已过期" : timeUntil(item.startsAt))}
+                </span>
+              </div>
               <strong>${escapeHtml(item.title)}</strong>
               <span>${escapeHtml(formatItemMeta(item))}</span>
               ${item.notes ? `<span>${escapeHtml(item.notes)}</span>` : ""}
@@ -634,17 +831,67 @@
   }
 
   function timeUntil(value) {
+    const countdown = countdownParts(value);
+    if (countdown.invalid) return "";
+    if (countdown.past) return "已经过去";
+    return `还有 ${countdown.compact}`;
+  }
+
+  function countdownParts(value) {
     const target = new Date(value).getTime();
     const diff = target - Date.now();
-    if (Number.isNaN(target)) return "";
-    if (diff < 0) return "已经过去";
-    const minutes = Math.floor(diff / 60000);
+    if (Number.isNaN(target)) {
+      return {
+        invalid: true,
+        past: false,
+        totalMinutes: 0,
+        primary: "--",
+        secondary: "倒计时",
+        compact: ""
+      };
+    }
+    if (diff < 0) {
+      return {
+        invalid: false,
+        past: true,
+        totalMinutes: Math.floor(diff / 60000),
+        primary: "已过期",
+        secondary: "请尽快处理",
+        compact: "已过期"
+      };
+    }
+    const minutes = Math.max(1, Math.ceil(diff / 60000));
     const days = Math.floor(minutes / 1440);
     const hours = Math.floor((minutes % 1440) / 60);
     const mins = minutes % 60;
-    if (days > 0) return `还有 ${days} 天 ${hours} 小时`;
-    if (hours > 0) return `还有 ${hours} 小时 ${mins} 分钟`;
-    return `还有 ${Math.max(1, mins)} 分钟`;
+    if (days > 0) {
+      return {
+        invalid: false,
+        past: false,
+        totalMinutes: minutes,
+        primary: `${days}天`,
+        secondary: `${hours}小时后 due`,
+        compact: `${days} 天 ${hours} 小时`
+      };
+    }
+    if (hours > 0) {
+      return {
+        invalid: false,
+        past: false,
+        totalMinutes: minutes,
+        primary: `${hours}小时`,
+        secondary: `${mins}分钟后 due`,
+        compact: `${hours} 小时 ${mins} 分钟`
+      };
+    }
+    return {
+      invalid: false,
+      past: false,
+      totalMinutes: minutes,
+      primary: `${mins}分钟`,
+      secondary: "马上要 due",
+      compact: `${mins} 分钟`
+    };
   }
 
   function normalizeDateInput(value) {
@@ -702,17 +949,32 @@
   function boot() {
     installStyle();
     ensureButton();
+    ensureDashboard();
     ensurePage();
+    maybeLoadScheduleForDashboard();
+  }
+
+  function maybeLoadScheduleForDashboard() {
+    if (document.querySelector("#appShell")?.hidden) return;
+    if (!scheduleItems.length && Date.now() - lastScheduleLoadAt > 45000) {
+      loadSchedule().catch(() => {});
+      return;
+    }
+    renderSchedule();
   }
 
   boot();
   setInterval(() => {
     ensureButton();
+    ensureDashboard();
     ensurePage();
     if (page && !page.hidden) renderSchedule();
+    else maybeLoadScheduleForDashboard();
   }, 60000);
   setInterval(() => {
     ensureButton();
+    ensureDashboard();
     ensurePage();
+    maybeLoadScheduleForDashboard();
   }, 1200);
 })();

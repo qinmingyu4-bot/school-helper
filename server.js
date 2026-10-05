@@ -69,6 +69,10 @@ const simpleAiModel =
 const complexAiModel =
   String(process.env.OPENAI_COMPLEX_MODEL || process.env.STUDYBRIDGE_COMPLEX_MODEL || "").trim() ||
   "gpt-6.1-sol";
+const solRoutePercent = Math.max(
+  0,
+  Math.min(100, Number(process.env.OPENAI_SOL_ROUTE_PERCENT || process.env.STUDYBRIDGE_SOL_ROUTE_PERCENT || 15))
+);
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -416,7 +420,9 @@ function chooseAiModel({ documents = [], history = [], mode = "", message = "" }
     recentConversationText > 7000 ||
     complexKeywords.some((keyword) => lowerMessage.includes(keyword.toLowerCase()));
 
-  return isComplex ? complexAiModel : simpleAiModel;
+  if (!isComplex || solRoutePercent <= 0) return simpleAiModel;
+  if (solRoutePercent >= 100) return complexAiModel;
+  return crypto.randomInt(100) < solRoutePercent ? complexAiModel : simpleAiModel;
 }
 
 async function callAi(messages, model = simpleAiModel) {

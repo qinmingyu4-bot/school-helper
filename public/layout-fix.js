@@ -248,7 +248,7 @@
   loadScriptOnce("/school-autocomplete.js?v=20261005-1");
   loadScriptOnce("/admin-console-patch.js?v=20261005-1");
   loadScriptOnce("/profile-onboarding-patch.js?v=20261005-1");
-  loadScriptOnce("/profile-fields-patch.js?v=20261005-2");
+  loadScriptOnce("/profile-fields-patch.js?v=20261005-3");
   loadScriptOnce("/major-autocomplete.js?v=20261005-1");
   loadScriptOnce("/school-datalist-patch.js?v=20261005-1");
   loadScriptOnce("/us-school-library-patch.js?v=20261005-1");

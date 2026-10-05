@@ -69,5 +69,6 @@
   loadScriptOnce("/us-school-library-patch.js?v=20261005-1");
   loadScriptOnce("/admin-refresh-patch.js?v=20261005-1");
   loadScriptOnce("/school-community-patch.js?v=20261005-1");
+  loadScriptOnce("/classmates-patch.js?v=20261005-1");
   setInterval(installCreatorLayoutFix, 1000);
 })();

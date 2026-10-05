@@ -299,6 +299,7 @@ profileForm.addEventListener("submit", async (event) => {
     renderProfile();
     syncSchoolPreference();
     profileMessage.textContent = "已保存。AI 会用你的学校信息来辅助回答。";
+    setTimeout(showStudyPage, 350);
   } catch (error) {
     profileMessage.textContent = error.message;
   }

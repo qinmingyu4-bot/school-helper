@@ -382,7 +382,7 @@ select:focus {
 }
 
 .course-list,
-.document-list {
+document-list {
   display: grid;
   gap: 8px;
   max-height: 220px;
@@ -639,6 +639,7 @@ select:focus {
 .composer {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 86px;
+  align-items: end;
   gap: 10px;
   padding: 14px 28px 24px;
   background: rgba(244, 246, 249, 0.96);
@@ -646,7 +647,15 @@ select:focus {
 
 .composer textarea {
   min-height: 52px;
+  height: 52px;
   max-height: 150px;
+  resize: none;
+}
+
+.composer .send-button {
+  align-self: end;
+  height: 52px;
+  min-height: 52px;
 }
 
 .empty {

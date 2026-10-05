@@ -8,6 +8,14 @@
 
   const schoolFacts = [
     {
+      names: ["centennial college", "centennial", "centennial college of applied arts and technology", "百年理工学院", "百年学院"],
+      title: "Centennial College",
+      qs: "College: QS 大学排名不适用",
+      place: "Toronto / Eastern Greater Toronto Area, Ontario, Canada",
+      traits: ["Ontario 第一所 public community college，成立于 1966 年", "多个校区主要服务 Greater Toronto Area 东部", "课程偏 applied / career-focused，适合把课堂内容连接到就业技能", "国际化和多元文化氛围明显，适合国际学生适应加拿大课堂"],
+      note: "Centennial 是 public college，不是综合研究型 university；更适合看专业、校区、co-op/placement 和就业导向。"
+    },
+    {
       names: ["university of toronto", "uoft", "u of t", "多伦多大学", "toronto university"],
       title: "University of Toronto",
       qs: "QS 2026: #29",
@@ -85,76 +93,17 @@
         background: #f8fbff;
       }
 
-      .school-insight-card h4 {
-        margin: 0;
-        color: var(--navy);
-        font-size: 15px;
-      }
+      .school-insight-card h4 { margin: 0; color: var(--navy); font-size: 15px; }
+      .school-insight-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .school-insight-pill { padding: 9px 10px; border: 1px solid #d8e2ef; border-radius: 8px; background: white; }
+      .school-insight-pill span { display: block; color: var(--muted); font-size: 11px; font-weight: 850; }
+      .school-insight-pill strong { display: block; margin-top: 3px; color: var(--ink); font-size: 13px; line-height: 1.35; }
+      .school-traits { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+      .school-traits li { padding-left: 14px; color: var(--ink); font-size: 13px; line-height: 1.45; position: relative; }
+      .school-traits li::before { content: ""; position: absolute; left: 0; top: 8px; width: 6px; height: 6px; border-radius: 99px; background: var(--green); }
+      .school-insight-note { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
 
-      .school-insight-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
-      }
-
-      .school-insight-pill {
-        padding: 9px 10px;
-        border: 1px solid #d8e2ef;
-        border-radius: 8px;
-        background: white;
-      }
-
-      .school-insight-pill span {
-        display: block;
-        color: var(--muted);
-        font-size: 11px;
-        font-weight: 850;
-      }
-
-      .school-insight-pill strong {
-        display: block;
-        margin-top: 3px;
-        color: var(--ink);
-        font-size: 13px;
-      }
-
-      .school-traits {
-        display: grid;
-        gap: 7px;
-        margin: 0;
-        padding: 0;
-        list-style: none;
-      }
-
-      .school-traits li {
-        padding-left: 14px;
-        color: var(--ink);
-        font-size: 13px;
-        line-height: 1.45;
-        position: relative;
-      }
-
-      .school-traits li::before {
-        content: "";
-        position: absolute;
-        left: 0;
-        top: 8px;
-        width: 6px;
-        height: 6px;
-        border-radius: 99px;
-        background: var(--green);
-      }
-
-      .school-insight-note {
-        margin: 0;
-        color: var(--muted);
-        font-size: 12px;
-        line-height: 1.45;
-      }
-
-      @media (max-width: 560px) {
-        .school-insight-grid { grid-template-columns: 1fr; }
-      }
+      @media (max-width: 560px) { .school-insight-grid { grid-template-columns: 1fr; } }
     `;
   }
 
@@ -193,10 +142,10 @@
     if (partial) return partial;
     return {
       title: school,
-      qs: "QS: 请以官网最新数据为准",
+      qs: "Ranking: 暂未收录",
       place: "地点信息待补充",
       traits: ["StudyBridge 会把这所学校写入 AI 学习上下文", "回答会优先贴近你的学校、课程语境和学习需求", "后续可以继续补充院系、专业、课程代码来提高客制化程度"],
-      generic: true
+      note: "这是通用学校卡片。"
     };
   }
 
@@ -223,7 +172,7 @@
       <h4>${escapeHtml(info.title)} 概览</h4>
       <div class="school-insight-grid">
         <div class="school-insight-pill">
-          <span>参考排名</span>
+          <span>类型 / 排名</span>
           <strong>${escapeHtml(info.qs)}</strong>
         </div>
         <div class="school-insight-pill">
@@ -234,7 +183,7 @@
       <ul class="school-traits">
         ${info.traits.map((trait) => `<li>${escapeHtml(trait)}</li>`).join("")}
       </ul>
-      <p class="school-insight-note">${info.generic ? "这是通用学校卡片。" : "排名为 QS 2026 参考值。"}具体申请、专业和课程要求请以学校官网为准。</p>
+      <p class="school-insight-note">${escapeHtml(info.note || "排名为 QS 2026 参考值。")} 具体申请、专业和课程要求请以学校官网为准。</p>
     `;
   }
 
@@ -252,12 +201,7 @@
       const res = await fetch("/api/me/preferences", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          englishTerms,
-          englishAnswers,
-          chineseExplanations,
-          customInstruction: cleaned
-        })
+        body: JSON.stringify({ englishTerms, englishAnswers, chineseExplanations, customInstruction: cleaned })
       });
       if (res.ok && status()) status().textContent = "Saved";
     } catch {

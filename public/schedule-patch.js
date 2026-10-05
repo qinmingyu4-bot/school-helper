@@ -144,8 +144,9 @@
 
       .schedule-dashboard-countdown strong {
         display: block;
-        font-size: 24px;
+        font-size: 23px;
         line-height: 1.05;
+        white-space: nowrap;
       }
 
       .schedule-dashboard-countdown span {
@@ -876,8 +877,8 @@
         invalid: false,
         past: false,
         totalMinutes: minutes,
-        primary: `${days}天`,
-        secondary: `${hours}小时后 due`,
+        primary: hours > 0 ? `${days}天${hours}小时` : `${days}天`,
+        secondary: "后 due",
         compact: `${days} 天 ${hours} 小时`
       };
     }

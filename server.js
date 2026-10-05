@@ -62,6 +62,13 @@ const allowEmailCodeFallback = process.env.ALLOW_EMAIL_CODE_FALLBACK !== "false"
 const emailCodeTtlMs = Number(process.env.EMAIL_CODE_TTL_MINUTES || 15) * 60 * 1000;
 const maxJsonBytes = 16 * 1024 * 1024;
 const maxPdfBytes = 8 * 1024 * 1024;
+const legacyOpenAiModel = String(process.env.OPENAI_MODEL || "").trim();
+const simpleAiModel =
+  String(process.env.OPENAI_SIMPLE_MODEL || process.env.STUDYBRIDGE_SIMPLE_MODEL || "").trim() ||
+  (legacyOpenAiModel && legacyOpenAiModel !== "gpt-4o-mini" ? legacyOpenAiModel : "gpt-6-luna");
+const complexAiModel =
+  String(process.env.OPENAI_COMPLEX_MODEL || process.env.STUDYBRIDGE_COMPLEX_MODEL || "").trim() ||
+  "gpt-6.1-sol";
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -358,7 +365,61 @@ function buildStudyPrompt({ user, course, documents, history, mode, message }) {
   ];
 }
 
-async function callAi(messages) {
+function chooseAiModel({ documents = [], history = [], mode = "", message = "" }) {
+  const lowerMessage = String(message || "").toLowerCase();
+  const totalDocumentText = documents.reduce((total, doc) => total + String(doc.text || "").length, 0);
+  const recentConversationText = history.reduce((total, item) => total + String(item.content || "").length, 0);
+  const complexModes = new Set(["exam", "assignment", "cheatsheet", "cram", "review"]);
+  const complexKeywords = [
+    "final",
+    "midterm",
+    "exam",
+    "quiz",
+    "assignment",
+    "essay",
+    "research paper",
+    "rubric",
+    "deadline",
+    "proof",
+    "derive",
+    "calculus",
+    "statistics",
+    "economics",
+    "accounting",
+    "finance",
+    "programming",
+    "code",
+    "debug",
+    "case study",
+    "lab report",
+    "thesis",
+    "dissertation",
+    "复习",
+    "期末",
+    "期中",
+    "考试",
+    "作业",
+    "论文",
+    "证明",
+    "推导",
+    "代码",
+    "案例",
+    "实验报告",
+    "详细",
+    "深入"
+  ];
+
+  const isComplex =
+    complexModes.has(String(mode || "").toLowerCase()) ||
+    String(message || "").length > 900 ||
+    totalDocumentText > 9000 ||
+    recentConversationText > 7000 ||
+    complexKeywords.some((keyword) => lowerMessage.includes(keyword.toLowerCase()));
+
+  return isComplex ? complexAiModel : simpleAiModel;
+}
+
+async function callAi(messages, model = simpleAiModel) {
   if (!process.env.OPENAI_API_KEY) {
     return "我已经把你的问题保存到云端了。现在服务器还没有配置 OPENAI_API_KEY，所以先用内置学习助手回复：请先上传 syllabus 或 lecture notes，我可以根据课程资料帮你做预习、复习、deadline 汇总和模拟出题。";
   }
@@ -370,7 +431,7 @@ async function callAi(messages) {
       "content-type": "application/json"
     },
     body: JSON.stringify({
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      model,
       messages,
       temperature: 0.35
     })
@@ -729,9 +790,11 @@ async function routeApi(req, res) {
       if (!message) return sendError(res, 400, "Message is required.");
       const userMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId, role: "user", content: message, mode });
       const [documents, history] = await Promise.all([db.listDocuments(user.id, courseId), db.listMessages(user.id, courseId)]);
-      const aiContent = await callAi(buildStudyPrompt({ user, course, documents, history, mode, message }));
+      const selectedModel = chooseAiModel({ documents, history, mode, message });
+      console.log(`StudyBridge AI route: ${selectedModel} | mode=${mode} | docs=${documents.length}`);
+      const aiContent = await callAi(buildStudyPrompt({ user, course, documents, history, mode, message }), selectedModel);
       const assistantMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId, role: "assistant", content: aiContent, mode });
-      return sendJson(res, 201, { messages: [userMessage, assistantMessage] });
+      return sendJson(res, 201, { messages: [userMessage, assistantMessage], model: selectedModel });
     }
   }
 

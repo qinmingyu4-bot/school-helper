@@ -255,7 +255,8 @@
   loadScriptOnce("/school-community-patch.js?v=20261005-1");
   loadScriptOnce("/classmates-patch.js?v=20261005-1");
   loadScriptOnce("/email-reply-patch.js?v=20261005-1");
-  loadScriptOnce("/schedule-patch.js?v=20261005-2");
+  loadScriptOnce("/schedule-patch.js?v=20261005-3");
+  loadScriptOnce("/schedule-dashboard-patch.js?v=20261005-1");
   setInterval(() => {
     installCreatorLayoutFix();
     ensureStudyEntry();

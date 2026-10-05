@@ -132,9 +132,9 @@
       .schedule-entry > span:not(.schedule-entry-icon) {
         display: grid !important;
         align-content: center !important;
-        gap: 2px !important;
+        gap: 1px !important;
         min-width: 0 !important;
-        line-height: 1.22 !important;
+        line-height: 1.2 !important;
         overflow: hidden !important;
       }
 
@@ -153,6 +153,28 @@
         overflow: hidden !important;
         text-overflow: ellipsis !important;
         white-space: nowrap !important;
+      }
+
+      .study-entry > span:not(.study-entry-icon) > strong,
+      .community-entry > span:not(.community-entry-icon) > strong,
+      .classmates-entry > span:not(.classmates-entry-icon) > strong,
+      .email-helper-entry > span:not(.email-helper-entry-icon) > strong,
+      .schedule-entry > span:not(.schedule-entry-icon) > strong {
+        color: var(--navy) !important;
+        font-size: 14px !important;
+        font-weight: 850 !important;
+        line-height: 1.15 !important;
+      }
+
+      .study-entry > span:not(.study-entry-icon) > span,
+      .community-entry > span:not(.community-entry-icon) > span,
+      .classmates-entry > span:not(.classmates-entry-icon) > span,
+      .email-helper-entry > span:not(.email-helper-entry-icon) > span,
+      .schedule-entry > span:not(.schedule-entry-icon) > span {
+        color: var(--muted) !important;
+        font-size: 12px !important;
+        font-weight: 500 !important;
+        line-height: 1.15 !important;
       }
 
       .study-entry-icon,
@@ -191,7 +213,9 @@
       <span class="study-entry-icon">学</span>
       <span><strong>学习区</strong><span>课程资料、AI 对话和复习计划</span></span>
     `;
-    profile.insertAdjacentElement("afterend", button);
+    const firstFeature = document.querySelector("#openSchoolCommunityButton") || profile.nextElementSibling;
+    if (firstFeature && firstFeature !== button) firstFeature.insertAdjacentElement("beforebegin", button);
+    else profile.insertAdjacentElement("afterend", button);
     button.addEventListener("click", () => {
       ["#profilePage", "#schoolCommunityPage", "#classmatesPage", "#emailReplyPage", "#schedulePage"].forEach((selector) => {
         const element = document.querySelector(selector);

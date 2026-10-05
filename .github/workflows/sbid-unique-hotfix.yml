@@ -1,0 +1,59 @@
+name: Enforce StudyBridge SB ID uniqueness
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch SB ID uniqueness check
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+
+          const file = 'server.js';
+          let text = fs.readFileSync(file, 'utf8');
+
+          if (!text.includes('This SB ID is already taken.')) {
+            const from = `    const profile = cleanProfile(body);
+    const updated = await db.updateUser(user.id, { name, profile });`;
+            const to = `    const profile = cleanProfile(body);
+    if (!isValidSbId(profile.sbId)) {
+      return sendError(res, 400, "SB ID must be 3-24 characters and can use letters, numbers, dots, underscores, or dashes.");
+    }
+    if (profile.sbId) {
+      const existingSbUser = await db.findUserBySbId(profile.sbId);
+      if (existingSbUser && existingSbUser.id !== user.id) {
+        return sendError(res, 409, "This SB ID is already taken.");
+      }
+    }
+    const updated = await db.updateUser(user.id, { name, profile });`;
+            if (!text.includes(from)) throw new Error('Could not find profile save block to patch.');
+            text = text.replace(from, to);
+            fs.writeFileSync(file, text);
+          } else {
+            console.log('SB ID uniqueness check already exists.');
+          }
+          NODE
+
+          node --check server.js
+
+      - name: Commit hotfix
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No hotfix changes needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.js
+          git commit -m "Enforce unique StudyBridge SB IDs"
+          git push

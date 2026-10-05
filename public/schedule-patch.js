@@ -508,21 +508,22 @@
     ensurePage();
     hideOtherPages();
     page.hidden = false;
-    await loadSchedule();
+    await loadSchedule({ createCourse: true });
   }
 
-  async function getScheduleCourse() {
+  async function getScheduleCourse(options = {}) {
+    const createCourse = options.createCourse !== false;
     if (scheduleCourse) return scheduleCourse;
     const result = await api("/api/courses");
     scheduleCourse = (result.courses || []).find((course) => course.name === COURSE_NAME);
-    if (!scheduleCourse) {
+    if (!scheduleCourse && createCourse) {
       const created = await api("/api/courses", { method: "POST", body: { name: COURSE_NAME, term: "StudyBridge planner" } });
       scheduleCourse = created.course;
     }
     return scheduleCourse;
   }
 
-  async function loadSchedule() {
+  async function loadSchedule(options = {}) {
     if (loadingSchedule) return;
     loadingSchedule = true;
     lastScheduleLoadAt = Date.now();
@@ -530,7 +531,13 @@
     const status = page?.querySelector("#scheduleStatusLine");
     if (status) status.textContent = "正在读取云端时间表...";
     try {
-      const course = await getScheduleCourse();
+      const course = await getScheduleCourse({ createCourse: options.createCourse !== false });
+      if (!course) {
+        scheduleItems = [];
+        renderSchedule();
+        if (status) status.textContent = "还没有时间表。添加第一条提醒后会自动创建。";
+        return;
+      }
       const result = await api(`/api/courses/${course.id}/documents`);
       scheduleItems = (result.documents || [])
         .filter((doc) => String(doc.title || "").startsWith(ITEM_PREFIX))
@@ -957,7 +964,7 @@
   function maybeLoadScheduleForDashboard() {
     if (document.querySelector("#appShell")?.hidden) return;
     if (!scheduleItems.length && Date.now() - lastScheduleLoadAt > 45000) {
-      loadSchedule().catch(() => {});
+      loadSchedule({ createCourse: false }).catch(() => {});
       return;
     }
     renderSchedule();

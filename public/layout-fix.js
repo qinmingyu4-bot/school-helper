@@ -52,15 +52,17 @@
     `;
   }
 
-  function loadSchoolAutocomplete() {
-    if (document.querySelector('script[src^="/school-autocomplete.js"]')) return;
+  function loadScriptOnce(src) {
+    const cleanSrc = src.split("?")[0];
+    if (document.querySelector(`script[src^="${cleanSrc}"]`)) return;
     const script = document.createElement("script");
-    script.src = "/school-autocomplete.js?v=20261005-1";
+    script.src = src;
     script.defer = true;
     document.body.appendChild(script);
   }
 
   installCreatorLayoutFix();
-  loadSchoolAutocomplete();
+  loadScriptOnce("/school-autocomplete.js?v=20261005-1");
+  loadScriptOnce("/admin-console-patch.js?v=20261005-1");
   setInterval(installCreatorLayoutFix, 1000);
 })();

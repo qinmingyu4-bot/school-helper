@@ -44,6 +44,53 @@
         border-top: 1px solid rgba(216, 222, 232, 0.72);
       }
 
+      .community-entry,
+      .classmates-entry,
+      .email-helper-entry {
+        grid-template-columns: 34px minmax(0, 1fr) !important;
+        min-height: 48px !important;
+        padding: 9px 12px !important;
+        gap: 10px !important;
+        overflow: hidden !important;
+        cursor: pointer !important;
+      }
+
+      .community-entry > .small-button,
+      .classmates-entry > .small-button,
+      .email-helper-entry > .small-button {
+        display: none !important;
+      }
+
+      .community-entry > span:not(.community-entry-icon),
+      .classmates-entry > span:not(.classmates-entry-icon),
+      .email-helper-entry > span:not(.email-helper-entry-icon) {
+        display: grid !important;
+        align-content: center !important;
+        gap: 2px !important;
+        min-width: 0 !important;
+        line-height: 1.22 !important;
+        overflow: hidden !important;
+      }
+
+      .community-entry > span:not(.community-entry-icon) > strong,
+      .classmates-entry > span:not(.classmates-entry-icon) > strong,
+      .email-helper-entry > span:not(.email-helper-entry-icon) > strong,
+      .community-entry > span:not(.community-entry-icon) > span,
+      .classmates-entry > span:not(.classmates-entry-icon) > span,
+      .email-helper-entry > span:not(.email-helper-entry-icon) > span {
+        min-width: 0 !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+      }
+
+      .community-entry-icon,
+      .classmates-entry-icon,
+      .email-helper-entry-icon {
+        flex: 0 0 auto !important;
+      }
+
       @media (max-height: 760px) {
         #developerPanel:not([hidden]) {
           max-height: 240px;

@@ -46,6 +46,14 @@
         color: var(--green);
         font-size: 13px;
       }
+
+      .schedule-item-top .schedule-kind {
+        display: inline-grid !important;
+        place-items: center !important;
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+        line-height: 1 !important;
+      }
     `;
     document.head.appendChild(style);
   }

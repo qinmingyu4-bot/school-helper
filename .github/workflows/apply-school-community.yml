@@ -1,0 +1,233 @@
+name: Apply school community backend
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/apply-school-community.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch backend files
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          function replaceOnce(file, from, to) {
+            let text = fs.readFileSync(file, 'utf8');
+            if (!text.includes(from)) throw new Error(`${file}: pattern not found`);
+            text = text.replace(from, to);
+            fs.writeFileSync(file, text);
+          }
+
+          function insertBefore(file, marker, insert) {
+            let text = fs.readFileSync(file, 'utf8');
+            if (text.includes(insert.trim().split('\n')[0])) return;
+            if (!text.includes(marker)) throw new Error(`${file}: marker not found`);
+            text = text.replace(marker, `${insert}\n${marker}`);
+            fs.writeFileSync(file, text);
+          }
+
+          function insertAfter(file, marker, insert) {
+            let text = fs.readFileSync(file, 'utf8');
+            if (text.includes(insert.trim().split('\n')[0])) return;
+            if (!text.includes(marker)) throw new Error(`${file}: marker not found`);
+            text = text.replace(marker, `${marker}${insert}`);
+            fs.writeFileSync(file, text);
+          }
+
+          replaceOnce(
+            'lib/database.js',
+            '        invites: {},\n        authCodes: {}',
+            '        invites: {},\n        authCodes: {},\n        communityPosts: {}'
+          );
+          replaceOnce(
+            'lib/database.js',
+            '    this.state.invites ||= {};\n    this.state.authCodes ||= {};',
+            '    this.state.invites ||= {};\n    this.state.authCodes ||= {};\n    this.state.communityPosts ||= {};'
+          );
+
+          insertBefore(
+            'lib/database.js',
+            '  async createMessage(message) {',
+            `  async listCommunityPosts(schoolKey, limit = 80) {
+    if (this.dynamo) {
+      const rows = await this.dynamo.query(\`COMMUNITY#\${schoolKey}\`, "POST#");
+      return rows
+        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+        .slice(0, limit);
+    }
+    return this.local.read((db) =>
+      Object.values(db.communityPosts || {})
+        .filter((post) => post.schoolKey === schoolKey)
+        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+        .slice(0, limit)
+    );
+  }
+
+  async createCommunityPost(post) {
+    const record = {
+      ...post,
+      kind: "communityPost",
+      likes: [],
+      likeCount: 0,
+      createdAt: now(),
+      updatedAt: now()
+    };
+    if (this.dynamo) {
+      return this.dynamo.put(
+        \`COMMUNITY#\${record.schoolKey}\`,
+        \`POST#\${record.createdAt}#\${record.id}\`,
+        "communityPost",
+        record
+      );
+    }
+    return this.local.write((db) => {
+      db.communityPosts ||= {};
+      db.communityPosts[record.id] = record;
+      return record;
+    });
+  }
+
+  async toggleCommunityPostLike(schoolKey, postId, userId) {
+    if (this.dynamo) {
+      const posts = await this.listCommunityPosts(schoolKey, 500);
+      const existing = posts.find((post) => post.id === postId);
+      if (!existing) return null;
+      const likes = new Set(existing.likes || []);
+      if (likes.has(userId)) likes.delete(userId);
+      else likes.add(userId);
+      const updated = { ...existing, likes: [...likes], likeCount: likes.size, updatedAt: now() };
+      await this.dynamo.put(
+        \`COMMUNITY#\${updated.schoolKey}\`,
+        \`POST#\${updated.createdAt}#\${updated.id}\`,
+        "communityPost",
+        updated
+      );
+      return updated;
+    }
+    return this.local.write((db) => {
+      db.communityPosts ||= {};
+      const existing = db.communityPosts[postId];
+      if (!existing || existing.schoolKey !== schoolKey) return null;
+      const likes = new Set(existing.likes || []);
+      if (likes.has(userId)) likes.delete(userId);
+      else likes.add(userId);
+      db.communityPosts[postId] = { ...existing, likes: [...likes], likeCount: likes.size, updatedAt: now() };
+      return db.communityPosts[postId];
+    });
+  }
+
+`
+          );
+
+          insertBefore(
+            'server.js',
+            'async function readJson(req) {',
+            `function communitySchoolKey(school) {
+  return String(school || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\\u0300-\\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 90);
+}
+
+function publicCommunityPost(post, viewer) {
+  const likes = Array.isArray(post.likes) ? post.likes : [];
+  const anonymous = post.anonymous === true;
+  return {
+    id: post.id,
+    school: post.school || "",
+    schoolKey: post.schoolKey || "",
+    topic: post.topic || "问问题",
+    content: post.content || "",
+    anonymous,
+    authorName: anonymous ? "匿名同学" : post.authorName || "同校同学",
+    createdAt: post.createdAt,
+    updatedAt: post.updatedAt,
+    likeCount: Number(post.likeCount || likes.length || 0),
+    likedByMe: likes.includes(viewer?.id)
+  };
+}
+
+`
+          );
+
+          insertAfter(
+            'server.js',
+            '    const updated = await db.updateUser(user.id, { name, profile });\n    return sendJson(res, 200, { user: publicUser(withEffectiveRole(updated)) });\n  }\n',
+            `
+  if (url.pathname === "/api/community/school" && method === "GET") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const school = String(user.profile?.school || "").trim();
+    const schoolKey = communitySchoolKey(school);
+    if (!schoolKey) return sendError(res, 400, "Please fill in your school in Profile first.");
+    const posts = await db.listCommunityPosts(schoolKey);
+    return sendJson(res, 200, {
+      school,
+      schoolKey,
+      posts: posts.map((post) => publicCommunityPost(post, user))
+    });
+  }
+
+  if (url.pathname === "/api/community/school/posts" && method === "POST") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const school = String(user.profile?.school || "").trim();
+    const schoolKey = communitySchoolKey(school);
+    if (!schoolKey) return sendError(res, 400, "Please fill in your school in Profile first.");
+    const body = await readJson(req);
+    const content = String(body.content || "").trim().slice(0, 1600);
+    const topic = String(body.topic || "问问题").trim().slice(0, 40);
+    if (content.length < 3) return sendError(res, 400, "Post content is too short.");
+    const post = await db.createCommunityPost({
+      id: createId("post"),
+      school,
+      schoolKey,
+      topic,
+      content,
+      anonymous: body.anonymous === true,
+      userId: user.id,
+      authorName: user.name,
+      authorRole: user.role || "student"
+    });
+    return sendJson(res, 201, { post: publicCommunityPost(post, user) });
+  }
+
+  const communityLikeMatch = url.pathname.match(/^\\/api\\/community\\/school\\/posts\\/([^/]+)\\/like$/);
+  if (communityLikeMatch && method === "PATCH") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const schoolKey = communitySchoolKey(user.profile?.school || "");
+    if (!schoolKey) return sendError(res, 400, "Please fill in your school in Profile first.");
+    const post = await db.toggleCommunityPostLike(schoolKey, communityLikeMatch[1], user.id);
+    if (!post) return sendError(res, 404, "Community post not found.");
+    return sendJson(res, 200, { post: publicCommunityPost(post, user) });
+  }
+`
+          );
+          NODE
+      - name: Check syntax
+        run: |
+          node --check server.js
+          node --check lib/database.js
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.js lib/database.js
+          git commit -m "Add school community backend"
+          git push

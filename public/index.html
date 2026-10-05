@@ -5,6 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>StudyBridge Cloud</title>
     <link rel="stylesheet" href="/style.css" />
+    <style>
+      .quick-prompts {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 28px 0;
+        overflow-x: auto;
+        background: rgba(244, 246, 249, 0.96);
+      }
+
+      .quick-prompts span {
+        flex: 0 0 auto;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 850;
+      }
+
+      .quick-prompts button {
+        flex: 0 0 auto;
+        min-height: 34px;
+        padding: 0 12px;
+        border: 1px dashed #b9c6d8;
+        border-radius: 8px;
+        background: white;
+        color: var(--navy);
+        font-size: 13px;
+        font-weight: 750;
+      }
+
+      .quick-prompts button:hover {
+        border-style: solid;
+        border-color: var(--green);
+        color: var(--green);
+      }
+
+      @media (max-width: 560px) {
+        .quick-prompts {
+          padding-left: 16px;
+          padding-right: 16px;
+        }
+      }
+    </style>
   </head>
   <body>
     <main class="page">
@@ -144,6 +186,16 @@
 
           <div class="chat" id="chatArea"></div>
 
+          <section class="quick-prompts" id="quickPrompts" aria-label="快捷指令">
+            <span>快捷指令</span>
+            <button type="button" data-quick-prompt="帮我根据这门课资料预习下一节课，先列重点，再给我该看的 English terms。">预习下一节</button>
+            <button type="button" data-quick-prompt="帮我整理这门课最重要的课前关键词，保留 English terms，并用中文解释。">课前关键词</button>
+            <button type="button" data-quick-prompt="根据目前课程资料，帮我生成可以在课堂上提问的高质量问题。">上课问题</button>
+            <button type="button" data-quick-prompt="我只有 10 分钟，帮我快速预习这门课当前资料。">10 分钟预习</button>
+            <button type="button" data-quick-prompt="帮我总结这门课的课程介绍、学习目标和评分重点。">课程介绍</button>
+            <button type="button" data-quick-prompt="帮我从课程资料里汇总所有 deadline、考试、作业和重要日期。">Deadline 汇总</button>
+          </section>
+
           <form class="composer" id="chatForm">
             <textarea id="messageInput" rows="1" placeholder="问：帮我根据这门课资料做一个 final 复习计划"></textarea>
             <button class="send-button" id="sendButton" type="submit">发送</button>
@@ -152,5 +204,15 @@
       </section>
     </main>
     <script src="/app.js"></script>
+    <script>
+      document.querySelectorAll("[data-quick-prompt]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const input = document.querySelector("#messageInput");
+          if (!input) return;
+          input.value = button.dataset.quickPrompt || "";
+          input.focus();
+        });
+      });
+    </script>
   </body>
 </html>

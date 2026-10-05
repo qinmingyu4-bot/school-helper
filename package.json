@@ -12,6 +12,7 @@
     "node": ">=20"
   },
   "dependencies": {
-    "nodemailer": "^6.9.16"
+    "nodemailer": "^6.9.16",
+    "pdf-parse": "^1.1.1"
   }
 }

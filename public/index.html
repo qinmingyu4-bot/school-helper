@@ -449,11 +449,9 @@
           if (message) message.textContent = "已保存。学校信息会自动进入 AI 学习偏好。";
         });
 
-        const observer = new MutationObserver(applyProfile);
-        const appShell = document.querySelector("#appShell");
-        if (appShell) observer.observe(appShell, { attributes: true, subtree: true, childList: true });
         applyProfile();
         setTimeout(applyProfile, 600);
+        setTimeout(applyProfile, 1500);
         setTimeout(() => syncSchoolToAiPreferences(loadProfile()), 1200);
       })();
 

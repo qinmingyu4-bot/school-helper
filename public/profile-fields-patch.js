@@ -45,14 +45,24 @@
       .profile-form-field {
         width: 100%;
       }
+      .profile-preview-heading-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 4px;
+      }
+      .profile-preview-heading-row h3 {
+        min-width: 0;
+      }
       .profile-edit-reopen {
-        margin-top: 14px;
+        flex: 0 0 auto;
+        min-height: 40px;
+        padding: 0 14px;
       }
-      .profile-form[hidden] + .profile-edit-reopen {
-        display: inline-grid;
-      }
-      .profile-form:not([hidden]) + .profile-edit-reopen {
-        display: none;
+      .profile-form:not([hidden]) ~ .profile-edit-reopen,
+      .profile-editor-panel > .profile-edit-reopen {
+        display: none !important;
       }
     `;
     document.head.appendChild(style);
@@ -93,9 +103,19 @@
   }
 
   function ensureEditButton() {
-    const form = $("#profileForm");
-    const panel = form?.closest(".profile-editor-panel");
-    if (!form || !panel) return;
+    const previewContent = $(".profile-preview-content");
+    const title = $("#profilePreviewName");
+    if (!previewContent || !title) return;
+
+    let row = $("#profilePreviewHeadingRow");
+    if (!row) {
+      row = document.createElement("div");
+      row.id = "profilePreviewHeadingRow";
+      row.className = "profile-preview-heading-row";
+      title.insertAdjacentElement("beforebegin", row);
+      row.appendChild(title);
+    }
+
     let button = $("#profileEditReopenButton");
     if (!button) {
       button = document.createElement("button");
@@ -103,8 +123,8 @@
       button.type = "button";
       button.className = "ghost-button profile-edit-reopen";
       button.textContent = "编辑资料";
-      form.insertAdjacentElement("afterend", button);
     }
+    if (button.parentElement !== row) row.appendChild(button);
     button.onclick = () => revealProfileForm(true);
   }
 
@@ -191,7 +211,7 @@
       if ($("#profileName")) $("#profileName").textContent = result.user.name || "StudyBridge user";
       if ($("#profileSchool")) $("#profileSchool").textContent = result.user.profile?.school || "添加学校后，AI 会更懂你的学习环境。";
       if ($("#userLine")) $("#userLine").textContent = `${result.user.name} | ${result.user.email}`;
-      if (message) message.textContent = "已保存。需要修改时点下方“编辑资料”。";
+      if (message) message.textContent = "已保存。需要修改时点左侧预览卡里的“编辑资料”。";
       if (form) form.hidden = true;
     } catch (error) {
       if (message) message.textContent = error.message;

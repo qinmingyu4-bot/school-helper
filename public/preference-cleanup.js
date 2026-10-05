@@ -6,6 +6,48 @@
   const adminMessage = () => document.querySelector("#adminMessage");
   const authMessage = () => document.querySelector("#authMessage");
 
+  function installLayoutPatch() {
+    if (document.querySelector("#studybridge-layout-patch")) return;
+    const style = document.createElement("style");
+    style.id = "studybridge-layout-patch";
+    style.textContent = `
+      #workspacePage {
+        grid-template-rows: auto auto minmax(0, 1fr) auto auto !important;
+        grid-template-areas:
+          "topbar"
+          "developer"
+          "chat"
+          "quick"
+          "composer";
+      }
+
+      #workspacePage > .topbar {
+        grid-area: topbar;
+      }
+
+      #developerPanel {
+        grid-area: developer;
+      }
+
+      #chatArea {
+        grid-area: chat;
+        min-height: 0;
+      }
+
+      #quickPrompts {
+        grid-area: quick;
+        align-self: end;
+        padding-top: 8px;
+        padding-bottom: 0;
+      }
+
+      #chatForm {
+        grid-area: composer;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   function cleanText(value) {
     return String(value || "").split(marker)[0].trim();
   }
@@ -300,6 +342,8 @@
       .replaceAll("'", "&#039;");
   }
 
+  installLayoutPatch();
+
   document.addEventListener(
     "click",
     async (event) => {
@@ -373,6 +417,7 @@
   let checks = 0;
   const timer = setInterval(() => {
     const changed = cleanVisiblePreference();
+    installLayoutPatch();
     ensureResetPanel();
     loadResetRequests();
     checks += 1;

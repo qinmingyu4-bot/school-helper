@@ -19,8 +19,14 @@ const nameField = document.querySelector("#nameField");
 const nameInput = document.querySelector("#nameInput");
 const emailInput = document.querySelector("#emailInput");
 const passwordInput = document.querySelector("#passwordInput");
+const confirmPasswordField = document.querySelector("#confirmPasswordField");
+const passwordConfirmInput = document.querySelector("#passwordConfirmInput");
 const inviteField = document.querySelector("#inviteField");
 const inviteInput = document.querySelector("#inviteInput");
+const emailCodeField = document.querySelector("#emailCodeField");
+const emailCodeInput = document.querySelector("#emailCodeInput");
+const sendEmailCodeButton = document.querySelector("#sendEmailCodeButton");
+const forgotPasswordButton = document.querySelector("#forgotPasswordButton");
 const userLine = document.querySelector("#userLine");
 const logoutButton = document.querySelector("#logoutButton");
 const addCourseButton = document.querySelector("#addCourseButton");
@@ -54,21 +60,45 @@ const userList = document.querySelector("#userList");
 const adminMessage = document.querySelector("#adminMessage");
 const refreshAdminButton = document.querySelector("#refreshAdminButton");
 
+let codeCooldownTimer = null;
+
 document.querySelectorAll("[data-auth-mode]").forEach((button) => {
   button.addEventListener("click", () => setAuthMode(button.dataset.authMode));
 });
+
+forgotPasswordButton?.addEventListener("click", () => setAuthMode("reset"));
+sendEmailCodeButton?.addEventListener("click", sendEmailCode);
 
 authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   authMessage.textContent = "";
   authSubmit.disabled = true;
   try {
+    const needsConfirmation = state.authMode === "register" || state.authMode === "reset";
+    if (needsConfirmation && passwordInput.value !== passwordConfirmInput.value) {
+      throw new Error("两次输入的密码不一致。");
+    }
+
     const payload = {
       name: nameInput.value,
       email: emailInput.value,
       password: passwordInput.value,
-      inviteCode: inviteInput.value
+      passwordConfirm: passwordConfirmInput.value,
+      inviteCode: inviteInput.value,
+      emailCode: emailCodeInput.value
     };
+
+    if (state.authMode === "reset") {
+      await api("/api/auth/reset-password", {
+        method: "POST",
+        body: payload
+      });
+      authForm.reset();
+      setAuthMode("login");
+      authMessage.textContent = "密码已更新，请用新密码登录。";
+      return;
+    }
+
     const result = await api(`/api/auth/${state.authMode}`, {
       method: "POST",
       body: payload
@@ -83,6 +113,54 @@ authForm.addEventListener("submit", async (event) => {
     authSubmit.disabled = false;
   }
 });
+
+async function sendEmailCode() {
+  authMessage.textContent = "";
+  const email = emailInput.value.trim();
+  if (!email) {
+    authMessage.textContent = "请先输入邮箱。";
+    emailInput.focus();
+    return;
+  }
+  if (state.authMode === "register" && !inviteInput.value.trim()) {
+    authMessage.textContent = "请先输入邀请码，再发送验证码。";
+    inviteInput.focus();
+    return;
+  }
+
+  sendEmailCodeButton.disabled = true;
+  try {
+    const path = state.authMode === "reset" ? "/api/auth/request-password-reset" : "/api/auth/send-verification";
+    await api(path, {
+      method: "POST",
+      body: {
+        email,
+        inviteCode: inviteInput.value
+      }
+    });
+    authMessage.textContent = "验证码已发送，请查看邮箱。";
+    startCodeCooldown(45);
+  } catch (error) {
+    authMessage.textContent = error.message;
+    sendEmailCodeButton.disabled = false;
+  }
+}
+
+function startCodeCooldown(seconds) {
+  clearInterval(codeCooldownTimer);
+  let remaining = seconds;
+  sendEmailCodeButton.textContent = `${remaining}s`;
+  codeCooldownTimer = setInterval(() => {
+    remaining -= 1;
+    if (remaining <= 0) {
+      clearInterval(codeCooldownTimer);
+      sendEmailCodeButton.textContent = "发送验证码";
+      sendEmailCodeButton.disabled = false;
+      return;
+    }
+    sendEmailCodeButton.textContent = `${remaining}s`;
+  }, 1000);
+}
 
 logoutButton.addEventListener("click", async () => {
   await api("/api/auth/logout", { method: "POST" }).catch(() => {});
@@ -224,6 +302,9 @@ function showAuth() {
   developerPanel.hidden = true;
   roleSwitch.hidden = true;
   passwordInput.value = "";
+  passwordConfirmInput.value = "";
+  emailCodeInput.value = "";
+  setAuthMode("login");
 }
 
 async function setWorkspaceMode(mode) {
@@ -241,13 +322,21 @@ function setAuthMode(mode) {
     button.classList.toggle("active", button.dataset.authMode === mode);
   });
   const registering = mode === "register";
+  const resetting = mode === "reset";
+  const codeRequired = registering || resetting;
   nameField.hidden = !registering;
   inviteField.hidden = !registering;
+  confirmPasswordField.hidden = !codeRequired;
+  emailCodeField.hidden = !codeRequired;
+  forgotPasswordButton.hidden = mode !== "login";
   nameInput.required = registering;
   inviteInput.required = registering;
-  passwordInput.autocomplete = registering ? "new-password" : "current-password";
-  authSubmit.textContent = registering ? "创建账号" : "登录";
-  authMessage.textContent = "";
+  passwordConfirmInput.required = codeRequired;
+  emailCodeInput.required = codeRequired;
+  passwordInput.autocomplete = mode === "login" ? "current-password" : "new-password";
+  passwordInput.placeholder = resetting ? "输入新密码" : "至少 8 位";
+  authSubmit.textContent = registering ? "创建账号" : resetting ? "重设密码" : "登录";
+  authMessage.textContent = resetting ? "输入邮箱，发送验证码，然后设置新密码。" : "";
 }
 
 async function loadCourses() {

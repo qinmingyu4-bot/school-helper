@@ -411,6 +411,27 @@
         setTimeout(applyProfile, 600);
         setTimeout(() => syncSchoolToAiPreferences(loadProfile()), 1200);
       })();
+
+      (() => {
+        function reloadWorkspaceMode(mode, event) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          const currentMode = localStorage.getItem("studybridgeWorkspaceMode") || "student";
+          localStorage.setItem("studybridgeWorkspaceMode", mode);
+          if (currentMode !== mode) window.location.reload();
+        }
+
+        document.querySelector("#studentViewButton")?.addEventListener(
+          "click",
+          (event) => reloadWorkspaceMode("student", event),
+          true
+        );
+        document.querySelector("#creatorViewButton")?.addEventListener(
+          "click",
+          (event) => reloadWorkspaceMode("creator", event),
+          true
+        );
+      })();
     </script>
   </body>
 </html>

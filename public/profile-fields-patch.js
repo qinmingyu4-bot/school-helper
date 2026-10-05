@@ -45,29 +45,67 @@
       .profile-form-field {
         width: 100%;
       }
+      .profile-edit-reopen {
+        margin-top: 14px;
+      }
+      .profile-form[hidden] + .profile-edit-reopen {
+        display: inline-grid;
+      }
+      .profile-form:not([hidden]) + .profile-edit-reopen {
+        display: none;
+      }
     `;
     document.head.appendChild(style);
   }
 
-  function ensureInput(id, placeholder, afterElement) {
+  function ensureLabeledInput(id, labelText, placeholder, afterLabel) {
     let input = $(`#${id}`);
-    if (input) return input;
-    input = document.createElement("input");
-    input.id = id;
+    if (input && input.closest("label")) return input;
+
+    const label = document.createElement("label");
+    const span = document.createElement("span");
+    span.textContent = labelText;
+
+    if (!input) {
+      input = document.createElement("input");
+      input.id = id;
+      input.type = "text";
+    } else {
+      input.remove();
+    }
     input.className = "profile-form-field";
-    input.type = "text";
     input.placeholder = placeholder;
-    if (afterElement) afterElement.insertAdjacentElement("afterend", input);
+
+    label.append(span, input);
+    if (afterLabel) afterLabel.insertAdjacentElement("afterend", label);
     return input;
   }
 
   function ensureFields() {
     const schoolInput = $("#schoolInput");
     if (!schoolInput) return;
-    const majorInput = ensureInput("majorInput", "专业，例如 Business / Engineering", schoolInput);
-    const sbIdInput = ensureInput("sbIdInput", "SB ID，例如 adam2026", majorInput);
+    const schoolLabel = schoolInput.closest("label");
+    const majorInput = ensureLabeledInput("majorInput", "专业", "例如 Business / Engineering", schoolLabel);
+    const majorLabel = majorInput.closest("label");
+    const sbIdInput = ensureLabeledInput("sbIdInput", "SB ID", "例如 adam2026", majorLabel);
     sbIdInput.autocomplete = "off";
     sbIdInput.spellcheck = false;
+  }
+
+  function ensureEditButton() {
+    const form = $("#profileForm");
+    const panel = form?.closest(".profile-editor-panel");
+    if (!form || !panel) return;
+    let button = $("#profileEditReopenButton");
+    if (!button) {
+      button = document.createElement("button");
+      button.id = "profileEditReopenButton";
+      button.type = "button";
+      button.className = "ghost-button profile-edit-reopen";
+      button.textContent = "编辑资料";
+      form.insertAdjacentElement("afterend", button);
+    }
+    button.onclick = () => revealProfileForm(true);
   }
 
   function ensureDisplay() {
@@ -83,21 +121,42 @@
     return line;
   }
 
+  function fillForm(user) {
+    const profile = user?.profile || {};
+    if ($("#profileNameInput")) $("#profileNameInput").value = user?.name || "";
+    if ($("#schoolInput")) $("#schoolInput").value = profile.school || "";
+    if ($("#majorInput")) $("#majorInput").value = profile.major || "";
+    if ($("#sbIdInput")) $("#sbIdInput").value = profile.sbId || "";
+    if ($("#avatarUrlInput")) $("#avatarUrlInput").value = profile.avatarUrl || "";
+    if ($("#backgroundUrlInput")) $("#backgroundUrlInput").value = profile.backgroundUrl || "";
+  }
+
   function renderUser(user) {
     if (!user) return;
     cachedUser = user;
     const profile = user.profile || {};
-    const majorInput = $("#majorInput");
-    const sbIdInput = $("#sbIdInput");
-    if (majorInput && document.activeElement !== majorInput) majorInput.value = profile.major || "";
-    if (sbIdInput && document.activeElement !== sbIdInput) sbIdInput.value = profile.sbId || "";
+    fillForm(user);
 
     const line = ensureDisplay();
-    if (!line) return;
-    const rows = [];
-    if (profile.major) rows.push(`<span><b>专业</b> ${escapeHtml(profile.major)}</span>`);
-    if (profile.sbId) rows.push(`<span><b>SB ID</b> @${escapeHtml(profile.sbId)}</span>`);
-    line.innerHTML = rows.length ? rows.join("") : `<span>设置专业和 SB ID 后，同学更容易找到你。</span>`;
+    if (line) {
+      const rows = [];
+      if (profile.major) rows.push(`<span><b>专业</b> ${escapeHtml(profile.major)}</span>`);
+      if (profile.sbId) rows.push(`<span><b>SB ID</b> @${escapeHtml(profile.sbId)}</span>`);
+      line.innerHTML = rows.length ? rows.join("") : `<span>设置专业和 SB ID 后，同学更容易找到你。</span>`;
+    }
+    if ($("#profilePreviewSchool")) {
+      const bits = [profile.school, profile.major ? `专业：${profile.major}` : "", profile.sbId ? `SB ID：@${profile.sbId}` : ""].filter(Boolean);
+      $("#profilePreviewSchool").textContent = bits.length ? bits.join(" | ") : "还没有填写学校。";
+    }
+  }
+
+  function revealProfileForm(clearMessage = false) {
+    const form = $("#profileForm");
+    if (!form) return;
+    ensureFields();
+    fillForm(cachedUser);
+    form.hidden = false;
+    if (clearMessage && $("#profileMessage")) $("#profileMessage").textContent = "";
   }
 
   async function refreshProfile() {
@@ -127,12 +186,13 @@
           backgroundUrl: $("#backgroundUrlInput")?.value || ""
         }
       });
+      cachedUser = result.user;
       renderUser(result.user);
       if ($("#profileName")) $("#profileName").textContent = result.user.name || "StudyBridge user";
       if ($("#profileSchool")) $("#profileSchool").textContent = result.user.profile?.school || "添加学校后，AI 会更懂你的学习环境。";
       if ($("#userLine")) $("#userLine").textContent = `${result.user.name} | ${result.user.email}`;
+      if (message) message.textContent = "已保存。需要修改时点下方“编辑资料”。";
       if (form) form.hidden = true;
-      if (message) message.textContent = "已保存";
     } catch (error) {
       if (message) message.textContent = error.message;
     }
@@ -145,11 +205,21 @@
     form.addEventListener("submit", saveProfile, true);
   }
 
+  function installOpenHandlers() {
+    const openButton = $("#openProfilePageButton");
+    if (openButton && openButton.dataset.profileOpenPatch !== "true") {
+      openButton.dataset.profileOpenPatch = "true";
+      openButton.addEventListener("click", () => setTimeout(() => revealProfileForm(true), 0));
+    }
+  }
+
   function boot() {
     installStyle();
     ensureFields();
+    ensureEditButton();
     ensureDisplay();
     installSubmitSync();
+    installOpenHandlers();
     if (cachedUser) renderUser(cachedUser);
   }
 

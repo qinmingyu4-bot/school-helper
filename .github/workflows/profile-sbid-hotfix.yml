@@ -1,8 +1,6 @@
-name: Apply StudyBridge profile and SB ID hotfix
+name: Apply StudyBridge profile, SB ID, and classmates hotfix
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -10,35 +8,60 @@ permissions:
 
 jobs:
   hotfix:
-    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Patch StudyBridge files
+      - name: Patch backend and UI safely
         run: |
           set -euo pipefail
           node <<'NODE'
           const fs = require('fs');
 
-          function replaceOnce(file, from, to, label) {
-            let text = fs.readFileSync(file, 'utf8');
-            if (text.includes(to)) return;
-            if (!text.includes(from)) throw new Error(`Missing patch target: ${label}`);
-            text = text.replace(from, to);
+          function read(file) {
+            return fs.readFileSync(file, 'utf8');
+          }
+
+          function write(file, text) {
             fs.writeFileSync(file, text);
           }
 
-          replaceOnce('server.js',
-          `function cleanProfile(body = {}) {
-            return {
-              avatarUrl: String(body.avatarUrl || "").trim().slice(0, 2200000),
-              backgroundUrl: String(body.backgroundUrl || "").trim().slice(0, 2200000),
-              school: String(body.school || "").trim().slice(0, 120)
-            };
+          function replaceRegex(file, regex, replacement, label) {
+            const text = read(file);
+            if (!regex.test(text)) {
+              console.log(`Skip ${label}: already patched or target changed.`);
+              return;
+            }
+            write(file, text.replace(regex, replacement));
+            console.log(`Patched ${label}`);
           }
-          `,
-          `function cleanProfile(body = {}) {
+
+          function replaceLiteral(file, from, to, label) {
+            const text = read(file);
+            if (!text.includes(from)) {
+              console.log(`Skip ${label}: already patched or target changed.`);
+              return;
+            }
+            write(file, text.replace(from, to));
+            console.log(`Patched ${label}`);
+          }
+
+          function insertBefore(file, marker, insert, unique, label) {
+            const text = read(file);
+            if (text.includes(unique)) {
+              console.log(`Skip ${label}: already patched.`);
+              return;
+            }
+            if (!text.includes(marker)) throw new Error(`Missing marker for ${label}`);
+            write(file, text.replace(marker, `${insert}\n${marker}`));
+            console.log(`Inserted ${label}`);
+          }
+
+          let server = read('server.js');
+          if (!server.includes('function isValidSbId(value)')) {
+            server = server.replace(
+              /function cleanProfile\(body = \{\}\) \{[\s\S]*?\n\}\n\nfunction decodeBase64Data/,
+              `function cleanProfile(body = {}) {
             const sbId = String(body.sbId || "")
               .trim()
               .toLowerCase()
@@ -57,305 +80,225 @@ jobs:
             const sbId = String(value || "").trim();
             return !sbId || /^[a-z0-9][a-z0-9._-]{2,23}$/.test(sbId);
           }
-          `,
-          'server cleanProfile');
 
-          replaceOnce('server.js',
-          `      name: peer.name || "同学",
-                email: peer.email || "",
-                school: peer.profile?.school || ""
-              },`,
-          `      name: peer.name || "同学",
-                email: peer.email || "",
-                school: peer.profile?.school || "",
-                sbId: peer.profile?.sbId || ""
-              },`,
-          'server publicClassmate');
+          function decodeBase64Data`
+            );
+            write('server.js', server);
+            console.log('Patched cleanProfile and SB ID validator');
+          }
 
-          replaceOnce('server.js',
+          replaceLiteral('server.js',
+          `      profile: {
+                avatarUrl: "",
+                backgroundUrl: "",
+                school: ""
+              },`,
+          `      profile: {
+                avatarUrl: "",
+                backgroundUrl: "",
+                school: "",
+                major: "",
+                sbId: ""
+              },`,
+          'registration profile defaults');
+
+          replaceLiteral('server.js',
           `content: \`Student: \${user.name}\\nSchool: \${user.profile?.school || "Not provided"}\\nCourse: \${course.name}\\nMode: \${mode}\\nPreferences: \${JSON.stringify(`,
           `content: \`Student: \${user.name}\\nSchool: \${user.profile?.school || "Not provided"}\\nMajor: \${user.profile?.major || "Not provided"}\\nCourse: \${course.name}\\nMode: \${mode}\\nPreferences: \${JSON.stringify(`,
-          'server major prompt');
+          'major in AI prompt');
 
-          replaceOnce('server.js',
-          `      profile: {
-                  avatarUrl: "",
-                  backgroundUrl: "",
-                  school: ""
-                },`,
-          `      profile: {
-                  avatarUrl: "",
-                  backgroundUrl: "",
-                  school: "",
-                  major: "",
-                  sbId: ""
-                },`,
-          'server register profile');
-
-          replaceOnce('server.js',
+          replaceLiteral('server.js',
           `    const profile = cleanProfile(body);
-              const updated = await db.updateUser(user.id, { name, profile });`,
+            const updated = await db.updateUser(user.id, { name, profile });`,
           `    const profile = cleanProfile(body);
-              if (!isValidSbId(profile.sbId)) {
-                return sendError(res, 400, "SB ID must be 3-24 characters and can use letters, numbers, dots, underscores, or dashes.");
+            if (!isValidSbId(profile.sbId)) {
+              return sendError(res, 400, "SB ID must be 3-24 characters and can use letters, numbers, dots, underscores, or dashes.");
+            }
+            if (profile.sbId) {
+              const existingSbUser = await db.findUserBySbId(profile.sbId);
+              if (existingSbUser && existingSbUser.id !== user.id) {
+                return sendError(res, 409, "This SB ID is already taken.");
               }
-              if (profile.sbId) {
-                const existingSbUser = await db.findUserBySbId(profile.sbId);
-                if (existingSbUser && existingSbUser.id !== user.id) {
-                  return sendError(res, 409, "This SB ID is already taken.");
-                }
-              }
-              const updated = await db.updateUser(user.id, { name, profile });`,
-          'server profile validation');
+            }
+            const updated = await db.updateUser(user.id, { name, profile });`,
+          'profile save validation');
 
-          replaceOnce('server.js',
-          `        name: candidate.name,
-                  email: candidate.email,
-                  school: candidate.profile?.school || ""
-                }));`,
-          `        name: candidate.name,
-                  email: candidate.email,
-                  school: candidate.profile?.school || "",
-                  sbId: candidate.profile?.sbId || ""
-                }));`,
-          'server candidates sbid');
+          const classmateHelpers = `async function publicClassmate(connection, viewerId) {
+            const peerId = (connection.userIds || []).find((id) => id !== viewerId);
+            const peer = peerId ? await db.getUser(peerId) : null;
+            const messages = await db.listDirectMessages(connection.id, 1);
+            const last = messages[messages.length - 1] || null;
+            return {
+              id: connection.id,
+              peer: peer
+                ? {
+                    id: peer.id,
+                    name: peer.name || "同学",
+                    email: peer.email || "",
+                    school: peer.profile?.school || "",
+                    sbId: peer.profile?.sbId || ""
+                  }
+                : null,
+              lastMessage: last
+                ? {
+                    content: last.content || "",
+                    createdAt: last.createdAt,
+                    mine: last.senderId === viewerId
+                  }
+                : null,
+              updatedAt: connection.updatedAt || connection.createdAt
+            };
+          }
+          `;
+          insertBefore('server.js', 'async function readJson(req) {', classmateHelpers, 'async function publicClassmate', 'classmate public helper');
 
-          replaceOnce('server.js',
-          `    const body = await readJson(req);
-              const email = normalizeEmail(body.email);
-              if (!email.includes("@")) return sendError(res, 400, "Please enter your classmate's email.");
-              const peer = await db.findUserByEmail(email);
-              if (!peer) return sendError(res, 404, "No StudyBridge account was found for that email.");`,
-          `    const body = await readJson(req);
-              const sbId = String(body.sbId || body.studentId || "")
-                .trim()
-                .toLowerCase()
-                .replace(/^@+/, "");
-              const email = normalizeEmail(body.email);
-              if (sbId && !isValidSbId(sbId)) {
-                return sendError(res, 400, "Please enter a valid SB ID.");
-              }
-              if (!sbId && !email.includes("@")) return sendError(res, 400, "Please enter your classmate's SB ID.");
-              const peer = sbId ? await db.findUserBySbId(sbId) : await db.findUserByEmail(email);
-              if (!peer) return sendError(res, 404, sbId ? "No StudyBridge account was found for that SB ID." : "No StudyBridge account was found for that email.");`,
-          'server classmate sbid');
+          const classmateRoutes = `  if (url.pathname === "/api/classmates" && method === "GET") {
+            const user = await requireUser(req, res);
+            if (!user) return;
+            const connections = await db.listClassmates(user.id);
+            const classmates = await Promise.all(connections.map((item) => publicClassmate(item, user.id)));
+            const connectedIds = new Set(connections.flatMap((item) => item.userIds || []));
+            const school = String(user.profile?.school || "").trim();
+            const users = await db.listUsers();
+            const candidates = users
+              .filter((candidate) => candidate.id !== user.id)
+              .filter((candidate) => !connectedIds.has(candidate.id))
+              .filter((candidate) => !school || String(candidate.profile?.school || "").trim().toLowerCase() === school.toLowerCase())
+              .slice(0, 30)
+              .map((candidate) => ({
+                id: candidate.id,
+                name: candidate.name,
+                email: candidate.email,
+                school: candidate.profile?.school || "",
+                sbId: candidate.profile?.sbId || ""
+              }));
+            return sendJson(res, 200, { classmates, candidates, school });
+          }
 
-          replaceOnce('public/app.js',
+          if (url.pathname === "/api/classmates" && method === "POST") {
+            const user = await requireUser(req, res);
+            if (!user) return;
+            const body = await readJson(req);
+            const sbId = String(body.sbId || body.studentId || "")
+              .trim()
+              .toLowerCase()
+              .replace(/^@+/, "");
+            const email = normalizeEmail(body.email);
+            if (sbId && !isValidSbId(sbId)) return sendError(res, 400, "Please enter a valid SB ID.");
+            if (!sbId && !email.includes("@")) return sendError(res, 400, "Please enter your classmate's SB ID.");
+            const peer = sbId ? await db.findUserBySbId(sbId) : await db.findUserByEmail(email);
+            if (!peer) return sendError(res, 404, sbId ? "No StudyBridge account was found for that SB ID." : "No StudyBridge account was found for that email.");
+            if (peer.id === user.id) return sendError(res, 400, "You cannot add yourself.");
+            const existing = await db.findClassmateByUsers(user.id, peer.id);
+            const connection = existing || await db.createClassmate({ id: createId("mate"), userIds: [user.id, peer.id] });
+            return sendJson(res, existing ? 200 : 201, { classmate: await publicClassmate(connection, user.id) });
+          }
+
+          const directMessageMatch = url.pathname.match(/^\\/api\\/classmates\\/([^/]+)\\/messages$/);
+          if (directMessageMatch && method === "GET") {
+            const user = await requireUser(req, res);
+            if (!user) return;
+            const connection = await db.getClassmate(user.id, directMessageMatch[1]);
+            if (!connection) return sendError(res, 404, "Classmate chat not found.");
+            const messages = await db.listDirectMessages(connection.id);
+            return sendJson(res, 200, {
+              messages: messages.map((message) => ({
+                id: message.id,
+                content: message.content,
+                createdAt: message.createdAt,
+                senderId: message.senderId,
+                mine: message.senderId === user.id
+              }))
+            });
+          }
+
+          if (directMessageMatch && method === "POST") {
+            const user = await requireUser(req, res);
+            if (!user) return;
+            const connection = await db.getClassmate(user.id, directMessageMatch[1]);
+            if (!connection) return sendError(res, 404, "Classmate chat not found.");
+            const body = await readJson(req);
+            const content = String(body.content || "").trim().slice(0, 1200);
+            if (!content) return sendError(res, 400, "Message is required.");
+            const message = await db.createDirectMessage({ id: createId("dm"), chatId: connection.id, senderId: user.id, content });
+            return sendJson(res, 201, { message: { ...message, mine: true } });
+          }
+          `;
+          insertBefore('server.js', '  if (url.pathname === "/api/courses" && method === "GET") {', classmateRoutes, 'url.pathname === "/api/classmates"', 'classmate routes');
+
+          const dbFile = 'lib/database.js';
+          let dbText = read(dbFile);
+          if (!dbText.includes('async findUserBySbId')) {
+            dbText = dbText.replace(
+              '  async getUser(userId) {',
+              `  async findUserBySbId(sbId) {
+            const normalized = String(sbId || "").trim().toLowerCase();
+            if (!normalized) return null;
+            if (this.dynamo) {
+              const users = await this.listUsers();
+              return users.find((user) => String(user.profile?.sbId || "").trim().toLowerCase() === normalized) || null;
+            }
+            return this.local.read((db) =>
+              Object.values(db.users || {}).find((user) => String(user.profile?.sbId || "").trim().toLowerCase() === normalized) || null
+            );
+          }
+
+          async getUser(userId) {`
+            );
+            write(dbFile, dbText);
+            console.log('Inserted findUserBySbId');
+          }
+
+          replaceLiteral('public/app.js',
           `        name: profileNameInput.value,
-                  school: schoolInput.value,
-                  avatarUrl: avatarUrlInput.value,`,
+                school: schoolInput.value,
+                avatarUrl: avatarUrlInput.value,`,
           `        name: profileNameInput.value,
-                  school: schoolInput.value,
-                  major: document.querySelector("#majorInput")?.value || "",
-                  sbId: document.querySelector("#sbIdInput")?.value || "",
-                  avatarUrl: avatarUrlInput.value,`,
-          'app profile submit');
+                school: schoolInput.value,
+                major: document.querySelector("#majorInput")?.value || "",
+                sbId: document.querySelector("#sbIdInput")?.value || "",
+                avatarUrl: avatarUrlInput.value,`,
+          'profile submit payload');
 
-          replaceOnce('public/app.js',
+          replaceLiteral('public/app.js',
           `  profileNameInput.value = state.user?.name || "";
-            schoolInput.value = profile.school || "";
-            avatarUrlInput.value = profile.avatarUrl || "";`,
+          schoolInput.value = profile.school || "";
+          avatarUrlInput.value = profile.avatarUrl || "";`,
           `  profileNameInput.value = state.user?.name || "";
-            schoolInput.value = profile.school || "";
-            const majorInput = document.querySelector("#majorInput");
-            const sbIdInput = document.querySelector("#sbIdInput");
-            if (majorInput) majorInput.value = profile.major || "";
-            if (sbIdInput) sbIdInput.value = profile.sbId || "";
-            avatarUrlInput.value = profile.avatarUrl || "";`,
-          'app profile form values');
+          schoolInput.value = profile.school || "";
+          const majorInput = document.querySelector("#majorInput");
+          const sbIdInput = document.querySelector("#sbIdInput");
+          if (majorInput) majorInput.value = profile.major || "";
+          if (sbIdInput) sbIdInput.value = profile.sbId || "";
+          avatarUrlInput.value = profile.avatarUrl || "";`,
+          'profile form values');
 
-          replaceOnce('public/layout-fix.js',
-          `  loadScriptOnce("/profile-onboarding-patch.js?v=20261005-1");
-            loadScriptOnce("/major-autocomplete.js?v=20261005-1");`,
-          `  loadScriptOnce("/profile-onboarding-patch.js?v=20261005-1");
-            loadScriptOnce("/profile-fields-patch.js?v=20261005-1");
-            loadScriptOnce("/major-autocomplete.js?v=20261005-1");`,
-          'layout profile fields');
-
-          replaceOnce('public/layout-fix.js',
-          `  loadScriptOnce("/classmates-patch.js?v=20261005-1");`,
-          `  loadScriptOnce("/classmates-patch.js?v=20261005-2");`,
-          'layout classmates version');
-
-          replaceOnce('public/classmates-patch.js',
-          `<input id="classmateEmailInput" type="email" placeholder="输入同学注册邮箱" />`,
-          `<input id="classmateEmailInput" type="text" placeholder="输入同学的 SB ID，例如 adam2026" autocomplete="off" />`,
-          'classmates input');
-
-          replaceOnce('public/classmates-patch.js',
-          `"可以通过注册邮箱添加同学。"`,
-          `"可以通过同学的 SB ID 添加。"`,
-          'classmates status');
-
-          replaceOnce('public/classmates-patch.js',
-          `\${escapeHtml(item.peer?.email || "")}\${escapeHtml(last).slice(0, 70)}`,
-          `\${escapeHtml(item.peer?.sbId ? ` + '`@${item.peer.sbId}`' + ` : item.peer?.email || "")}\${escapeHtml(last).slice(0, 70)}`,
-          'classmates peer meta');
-
-          replaceOnce('public/classmates-patch.js',
-          `\${escapeHtml(item.email)}`,
-          `\${escapeHtml(item.sbId ? ` + '`@${item.sbId}`' + ` : item.email)}`,
-          'classmates candidate meta');
-
-          replaceOnce('public/classmates-patch.js',
-          `data-add-candidate="\${escapeHtml(item.email)}"`,
-          `data-add-candidate="\${escapeHtml(item.sbId || item.email)}"`,
-          'classmates candidate action');
-
-          replaceOnce('public/classmates-patch.js',
+          replaceLiteral('public/classmates-patch.js', '<input id="classmateEmailInput" type="email" placeholder="输入同学注册邮箱" />', '<input id="classmateEmailInput" type="text" placeholder="输入同学的 SB ID，例如 adam2026" autocomplete="off" />', 'classmate input label');
+          replaceLiteral('public/classmates-patch.js', '"可以通过注册邮箱添加同学。"', '"可以通过同学的 SB ID 添加。"', 'classmate status text');
+          replaceLiteral('public/classmates-patch.js', '输入同学注册邮箱开始。', '输入同学的 SB ID 开始。', 'classmate empty text');
+          replaceLiteral('public/classmates-patch.js', '也可以输入邮箱添加。', '也可以输入 SB ID 添加。', 'classmate candidate text');
+          replaceLiteral('public/classmates-patch.js', '${escapeHtml(item.peer?.email || "")}${escapeHtml(last).slice(0, 70)}', '${escapeHtml(item.peer?.sbId ? `@${item.peer.sbId}` : item.peer?.email || "")}${escapeHtml(last).slice(0, 70)}', 'classmate peer sbid display');
+          replaceLiteral('public/classmates-patch.js', '${escapeHtml(item.email)}</span>', '${escapeHtml(item.sbId ? `@${item.sbId}` : item.email)}</span>', 'candidate sbid display');
+          replaceLiteral('public/classmates-patch.js', 'data-add-candidate="${escapeHtml(item.email)}"', 'data-add-candidate="${escapeHtml(item.sbId || item.email)}"', 'candidate sbid action');
+          replaceLiteral('public/classmates-patch.js',
           `    const email = input.value.trim();
-              if (!email) return;
-              status.textContent = "正在添加同学...";
-              try {
-                const result = await api("/api/classmates", { method: "POST", body: { email } });`,
+          if (!email) return;
+          status.textContent = "正在添加同学...";
+          try {
+            const result = await api("/api/classmates", { method: "POST", body: { email } });`,
           `    const sbId = input.value.trim().replace(/^@+/, "");
-              if (!sbId) return;
-              status.textContent = "正在添加同学...";
-              try {
-                const result = await api("/api/classmates", { method: "POST", body: { sbId } });`,
-          'classmates submit');
+          if (!sbId) return;
+          status.textContent = "正在添加同学...";
+          try {
+            const result = await api("/api/classmates", { method: "POST", body: { sbId } });`,
+          'classmate submit sbid');
           NODE
 
-          cat > public/profile-fields-patch.js <<'JS'
-          (() => {
-            let cachedUser = null;
-
-            function $(selector) {
-              return document.querySelector(selector);
-            }
-
-            function escapeHtml(value) {
-              return String(value ?? "")
-                .replaceAll("&", "&amp;")
-                .replaceAll("<", "&lt;")
-                .replaceAll(">", "&gt;")
-                .replaceAll('"', "&quot;")
-                .replaceAll("'", "&#039;");
-            }
-
-            async function api(path, options = {}) {
-              const response = await fetch(path, {
-                method: options.method || "GET",
-                headers: options.body ? { "content-type": "application/json" } : undefined,
-                body: options.body ? JSON.stringify(options.body) : undefined
-              });
-              const payload = await response.json().catch(() => ({}));
-              if (!response.ok) throw new Error(payload.error || "Request failed.");
-              return payload;
-            }
-
-            function installStyle() {
-              if ($("#studybridge-profile-fields-style")) return;
-              const style = document.createElement("style");
-              style.id = "studybridge-profile-fields-style";
-              style.textContent = `
-                .profile-extra-line {
-                  display: grid;
-                  gap: 3px;
-                  margin-top: 4px;
-                  color: var(--muted);
-                  font-size: 12px;
-                  line-height: 1.25;
-                }
-                .profile-extra-line b {
-                  color: var(--navy);
-                  font-weight: 800;
-                }
-                .profile-form-field {
-                  width: 100%;
-                }
-              `;
-              document.head.appendChild(style);
-            }
-
-            function ensureInput(id, placeholder, afterElement) {
-              let input = $(`#${id}`);
-              if (input) return input;
-              input = document.createElement("input");
-              input.id = id;
-              input.className = "profile-form-field";
-              input.type = "text";
-              input.placeholder = placeholder;
-              if (afterElement) afterElement.insertAdjacentElement("afterend", input);
-              return input;
-            }
-
-            function ensureFields() {
-              const schoolInput = $("#schoolInput");
-              if (!schoolInput) return;
-              const majorInput = ensureInput("majorInput", "专业，例如 Business / Engineering", schoolInput);
-              const sbIdInput = ensureInput("sbIdInput", "SB ID，例如 adam2026", majorInput);
-              sbIdInput.autocomplete = "off";
-              sbIdInput.spellcheck = false;
-            }
-
-            function ensureDisplay() {
-              const profileSchool = $("#profileSchool");
-              if (!profileSchool) return null;
-              let line = $("#profileExtraLine");
-              if (!line) {
-                line = document.createElement("div");
-                line.id = "profileExtraLine";
-                line.className = "profile-extra-line";
-                profileSchool.insertAdjacentElement("afterend", line);
-              }
-              return line;
-            }
-
-            function renderUser(user) {
-              if (!user) return;
-              cachedUser = user;
-              const profile = user.profile || {};
-              const majorInput = $("#majorInput");
-              const sbIdInput = $("#sbIdInput");
-              if (majorInput && document.activeElement !== majorInput) majorInput.value = profile.major || "";
-              if (sbIdInput && document.activeElement !== sbIdInput) sbIdInput.value = profile.sbId || "";
-
-              const line = ensureDisplay();
-              if (!line) return;
-              const rows = [];
-              if (profile.major) rows.push(`<span><b>专业</b> ${escapeHtml(profile.major)}</span>`);
-              if (profile.sbId) rows.push(`<span><b>SB ID</b> @${escapeHtml(profile.sbId)}</span>`);
-              line.innerHTML = rows.length ? rows.join("") : `<span>设置专业和 SB ID 后，同学更容易找到你。</span>`;
-            }
-
-            async function refreshProfile() {
-              try {
-                const result = await api("/api/me");
-                renderUser(result.user);
-              } catch {
-                cachedUser = null;
-              }
-            }
-
-            function installSubmitSync() {
-              const form = $("#profileForm");
-              if (!form || form.dataset.profileFieldsPatch === "true") return;
-              form.dataset.profileFieldsPatch = "true";
-              form.addEventListener("submit", () => {
-                setTimeout(refreshProfile, 300);
-              });
-            }
-
-            function boot() {
-              installStyle();
-              ensureFields();
-              ensureDisplay();
-              installSubmitSync();
-              if (cachedUser) renderUser(cachedUser);
-            }
-
-            boot();
-            refreshProfile();
-            setInterval(boot, 1000);
-          })();
-          JS
-
           node --check server.js
+          node --check lib/database.js
           node --check public/app.js
-          node --check public/profile-fields-patch.js
           node --check public/classmates-patch.js
-          node --check public/layout-fix.js
+          node --check public/profile-fields-patch.js
 
       - name: Commit hotfix
         run: |
@@ -366,6 +309,6 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add server.js public/app.js public/layout-fix.js public/classmates-patch.js public/profile-fields-patch.js
-          git commit -m "Persist profile major and add SB ID support"
+          git add server.js lib/database.js public/app.js public/classmates-patch.js public/profile-fields-patch.js
+          git commit -m "Persist profile major and add SB ID classmates"
           git push

@@ -44,16 +44,34 @@
         border-top: 1px solid rgba(216, 222, 232, 0.72);
       }
 
+      .study-entry,
       .community-entry,
       .classmates-entry,
       .email-helper-entry,
       .schedule-entry {
+        display: grid !important;
         grid-template-columns: 34px minmax(0, 1fr) !important;
+        align-items: center !important;
+        width: 100% !important;
         min-height: 48px !important;
         padding: 9px 12px !important;
         gap: 10px !important;
+        border: 1px solid var(--line) !important;
+        border-radius: 8px !important;
+        background: white !important;
+        color: var(--navy) !important;
+        text-align: left !important;
         overflow: hidden !important;
         cursor: pointer !important;
+        box-shadow: 0 8px 24px rgba(25, 36, 58, 0.04) !important;
+      }
+
+      .study-entry:hover,
+      .community-entry:hover,
+      .classmates-entry:hover,
+      .email-helper-entry:hover,
+      .schedule-entry:hover {
+        border-color: var(--green) !important;
       }
 
       .community-entry > .small-button,
@@ -63,6 +81,7 @@
         display: none !important;
       }
 
+      .study-entry > span:not(.study-entry-icon),
       .community-entry > span:not(.community-entry-icon),
       .classmates-entry > span:not(.classmates-entry-icon),
       .email-helper-entry > span:not(.email-helper-entry-icon),
@@ -75,10 +94,12 @@
         overflow: hidden !important;
       }
 
+      .study-entry > span:not(.study-entry-icon) > strong,
       .community-entry > span:not(.community-entry-icon) > strong,
       .classmates-entry > span:not(.classmates-entry-icon) > strong,
       .email-helper-entry > span:not(.email-helper-entry-icon) > strong,
       .schedule-entry > span:not(.schedule-entry-icon) > strong,
+      .study-entry > span:not(.study-entry-icon) > span,
       .community-entry > span:not(.community-entry-icon) > span,
       .classmates-entry > span:not(.classmates-entry-icon) > span,
       .email-helper-entry > span:not(.email-helper-entry-icon) > span,
@@ -90,11 +111,20 @@
         white-space: nowrap !important;
       }
 
+      .study-entry-icon,
       .community-entry-icon,
       .classmates-entry-icon,
       .email-helper-entry-icon,
       .schedule-entry-icon {
+        display: grid !important;
+        place-items: center !important;
+        width: 34px !important;
+        height: 34px !important;
+        border-radius: 8px !important;
         flex: 0 0 auto !important;
+        background: linear-gradient(145deg, #1f3a5f, #2f7d62) !important;
+        color: white !important;
+        font-weight: 900 !important;
       }
 
       @media (max-height: 760px) {
@@ -103,6 +133,31 @@
         }
       }
     `;
+  }
+
+  function ensureStudyEntry() {
+    if (document.querySelector("#openStudyAreaButton")) return;
+    const profile = document.querySelector("#openProfilePageButton");
+    if (!profile) return;
+    const button = document.createElement("button");
+    button.id = "openStudyAreaButton";
+    button.type = "button";
+    button.className = "study-entry";
+    button.innerHTML = `
+      <span class="study-entry-icon">学</span>
+      <span><strong>学习区</strong><span>课程资料、AI 对话和复习计划</span></span>
+    `;
+    profile.insertAdjacentElement("afterend", button);
+    button.addEventListener("click", () => {
+      ["#profilePage", "#schoolCommunityPage", "#classmatesPage", "#emailReplyPage", "#schedulePage"].forEach((selector) => {
+        const element = document.querySelector(selector);
+        if (element) element.hidden = true;
+      });
+      const workspacePage = document.querySelector("#workspacePage");
+      if (workspacePage) workspacePage.hidden = false;
+      const chatArea = document.querySelector("#chatArea");
+      if (chatArea) chatArea.scrollTop = chatArea.scrollHeight;
+    });
   }
 
   function loadScriptOnce(src) {
@@ -115,6 +170,7 @@
   }
 
   installCreatorLayoutFix();
+  ensureStudyEntry();
   loadScriptOnce("/school-autocomplete.js?v=20261005-1");
   loadScriptOnce("/admin-console-patch.js?v=20261005-1");
   loadScriptOnce("/profile-onboarding-patch.js?v=20261005-1");
@@ -126,5 +182,8 @@
   loadScriptOnce("/classmates-patch.js?v=20261005-1");
   loadScriptOnce("/email-reply-patch.js?v=20261005-1");
   loadScriptOnce("/schedule-patch.js?v=20261005-1");
-  setInterval(installCreatorLayoutFix, 1000);
+  setInterval(() => {
+    installCreatorLayoutFix();
+    ensureStudyEntry();
+  }, 1000);
 })();

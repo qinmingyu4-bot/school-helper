@@ -1,0 +1,62 @@
+name: Apply Sol route percentage
+
+on:
+  push:
+    paths:
+      - ".github/workflows/apply-sol-percent.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Patch StudyBridge Sol usage percentage
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          const serverPath = 'server.js';
+          let server = fs.readFileSync(serverPath, 'utf8');
+
+          if (!server.includes('const solRoutePercent = Math.max(')) {
+            server = server.replace(
+              'const complexAiModel =\n  String(process.env.OPENAI_COMPLEX_MODEL || process.env.STUDYBRIDGE_COMPLEX_MODEL || "").trim() ||\n  "gpt-6.1-sol";\n',
+              'const complexAiModel =\n  String(process.env.OPENAI_COMPLEX_MODEL || process.env.STUDYBRIDGE_COMPLEX_MODEL || "").trim() ||\n  "gpt-6.1-sol";\nconst solRoutePercent = Math.max(\n  0,\n  Math.min(100, Number(process.env.OPENAI_SOL_ROUTE_PERCENT || process.env.STUDYBRIDGE_SOL_ROUTE_PERCENT || 15))\n);\n'
+            );
+          }
+
+          server = server.replace(
+            'return isComplex ? complexAiModel : simpleAiModel;',
+            'if (!isComplex || solRoutePercent <= 0) return simpleAiModel;\n  if (solRoutePercent >= 100) return complexAiModel;\n  return crypto.randomInt(100) < solRoutePercent ? complexAiModel : simpleAiModel;'
+          );
+
+          fs.writeFileSync(serverPath, server);
+
+          const envPath = '.env.example';
+          let env = fs.readFileSync(envPath, 'utf8');
+          if (!env.includes('OPENAI_SOL_ROUTE_PERCENT=')) {
+            env = env.replace('OPENAI_COMPLEX_MODEL=gpt-6.1-sol', 'OPENAI_COMPLEX_MODEL=gpt-6.1-sol\nOPENAI_SOL_ROUTE_PERCENT=15');
+          }
+          fs.writeFileSync(envPath, env);
+          NODE
+
+          node --check server.js
+
+      - name: Commit patched files
+        run: |
+          if git diff --quiet; then
+            echo "No Sol percentage changes needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.js .env.example
+          git commit -m "Limit Sol routing percentage for cost control"
+          git push

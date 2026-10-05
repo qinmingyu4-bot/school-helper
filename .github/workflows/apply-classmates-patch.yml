@@ -2,8 +2,6 @@ name: Apply classmates server patch
 
 on:
   push:
-    paths:
-      - ".github/workflows/apply-classmates-patch.yml"
   workflow_dispatch:
 
 permissions:

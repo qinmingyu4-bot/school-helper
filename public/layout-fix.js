@@ -122,11 +122,25 @@
         border-color: var(--green) !important;
       }
 
-      .community-entry > .small-button,
-      .classmates-entry > .small-button,
-      .email-helper-entry > .small-button,
-      .schedule-entry > .small-button {
+      .community-entry .small-button,
+      .classmates-entry .small-button,
+      .email-helper-entry .small-button,
+      .schedule-entry .small-button,
+      .study-entry .small-button,
+      .community-entry button:not(.community-entry),
+      .classmates-entry button:not(.classmates-entry),
+      .email-helper-entry button:not(.email-helper-entry),
+      .schedule-entry button:not(.schedule-entry),
+      .study-entry button:not(.study-entry) {
         display: none !important;
+      }
+
+      .study-entry *,
+      .community-entry *,
+      .classmates-entry *,
+      .email-helper-entry *,
+      .schedule-entry * {
+        pointer-events: none !important;
       }
 
       .study-entry > span:not(.study-entry-icon),

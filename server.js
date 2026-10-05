@@ -26,6 +26,13 @@ try {
   nodemailer = null;
 }
 
+let pdfParse = null;
+try {
+  pdfParse = require("pdf-parse");
+} catch {
+  pdfParse = null;
+}
+
 function loadEnvFile(filePath = path.join(__dirname, ".env")) {
   if (!fsSync.existsSync(filePath)) return;
   const lines = fsSync.readFileSync(filePath, "utf8").split(/\r?\n/);
@@ -52,6 +59,8 @@ const port = Number(process.env.PORT || 3000);
 const requireInviteCode = process.env.REQUIRE_INVITE_CODE !== "false";
 const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION !== "false";
 const emailCodeTtlMs = Number(process.env.EMAIL_CODE_TTL_MINUTES || 15) * 60 * 1000;
+const maxJsonBytes = 16 * 1024 * 1024;
+const maxPdfBytes = 8 * 1024 * 1024;
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -109,10 +118,14 @@ function publicInvite(invite) {
 
 async function readJson(req) {
   const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > maxJsonBytes) throw new Error("Request body is too large.");
+    chunks.push(chunk);
+  }
   const body = Buffer.concat(chunks).toString("utf8");
   if (!body) return {};
-  if (body.length > 1024 * 1024) throw new Error("Request body is too large.");
   return JSON.parse(body);
 }
 
@@ -178,6 +191,37 @@ function validatePasswordPair(password, passwordConfirm) {
 
 function compactDocumentText(text) {
   return String(text || "").replace(/\s+/g, " ").trim().slice(0, 12000);
+}
+
+function cleanProfile(body = {}) {
+  return {
+    avatarUrl: String(body.avatarUrl || "").trim().slice(0, 2200000),
+    backgroundUrl: String(body.backgroundUrl || "").trim().slice(0, 2200000),
+    school: String(body.school || "").trim().slice(0, 120)
+  };
+}
+
+function decodeBase64Data(data) {
+  const raw = String(data || "");
+  const clean = raw.includes(",") ? raw.split(",").pop() : raw;
+  return Buffer.from(clean, "base64");
+}
+
+async function extractUploadedText(body = {}) {
+  const fileName = String(body.fileName || body.title || "Uploaded file").slice(0, 180);
+  const fileType = String(body.fileType || "").toLowerCase();
+  const isPdf = fileType.includes("pdf") || fileName.toLowerCase().endsWith(".pdf");
+
+  if (isPdf) {
+    if (!pdfParse) throw new Error("PDF upload support is still installing. Please try again in a minute.");
+    const buffer = decodeBase64Data(body.fileData);
+    if (!buffer.length) throw new Error("PDF file is empty.");
+    if (buffer.length > maxPdfBytes) throw new Error("PDF is too large. Please upload a file under 8 MB.");
+    const parsed = await pdfParse(buffer);
+    return compactDocumentText(parsed.text || "");
+  }
+
+  return compactDocumentText(body.text || body.fileText || "");
 }
 
 function generateEmailCode() {
@@ -263,11 +307,11 @@ function buildStudyPrompt({ user, course, documents, history, mode, message }) {
     {
       role: "system",
       content:
-        "You are StudyBridge, a bilingual academic coach for international students. Explain in Chinese, preserve key English academic terms, help students learn without doing prohibited final submissions for them, and keep answers grounded in the provided course material."
+        "You are StudyBridge, a bilingual academic coach for international students. Explain in Chinese, preserve key English academic terms, help students learn without doing prohibited final submissions for them, and keep answers grounded in the provided course material. When the student has provided a school, tailor examples, terminology, planning advice, and campus context to that school when useful."
     },
     {
       role: "user",
-      content: `Student: ${user.name}\nCourse: ${course.name}\nMode: ${mode}\nPreferences: ${JSON.stringify(
+      content: `Student: ${user.name}\nSchool: ${user.profile?.school || "Not provided"}\nCourse: ${course.name}\nMode: ${mode}\nPreferences: ${JSON.stringify(
         user.preferences || {}
       )}\n\nCourse material:\n${docContext || "No course material saved yet."}\n\nRecent chat:\n${recent || "No prior messages."}\n\nStudent question:\n${message}`
     }
@@ -396,6 +440,11 @@ async function routeApi(req, res) {
       role: adminEmails().includes(email) ? "admin" : "student",
       inviteCode: inviteGrant.code || inviteGrant.invite?.code || "",
       inviteId: inviteGrant.invite?.id || "",
+      profile: {
+        avatarUrl: "",
+        backgroundUrl: "",
+        school: ""
+      },
       preferences: {
         englishTerms: true,
         englishAnswers: true,
@@ -430,6 +479,17 @@ async function routeApi(req, res) {
     const user = await requireUser(req, res);
     if (!user) return;
     return sendJson(res, 200, { user: publicUser(user) });
+  }
+
+  if (url.pathname === "/api/me/profile" && method === "PUT") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const body = await readJson(req);
+    const name = String(body.name || "").trim().slice(0, 80);
+    if (!name) return sendError(res, 400, "Name is required.");
+    const profile = cleanProfile(body);
+    const updated = await db.updateUser(user.id, { name, profile });
+    return sendJson(res, 200, { user: publicUser(withEffectiveRole(updated)) });
   }
 
   if (url.pathname === "/api/admin/overview" && method === "GET") {
@@ -534,8 +594,13 @@ async function routeApi(req, res) {
     }
     if (child === "documents" && method === "POST") {
       const body = await readJson(req);
-      const title = String(body.title || "Course note").trim().slice(0, 160);
-      const text = compactDocumentText(body.text);
+      const title = String(body.title || body.fileName || "Course note").trim().slice(0, 160);
+      let text;
+      try {
+        text = body.fileData ? await extractUploadedText(body) : compactDocumentText(body.text);
+      } catch (error) {
+        return sendError(res, 400, error.message);
+      }
       if (!text) return sendError(res, 400, "Document text is required.");
       const document = await db.createDocument({
         id: createId("doc"),
@@ -543,7 +608,7 @@ async function routeApi(req, res) {
         courseId,
         title,
         text,
-        type: String(body.type || "Note").slice(0, 60)
+        type: String(body.type || (String(body.fileName || "").toLowerCase().endsWith(".pdf") ? "PDF" : "Note")).slice(0, 60)
       });
       return sendJson(res, 201, { document });
     }

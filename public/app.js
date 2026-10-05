@@ -6,7 +6,8 @@ const state = {
   invites: [],
   users: [],
   activeCourseId: null,
-  authMode: "login"
+  authMode: "login",
+  workspaceMode: localStorage.getItem("studybridgeWorkspaceMode") || "student"
 };
 
 const authPanel = document.querySelector("#authPanel");
@@ -41,6 +42,9 @@ const englishAnswersToggle = document.querySelector("#englishAnswersToggle");
 const chineseExplanationsToggle = document.querySelector("#chineseExplanationsToggle");
 const customInstructionInput = document.querySelector("#customInstructionInput");
 const preferenceStatus = document.querySelector("#preferenceStatus");
+const roleSwitch = document.querySelector("#roleSwitch");
+const studentViewButton = document.querySelector("#studentViewButton");
+const creatorViewButton = document.querySelector("#creatorViewButton");
 const developerPanel = document.querySelector("#developerPanel");
 const inviteForm = document.querySelector("#inviteForm");
 const inviteLabelInput = document.querySelector("#inviteLabelInput");
@@ -70,7 +74,9 @@ authForm.addEventListener("submit", async (event) => {
       body: payload
     });
     state.user = result.user;
-    await enterApp();
+    authMessage.textContent = state.authMode === "register" ? "注册成功，正在进入 StudyBridge..." : "登录成功，正在进入 StudyBridge...";
+    authForm.reset();
+    window.location.reload();
   } catch (error) {
     authMessage.textContent = error.message;
   } finally {
@@ -88,6 +94,9 @@ logoutButton.addEventListener("click", async () => {
   state.users = [];
   showAuth();
 });
+
+studentViewButton.addEventListener("click", () => setWorkspaceMode("student"));
+creatorViewButton.addEventListener("click", () => setWorkspaceMode("creator"));
 
 addCourseButton.addEventListener("click", async () => {
   const name = prompt("课程名称，例如 MAT223H1F");
@@ -205,15 +214,25 @@ async function enterApp() {
   state.activeCourseId = state.courses[0].id;
   await loadActiveCourseData();
   renderCourses();
-  developerPanel.hidden = state.user.role !== "admin";
-  if (state.user.role === "admin") await loadAdminOverview();
+  roleSwitch.hidden = state.user.role !== "admin";
+  setWorkspaceMode(state.user.role === "admin" ? state.workspaceMode : "student");
 }
 
 function showAuth() {
   authPanel.hidden = false;
   appShell.hidden = true;
   developerPanel.hidden = true;
+  roleSwitch.hidden = true;
   passwordInput.value = "";
+}
+
+async function setWorkspaceMode(mode) {
+  state.workspaceMode = mode === "creator" && state.user?.role === "admin" ? "creator" : "student";
+  localStorage.setItem("studybridgeWorkspaceMode", state.workspaceMode);
+  studentViewButton.classList.toggle("active", state.workspaceMode === "student");
+  creatorViewButton.classList.toggle("active", state.workspaceMode === "creator");
+  developerPanel.hidden = state.user?.role !== "admin" || state.workspaceMode !== "creator";
+  if (!developerPanel.hidden) await loadAdminOverview();
 }
 
 function setAuthMode(mode) {

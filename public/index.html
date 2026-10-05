@@ -13,11 +13,11 @@
           <div class="brand-mark">SB</div>
           <div>
             <p class="eyebrow">StudyBridge Cloud</p>
-            <h1>登录后，学习资料会保存到云端。</h1>
+            <h1>登录后，每个学生的课程资料都会安全保存到云端。</h1>
           </div>
         </div>
         <p class="lead">
-          为每个学生保存课程、syllabus、lecture notes、deadline 和 AI 对话记录。AI key 只放在后端，浏览器里不会暴露。
+          只有拿到创作者邀请码的人才能注册。AI key 保存在后端，学生只能使用 StudyBridge，不会看到你的密钥。
         </p>
 
         <form class="auth-card" id="authForm">
@@ -36,6 +36,10 @@
           <label>
             <span>密码</span>
             <input id="passwordInput" type="password" autocomplete="current-password" placeholder="至少 8 位" required />
+          </label>
+          <label id="inviteField" hidden>
+            <span>邀请码</span>
+            <input id="inviteInput" autocomplete="one-time-code" placeholder="向创作者索取邀请码" />
           </label>
           <button class="primary-button" id="authSubmit" type="submit">登录</button>
           <p class="form-message" id="authMessage"></p>
@@ -105,6 +109,32 @@
               <option value="cram">考前急救</option>
             </select>
           </header>
+
+          <section class="developer-panel" id="developerPanel" hidden>
+            <div class="panel-title">
+              <div>
+                <p class="eyebrow">Creator Console</p>
+                <h3>开发者端</h3>
+              </div>
+              <button class="small-button" id="refreshAdminButton" type="button">刷新</button>
+            </div>
+            <form class="invite-form" id="inviteForm">
+              <input id="inviteLabelInput" placeholder="备注：例如 Kevin / ECO101 小组" />
+              <input id="inviteMaxUsesInput" type="number" min="1" max="100" value="1" aria-label="可使用次数" />
+              <button class="small-button" type="submit">生成邀请码</button>
+            </form>
+            <p class="form-message" id="adminMessage"></p>
+            <div class="admin-grid">
+              <div>
+                <h4>邀请码</h4>
+                <div class="invite-list" id="inviteList"></div>
+              </div>
+              <div>
+                <h4>学生数据</h4>
+                <div class="user-list" id="userList"></div>
+              </div>
+            </div>
+          </section>
 
           <div class="chat" id="chatArea"></div>
 

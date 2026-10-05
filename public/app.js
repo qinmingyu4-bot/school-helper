@@ -3,6 +3,8 @@ const state = {
   courses: [],
   documents: [],
   messages: [],
+  invites: [],
+  users: [],
   activeCourseId: null,
   authMode: "login"
 };
@@ -16,6 +18,8 @@ const nameField = document.querySelector("#nameField");
 const nameInput = document.querySelector("#nameInput");
 const emailInput = document.querySelector("#emailInput");
 const passwordInput = document.querySelector("#passwordInput");
+const inviteField = document.querySelector("#inviteField");
+const inviteInput = document.querySelector("#inviteInput");
 const userLine = document.querySelector("#userLine");
 const logoutButton = document.querySelector("#logoutButton");
 const addCourseButton = document.querySelector("#addCourseButton");
@@ -37,6 +41,14 @@ const englishAnswersToggle = document.querySelector("#englishAnswersToggle");
 const chineseExplanationsToggle = document.querySelector("#chineseExplanationsToggle");
 const customInstructionInput = document.querySelector("#customInstructionInput");
 const preferenceStatus = document.querySelector("#preferenceStatus");
+const developerPanel = document.querySelector("#developerPanel");
+const inviteForm = document.querySelector("#inviteForm");
+const inviteLabelInput = document.querySelector("#inviteLabelInput");
+const inviteMaxUsesInput = document.querySelector("#inviteMaxUsesInput");
+const inviteList = document.querySelector("#inviteList");
+const userList = document.querySelector("#userList");
+const adminMessage = document.querySelector("#adminMessage");
+const refreshAdminButton = document.querySelector("#refreshAdminButton");
 
 document.querySelectorAll("[data-auth-mode]").forEach((button) => {
   button.addEventListener("click", () => setAuthMode(button.dataset.authMode));
@@ -50,7 +62,8 @@ authForm.addEventListener("submit", async (event) => {
     const payload = {
       name: nameInput.value,
       email: emailInput.value,
-      password: passwordInput.value
+      password: passwordInput.value,
+      inviteCode: inviteInput.value
     };
     const result = await api(`/api/auth/${state.authMode}`, {
       method: "POST",
@@ -71,11 +84,13 @@ logoutButton.addEventListener("click", async () => {
   state.courses = [];
   state.documents = [];
   state.messages = [];
+  state.invites = [];
+  state.users = [];
   showAuth();
 });
 
 addCourseButton.addEventListener("click", async () => {
-  const name = prompt("Course name, e.g. MAT223H1F");
+  const name = prompt("课程名称，例如 MAT223H1F");
   if (!name?.trim()) return;
   const result = await api("/api/courses", { method: "POST", body: { name: name.trim() } });
   state.courses.unshift(result.course);
@@ -101,6 +116,7 @@ saveDocumentButton.addEventListener("click", async () => {
     documentTitleInput.value = "";
     renderDocuments();
     setStatus("资料已保存到云端数据库。");
+    await maybeRefreshAdmin();
   } catch (error) {
     setStatus(error.message);
   } finally {
@@ -134,6 +150,7 @@ chatForm.addEventListener("submit", async (event) => {
     state.messages.push(...result.messages);
     await loadMessages(course.id);
     setStatus("对话已保存到云端。");
+    await maybeRefreshAdmin();
   } catch (error) {
     removePending();
     appendMessage({ role: "assistant", content: error.message });
@@ -141,6 +158,29 @@ chatForm.addEventListener("submit", async (event) => {
     sendButton.disabled = false;
   }
 });
+
+inviteForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  adminMessage.textContent = "";
+  try {
+    const result = await api("/api/admin/invites", {
+      method: "POST",
+      body: {
+        label: inviteLabelInput.value,
+        maxUses: inviteMaxUsesInput.value
+      }
+    });
+    state.invites.unshift(result.invite);
+    inviteLabelInput.value = "";
+    inviteMaxUsesInput.value = "1";
+    renderInvites();
+    adminMessage.textContent = `已生成邀请码：${result.invite.code}`;
+  } catch (error) {
+    adminMessage.textContent = error.message;
+  }
+});
+
+refreshAdminButton.addEventListener("click", () => loadAdminOverview());
 
 async function boot() {
   try {
@@ -155,7 +195,7 @@ async function boot() {
 async function enterApp() {
   authPanel.hidden = true;
   appShell.hidden = false;
-  userLine.textContent = `${state.user.name} · ${state.user.email}`;
+  userLine.textContent = `${state.user.name} | ${state.user.email}`;
   renderPreferences();
   await loadCourses();
   if (!state.courses.length) {
@@ -165,11 +205,14 @@ async function enterApp() {
   state.activeCourseId = state.courses[0].id;
   await loadActiveCourseData();
   renderCourses();
+  developerPanel.hidden = state.user.role !== "admin";
+  if (state.user.role === "admin") await loadAdminOverview();
 }
 
 function showAuth() {
   authPanel.hidden = false;
   appShell.hidden = true;
+  developerPanel.hidden = true;
   passwordInput.value = "";
 }
 
@@ -178,8 +221,13 @@ function setAuthMode(mode) {
   document.querySelectorAll("[data-auth-mode]").forEach((button) => {
     button.classList.toggle("active", button.dataset.authMode === mode);
   });
-  nameField.hidden = mode !== "register";
-  authSubmit.textContent = mode === "register" ? "创建账号" : "登录";
+  const registering = mode === "register";
+  nameField.hidden = !registering;
+  inviteField.hidden = !registering;
+  nameInput.required = registering;
+  inviteInput.required = registering;
+  passwordInput.autocomplete = registering ? "new-password" : "current-password";
+  authSubmit.textContent = registering ? "创建账号" : "登录";
   authMessage.textContent = "";
 }
 
@@ -195,6 +243,7 @@ async function loadActiveCourseData() {
     state.messages = [];
     renderDocuments();
     renderMessages();
+    activeCourseTitle.textContent = "请选择课程";
     return;
   }
   await Promise.all([loadDocuments(course.id), loadMessages(course.id)]);
@@ -211,6 +260,24 @@ async function loadMessages(courseId) {
   const result = await api(`/api/courses/${courseId}/messages`);
   state.messages = result.messages;
   renderMessages();
+}
+
+async function loadAdminOverview() {
+  if (state.user?.role !== "admin") return;
+  adminMessage.textContent = "";
+  try {
+    const result = await api("/api/admin/overview");
+    state.invites = result.invites;
+    state.users = result.users;
+    renderInvites();
+    renderUsers();
+  } catch (error) {
+    adminMessage.textContent = error.message;
+  }
+}
+
+async function maybeRefreshAdmin() {
+  if (state.user?.role === "admin") await loadAdminOverview();
 }
 
 function renderCourses() {
@@ -251,6 +318,7 @@ function renderCourses() {
       state.activeCourseId = state.courses[0]?.id || null;
       await loadActiveCourseData();
       renderCourses();
+      await maybeRefreshAdmin();
     });
   });
 }
@@ -267,7 +335,7 @@ function renderDocuments() {
         <div class="document-item">
           <div class="item-main">
             <strong>${escapeHtml(doc.title)}</strong>
-            <span>${escapeHtml(doc.type || "Note")} · ${formatDate(doc.createdAt)}</span>
+            <span>${escapeHtml(doc.type || "Note")} | ${formatDate(doc.createdAt)}</span>
           </div>
           <button class="delete-button" type="button" data-delete-document="${doc.id}" aria-label="删除资料">×</button>
         </div>
@@ -281,6 +349,7 @@ function renderDocuments() {
       await api(`/api/courses/${course.id}/documents/${button.dataset.deleteDocument}`, { method: "DELETE" });
       state.documents = state.documents.filter((doc) => doc.id !== button.dataset.deleteDocument);
       renderDocuments();
+      await maybeRefreshAdmin();
     });
   });
 }
@@ -297,11 +366,79 @@ function renderMessages() {
   state.messages.forEach((message) => appendMessage(message));
 }
 
+function renderInvites() {
+  if (!state.invites.length) {
+    inviteList.innerHTML = '<p class="empty">还没有生成过邀请码。</p>';
+    return;
+  }
+  inviteList.innerHTML = state.invites
+    .map(
+      (invite) => `
+        <article class="invite-item ${invite.active ? "" : "disabled"}">
+          <div>
+            <strong>${escapeHtml(invite.code)}</strong>
+            <span>${escapeHtml(invite.label || "Friend invite")} | ${invite.uses}/${invite.maxUses} used</span>
+          </div>
+          <div class="button-row">
+            <button class="small-button" type="button" data-copy-invite="${invite.code}">复制</button>
+            <button class="small-button" type="button" data-toggle-invite="${invite.id}" data-active="${invite.active}">
+              ${invite.active ? "停用" : "启用"}
+            </button>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+
+  inviteList.querySelectorAll("[data-copy-invite]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await navigator.clipboard?.writeText(button.dataset.copyInvite);
+      adminMessage.textContent = `已复制：${button.dataset.copyInvite}`;
+    });
+  });
+
+  inviteList.querySelectorAll("[data-toggle-invite]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const active = button.dataset.active !== "true";
+      const result = await api(`/api/admin/invites/${button.dataset.toggleInvite}`, {
+        method: "PATCH",
+        body: { active }
+      });
+      state.invites = state.invites.map((invite) => (invite.id === result.invite.id ? result.invite : invite));
+      renderInvites();
+    });
+  });
+}
+
+function renderUsers() {
+  if (!state.users.length) {
+    userList.innerHTML = '<p class="empty">还没有学生注册。</p>';
+    return;
+  }
+  userList.innerHTML = state.users
+    .map(
+      (user) => `
+        <article class="user-item">
+          <div>
+            <strong>${escapeHtml(user.name)}</strong>
+            <span>${escapeHtml(user.email)} | ${escapeHtml(user.role)}</span>
+          </div>
+          <div class="stats">
+            <span>${user.stats.courses} courses</span>
+            <span>${user.stats.documents} docs</span>
+            <span>${user.stats.messages} chats</span>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+}
+
 function appendMessage(message, extraClass = "") {
   const item = document.createElement("article");
   item.className = `message ${message.role === "user" ? "user" : "assistant"} ${extraClass}`.trim();
   item.innerHTML = `
-    <div class="avatar">${message.role === "user" ? "我" : "AI"}</div>
+    <div class="avatar">${message.role === "user" ? "你" : "AI"}</div>
     <div class="bubble">${escapeHtml(message.content || "")}</div>
   `;
   chatArea.appendChild(item);

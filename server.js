@@ -1,4 +1,5 @@
 const http = require("http");
+const crypto = require("crypto");
 const fs = require("fs/promises");
 const path = require("path");
 const {
@@ -20,6 +21,7 @@ const { StudyBridgeDatabase } = require("./lib/database");
 const db = new StudyBridgeDatabase();
 const publicDir = path.join(__dirname, "public");
 const port = Number(process.env.PORT || 3000);
+const requireInviteCode = process.env.REQUIRE_INVITE_CODE !== "false";
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -39,6 +41,40 @@ function sendJson(res, status, payload, headers = {}) {
 
 function sendError(res, status, message) {
   sendJson(res, status, { error: message });
+}
+
+function normalizeInviteCode(code) {
+  return String(code || "").trim().toUpperCase();
+}
+
+function adminEmails() {
+  return String(process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
+    .split(",")
+    .map((email) => normalizeEmail(email))
+    .filter(Boolean);
+}
+
+function withEffectiveRole(user) {
+  if (!user) return null;
+  const role = user.role === "admin" || adminEmails().includes(normalizeEmail(user.email)) ? "admin" : "student";
+  return { ...user, role };
+}
+
+function createInviteCode() {
+  return `SB-${crypto.randomBytes(3).toString("hex").toUpperCase()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+}
+
+function publicInvite(invite) {
+  return {
+    id: invite.id,
+    code: invite.code,
+    label: invite.label || "",
+    maxUses: Number(invite.maxUses || 1),
+    uses: Number(invite.uses || 0),
+    active: invite.active !== false,
+    createdAt: invite.createdAt,
+    updatedAt: invite.updatedAt
+  };
 }
 
 async function readJson(req) {
@@ -79,7 +115,7 @@ async function currentUser(req) {
     return null;
   }
   const user = await db.getUser(session.userId);
-  return user ? { user, tokenHash } : null;
+  return user ? { user: withEffectiveRole(user), tokenHash } : null;
 }
 
 async function requireUser(req, res) {
@@ -89,6 +125,16 @@ async function requireUser(req, res) {
     return null;
   }
   return auth.user;
+}
+
+async function requireAdmin(req, res) {
+  const user = await requireUser(req, res);
+  if (!user) return null;
+  if (user.role !== "admin") {
+    sendError(res, 403, "Only the StudyBridge creator can open this area.");
+    return null;
+  }
+  return user;
 }
 
 function validatePassword(password) {
@@ -146,6 +192,23 @@ async function callAi(messages) {
   return payload.choices?.[0]?.message?.content || "AI 没有返回内容，请稍后再试。";
 }
 
+async function validateInviteForRegistration(inviteCode, email) {
+  if (!requireInviteCode) return { type: "open", label: "Open registration" };
+  const normalized = normalizeInviteCode(inviteCode);
+  const ownerCode = normalizeInviteCode(process.env.OWNER_INVITE_CODE || process.env.REGISTRATION_CODE || "");
+  if (!normalized) throw new Error("Registration requires an invitation code from the creator.");
+  if (ownerCode && normalized === ownerCode) {
+    if (!adminEmails().includes(email)) throw new Error("Creator invitation code can only be used by the creator email.");
+    return { type: "owner", code: normalized, label: "Creator invite" };
+  }
+
+  const invite = await db.findInviteByCode(normalized);
+  if (!invite) throw new Error("Invitation code is invalid.");
+  if (invite.active === false) throw new Error("Invitation code is disabled.");
+  if (Number(invite.uses || 0) >= Number(invite.maxUses || 1)) throw new Error("Invitation code has already been used.");
+  return { type: "invite", invite };
+}
+
 async function routeApi(req, res) {
   const url = new URL(req.url, "http://localhost");
   const method = req.method || "GET";
@@ -162,11 +225,22 @@ async function routeApi(req, res) {
       return sendError(res, 400, "Please provide name, valid email, and password with at least 8 characters.");
     }
     if (await db.findUserByEmail(email)) return sendError(res, 409, "This email is already registered.");
+
+    let inviteGrant;
+    try {
+      inviteGrant = await validateInviteForRegistration(body.inviteCode, email);
+    } catch (error) {
+      return sendError(res, 403, error.message);
+    }
+
     const user = await db.createUser({
       id: createId("user"),
       name,
       email,
       passwordHash: hashPassword(body.password),
+      role: adminEmails().includes(email) ? "admin" : "student",
+      inviteCode: inviteGrant.code || inviteGrant.invite?.code || "",
+      inviteId: inviteGrant.invite?.id || "",
       preferences: {
         englishTerms: true,
         englishAnswers: true,
@@ -174,9 +248,11 @@ async function routeApi(req, res) {
         customInstruction: ""
       }
     });
+    if (inviteGrant.invite) await db.consumeInvite(inviteGrant.invite.id, user.id);
+
     const token = createSessionToken();
     await db.createSession({ tokenHash: hashToken(token), userId: user.id, expiresAt: Date.now() + SESSION_TTL_MS });
-    return sendJson(res, 201, { user: publicUser(user) }, { "set-cookie": sessionCookie(token) });
+    return sendJson(res, 201, { user: publicUser(withEffectiveRole(user)) }, { "set-cookie": sessionCookie(token) });
   }
 
   if (url.pathname === "/api/auth/login" && method === "POST") {
@@ -186,7 +262,7 @@ async function routeApi(req, res) {
     if (!user || !verifyPassword(body.password, user.passwordHash)) return sendError(res, 401, "Email or password is incorrect.");
     const token = createSessionToken();
     await db.createSession({ tokenHash: hashToken(token), userId: user.id, expiresAt: Date.now() + SESSION_TTL_MS });
-    return sendJson(res, 200, { user: publicUser(user) }, { "set-cookie": sessionCookie(token) });
+    return sendJson(res, 200, { user: publicUser(withEffectiveRole(user)) }, { "set-cookie": sessionCookie(token) });
   }
 
   if (url.pathname === "/api/auth/logout" && method === "POST") {
@@ -201,6 +277,53 @@ async function routeApi(req, res) {
     return sendJson(res, 200, { user: publicUser(user) });
   }
 
+  if (url.pathname === "/api/admin/overview" && method === "GET") {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+    const [users, invites] = await Promise.all([db.listUsers(), db.listInvites()]);
+    const usersWithStats = await Promise.all(
+      users.map(async (user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: withEffectiveRole(user).role,
+        inviteCode: user.inviteCode || "",
+        createdAt: user.createdAt,
+        stats: await db.getUserStats(user.id)
+      }))
+    );
+    return sendJson(res, 200, {
+      users: usersWithStats,
+      invites: invites.map(publicInvite),
+      creator: publicUser(admin)
+    });
+  }
+
+  if (url.pathname === "/api/admin/invites" && method === "POST") {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+    const body = await readJson(req);
+    const maxUses = Math.max(1, Math.min(100, Number(body.maxUses || 1)));
+    const invite = await db.createInvite({
+      id: createId("invite"),
+      code: createInviteCode(),
+      label: String(body.label || "Friend invite").trim().slice(0, 80),
+      maxUses,
+      createdBy: admin.id
+    });
+    return sendJson(res, 201, { invite: publicInvite(invite) });
+  }
+
+  const inviteMatch = url.pathname.match(/^\/api\/admin\/invites\/([^/]+)$/);
+  if (inviteMatch && method === "PATCH") {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+    const body = await readJson(req);
+    const invite = await db.updateInvite(inviteMatch[1], { active: Boolean(body.active) });
+    if (!invite) return sendError(res, 404, "Invitation code not found.");
+    return sendJson(res, 200, { invite: publicInvite(invite) });
+  }
+
   if (url.pathname === "/api/me/preferences" && method === "PUT") {
     const user = await requireUser(req, res);
     if (!user) return;
@@ -212,7 +335,7 @@ async function routeApi(req, res) {
       customInstruction: String(body.customInstruction || "").slice(0, 500)
     };
     const updated = await db.updateUser(user.id, { preferences });
-    return sendJson(res, 200, { user: publicUser(updated) });
+    return sendJson(res, 200, { user: publicUser(withEffectiveRole(updated)) });
   }
 
   if (url.pathname === "/api/courses" && method === "GET") {
@@ -227,7 +350,12 @@ async function routeApi(req, res) {
     const body = await readJson(req);
     const name = String(body.name || "").trim().slice(0, 120);
     if (!name) return sendError(res, 400, "Course name is required.");
-    const course = await db.createCourse({ id: createId("course"), userId: user.id, name, term: String(body.term || "Current term").slice(0, 80) });
+    const course = await db.createCourse({
+      id: createId("course"),
+      userId: user.id,
+      name,
+      term: String(body.term || "Current term").slice(0, 80)
+    });
     return sendJson(res, 201, { course });
   }
 
@@ -254,7 +382,14 @@ async function routeApi(req, res) {
       const title = String(body.title || "Course note").trim().slice(0, 160);
       const text = compactDocumentText(body.text);
       if (!text) return sendError(res, 400, "Document text is required.");
-      const document = await db.createDocument({ id: createId("doc"), userId: user.id, courseId, title, text, type: String(body.type || "Note").slice(0, 60) });
+      const document = await db.createDocument({
+        id: createId("doc"),
+        userId: user.id,
+        courseId,
+        title,
+        text,
+        type: String(body.type || "Note").slice(0, 60)
+      });
       return sendJson(res, 201, { document });
     }
     if (child === "documents" && childId && method === "DELETE") {

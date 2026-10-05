@@ -367,7 +367,7 @@ select:focus {
 
 .workspace {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   min-width: 0;
   height: 100vh;
   overflow: hidden;
@@ -403,6 +403,89 @@ select:focus {
   min-height: 0;
   padding: 28px;
   overflow: auto;
+}
+
+.developer-panel {
+  display: grid;
+  gap: 14px;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--line);
+  background: #f8fbff;
+}
+
+.developer-panel[hidden] {
+  display: none;
+}
+
+.developer-panel h3,
+.developer-panel h4 {
+  margin-bottom: 0;
+}
+
+.invite-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px auto;
+  gap: 8px;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.85fr) minmax(340px, 1.15fr);
+  gap: 14px;
+  min-height: 0;
+}
+
+.invite-list,
+.user-list {
+  display: grid;
+  gap: 8px;
+  max-height: 210px;
+  overflow: auto;
+}
+
+.invite-item,
+.user-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #dfe7f1;
+  border-radius: 8px;
+  background: white;
+}
+
+.invite-item.disabled {
+  opacity: 0.58;
+}
+
+.invite-item strong,
+.user-item strong {
+  display: block;
+  font-size: 14px;
+}
+
+.invite-item span,
+.user-item span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.button-row,
+.stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.stats span {
+  padding: 5px 7px;
+  border-radius: 7px;
+  background: #eef4ff;
+  color: var(--navy);
+  font-weight: 800;
 }
 
 .message {
@@ -489,6 +572,13 @@ select:focus {
     align-items: stretch;
     flex-direction: column;
   }
+
+  .invite-form,
+  .admin-grid,
+  .invite-item,
+  .user-item {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 560px) {
@@ -507,5 +597,10 @@ select:focus {
 
   .composer {
     grid-template-columns: 1fr;
+  }
+
+  .developer-panel {
+    padding-left: 16px;
+    padding-right: 16px;
   }
 }

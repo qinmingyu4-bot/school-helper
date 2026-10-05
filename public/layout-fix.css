@@ -1,0 +1,53 @@
+.workspace {
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+}
+
+.chat {
+  justify-content: flex-end;
+  padding: 20px 28px 10px;
+}
+
+.quick-prompts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 28px 0;
+  overflow-x: auto;
+  background: rgba(244, 246, 249, 0.96);
+}
+
+.quick-prompts span {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.quick-prompts button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px dashed #b9c6d8;
+  border-radius: 8px;
+  background: white;
+  color: var(--navy);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.quick-prompts button:hover {
+  border-style: solid;
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.composer {
+  padding-top: 10px;
+}
+
+@media (max-width: 560px) {
+  .quick-prompts {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}

@@ -44,6 +44,50 @@
         border-top: 1px solid rgba(216, 222, 232, 0.72);
       }
 
+      body.creator-clean-mode .profile-entry,
+      body.creator-clean-mode .study-entry,
+      body.creator-clean-mode .community-entry,
+      body.creator-clean-mode .classmates-entry,
+      body.creator-clean-mode .email-helper-entry,
+      body.creator-clean-mode .schedule-entry,
+      body.creator-clean-mode .sidebar > .panel,
+      body.creator-clean-mode #workspacePage > .topbar,
+      body.creator-clean-mode #scheduleDashboard,
+      body.creator-clean-mode #chatArea,
+      body.creator-clean-mode #quickPrompts,
+      body.creator-clean-mode #chatForm {
+        display: none !important;
+      }
+
+      body.creator-clean-mode #workspacePage {
+        display: block !important;
+        overflow: auto !important;
+        background: #f4f6f9;
+      }
+
+      body.creator-clean-mode #developerPanel:not([hidden]) {
+        display: block !important;
+        max-height: none !important;
+        min-height: calc(100vh - 24px);
+        margin: 0;
+        padding: 28px;
+        border: 0;
+        box-shadow: none;
+        background: #f4f6f9;
+      }
+
+      body.creator-clean-mode #developerPanel .panel-title,
+      body.creator-clean-mode #developerPanel .invite-form,
+      body.creator-clean-mode #developerPanel .admin-grid {
+        max-width: 1120px;
+      }
+
+      body.creator-clean-mode #developerPanel .invite-list,
+      body.creator-clean-mode #developerPanel .user-list,
+      body.creator-clean-mode #passwordResetList {
+        max-height: 54vh;
+      }
+
       .study-entry,
       .community-entry,
       .classmates-entry,
@@ -160,6 +204,11 @@
     });
   }
 
+  function syncCreatorCleanMode() {
+    const developerPanel = document.querySelector("#developerPanel");
+    document.body.classList.toggle("creator-clean-mode", Boolean(developerPanel && !developerPanel.hidden));
+  }
+
   function loadScriptOnce(src) {
     const cleanSrc = src.split("?")[0];
     if (document.querySelector(`script[src^="${cleanSrc}"]`)) return;
@@ -171,6 +220,7 @@
 
   installCreatorLayoutFix();
   ensureStudyEntry();
+  syncCreatorCleanMode();
   loadScriptOnce("/school-autocomplete.js?v=20261005-1");
   loadScriptOnce("/admin-console-patch.js?v=20261005-1");
   loadScriptOnce("/profile-onboarding-patch.js?v=20261005-1");
@@ -185,5 +235,6 @@
   setInterval(() => {
     installCreatorLayoutFix();
     ensureStudyEntry();
+    syncCreatorCleanMode();
   }, 1000);
 })();

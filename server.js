@@ -149,6 +149,34 @@ function publicResetRequest(request) {
   };
 }
 
+function communitySchoolKey(school) {
+  return String(school || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 90);
+}
+
+function publicCommunityPost(post, viewer) {
+  const likes = Array.isArray(post.likes) ? post.likes : [];
+  const anonymous = post.anonymous === true;
+  return {
+    id: post.id,
+    school: post.school || "",
+    schoolKey: post.schoolKey || "",
+    topic: post.topic || "问问题",
+    content: post.content || "",
+    anonymous,
+    authorName: anonymous ? "匿名同学" : post.authorName || "同校同学",
+    createdAt: post.createdAt,
+    updatedAt: post.updatedAt,
+    likeCount: Number(post.likeCount || likes.length || 0),
+    likedByMe: likes.includes(viewer?.id)
+  };
+}
+
 async function readJson(req) {
   const chunks = [];
   let size = 0;
@@ -637,6 +665,55 @@ async function routeApi(req, res) {
     const profile = cleanProfile(body);
     const updated = await db.updateUser(user.id, { name, profile });
     return sendJson(res, 200, { user: publicUser(withEffectiveRole(updated)) });
+  }
+
+  if (url.pathname === "/api/community/school" && method === "GET") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const school = String(user.profile?.school || "").trim();
+    const schoolKey = communitySchoolKey(school);
+    if (!schoolKey) return sendError(res, 400, "Please fill in your school in Profile first.");
+    const posts = await db.listCommunityPosts(schoolKey);
+    return sendJson(res, 200, {
+      school,
+      schoolKey,
+      posts: posts.map((post) => publicCommunityPost(post, user))
+    });
+  }
+
+  if (url.pathname === "/api/community/school/posts" && method === "POST") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const school = String(user.profile?.school || "").trim();
+    const schoolKey = communitySchoolKey(school);
+    if (!schoolKey) return sendError(res, 400, "Please fill in your school in Profile first.");
+    const body = await readJson(req);
+    const content = String(body.content || "").trim().slice(0, 1600);
+    const topic = String(body.topic || "问问题").trim().slice(0, 40);
+    if (content.length < 3) return sendError(res, 400, "Post content is too short.");
+    const post = await db.createCommunityPost({
+      id: createId("post"),
+      school,
+      schoolKey,
+      topic,
+      content,
+      anonymous: body.anonymous === true,
+      userId: user.id,
+      authorName: user.name,
+      authorRole: user.role || "student"
+    });
+    return sendJson(res, 201, { post: publicCommunityPost(post, user) });
+  }
+
+  const communityLikeMatch = url.pathname.match(/^\/api\/community\/school\/posts\/([^/]+)\/like$/);
+  if (communityLikeMatch && method === "PATCH") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const schoolKey = communitySchoolKey(user.profile?.school || "");
+    if (!schoolKey) return sendError(res, 400, "Please fill in your school in Profile first.");
+    const post = await db.toggleCommunityPostLike(schoolKey, communityLikeMatch[1], user.id);
+    if (!post) return sendError(res, 404, "Community post not found.");
+    return sendJson(res, 200, { post: publicCommunityPost(post, user) });
   }
 
   if (url.pathname === "/api/admin/overview" && method === "GET") {

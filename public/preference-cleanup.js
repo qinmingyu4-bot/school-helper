@@ -6,10 +6,58 @@
   const adminMessage = () => document.querySelector("#adminMessage");
   const authMessage = () => document.querySelector("#authMessage");
 
+  const schoolFacts = [
+    {
+      names: ["university of toronto", "uoft", "u of t", "多伦多大学", "toronto university"],
+      title: "University of Toronto",
+      qs: "QS 2026: #29",
+      place: "Toronto, Ontario, Canada",
+      traits: ["加拿大顶尖研究型大学", "St. George 市中心资源强", "适合科研、商科、CS、生命科学等方向"]
+    },
+    {
+      names: ["mcgill", "mcgill university", "麦吉尔大学"],
+      title: "McGill University",
+      qs: "QS 2026: #27",
+      place: "Montreal, Quebec, Canada",
+      traits: ["加拿大历史悠久的研究型大学", "医学、法律、工程、管理等声誉强", "蒙特利尔双语城市环境明显"]
+    },
+    {
+      names: ["university of british columbia", "ubc", "英属哥伦比亚大学", "british columbia"],
+      title: "University of British Columbia",
+      qs: "QS 2026: #40",
+      place: "Vancouver / Okanagan, British Columbia, Canada",
+      traits: ["研究和国际化程度高", "环境、可持续发展、生命科学较强", "温哥华校区连接太平洋城市资源"]
+    },
+    {
+      names: ["new york university", "nyu", "纽约大学"],
+      title: "New York University",
+      qs: "QS 2026: #55",
+      place: "New York City, New York, USA",
+      traits: ["城市型校园，资源直接连接 NYC", "商科、艺术、传媒、社会科学突出", "全球校区和国际学生网络强"]
+    },
+    {
+      names: ["university of alberta", "uofa", "ualberta", "阿尔伯塔大学"],
+      title: "University of Alberta",
+      qs: "QS 2026: #94=",
+      place: "Edmonton, Alberta, Canada",
+      traits: ["加拿大大型研究型大学", "工程、能源、AI、健康科学资源强", "适合关注科研和省内产业机会的学生"]
+    },
+    {
+      names: ["university of waterloo", "waterloo", "滑铁卢大学"],
+      title: "University of Waterloo",
+      qs: "QS 2026: #119=",
+      place: "Waterloo, Ontario, Canada",
+      traits: ["Co-op 实习体系非常有代表性", "数学、计算机、工程和创业生态强", "适合偏实践、就业和项目经验的学习规划"]
+    }
+  ];
+
   function installLayoutPatch() {
-    if (document.querySelector("#studybridge-layout-patch")) return;
-    const style = document.createElement("style");
-    style.id = "studybridge-layout-patch";
+    let style = document.querySelector("#studybridge-layout-patch");
+    if (!style) {
+      style = document.createElement("style");
+      style.id = "studybridge-layout-patch";
+      document.head.appendChild(style);
+    }
     style.textContent = `
       #workspacePage {
         grid-template-rows: auto auto minmax(0, 1fr) auto auto !important;
@@ -21,31 +69,93 @@
           "composer";
       }
 
-      #workspacePage > .topbar {
-        grid-area: topbar;
+      #workspacePage > .topbar { grid-area: topbar; }
+      #developerPanel { grid-area: developer; }
+      #chatArea { grid-area: chat; min-height: 0; }
+      #quickPrompts { grid-area: quick; align-self: end; padding-top: 8px; padding-bottom: 0; }
+      #chatForm { grid-area: composer; }
+
+      .school-insight-card {
+        display: grid;
+        gap: 12px;
+        margin-top: 18px;
+        padding: 16px;
+        border: 1px solid #dfe7f1;
+        border-radius: 8px;
+        background: #f8fbff;
       }
 
-      #developerPanel {
-        grid-area: developer;
+      .school-insight-card h4 {
+        margin: 0;
+        color: var(--navy);
+        font-size: 15px;
       }
 
-      #chatArea {
-        grid-area: chat;
-        min-height: 0;
+      .school-insight-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
       }
 
-      #quickPrompts {
-        grid-area: quick;
-        align-self: end;
-        padding-top: 8px;
-        padding-bottom: 0;
+      .school-insight-pill {
+        padding: 9px 10px;
+        border: 1px solid #d8e2ef;
+        border-radius: 8px;
+        background: white;
       }
 
-      #chatForm {
-        grid-area: composer;
+      .school-insight-pill span {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 850;
+      }
+
+      .school-insight-pill strong {
+        display: block;
+        margin-top: 3px;
+        color: var(--ink);
+        font-size: 13px;
+      }
+
+      .school-traits {
+        display: grid;
+        gap: 7px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .school-traits li {
+        padding-left: 14px;
+        color: var(--ink);
+        font-size: 13px;
+        line-height: 1.45;
+        position: relative;
+      }
+
+      .school-traits li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 8px;
+        width: 6px;
+        height: 6px;
+        border-radius: 99px;
+        background: var(--green);
+      }
+
+      .school-insight-note {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      @media (max-width: 560px) {
+        .school-insight-grid { grid-template-columns: 1fr; }
       }
     `;
-    document.head.appendChild(style);
   }
 
   function cleanText(value) {
@@ -57,6 +167,75 @@
     if (!input || !input.value.includes(marker)) return false;
     input.value = cleanText(input.value);
     return true;
+  }
+
+  function normalizeSchool(value) {
+    return String(value || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function visibleSchoolName() {
+    const draft = document.querySelector("#schoolInput")?.value?.trim();
+    if (draft) return draft;
+    const saved = document.querySelector("#profilePreviewSchool")?.textContent?.trim() || document.querySelector("#profileSchool")?.textContent?.trim() || "";
+    return /还没有|添加学校/.test(saved) ? "" : saved;
+  }
+
+  function findSchoolInfo(school) {
+    const normalized = normalizeSchool(school);
+    if (!normalized) return null;
+    const exact = schoolFacts.find((item) => item.names.some((name) => normalized === normalizeSchool(name)));
+    if (exact) return exact;
+    const partial = schoolFacts.find((item) => item.names.some((name) => normalized.includes(normalizeSchool(name)) || normalizeSchool(name).includes(normalized)));
+    if (partial) return partial;
+    return {
+      title: school,
+      qs: "QS: 请以官网最新数据为准",
+      place: "地点信息待补充",
+      traits: ["StudyBridge 会把这所学校写入 AI 学习上下文", "回答会优先贴近你的学校、课程语境和学习需求", "后续可以继续补充院系、专业、课程代码来提高客制化程度"],
+      generic: true
+    };
+  }
+
+  function renderSchoolInsight() {
+    const content = document.querySelector(".profile-preview-content");
+    if (!content) return;
+    let card = document.querySelector("#schoolInsightCard");
+    if (!card) {
+      card = document.createElement("section");
+      card.id = "schoolInsightCard";
+      card.className = "school-insight-card";
+      content.appendChild(card);
+    }
+
+    const school = visibleSchoolName();
+    const info = findSchoolInfo(school);
+    if (!info) {
+      card.hidden = true;
+      return;
+    }
+
+    card.hidden = false;
+    card.innerHTML = `
+      <h4>${escapeHtml(info.title)} 概览</h4>
+      <div class="school-insight-grid">
+        <div class="school-insight-pill">
+          <span>参考排名</span>
+          <strong>${escapeHtml(info.qs)}</strong>
+        </div>
+        <div class="school-insight-pill">
+          <span>地点</span>
+          <strong>${escapeHtml(info.place)}</strong>
+        </div>
+      </div>
+      <ul class="school-traits">
+        ${info.traits.map((trait) => `<li>${escapeHtml(trait)}</li>`).join("")}
+      </ul>
+      <p class="school-insight-note">${info.generic ? "这是通用学校卡片。" : "排名为 QS 2026 参考值。"}具体申请、专业和课程要求请以学校官网为准。</p>
+    `;
   }
 
   async function persistCleanPreference() {
@@ -343,6 +522,11 @@
   }
 
   installLayoutPatch();
+  renderSchoolInsight();
+
+  document.querySelector("#schoolInput")?.addEventListener("input", renderSchoolInsight);
+  document.querySelector("#openProfilePageButton")?.addEventListener("click", () => setTimeout(renderSchoolInsight, 80));
+  document.querySelector("#profileForm")?.addEventListener("submit", () => setTimeout(renderSchoolInsight, 500));
 
   document.addEventListener(
     "click",
@@ -418,6 +602,7 @@
   const timer = setInterval(() => {
     const changed = cleanVisiblePreference();
     installLayoutPatch();
+    renderSchoolInsight();
     ensureResetPanel();
     loadResetRequests();
     checks += 1;

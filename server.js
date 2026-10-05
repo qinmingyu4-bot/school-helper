@@ -177,6 +177,33 @@ function publicCommunityPost(post, viewer) {
   };
 }
 
+async function publicClassmate(connection, viewerId) {
+  const peerId = (connection.userIds || []).find((id) => id !== viewerId);
+  const peer = peerId ? await db.getUser(peerId) : null;
+  const messages = await db.listDirectMessages(connection.id, 1);
+  const last = messages[messages.length - 1] || null;
+  return {
+    id: connection.id,
+    peer: peer
+      ? {
+          id: peer.id,
+          name: peer.name || "同学",
+          email: peer.email || "",
+          school: peer.profile?.school || "",
+          sbId: peer.profile?.sbId || ""
+        }
+      : null,
+    lastMessage: last
+      ? {
+          content: last.content || "",
+          createdAt: last.createdAt,
+          mine: last.senderId === viewerId
+        }
+      : null,
+    updatedAt: connection.updatedAt || connection.createdAt
+  };
+}
+
 async function readJson(req) {
   const chunks = [];
   let size = 0;
@@ -255,11 +282,23 @@ function compactDocumentText(text) {
 }
 
 function cleanProfile(body = {}) {
+  const sbId = String(body.sbId || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^@+/, "")
+    .slice(0, 24);
   return {
     avatarUrl: String(body.avatarUrl || "").trim().slice(0, 2200000),
     backgroundUrl: String(body.backgroundUrl || "").trim().slice(0, 2200000),
-    school: String(body.school || "").trim().slice(0, 120)
+    school: String(body.school || "").trim().slice(0, 120),
+    major: String(body.major || "").trim().slice(0, 120),
+    sbId
   };
+}
+
+function isValidSbId(value) {
+  const sbId = String(value || "").trim();
+  return !sbId || /^[a-z0-9][a-z0-9._-]{2,23}$/.test(sbId);
 }
 
 function decodeBase64Data(data) {
@@ -390,7 +429,7 @@ function buildStudyPrompt({ user, course, documents, history, mode, message }) {
     },
     {
       role: "user",
-      content: `Student: ${user.name}\nSchool: ${user.profile?.school || "Not provided"}\nCourse: ${course.name}\nMode: ${mode}\nPreferences: ${JSON.stringify(
+      content: `Student: ${user.name}\nSchool: ${user.profile?.school || "Not provided"}\nMajor: ${user.profile?.major || "Not provided"}\nCourse: ${course.name}\nMode: ${mode}\nPreferences: ${JSON.stringify(
         user.preferences || {}
       )}\n\nCourse material:\n${docContext || "No course material saved yet."}\n\nRecent chat:\n${recent || "No prior messages."}\n\nStudent question:\n${message}`
     }
@@ -798,6 +837,78 @@ async function routeApi(req, res) {
     const updated = await db.updateUser(user.id, { preferences });
     return sendJson(res, 200, { user: publicUser(withEffectiveRole(updated)) });
   }
+
+  if (url.pathname === "/api/classmates" && method === "GET") {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  const connections = await db.listClassmates(user.id);
+  const classmates = await Promise.all(connections.map((item) => publicClassmate(item, user.id)));
+  const connectedIds = new Set(connections.flatMap((item) => item.userIds || []));
+  const school = String(user.profile?.school || "").trim();
+  const users = await db.listUsers();
+  const candidates = users
+    .filter((candidate) => candidate.id !== user.id)
+    .filter((candidate) => !connectedIds.has(candidate.id))
+    .filter((candidate) => !school || String(candidate.profile?.school || "").trim().toLowerCase() === school.toLowerCase())
+    .slice(0, 30)
+    .map((candidate) => ({
+      id: candidate.id,
+      name: candidate.name,
+      email: candidate.email,
+      school: candidate.profile?.school || "",
+      sbId: candidate.profile?.sbId || ""
+    }));
+  return sendJson(res, 200, { classmates, candidates, school });
+}
+
+if (url.pathname === "/api/classmates" && method === "POST") {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  const body = await readJson(req);
+  const sbId = String(body.sbId || body.studentId || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^@+/, "");
+  const email = normalizeEmail(body.email);
+  if (sbId && !isValidSbId(sbId)) return sendError(res, 400, "Please enter a valid SB ID.");
+  if (!sbId && !email.includes("@")) return sendError(res, 400, "Please enter your classmate's SB ID.");
+  const peer = sbId ? await db.findUserBySbId(sbId) : await db.findUserByEmail(email);
+  if (!peer) return sendError(res, 404, sbId ? "No StudyBridge account was found for that SB ID." : "No StudyBridge account was found for that email.");
+  if (peer.id === user.id) return sendError(res, 400, "You cannot add yourself.");
+  const existing = await db.findClassmateByUsers(user.id, peer.id);
+  const connection = existing || await db.createClassmate({ id: createId("mate"), userIds: [user.id, peer.id] });
+  return sendJson(res, existing ? 200 : 201, { classmate: await publicClassmate(connection, user.id) });
+}
+
+const directMessageMatch = url.pathname.match(/^\/api\/classmates\/([^/]+)\/messages$/);
+if (directMessageMatch && method === "GET") {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  const connection = await db.getClassmate(user.id, directMessageMatch[1]);
+  if (!connection) return sendError(res, 404, "Classmate chat not found.");
+  const messages = await db.listDirectMessages(connection.id);
+  return sendJson(res, 200, {
+    messages: messages.map((message) => ({
+      id: message.id,
+      content: message.content,
+      createdAt: message.createdAt,
+      senderId: message.senderId,
+      mine: message.senderId === user.id
+    }))
+  });
+}
+
+if (directMessageMatch && method === "POST") {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  const connection = await db.getClassmate(user.id, directMessageMatch[1]);
+  if (!connection) return sendError(res, 404, "Classmate chat not found.");
+  const body = await readJson(req);
+  const content = String(body.content || "").trim().slice(0, 1200);
+  if (!content) return sendError(res, 400, "Message is required.");
+  const message = await db.createDirectMessage({ id: createId("dm"), chatId: connection.id, senderId: user.id, content });
+  return sendJson(res, 201, { message: { ...message, mine: true } });
+}
 
   if (url.pathname === "/api/courses" && method === "GET") {
     const user = await requireUser(req, res);

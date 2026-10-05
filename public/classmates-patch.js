@@ -111,7 +111,7 @@
       <div class="classmates-body">
         <aside class="classmates-side">
           <div><h3>同学列表</h3><p class="classmates-message" id="classmatesSchoolLine">先填写 Profile 学校。</p></div>
-          <form class="classmate-add-form" id="classmateAddForm"><input id="classmateEmailInput" type="email" placeholder="输入同学注册邮箱" /><button class="small-button" type="submit">添加</button></form>
+          <form class="classmate-add-form" id="classmateAddForm"><input id="classmateEmailInput" type="text" placeholder="输入同学的 SB ID，例如 adam2026" autocomplete="off" /><button class="small-button" type="submit">添加</button></form>
           <div class="classmate-list" id="classmateList"></div>
           <div><h3>同校用户</h3><div class="classmate-candidates" id="classmateCandidates"></div></div>
         </aside>
@@ -165,7 +165,7 @@
       classmates = result.classmates || [];
       candidates = result.candidates || [];
       schoolLine.textContent = result.school ? `当前学校：${result.school}` : "先填写 Profile 学校。";
-      status.textContent = classmates.length ? `已添加 ${classmates.length} 位同学。` : "可以通过注册邮箱添加同学。";
+      status.textContent = classmates.length ? `已添加 ${classmates.length} 位同学。` : "可以通过同学的 SB ID 添加。";
       renderClassmates();
       renderCandidates();
       if (activeClassmateId && !classmates.some((item) => item.id === activeClassmateId)) activeClassmateId = "";
@@ -182,12 +182,12 @@
   function renderClassmates() {
     const list = page.querySelector("#classmateList");
     if (!classmates.length) {
-      list.innerHTML = '<p class="empty">还没有添加同学。输入同学注册邮箱开始。</p>';
+      list.innerHTML = '<p class="empty">还没有添加同学。输入同学的 SB ID 开始。</p>';
       return;
     }
     list.innerHTML = classmates.map((item) => {
       const last = item.lastMessage?.content ? ` · ${item.lastMessage.mine ? "你：" : ""}${item.lastMessage.content}` : "";
-      return `<article class="classmate-row ${item.id === activeClassmateId ? "active" : ""}"><button class="item-main" type="button" data-open-classmate="${item.id}"><strong>${escapeHtml(item.peer?.name || "同学")}</strong><span class="classmate-meta">${escapeHtml(item.peer?.email || "")}${escapeHtml(last).slice(0, 70)}</span></button></article>`;
+      return `<article class="classmate-row ${item.id === activeClassmateId ? "active" : ""}"><button class="item-main" type="button" data-open-classmate="${item.id}"><strong>${escapeHtml(item.peer?.name || "同学")}</strong><span class="classmate-meta">${escapeHtml(item.peer?.sbId ? `@${item.peer.sbId}` : item.peer?.email || "")}${escapeHtml(last).slice(0, 70)}</span></button></article>`;
     }).join("");
     list.querySelectorAll("[data-open-classmate]").forEach((item) => {
       item.addEventListener("click", async () => {
@@ -201,10 +201,10 @@
   function renderCandidates() {
     const list = page.querySelector("#classmateCandidates");
     if (!candidates.length) {
-      list.innerHTML = '<p class="empty">暂时没有可直接添加的同校用户，也可以输入邮箱添加。</p>';
+      list.innerHTML = '<p class="empty">暂时没有可直接添加的同校用户，也可以输入 SB ID 添加。</p>';
       return;
     }
-    list.innerHTML = candidates.map((item) => `<article class="candidate-row"><div><strong>${escapeHtml(item.name)}</strong><span class="classmate-meta">${escapeHtml(item.email)}</span></div><button class="small-button" type="button" data-add-candidate="${escapeHtml(item.email)}">添加</button></article>`).join("");
+    list.innerHTML = candidates.map((item) => `<article class="candidate-row"><div><strong>${escapeHtml(item.name)}</strong><span class="classmate-meta">${escapeHtml(item.sbId ? `@${item.sbId}` : item.email)}</span></div><button class="small-button" type="button" data-add-candidate="${escapeHtml(item.sbId || item.email)}">添加</button></article>`).join("");
     list.querySelectorAll("[data-add-candidate]").forEach((button) => {
       button.addEventListener("click", async () => {
         page.querySelector("#classmateEmailInput").value = button.dataset.addCandidate;

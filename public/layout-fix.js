@@ -67,5 +67,6 @@
   loadScriptOnce("/profile-onboarding-patch.js?v=20261005-1");
   loadScriptOnce("/school-datalist-patch.js?v=20261005-1");
   loadScriptOnce("/us-school-library-patch.js?v=20261005-1");
+  loadScriptOnce("/admin-refresh-patch.js?v=20261005-1");
   setInterval(installCreatorLayoutFix, 1000);
 })();

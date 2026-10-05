@@ -46,7 +46,8 @@
 
       .community-entry,
       .classmates-entry,
-      .email-helper-entry {
+      .email-helper-entry,
+      .schedule-entry {
         grid-template-columns: 34px minmax(0, 1fr) !important;
         min-height: 48px !important;
         padding: 9px 12px !important;
@@ -57,13 +58,15 @@
 
       .community-entry > .small-button,
       .classmates-entry > .small-button,
-      .email-helper-entry > .small-button {
+      .email-helper-entry > .small-button,
+      .schedule-entry > .small-button {
         display: none !important;
       }
 
       .community-entry > span:not(.community-entry-icon),
       .classmates-entry > span:not(.classmates-entry-icon),
-      .email-helper-entry > span:not(.email-helper-entry-icon) {
+      .email-helper-entry > span:not(.email-helper-entry-icon),
+      .schedule-entry > span:not(.schedule-entry-icon) {
         display: grid !important;
         align-content: center !important;
         gap: 2px !important;
@@ -75,9 +78,11 @@
       .community-entry > span:not(.community-entry-icon) > strong,
       .classmates-entry > span:not(.classmates-entry-icon) > strong,
       .email-helper-entry > span:not(.email-helper-entry-icon) > strong,
+      .schedule-entry > span:not(.schedule-entry-icon) > strong,
       .community-entry > span:not(.community-entry-icon) > span,
       .classmates-entry > span:not(.classmates-entry-icon) > span,
-      .email-helper-entry > span:not(.email-helper-entry-icon) > span {
+      .email-helper-entry > span:not(.email-helper-entry-icon) > span,
+      .schedule-entry > span:not(.schedule-entry-icon) > span {
         min-width: 0 !important;
         max-width: 100% !important;
         overflow: hidden !important;
@@ -87,7 +92,8 @@
 
       .community-entry-icon,
       .classmates-entry-icon,
-      .email-helper-entry-icon {
+      .email-helper-entry-icon,
+      .schedule-entry-icon {
         flex: 0 0 auto !important;
       }
 
@@ -118,5 +124,6 @@
   loadScriptOnce("/school-community-patch.js?v=20261005-1");
   loadScriptOnce("/classmates-patch.js?v=20261005-1");
   loadScriptOnce("/email-reply-patch.js?v=20261005-1");
+  loadScriptOnce("/schedule-patch.js?v=20261005-1");
   setInterval(installCreatorLayoutFix, 1000);
 })();

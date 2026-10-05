@@ -52,6 +52,15 @@
     `;
   }
 
+  function loadSchoolAutocomplete() {
+    if (document.querySelector('script[src^="/school-autocomplete.js"]')) return;
+    const script = document.createElement("script");
+    script.src = "/school-autocomplete.js?v=20261005-1";
+    script.defer = true;
+    document.body.appendChild(script);
+  }
+
   installCreatorLayoutFix();
+  loadSchoolAutocomplete();
   setInterval(installCreatorLayoutFix, 1000);
 })();

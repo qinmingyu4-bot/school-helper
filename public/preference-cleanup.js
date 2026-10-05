@@ -3,6 +3,7 @@
   const textarea = () => document.querySelector("#customInstructionInput");
   const status = () => document.querySelector("#preferenceStatus");
   const adminMessage = () => document.querySelector("#adminMessage");
+  const authMessage = () => document.querySelector("#authMessage");
 
   function cleanText(value) {
     return String(value || "").split(marker)[0].trim();
@@ -71,24 +72,88 @@
     return copied;
   }
 
+  function setAuthMessage(text, isError = false) {
+    const message = authMessage();
+    if (!message) return;
+    message.textContent = text;
+    message.style.color = isError ? "var(--red)" : "var(--green)";
+  }
+
+  async function requestEmailCode(button) {
+    const emailInput = document.querySelector("#emailInput");
+    const inviteInput = document.querySelector("#inviteInput");
+    const codeInput = document.querySelector("#emailCodeInput");
+    const activeMode = document.querySelector("[data-auth-mode].active")?.dataset.authMode || "login";
+    const email = emailInput?.value.trim() || "";
+    const inviteCode = inviteInput?.value.trim() || "";
+
+    if (!email) {
+      setAuthMessage("请先输入邮箱。", true);
+      emailInput?.focus();
+      return;
+    }
+    if (activeMode === "register" && !inviteCode) {
+      setAuthMessage("请先输入邀请码，再发送验证码。", true);
+      inviteInput?.focus();
+      return;
+    }
+
+    button.disabled = true;
+    const originalText = button.textContent;
+    button.textContent = "发送中";
+    const path = activeMode === "reset" ? "/api/auth/request-password-reset" : "/api/auth/send-verification";
+
+    try {
+      const res = await fetch(path, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, inviteCode })
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || "验证码发送失败。请稍后再试。");
+
+      if (payload.emailCode && codeInput) {
+        codeInput.value = payload.emailCode;
+        setAuthMessage(`服务器邮箱还没配置，临时验证码已自动填入：${payload.emailCode}`);
+      } else {
+        setAuthMessage("验证码已发送，请查看邮箱。QQ 邮箱也可能在垃圾箱里。", false);
+      }
+    } catch (error) {
+      setAuthMessage(error.message, true);
+    } finally {
+      setTimeout(() => {
+        button.disabled = false;
+        button.textContent = originalText || "发送验证码";
+      }, 1200);
+    }
+  }
+
   document.addEventListener(
     "click",
     async (event) => {
-      const button = event.target.closest?.("[data-copy-invite]");
-      if (!button) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-
-      const code = button.dataset.copyInvite;
-      const copied = await copyText(code);
-      const message = adminMessage();
-      if (message) {
-        message.textContent = copied ? `已复制：${code}` : `复制失败，请手动选中邀请码：${code}`;
+      const copyButton = event.target.closest?.("[data-copy-invite]");
+      if (copyButton) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const code = copyButton.dataset.copyInvite;
+        const copied = await copyText(code);
+        const message = adminMessage();
+        if (message) {
+          message.textContent = copied ? `已复制：${code}` : `复制失败，请手动选中邀请码：${code}`;
+        }
+        copyButton.textContent = copied ? "已复制" : "手动复制";
+        setTimeout(() => {
+          copyButton.textContent = "复制";
+        }, 1200);
+        return;
       }
-      button.textContent = copied ? "已复制" : "手动复制";
-      setTimeout(() => {
-        button.textContent = "复制";
-      }, 1200);
+
+      const emailButton = event.target.closest?.("#sendEmailCodeButton");
+      if (emailButton) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        await requestEmailCode(emailButton);
+      }
     },
     true
   );

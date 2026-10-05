@@ -286,6 +286,7 @@
   loadScriptOnce("/school-autocomplete.js?v=20261005-1");
   loadScriptOnce("/admin-console-patch.js?v=20261005-1");
   loadScriptOnce("/profile-onboarding-patch.js?v=20261005-1");
+  loadScriptOnce("/profile-onboarding-fix.js?v=20261005-1");
   loadScriptOnce("/profile-fields-patch.js?v=20261005-3");
   loadScriptOnce("/major-autocomplete.js?v=20261005-1");
   loadScriptOnce("/school-datalist-patch.js?v=20261005-1");
@@ -293,6 +294,7 @@
   loadScriptOnce("/admin-refresh-patch.js?v=20261005-1");
   loadScriptOnce("/school-community-patch.js?v=20261005-3");
   loadScriptOnce("/classmates-patch.js?v=20261005-2");
+  loadScriptOnce("/classmates-request-patch.js?v=20261005-1");
   loadScriptOnce("/email-reply-patch.js?v=20261005-1");
   loadScriptOnce("/schedule-patch.js?v=20261005-3");
   loadScriptOnce("/schedule-dashboard-patch.js?v=20261005-1");

@@ -6,14 +6,20 @@
     <title>StudyBridge Cloud</title>
     <link rel="stylesheet" href="/style.css" />
     <style>
-      .profile-card {
+      .profile-entry {
         display: grid;
         gap: 12px;
+        width: 100%;
         padding: 12px;
         border: 1px solid var(--line);
         border-radius: 8px;
         background: white;
+        text-align: left;
         box-shadow: 0 8px 26px rgba(25, 36, 58, 0.05);
+      }
+
+      .profile-entry:hover {
+        border-color: var(--green);
       }
 
       .profile-cover {
@@ -64,29 +70,129 @@
         line-height: 1.35;
       }
 
-      .profile-form {
+      .profile-page {
         display: grid;
-        gap: 8px;
+        grid-template-rows: auto 1fr;
+        min-height: 100vh;
+        background: #f4f6f9;
       }
 
-      .profile-form[hidden] {
+      .profile-page[hidden] {
         display: none;
       }
 
+      .profile-page-body {
+        display: grid;
+        grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+        gap: 18px;
+        padding: 24px 28px;
+      }
+
+      .profile-preview-card,
+      .profile-editor-panel {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: white;
+        box-shadow: 0 12px 34px rgba(25, 36, 58, 0.06);
+      }
+
+      .profile-preview-card {
+        overflow: hidden;
+      }
+
+      .profile-preview-cover {
+        min-height: 180px;
+        padding: 20px;
+        background:
+          linear-gradient(135deg, rgba(31, 58, 95, 0.86), rgba(47, 125, 98, 0.78)),
+          linear-gradient(rgba(255, 255, 255, 0.18) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.18) 1px, transparent 1px);
+        background-position: center;
+        background-size: cover, 24px 24px, 24px 24px;
+      }
+
+      .profile-preview-avatar {
+        display: grid;
+        place-items: center;
+        width: 84px;
+        height: 84px;
+        margin-top: 108px;
+        border: 4px solid white;
+        border-radius: 8px;
+        background: linear-gradient(145deg, var(--navy), var(--green));
+        background-position: center;
+        background-size: cover;
+        color: white;
+        font-size: 30px;
+        font-weight: 900;
+        box-shadow: 0 12px 26px rgba(25, 36, 58, 0.18);
+      }
+
+      .profile-preview-content {
+        padding: 48px 20px 20px;
+      }
+
+      .profile-preview-content h3 {
+        margin: 0 0 4px;
+        font-size: 22px;
+      }
+
+      .profile-preview-content p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .profile-editor-panel {
+        padding: 22px;
+      }
+
+      .profile-form {
+        display: grid;
+        gap: 14px;
+        max-width: 680px;
+      }
+
+      .profile-form label {
+        display: grid;
+        gap: 7px;
+        color: var(--navy);
+        font-size: 13px;
+        font-weight: 850;
+      }
+
+      .profile-form input[type="file"] {
+        min-height: 44px;
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #f7fafc;
+      }
+
       .profile-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .auth-inline-row,
+      .file-upload-row {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) auto;
         gap: 8px;
       }
 
-      .auth-inline-row {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 8px;
-      }
-
-      .auth-inline-row input {
+      .auth-inline-row input,
+      .file-upload-row input {
         min-width: 0;
+      }
+
+      .file-upload-row input[type="file"] {
+        padding: 9px;
+        border: 1px dashed #b9c6d8;
+        border-radius: 8px;
+        background: #f7fafc;
+        font-size: 12px;
       }
 
       .code-button {
@@ -146,7 +252,12 @@
         color: var(--green);
       }
 
-      @media (max-width: 560px) {
+      @media (max-width: 760px) {
+        .profile-page-body {
+          grid-template-columns: 1fr;
+          padding: 16px;
+        }
+
         .quick-prompts {
           padding-left: 16px;
           padding-right: 16px;
@@ -220,7 +331,7 @@
             <button class="ghost-button" id="logoutButton" type="button">退出</button>
           </header>
 
-          <section class="profile-card" id="profileCard">
+          <button class="profile-entry" id="openProfilePageButton" type="button">
             <div class="profile-cover" id="profileCover">
               <div class="profile-avatar" id="profileAvatar">你</div>
             </div>
@@ -229,20 +340,9 @@
                 <h3 id="profileName">Personal profile</h3>
                 <p id="profileSchool">添加学校后，AI 会更懂你的学习环境。</p>
               </div>
-              <button class="small-button" id="editProfileButton" type="button">编辑</button>
+              <span class="small-button">打开</span>
             </div>
-            <form class="profile-form" id="profileForm" hidden>
-              <input id="profileNameInput" placeholder="名字" />
-              <input id="schoolInput" placeholder="学校，例如 University of Toronto" />
-              <input id="avatarUrlInput" placeholder="头像图片链接" />
-              <input id="backgroundUrlInput" placeholder="背景图片链接" />
-              <div class="profile-actions">
-                <button class="small-button" type="submit">保存资料</button>
-                <button class="ghost-button" id="cancelProfileButton" type="button">取消</button>
-              </div>
-              <p class="form-message" id="profileMessage"></p>
-            </form>
-          </section>
+          </button>
 
           <nav class="role-switch" id="roleSwitch" aria-label="工作区切换" hidden>
             <button class="role-switch-button active" id="studentViewButton" type="button">普通用户端</button>
@@ -267,6 +367,10 @@
               <input id="documentTitleInput" placeholder="资料标题" />
               <button class="small-button" id="saveDocumentButton" type="button">保存</button>
             </div>
+            <div class="file-upload-row">
+              <input id="documentFileInput" type="file" accept=".pdf,.txt,.md,text/plain,application/pdf" />
+              <button class="small-button" id="uploadDocumentButton" type="button">上传文件</button>
+            </div>
             <div class="document-list" id="documentList"></div>
           </section>
 
@@ -283,198 +387,119 @@
         </aside>
 
         <section class="workspace">
-          <header class="topbar">
-            <div>
-              <p class="eyebrow">Academic Coach</p>
-              <h2 id="activeCourseTitle">请选择课程</h2>
-              <span id="statusLine">资料、对话和偏好会通过后端保存。</span>
-            </div>
-            <select id="modeSelect" aria-label="学习模式">
-              <option value="preview">预习</option>
-              <option value="guided">带着学习</option>
-              <option value="review">复习</option>
-              <option value="assignment">作业辅助</option>
-              <option value="exam">模拟出题</option>
-              <option value="cheatsheet">Cheatsheet</option>
-              <option value="cram">考前急救</option>
-            </select>
-          </header>
-
-          <section class="developer-panel" id="developerPanel" hidden>
-            <div class="panel-title">
+          <section id="workspacePage">
+            <header class="topbar">
               <div>
-                <p class="eyebrow">Creator Console</p>
-                <h3>开发者端</h3>
+                <p class="eyebrow">Academic Coach</p>
+                <h2 id="activeCourseTitle">请选择课程</h2>
+                <span id="statusLine">资料、对话和偏好会通过后端保存。</span>
               </div>
-              <button class="small-button" id="refreshAdminButton" type="button">刷新</button>
-            </div>
-            <form class="invite-form" id="inviteForm">
-              <input id="inviteLabelInput" placeholder="备注：例如 Kevin / ECO101 小组" />
-              <input id="inviteMaxUsesInput" type="number" min="1" max="100" value="1" aria-label="可使用次数" />
-              <button class="small-button" type="submit">生成邀请码</button>
+              <select id="modeSelect" aria-label="学习模式">
+                <option value="preview">预习</option>
+                <option value="guided">带着学习</option>
+                <option value="review">复习</option>
+                <option value="assignment">作业辅助</option>
+                <option value="exam">模拟出题</option>
+                <option value="cheatsheet">Cheatsheet</option>
+                <option value="cram">考前急救</option>
+              </select>
+            </header>
+
+            <section class="developer-panel" id="developerPanel" hidden>
+              <div class="panel-title">
+                <div>
+                  <p class="eyebrow">Creator Console</p>
+                  <h3>开发者端</h3>
+                </div>
+                <button class="small-button" id="refreshAdminButton" type="button">刷新</button>
+              </div>
+              <form class="invite-form" id="inviteForm">
+                <input id="inviteLabelInput" placeholder="备注：例如 Kevin / ECO101 小组" />
+                <input id="inviteMaxUsesInput" type="number" min="1" max="100" value="1" aria-label="可使用次数" />
+                <button class="small-button" type="submit">生成邀请码</button>
+              </form>
+              <p class="form-message" id="adminMessage"></p>
+              <div class="admin-grid">
+                <div>
+                  <h4>邀请码</h4>
+                  <div class="invite-list" id="inviteList"></div>
+                </div>
+                <div>
+                  <h4>学生数据</h4>
+                  <div class="user-list" id="userList"></div>
+                </div>
+              </div>
+            </section>
+
+            <div class="chat" id="chatArea"></div>
+
+            <section class="quick-prompts" id="quickPrompts" aria-label="快捷指令">
+              <span>快捷指令</span>
+              <button type="button" data-quick-prompt="帮我根据这门课资料预习下一节课，先列重点，再给我该看的 English terms。">预习下一节</button>
+              <button type="button" data-quick-prompt="帮我整理这门课最重要的课前关键词，保留 English terms，并用中文解释。">课前关键词</button>
+              <button type="button" data-quick-prompt="根据目前课程资料，帮我生成可以在课堂上提问的高质量问题。">上课问题</button>
+              <button type="button" data-quick-prompt="我只有 10 分钟，帮我快速预习这门课当前资料。">10 分钟预习</button>
+              <button type="button" data-quick-prompt="帮我总结这门课的课程介绍、学习目标和评分重点。">课程介绍</button>
+              <button type="button" data-quick-prompt="帮我从课程资料里汇总所有 deadline、考试、作业和重要日期。">Deadline 汇总</button>
+            </section>
+
+            <form class="composer" id="chatForm">
+              <textarea id="messageInput" rows="1" placeholder="问：帮我根据这门课资料做一个 final 复习计划"></textarea>
+              <button class="send-button" id="sendButton" type="submit">发送</button>
             </form>
-            <p class="form-message" id="adminMessage"></p>
-            <div class="admin-grid">
+          </section>
+
+          <section class="profile-page" id="profilePage" hidden>
+            <header class="topbar">
               <div>
-                <h4>邀请码</h4>
-                <div class="invite-list" id="inviteList"></div>
+                <p class="eyebrow">Personal Profile</p>
+                <h2>个人资料</h2>
+                <span>学校信息会进入 AI 上下文，让回答更贴近你的课程环境。</span>
               </div>
-              <div>
-                <h4>学生数据</h4>
-                <div class="user-list" id="userList"></div>
-              </div>
+              <button class="ghost-button" id="backToStudyButton" type="button">返回学习区</button>
+            </header>
+            <div class="profile-page-body">
+              <article class="profile-preview-card">
+                <div class="profile-preview-cover" id="profilePreviewCover">
+                  <div class="profile-preview-avatar" id="profilePreviewAvatar">你</div>
+                </div>
+                <div class="profile-preview-content">
+                  <h3 id="profilePreviewName">StudyBridge user</h3>
+                  <p id="profilePreviewSchool">还没有填写学校。</p>
+                </div>
+              </article>
+              <section class="profile-editor-panel">
+                <form class="profile-form" id="profileForm">
+                  <label>
+                    <span>名字</span>
+                    <input id="profileNameInput" placeholder="你的名字" />
+                  </label>
+                  <label>
+                    <span>学校</span>
+                    <input id="schoolInput" placeholder="例如 University of Toronto / UBC / NYU" />
+                  </label>
+                  <label>
+                    <span>头像图片</span>
+                    <input id="avatarFileInput" type="file" accept="image/*" />
+                  </label>
+                  <label>
+                    <span>背景图片</span>
+                    <input id="backgroundFileInput" type="file" accept="image/*" />
+                  </label>
+                  <input id="avatarUrlInput" type="hidden" />
+                  <input id="backgroundUrlInput" type="hidden" />
+                  <div class="profile-actions">
+                    <button class="primary-button" type="submit">保存资料</button>
+                    <button class="ghost-button" id="clearProfileImagesButton" type="button">清空图片</button>
+                  </div>
+                  <p class="form-message" id="profileMessage"></p>
+                </form>
+              </section>
             </div>
           </section>
-
-          <div class="chat" id="chatArea"></div>
-
-          <section class="quick-prompts" id="quickPrompts" aria-label="快捷指令">
-            <span>快捷指令</span>
-            <button type="button" data-quick-prompt="帮我根据这门课资料预习下一节课，先列重点，再给我该看的 English terms。">预习下一节</button>
-            <button type="button" data-quick-prompt="帮我整理这门课最重要的课前关键词，保留 English terms，并用中文解释。">课前关键词</button>
-            <button type="button" data-quick-prompt="根据目前课程资料，帮我生成可以在课堂上提问的高质量问题。">上课问题</button>
-            <button type="button" data-quick-prompt="我只有 10 分钟，帮我快速预习这门课当前资料。">10 分钟预习</button>
-            <button type="button" data-quick-prompt="帮我总结这门课的课程介绍、学习目标和评分重点。">课程介绍</button>
-            <button type="button" data-quick-prompt="帮我从课程资料里汇总所有 deadline、考试、作业和重要日期。">Deadline 汇总</button>
-          </section>
-
-          <form class="composer" id="chatForm">
-            <textarea id="messageInput" rows="1" placeholder="问：帮我根据这门课资料做一个 final 复习计划"></textarea>
-            <button class="send-button" id="sendButton" type="submit">发送</button>
-          </form>
         </section>
       </section>
     </main>
     <script src="/app.js"></script>
-    <script>
-      document.querySelectorAll("[data-quick-prompt]").forEach((button) => {
-        button.addEventListener("click", () => {
-          const input = document.querySelector("#messageInput");
-          if (!input) return;
-          input.value = button.dataset.quickPrompt || "";
-          input.focus();
-        });
-      });
-
-      (() => {
-        const storageKey = "studybridgePersonalProfile";
-        const marker = "[StudyBridge personal profile]";
-        const defaults = { name: "", school: "", avatarUrl: "", backgroundUrl: "" };
-
-        function loadProfile() {
-          try {
-            return { ...defaults, ...JSON.parse(localStorage.getItem(storageKey) || "{}") };
-          } catch {
-            return { ...defaults };
-          }
-        }
-
-        function saveProfile(profile) {
-          localStorage.setItem(storageKey, JSON.stringify(profile));
-        }
-
-        function applyProfile() {
-          const profile = loadProfile();
-          const userLine = document.querySelector("#userLine");
-          const profileName = document.querySelector("#profileName");
-          const profileSchool = document.querySelector("#profileSchool");
-          const profileAvatar = document.querySelector("#profileAvatar");
-          const profileCover = document.querySelector("#profileCover");
-          const currentName = (userLine?.textContent || "").split("|")[0]?.trim() || "StudyBridge user";
-          const displayName = profile.name || currentName;
-          const initial = displayName.slice(0, 1).toUpperCase() || "你";
-
-          if (profileName) profileName.textContent = displayName;
-          if (profileSchool) profileSchool.textContent = profile.school || "添加学校后，AI 会更懂你的学习环境。";
-          if (userLine && profile.name) {
-            const email = (userLine.textContent || "").split("|")[1]?.trim();
-            userLine.textContent = email ? `${profile.name} | ${email}` : profile.name;
-          }
-          if (profileAvatar) {
-            profileAvatar.textContent = profile.avatarUrl ? "" : initial;
-            profileAvatar.style.backgroundImage = profile.avatarUrl ? `url("${profile.avatarUrl}")` : "";
-          }
-          if (profileCover) {
-            profileCover.style.backgroundImage = profile.backgroundUrl ? `url("${profile.backgroundUrl}")` : "";
-          }
-        }
-
-        function syncSchoolToAiPreferences(profile) {
-          const input = document.querySelector("#customInstructionInput");
-          if (!input) return;
-          const base = input.value.split(marker)[0].trim();
-          const lines = [];
-          if (profile.name) lines.push(`Student preferred name: ${profile.name}.`);
-          if (profile.school) {
-            lines.push(`Student school: ${profile.school}. When useful, tailor examples, terminology, academic expectations, campus context, and course-planning advice to this school.`);
-          }
-          const next = lines.length ? `${base}${base ? "\n\n" : ""}${marker}\n${lines.join("\n")}` : base;
-          if (input.value !== next) {
-            input.value = next;
-            input.dispatchEvent(new Event("change", { bubbles: true }));
-          }
-        }
-
-        const editButton = document.querySelector("#editProfileButton");
-        const cancelButton = document.querySelector("#cancelProfileButton");
-        const form = document.querySelector("#profileForm");
-        const message = document.querySelector("#profileMessage");
-
-        editButton?.addEventListener("click", () => {
-          const profile = loadProfile();
-          document.querySelector("#profileNameInput").value = profile.name || document.querySelector("#profileName")?.textContent || "";
-          document.querySelector("#schoolInput").value = profile.school || "";
-          document.querySelector("#avatarUrlInput").value = profile.avatarUrl || "";
-          document.querySelector("#backgroundUrlInput").value = profile.backgroundUrl || "";
-          if (message) message.textContent = "";
-          if (form) form.hidden = false;
-        });
-
-        cancelButton?.addEventListener("click", () => {
-          if (form) form.hidden = true;
-          if (message) message.textContent = "";
-        });
-
-        form?.addEventListener("submit", (event) => {
-          event.preventDefault();
-          const profile = {
-            name: document.querySelector("#profileNameInput").value.trim(),
-            school: document.querySelector("#schoolInput").value.trim(),
-            avatarUrl: document.querySelector("#avatarUrlInput").value.trim(),
-            backgroundUrl: document.querySelector("#backgroundUrlInput").value.trim()
-          };
-          saveProfile(profile);
-          applyProfile();
-          syncSchoolToAiPreferences(profile);
-          if (message) message.textContent = "已保存。学校信息会自动进入 AI 学习偏好。";
-        });
-
-        applyProfile();
-        setTimeout(applyProfile, 600);
-        setTimeout(applyProfile, 1500);
-        setTimeout(() => syncSchoolToAiPreferences(loadProfile()), 1200);
-      })();
-
-      (() => {
-        function reloadWorkspaceMode(mode, event) {
-          event.preventDefault();
-          event.stopImmediatePropagation();
-          const currentMode = localStorage.getItem("studybridgeWorkspaceMode") || "student";
-          localStorage.setItem("studybridgeWorkspaceMode", mode);
-          if (currentMode !== mode) window.location.reload();
-        }
-
-        document.querySelector("#studentViewButton")?.addEventListener(
-          "click",
-          (event) => reloadWorkspaceMode("student", event),
-          true
-        );
-        document.querySelector("#creatorViewButton")?.addEventListener(
-          "click",
-          (event) => reloadWorkspaceMode("creator", event),
-          true
-        );
-      })();
-    </script>
   </body>
 </html>

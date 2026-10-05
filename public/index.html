@@ -6,6 +6,24 @@
     <title>StudyBridge Cloud</title>
     <link rel="stylesheet" href="/style.css" />
     <style>
+      .workspace {
+        display: block;
+        min-width: 0;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      #workspacePage {
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+        height: 100vh;
+        min-height: 0;
+      }
+
+      #workspacePage[hidden] {
+        display: none;
+      }
+
       .profile-entry {
         display: grid;
         gap: 12px;
@@ -250,6 +268,14 @@
         border-style: solid;
         border-color: var(--green);
         color: var(--green);
+      }
+
+      @media (max-width: 900px) {
+        .workspace,
+        #workspacePage {
+          height: auto;
+          min-height: 680px;
+        }
       }
 
       @media (max-width: 760px) {

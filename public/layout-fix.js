@@ -295,7 +295,7 @@
   loadScriptOnce("/admin-refresh-patch.js?v=20261005-1");
   loadScriptOnce("/school-community-patch.js?v=20261005-3");
   loadScriptOnce("/classmates-patch.js?v=20261005-2");
-  loadScriptOnce("/classmates-request-patch.js?v=20261005-1");
+  loadScriptOnce("/classmates-request-patch.js?v=20261005-3");
   loadScriptOnce("/email-reply-patch.js?v=20261005-1");
   loadScriptOnce("/schedule-patch.js?v=20261005-3");
   loadScriptOnce("/schedule-dashboard-patch.js?v=20261005-1");

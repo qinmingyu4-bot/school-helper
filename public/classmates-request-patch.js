@@ -5,6 +5,8 @@
   let candidates = [];
   let requests = { incoming: [], outgoing: [] };
   let activeClassmateId = "";
+  let classmatesRefreshTimer = null;
+  let isLoadingClassmates = false;
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -342,14 +344,25 @@
     if (!page) return;
     hideOtherPages();
     page.hidden = false;
+    startClassmateRefreshTimer();
     await loadClassmates();
   }
 
-  async function loadClassmates() {
-    if (!page) return;
+  function startClassmateRefreshTimer() {
+    if (classmatesRefreshTimer) return;
+    classmatesRefreshTimer = setInterval(() => {
+      if (!page || page.hidden || document.visibilityState === "hidden") return;
+      loadClassmates({ silent: true });
+    }, 6000);
+  }
+
+  async function loadClassmates(options = {}) {
+    if (!page || isLoadingClassmates) return;
+    const silent = Boolean(options.silent);
+    isLoadingClassmates = true;
     const status = page.querySelector("#classmatesStatusLine");
     const schoolLine = page.querySelector("#classmatesSchoolLine");
-    status.textContent = "正在读取同学和申请...";
+    if (!silent) status.textContent = "正在读取同学和申请...";
     try {
       const result = await api("/api/classmates");
       classmates = result.classmates || [];
@@ -370,11 +383,15 @@
           ? `已添加 ${classmates.length} 位同学。`
           : "输入同学的 SB ID，先发送申请。";
     } catch (error) {
-      status.textContent = error.message;
-      page.querySelector("#classmateRequestList").innerHTML = "";
-      page.querySelector("#classmateList").innerHTML = `<p class="empty">${escapeHtml(error.message)}</p>`;
-      page.querySelector("#classmateCandidates").innerHTML = "";
-      page.querySelector("#directMessageList").innerHTML = "";
+      if (!silent) {
+        status.textContent = error.message;
+        page.querySelector("#classmateRequestList").innerHTML = "";
+        page.querySelector("#classmateList").innerHTML = `<p class="empty">${escapeHtml(error.message)}</p>`;
+        page.querySelector("#classmateCandidates").innerHTML = "";
+        page.querySelector("#directMessageList").innerHTML = "";
+      }
+    } finally {
+      isLoadingClassmates = false;
     }
   }
 

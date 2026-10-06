@@ -114,6 +114,19 @@
         box-shadow: 0 8px 24px rgba(25, 36, 58, 0.04) !important;
       }
 
+      #openStudyAreaButton,
+      #openSchoolCommunityButton,
+      #openClassmatesButton,
+      #openEmailReplyButton,
+      #openScheduleButton {
+        display: grid !important;
+        grid-template-columns: 34px minmax(0, 1fr) !important;
+        min-height: 48px !important;
+        max-height: 54px !important;
+        align-items: center !important;
+        overflow: hidden !important;
+      }
+
       .study-entry:hover,
       .community-entry:hover,
       .classmates-entry:hover,
@@ -132,6 +145,19 @@
       .email-helper-entry button:not(.email-helper-entry),
       .schedule-entry button:not(.schedule-entry),
       .study-entry button:not(.study-entry) {
+        display: none !important;
+      }
+
+      #openStudyAreaButton .small-button,
+      #openSchoolCommunityButton .small-button,
+      #openClassmatesButton .small-button,
+      #openEmailReplyButton .small-button,
+      #openScheduleButton .small-button,
+      #openStudyAreaButton > :nth-child(n + 3),
+      #openSchoolCommunityButton > :nth-child(n + 3),
+      #openClassmatesButton > :nth-child(n + 3),
+      #openEmailReplyButton > :nth-child(n + 3),
+      #openScheduleButton > :nth-child(n + 3) {
         display: none !important;
       }
 
@@ -246,6 +272,17 @@
     });
   }
 
+  function cleanFeatureEntries() {
+    ["#openStudyAreaButton", "#openSchoolCommunityButton", "#openClassmatesButton", "#openEmailReplyButton", "#openScheduleButton"].forEach((selector) => {
+      const entry = document.querySelector(selector);
+      if (!entry) return;
+      entry.querySelectorAll(".small-button").forEach((control) => control.remove());
+      Array.from(entry.children)
+        .slice(2)
+        .forEach((child) => child.remove());
+    });
+  }
+
   function syncCreatorCleanMode() {
     const developerPanel = document.querySelector("#developerPanel");
     document.body.classList.toggle("creator-clean-mode", Boolean(developerPanel && !developerPanel.hidden));
@@ -281,6 +318,7 @@
 
   installCreatorLayoutFix();
   ensureStudyEntry();
+  cleanFeatureEntries();
   syncCreatorCleanMode();
   syncStudySidebarPanels();
   loadScriptOnce("/school-autocomplete.js?v=20261005-1");
@@ -295,7 +333,9 @@
   loadScriptOnce("/admin-refresh-patch.js?v=20261005-1");
   loadScriptOnce("/school-community-patch.js?v=20261005-3");
   loadScriptOnce("/classmates-patch.js?v=20261005-2");
-  loadScriptOnce("/classmates-request-patch.js?v=20261005-3");
+  loadScriptOnce("/classmates-request-patch.js?v=20261005-5");
+  loadScriptOnce("/classmate-chat-bubble-fix.js?v=20261005-2");
+  loadScriptOnce("/chat-bubble-compact-live.js?v=20261005-1");
   loadScriptOnce("/email-reply-patch.js?v=20261005-1");
   loadScriptOnce("/schedule-patch.js?v=20261005-3");
   loadScriptOnce("/schedule-dashboard-patch.js?v=20261005-1");
@@ -304,6 +344,7 @@
   setInterval(() => {
     installCreatorLayoutFix();
     ensureStudyEntry();
+    cleanFeatureEntries();
     syncCreatorCleanMode();
     syncStudySidebarPanels();
   }, 1000);

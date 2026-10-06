@@ -229,6 +229,71 @@
     });
   }
 
+  async function copyTextToClipboard(text) {
+    if (!text) throw new Error("没有可复制的邀请码。");
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return "copied";
+    }
+
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.setAttribute("readonly", "");
+    textArea.style.position = "fixed";
+    textArea.style.left = "-9999px";
+    textArea.style.top = "0";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    textArea.setSelectionRange(0, text.length);
+
+    let copied = false;
+    try {
+      copied = document.execCommand("copy");
+    } finally {
+      document.body.removeChild(textArea);
+    }
+
+    if (!copied) throw new Error("浏览器没有允许复制。已请你手动复制。");
+    return "copied";
+  }
+
+  function installInviteCopyFix() {
+    if (window.__studybridgeInviteCopyFixInstalled) return;
+    window.__studybridgeInviteCopyFixInstalled = true;
+
+    document.addEventListener(
+      "click",
+      async (event) => {
+        const button = event.target?.closest?.("[data-copy-invite]");
+        if (!button) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+
+        const code = String(button.dataset.copyInvite || "").trim();
+        const adminMessage = document.querySelector("#adminMessage");
+        const originalText = button.textContent;
+        button.disabled = true;
+
+        try {
+          await copyTextToClipboard(code);
+          button.textContent = "已复制";
+          if (adminMessage) adminMessage.textContent = `已复制：${code}`;
+        } catch (error) {
+          button.textContent = "复制失败";
+          if (adminMessage) adminMessage.textContent = error.message || "复制失败，请手动复制邀请码。";
+        } finally {
+          setTimeout(() => {
+            button.disabled = false;
+            button.textContent = originalText || "复制";
+          }, 1400);
+        }
+      },
+      true
+    );
+  }
+
   function getActiveClassmateId() {
     const page = document.querySelector("#classmatesPage:not([hidden])");
     if (!page) return "";
@@ -282,6 +347,7 @@
 
   installClassmateChatBubbleFix();
   installCommunityDirectoryStability();
+  installInviteCopyFix();
   installRequestListCollapse();
   setInterval(installClassmateChatBubbleFix, 1500);
   setInterval(installRequestListCollapse, 1200);

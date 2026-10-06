@@ -28,107 +28,142 @@ jobs:
             return text.slice(0, start) + replacement + text.slice(end);
           }
 
+          function replaceFunction(text, name, replacement) {
+            const startNeedle = `function ${name}`;
+            const start = text.indexOf(startNeedle);
+            if (start === -1) return text;
+            let depth = 0;
+            let opened = false;
+            for (let i = start; i < text.length; i += 1) {
+              const ch = text[i];
+              if (ch === '{') {
+                depth += 1;
+                opened = true;
+              } else if (ch === '}') {
+                depth -= 1;
+                if (opened && depth === 0) {
+                  return text.slice(0, start) + replacement + text.slice(i + 1);
+                }
+              }
+            }
+            throw new Error(`Could not replace ${name}`);
+          }
+
           let db = fs.readFileSync('lib/database.js', 'utf8');
           if (!db.includes('async listClassmateRequests(userId)')) {
-            const dbInsert = `
-  async listClassmateRequests(userId) {
-    if (this.dynamo) {
-      const rows = await this.dynamo.scanType("classmateRequest");
-      return rows
-        .filter((item) => item.fromUserId === userId || item.toUserId === userId)
-        .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
-    }
-    return this.local.read((db) =>
-      Object.values(db.classmateRequests || {})
-        .filter((item) => item.fromUserId === userId || item.toUserId === userId)
-        .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)))
-    );
-  }
-
-  async findClassmateRequestByUsers(fromUserId, toUserId) {
-    if (this.dynamo) {
-      const rows = await this.dynamo.scanType("classmateRequest");
-      return rows.find((item) => item.fromUserId === fromUserId && item.toUserId === toUserId && (item.status || "pending") === "pending") || null;
-    }
-    return this.local.read((db) =>
-      Object.values(db.classmateRequests || {}).find(
-        (item) => item.fromUserId === fromUserId && item.toUserId === toUserId && (item.status || "pending") === "pending"
-      ) || null
-    );
-  }
-
-  async createClassmateRequest(request) {
-    const record = { ...request, kind: "classmateRequest", status: request.status || "pending", createdAt: now(), updatedAt: now() };
-    if (this.dynamo) return this.dynamo.put(` + '`CLASSMATE_REQUEST#${record.id}`' + `, "META", "classmateRequest", record);
-    return this.local.write((db) => {
-      db.classmateRequests ||= {};
-      db.classmateRequests[record.id] = record;
-      return record;
-    });
-  }
-
-  async getClassmateRequest(userId, requestId) {
-    if (this.dynamo) {
-      const row = await this.dynamo.get(` + '`CLASSMATE_REQUEST#${requestId}`' + `, "META");
-      return row?.fromUserId === userId || row?.toUserId === userId ? row : null;
-    }
-    return this.local.read((db) => {
-      const row = db.classmateRequests?.[requestId];
-      return row?.fromUserId === userId || row?.toUserId === userId ? row : null;
-    });
-  }
-
-  async updateClassmateRequest(requestId, patch) {
-    if (this.dynamo) {
-      const rows = await this.dynamo.scanType("classmateRequest");
-      const existing = rows.find((item) => item.id === requestId);
-      if (!existing) return null;
-      const updated = { ...existing, ...patch, updatedAt: now() };
-      await this.dynamo.put(` + '`CLASSMATE_REQUEST#${updated.id}`' + `, "META", "classmateRequest", updated);
-      return updated;
-    }
-    return this.local.write((db) => {
-      const existing = db.classmateRequests?.[requestId];
-      if (!existing) return null;
-      db.classmateRequests[requestId] = { ...existing, ...patch, updatedAt: now() };
-      return db.classmateRequests[requestId];
-    });
-  }
-`;
+            const dbInsert = [
+              '',
+              '  async listClassmateRequests(userId) {',
+              '    if (this.dynamo) {',
+              '      const rows = await this.dynamo.scanType("classmateRequest");',
+              '      return rows',
+              '        .filter((item) => item.fromUserId === userId || item.toUserId === userId)',
+              '        .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));',
+              '    }',
+              '    return this.local.read((db) =>',
+              '      Object.values(db.classmateRequests || {})',
+              '        .filter((item) => item.fromUserId === userId || item.toUserId === userId)',
+              '        .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)))',
+              '    );',
+              '  }',
+              '',
+              '  async findClassmateRequestByUsers(fromUserId, toUserId) {',
+              '    if (this.dynamo) {',
+              '      const rows = await this.dynamo.scanType("classmateRequest");',
+              '      return rows.find((item) => item.fromUserId === fromUserId && item.toUserId === toUserId && (item.status || "pending") === "pending") || null;',
+              '    }',
+              '    return this.local.read((db) =>',
+              '      Object.values(db.classmateRequests || {}).find(',
+              '        (item) => item.fromUserId === fromUserId && item.toUserId === toUserId && (item.status || "pending") === "pending"',
+              '      ) || null',
+              '    );',
+              '  }',
+              '',
+              '  async createClassmateRequest(request) {',
+              '    const record = { ...request, kind: "classmateRequest", status: request.status || "pending", createdAt: now(), updatedAt: now() };',
+              '    if (this.dynamo) return this.dynamo.put(`CLASSMATE_REQUEST#${record.id}`, "META", "classmateRequest", record);',
+              '    return this.local.write((db) => {',
+              '      db.classmateRequests ||= {};',
+              '      db.classmateRequests[record.id] = record;',
+              '      return record;',
+              '    });',
+              '  }',
+              '',
+              '  async getClassmateRequest(userId, requestId) {',
+              '    if (this.dynamo) {',
+              '      const row = await this.dynamo.get(`CLASSMATE_REQUEST#${requestId}`, "META");',
+              '      return row?.fromUserId === userId || row?.toUserId === userId ? row : null;',
+              '    }',
+              '    return this.local.read((db) => {',
+              '      const row = db.classmateRequests?.[requestId];',
+              '      return row?.fromUserId === userId || row?.toUserId === userId ? row : null;',
+              '    });',
+              '  }',
+              '',
+              '  async updateClassmateRequest(requestId, patch) {',
+              '    if (this.dynamo) {',
+              '      const rows = await this.dynamo.scanType("classmateRequest");',
+              '      const existing = rows.find((item) => item.id === requestId);',
+              '      if (!existing) return null;',
+              '      const updated = { ...existing, ...patch, updatedAt: now() };',
+              '      await this.dynamo.put(`CLASSMATE_REQUEST#${updated.id}`, "META", "classmateRequest", updated);',
+              '      return updated;',
+              '    }',
+              '    return this.local.write((db) => {',
+              '      const existing = db.classmateRequests?.[requestId];',
+              '      if (!existing) return null;',
+              '      db.classmateRequests[requestId] = { ...existing, ...patch, updatedAt: now() };',
+              '      return db.classmateRequests[requestId];',
+              '    });',
+              '  }',
+              ''
+            ].join('\n');
             db = db.replace('\n  async listDirectMessages(chatId, limit = 80) {', dbInsert + '\n  async listDirectMessages(chatId, limit = 80) {');
             fs.writeFileSync('lib/database.js', db);
           }
 
           let server = fs.readFileSync('server.js', 'utf8');
           if (!server.includes('function classmateConnectionId(userId, peerId)')) {
-            const helper = `
-function classmateConnectionId(userId, peerId) {
-  const key = [userId, peerId].sort().join(":");
-  return ` + '`mate_${crypto.createHash("sha1").update(key).digest("hex").slice(0, 18)}`' + `;
-}
+            const connectionHelper = [
+              '',
+              'function classmateConnectionId(userId, peerId) {',
+              '  const key = [userId, peerId].sort().join(":");',
+              '  return `mate_${crypto.createHash("sha1").update(key).digest("hex").slice(0, 18)}`;',
+              '}',
+              ''
+            ].join('\n');
+            server = server.replace('\nasync function publicClassmate(connection, viewerId) {', connectionHelper + '\nasync function publicClassmate(connection, viewerId) {');
+          }
 
-function publicClassmateRequest(request, viewerId, usersById) {
-  const from = usersById.get(request.fromUserId) || {};
-  const to = usersById.get(request.toUserId) || {};
-  const other = request.toUserId === viewerId ? from : to;
-  return {
-    id: request.id,
-    status: request.status || "pending",
-    direction: request.toUserId === viewerId ? "incoming" : "outgoing",
-    peer: {
-      id: other.id || "",
-      name: other.name || "同学",
-      email: other.email || "",
-      school: other.profile?.school || "",
-      major: other.profile?.major || "",
-      sbId: other.profile?.sbId || ""
-    },
-    createdAt: request.createdAt,
-    updatedAt: request.updatedAt
-  };
-}
-`;
-            server = server.replace('\nasync function publicClassmate(connection, viewerId) {', helper + '\nasync function publicClassmate(connection, viewerId) {');
+          const requestHelper = [
+            'function publicClassmateRequest(request, viewerId, usersById) {',
+            '  const from = usersById.get(request.fromUserId) || {};',
+            '  const to = usersById.get(request.toUserId) || {};',
+            '  const publicPeer = (user) => ({',
+            '    id: user.id || "",',
+            '    name: user.name || "同学",',
+            '    email: user.email || "",',
+            '    school: user.profile?.school || "",',
+            '    major: user.profile?.major || "",',
+            '    sbId: user.profile?.sbId || ""',
+            '  });',
+            '  return {',
+            '    id: request.id,',
+            '    status: request.status || "pending",',
+            '    direction: request.toUserId === viewerId ? "incoming" : "outgoing",',
+            '    from: publicPeer(from),',
+            '    to: publicPeer(to),',
+            '    peer: publicPeer(request.toUserId === viewerId ? from : to),',
+            '    createdAt: request.createdAt,',
+            '    updatedAt: request.updatedAt',
+            '  };',
+            '}'
+          ].join('\n');
+
+          if (server.includes('function publicClassmateRequest(request, viewerId, usersById)')) {
+            server = replaceFunction(server, 'publicClassmateRequest(request, viewerId, usersById)', requestHelper);
+          } else {
+            server = server.replace('\nasync function publicClassmate(connection, viewerId) {', '\n' + requestHelper + '\n\nasync function publicClassmate(connection, viewerId) {');
           }
 
           const classmateRoutes = `if (url.pathname === "/api/classmates" && method === "GET") {

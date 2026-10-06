@@ -1,0 +1,65 @@
+name: Apply StudyBridge web-search compatibility patch
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch web-search compatibility
+        run: |
+          cat > /tmp/apply-web-search-compat.js <<'NODE'
+          const fs = require("fs");
+          const path = "server.js";
+          let text = fs.readFileSync(path, "utf8");
+
+          text = text.replace(
+            'const webSearchModel =\n  String(process.env.OPENAI_WEB_MODEL || process.env.STUDYBRIDGE_WEB_MODEL || "").trim() ||\n  simpleAiModel;',
+            'const webSearchModel =\n  String(process.env.OPENAI_WEB_MODEL || process.env.STUDYBRIDGE_WEB_MODEL || "").trim() ||\n  complexAiModel ||\n  simpleAiModel;'
+          );
+
+          text = text.replace(
+            'async function callAiWithResponses(messages, model) {',
+            'async function callAiWithResponses(messages, model, toolType = "web_search") {'
+          );
+          text = text.replace('type: "web_search",\n          search_context_size: "medium"', 'type: toolType,\n          search_context_size: "medium"');
+
+          const oldFallback = '    } catch (error) {\n      console.warn("StudyBridge web AI route failed, falling back to chat completions: " + (error?.message || error));\n    }';
+          const newFallback = `    } catch (error) {
+      const message = String(error?.message || error);
+      if (message.includes("web_search")) {
+        try {
+          return await callAiWithResponses(messages, webSearchModel || model, "web_search_preview");
+        } catch (previewError) {
+          console.warn("StudyBridge preview web route failed, falling back to chat completions: " + (previewError?.message || previewError));
+        }
+      } else {
+        console.warn("StudyBridge web AI route failed, falling back to chat completions: " + message);
+      }
+    }`;
+          if (text.includes(oldFallback)) {
+            text = text.replace(oldFallback, newFallback);
+          }
+
+          fs.writeFileSync(path, text, "utf8");
+          NODE
+          node /tmp/apply-web-search-compat.js
+          node --check server.js
+      - name: Commit hotfix
+        run: |
+          if git diff --quiet -- server.js; then
+            echo "No compatibility changes needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.js
+          git commit -m "Improve web search AI compatibility"
+          git push

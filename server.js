@@ -1336,6 +1336,24 @@ if (directMessageMatch && method === "POST") {
       });
       return sendJson(res, 201, { document });
     }
+    if (child === "documents" && childId && (method === "PUT" || method === "PATCH")) {
+      const body = await readJson(req);
+      const title = String(body.title || "Course note").trim().slice(0, 160);
+      let text;
+      try {
+        text = compactDocumentText(body.text);
+      } catch (error) {
+        return sendError(res, 400, error.message);
+      }
+      if (!title || !text) return sendError(res, 400, "Document title and text are required.");
+      const document = await db.updateDocument(user.id, courseId, childId, {
+        title,
+        text,
+        type: String(body.type || "Note").slice(0, 60)
+      });
+      if (!document) return sendError(res, 404, "Document not found.");
+      return sendJson(res, 200, { document });
+    }
     if (child === "documents" && childId && method === "DELETE") {
       await db.deleteDocument(user.id, courseId, childId);
       return sendJson(res, 200, { ok: true });

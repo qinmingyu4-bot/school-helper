@@ -120,7 +120,8 @@
         title: String(data.title || "").slice(0, 160),
         course: String(data.course || "").slice(0, 80),
         startsAt: data.startsAt,
-        location: String(data.location || "").slice(0, 160)
+        location: String(data.location || "").slice(0, 160),
+        completedAt: data.completedAt || ""
       };
     } catch {
       return null;
@@ -178,7 +179,7 @@
     if (!card) return;
     rendering = true;
     const now = Date.now();
-    const upcoming = items.filter((item) => new Date(item.startsAt).getTime() >= now);
+    const upcoming = items.filter((item) => !item.completedAt && new Date(item.startsAt).getTime() >= now);
     const fiveDaysFromNow = now + 5 * 24 * 60 * 60 * 1000;
     const nextFiveDays = upcoming.filter((item) => new Date(item.startsAt).getTime() <= fiveDaysFromNow);
     const renderKey = JSON.stringify(nextFiveDays.map((item) => [item.id, item.startsAt, item.title]));

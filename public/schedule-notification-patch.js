@@ -130,7 +130,8 @@
         id: doc.id,
         title: String(data.title || "").slice(0, 160),
         course: String(data.course || "").slice(0, 80),
-        startsAt: data.startsAt
+        startsAt: data.startsAt,
+        completedAt: data.completedAt || ""
       };
     } catch {
       return null;
@@ -167,6 +168,7 @@
     if (!nativeReady && !inPageReady) return;
     const now = Date.now();
     const soon = (await loadItems()).find((item) => {
+      if (item.completedAt) return false;
       const target = new Date(item.startsAt).getTime();
       return target > now && target - now <= 24 * 60 * 60 * 1000;
     });

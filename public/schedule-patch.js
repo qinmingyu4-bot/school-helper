@@ -255,6 +255,11 @@
         opacity: 0.58;
       }
 
+      .schedule-item.completed {
+        background: #f7faf9;
+        opacity: 0.76;
+      }
+
       .schedule-item strong {
         display: block;
         color: var(--navy);
@@ -314,6 +319,36 @@
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
+      }
+
+      .schedule-item-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .schedule-complete-button {
+        min-height: 34px;
+        padding: 0 12px;
+        border: 1px solid rgba(47, 125, 98, 0.24);
+        border-radius: 8px;
+        background: rgba(47, 125, 98, 0.08);
+        color: var(--green);
+        font-weight: 850;
+      }
+
+      .schedule-complete-button:hover {
+        border-color: var(--green);
+        background: rgba(47, 125, 98, 0.14);
+      }
+
+      .schedule-section-title {
+        margin: 6px 0 2px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
       }
 
       .schedule-message {
@@ -568,6 +603,7 @@
         startsAt: data.startsAt,
         location: String(data.location || "").slice(0, 160),
         notes: String(data.notes || "").slice(0, 600),
+        completedAt: data.completedAt || "",
         createdAt: doc.createdAt
       };
     } catch {
@@ -575,26 +611,57 @@
     }
   }
 
-  async function saveScheduleItem(item) {
-    const course = await getScheduleCourse();
-    const payload = {
+  function schedulePayload(item, overrides = {}) {
+    return {
       kind: item.kind || "deadline",
       title: item.title,
       course: item.course || "",
       startsAt: normalizeDateInput(item.startsAt),
       location: item.location || "",
-      notes: item.notes || ""
+      notes: item.notes || "",
+      completedAt: item.completedAt || "",
+      ...overrides
     };
-    if (!payload.title || !payload.startsAt) throw new Error("请填写标题和时间。");
+  }
+
+  function scheduleDocumentTitle(payload) {
     const dateLabel = payload.startsAt.replace("T", " ").slice(0, 16);
+    return `${ITEM_PREFIX} ${dateLabel} ${payload.title}`.slice(0, 160);
+  }
+
+  async function saveScheduleItem(item) {
+    const course = await getScheduleCourse();
+    const payload = schedulePayload(item);
+    if (!payload.title || !payload.startsAt) throw new Error("请填写标题和时间。");
     await api(`/api/courses/${course.id}/documents`, {
       method: "POST",
       body: {
-        title: `${ITEM_PREFIX} ${dateLabel} ${payload.title}`.slice(0, 160),
+        title: scheduleDocumentTitle(payload),
         text: JSON.stringify(payload),
         type: "Schedule"
       }
     });
+  }
+
+  async function updateScheduleItem(item, overrides = {}) {
+    const course = await getScheduleCourse();
+    const payload = schedulePayload(item, overrides);
+    if (!payload.title || !payload.startsAt) throw new Error("这条提醒缺少标题或时间，不能更新。");
+    await api(`/api/courses/${course.id}/documents/${item.id}`, {
+      method: "PATCH",
+      body: {
+        title: scheduleDocumentTitle(payload),
+        text: JSON.stringify(payload),
+        type: "Schedule"
+      }
+    });
+  }
+
+  async function completeScheduleItem(itemId) {
+    const item = scheduleItems.find((row) => row.id === itemId);
+    if (!item) return;
+    await updateScheduleItem(item, { completedAt: new Date().toISOString() });
+    await loadSchedule();
   }
 
   async function saveManualItem(event) {
@@ -779,28 +846,46 @@
       return;
     }
     const now = Date.now();
-    list.innerHTML = scheduleItems
-      .map((item) => {
-        const past = new Date(item.startsAt).getTime() < now;
-        const countdown = countdownParts(item.startsAt);
-        return `
-          <article class="schedule-item ${past ? "past" : ""}">
-            <div>
-              <div class="schedule-item-top">
-                <span class="schedule-kind">${escapeHtml(kindLabel(item.kind))}</span>
-                <span class="schedule-countdown-pill ${past ? "past" : countdown.totalMinutes <= 24 * 60 ? "urgent" : ""}">
-                  ${escapeHtml(past ? "已过期" : timeUntil(item.startsAt))}
-                </span>
-              </div>
-              <strong>${escapeHtml(item.title)}</strong>
-              <span>${escapeHtml(formatItemMeta(item))}</span>
-              ${item.notes ? `<span>${escapeHtml(item.notes)}</span>` : ""}
+    const activeItems = scheduleItems.filter((item) => !item.completedAt);
+    const completedItems = scheduleItems.filter((item) => item.completedAt);
+    const renderItem = (item, completed = false) => {
+      const past = new Date(item.startsAt).getTime() < now;
+      const countdown = countdownParts(item.startsAt);
+      return `
+        <article class="schedule-item ${past ? "past" : ""} ${completed ? "completed" : ""}">
+          <div>
+            <div class="schedule-item-top">
+              <span class="schedule-kind">${escapeHtml(kindLabel(item.kind))}</span>
+              <span class="schedule-countdown-pill ${completed || past ? "past" : countdown.totalMinutes <= 24 * 60 ? "urgent" : ""}">
+                ${escapeHtml(completed ? "已完成" : past ? "已过期" : timeUntil(item.startsAt))}
+              </span>
             </div>
+            <strong>${escapeHtml(item.title)}</strong>
+            <span>${escapeHtml(formatItemMeta(item))}</span>
+            ${item.notes ? `<span>${escapeHtml(item.notes)}</span>` : ""}
+          </div>
+          <div class="schedule-item-actions">
+            ${completed ? "" : `<button class="schedule-complete-button" type="button" data-complete-schedule="${escapeHtml(item.id)}">已完成</button>`}
             <button class="delete-button" type="button" data-delete-schedule="${escapeHtml(item.id)}" aria-label="删除提醒">×</button>
-          </article>
-        `;
-      })
-      .join("");
+          </div>
+        </article>
+      `;
+    };
+    list.innerHTML = [
+      activeItems.length
+        ? `<p class="schedule-section-title">未完成</p>${activeItems.map((item) => renderItem(item)).join("")}`
+        : `<p class="schedule-message">没有未完成的提醒。</p>`,
+      completedItems.length
+        ? `<p class="schedule-section-title">已完成</p>${completedItems.map((item) => renderItem(item, true)).join("")}`
+        : `<p class="schedule-section-title">已完成</p><p class="schedule-message">完成 deadline 后会进入这里，不再继续提醒。</p>`
+    ].join("");
+    list.querySelectorAll("[data-complete-schedule]").forEach((completeButton) => {
+      completeButton.addEventListener("click", async () => {
+        completeButton.disabled = true;
+        completeButton.textContent = "保存中";
+        await completeScheduleItem(completeButton.dataset.completeSchedule);
+      });
+    });
     list.querySelectorAll("[data-delete-schedule]").forEach((deleteButton) => {
       deleteButton.addEventListener("click", async () => {
         const course = await getScheduleCourse();
@@ -819,7 +904,9 @@
 
   function getUpcomingItems() {
     const now = Date.now();
-    return scheduleItems.filter((item) => new Date(item.startsAt).getTime() >= now).sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
+    return scheduleItems
+      .filter((item) => !item.completedAt && new Date(item.startsAt).getTime() >= now)
+      .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
   }
 
   function kindLabel(kind) {
@@ -941,6 +1028,7 @@
     if (!("Notification" in window) || Notification.permission !== "granted") return;
     const now = Date.now();
     const soon = scheduleItems.find((item) => {
+      if (item.completedAt) return false;
       const target = new Date(item.startsAt).getTime();
       return target > now && target - now <= 24 * 60 * 60 * 1000;
     });

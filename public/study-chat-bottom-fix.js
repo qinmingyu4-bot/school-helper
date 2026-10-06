@@ -21,10 +21,15 @@
 
       body:not(.creator-clean-mode) #workspacePage {
         display: grid !important;
-        grid-template-rows: auto minmax(0, 1fr) auto auto !important;
+        grid-template-rows: auto auto minmax(0, 1fr) auto auto !important;
         height: 100vh !important;
         min-height: 0 !important;
         overflow: hidden !important;
+      }
+
+      body:not(.creator-clean-mode) #workspacePage #scheduleDashboard {
+        position: relative !important;
+        z-index: 2 !important;
       }
 
       #workspacePage #chatArea {

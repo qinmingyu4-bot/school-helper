@@ -73,6 +73,10 @@ const simpleAiModel =
 const complexAiModel =
   String(process.env.OPENAI_COMPLEX_MODEL || process.env.STUDYBRIDGE_COMPLEX_MODEL || "").trim() ||
   "gpt-4o";
+const webSearchEnabled = process.env.OPENAI_WEB_SEARCH !== "false";
+const webSearchModel =
+  String(process.env.OPENAI_WEB_MODEL || process.env.STUDYBRIDGE_WEB_MODEL || "").trim() ||
+  simpleAiModel;
 const solRoutePercent = Math.max(
   0,
   Math.min(100, Number(process.env.OPENAI_SOL_ROUTE_PERCENT || process.env.STUDYBRIDGE_SOL_ROUTE_PERCENT || 15))
@@ -625,7 +629,7 @@ function buildStudyPrompt({ user, course, documents, history, scheduleItems, wea
     {
       role: "system",
       content:
-        "You are StudyBridge, a bilingual academic coach for international students. Explain in Chinese, preserve key English academic terms, help students learn without doing prohibited final submissions for them, and keep answers grounded in the provided course material, the student's global schedule, and any real-time external context provided by the server. When the student asks about due dates, unfinished work, deadlines, exams, or what to do next, always use the global unfinished schedule/deadline context, even if the current chat is inside a different course. When real-time weather context is provided, answer the weather question directly and include practical clothing/commute advice."
+        "You are StudyBridge, a bilingual academic coach and general-purpose AI assistant for international students. Answer any user question that is allowed by OpenAI safety rules. Explain in Chinese by default, preserve key English academic terms, and help students learn without doing prohibited final submissions for them. For course, deadline, profile, or schedule questions, ground the answer in the provided StudyBridge data first. For general knowledge or current-information questions where the local StudyBridge data is missing, use reliable general knowledge and, when web search is available, use web search for fresh facts. When you rely on web information, briefly say the information comes from a live lookup and avoid pretending it came from saved course data. When the student asks about due dates, unfinished work, deadlines, exams, or what to do next, always use the global unfinished schedule/deadline context, even if the current chat is inside a different course. When real-time weather context is provided, answer the weather question directly and include practical clothing/commute advice."
     },
     {
       role: "user",
@@ -692,15 +696,51 @@ function chooseAiModel({ documents = [], history = [], mode = "", message = "" }
   return crypto.randomInt(100) < solRoutePercent ? complexAiModel : simpleAiModel;
 }
 
-async function callAi(messages, model = simpleAiModel) {
-  if (!process.env.OPENAI_API_KEY) {
-    return "我已经把你的问题保存到云端了。现在服务器还没有配置 OPENAI_API_KEY，所以先用内置学习助手回复：请先上传 syllabus 或 lecture notes，我可以根据课程资料帮你做预习、复习、deadline 汇总和模拟出题。";
+function extractResponsesText(payload) {
+  if (typeof payload?.output_text === "string" && payload.output_text.trim()) return payload.output_text;
+  const parts = [];
+  for (const item of payload?.output || []) {
+    for (const content of item.content || []) {
+      if (typeof content.text === "string") parts.push(content.text);
+      if (typeof content.output_text === "string") parts.push(content.output_text);
+    }
   }
+  return parts.join("\n").trim();
+}
 
+async function callAiWithResponses(messages, model) {
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      authorization: "Bearer " + process.env.OPENAI_API_KEY,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      model,
+      input: messages.map((item) => ({
+        role: item.role,
+        content: item.content
+      })),
+      tools: [
+        {
+          type: "web_search",
+          search_context_size: "medium"
+        }
+      ],
+      store: false
+    })
+  });
+  const text = await response.text();
+  if (!response.ok) throw new Error("AI web request failed: " + text);
+  const payload = JSON.parse(text);
+  return extractResponsesText(payload) || "AI 没有返回内容，请稍后再试。";
+}
+
+async function callAiWithChatCompletions(messages, model) {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
-      authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      authorization: "Bearer " + process.env.OPENAI_API_KEY,
       "content-type": "application/json"
     },
     body: JSON.stringify({
@@ -709,9 +749,25 @@ async function callAi(messages, model = simpleAiModel) {
     })
   });
   const text = await response.text();
-  if (!response.ok) throw new Error(`AI request failed: ${text}`);
+  if (!response.ok) throw new Error("AI request failed: " + text);
   const payload = JSON.parse(text);
   return payload.choices?.[0]?.message?.content || "AI 没有返回内容，请稍后再试。";
+}
+
+async function callAi(messages, model = simpleAiModel) {
+  if (!process.env.OPENAI_API_KEY) {
+    return "\u6211\u5df2\u7ecf\u628a\u4f60\u7684\u95ee\u9898\u4fdd\u5b58\u5230\u4e91\u7aef\u4e86\u3002\u73b0\u5728\u670d\u52a1\u5668\u8fd8\u6ca1\u6709\u914d\u7f6e OPENAI_API_KEY\uff0c\u6240\u4ee5\u5148\u7528\u5185\u7f6e\u5b66\u4e60\u52a9\u624b\u56de\u590d\uff1a\u8bf7\u5148\u4e0a\u4f20 syllabus \u6216 lecture notes\uff0c\u6211\u53ef\u4ee5\u6839\u636e\u8bfe\u7a0b\u8d44\u6599\u5e2e\u4f60\u505a\u9884\u4e60\u3001\u590d\u4e60\u3001deadline \u6c47\u603b\u548c\u6a21\u62df\u51fa\u9898\u3002";
+  }
+
+  if (webSearchEnabled) {
+    try {
+      return await callAiWithResponses(messages, webSearchModel || model);
+    } catch (error) {
+      console.warn("StudyBridge web AI route failed, falling back to chat completions: " + (error?.message || error));
+    }
+  }
+
+  return callAiWithChatCompletions(messages, model);
 }
 
 async function validateInviteForRegistration(inviteCode, email) {

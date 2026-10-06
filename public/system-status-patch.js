@@ -3,6 +3,8 @@
     title: "\u7cfb\u7edf\u72b6\u6001",
     waiting: "\u7b49\u5f85\u68c0\u6d4b",
     check: "\u68c0\u6d4b",
+    checkingButton: "\u68c0\u6d4b\u4e2d...",
+    completeButton: "\u68c0\u6d4b\u5b8c\u6210",
     checkingTitle: "\u68c0\u6d4b\u4e2d",
     checkingValue: "\u6b63\u5728\u8bfb\u53d6\u7cfb\u7edf\u72b6\u6001",
     checkingNote: "\u8bf7\u7a0d\u7b49\u51e0\u79d2\u3002",
@@ -18,7 +20,8 @@
     configured: "\u5df2\u914d\u7f6e",
     notConfigured: "\u672a\u914d\u7f6e",
     unknown: "\u672a\u77e5",
-    updated: "\u4e0a\u6b21\u68c0\u6d4b"
+    updated: "\u4e0a\u6b21\u68c0\u6d4b",
+    completed: "\u68c0\u6d4b\u5b8c\u6210"
   };
 
   const STATUS_ID = "systemStatusPanel";
@@ -49,6 +52,9 @@
       .system-status-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
       .system-status-head h4 { margin: 0; color: var(--navy); font-size: 16px; }
       .system-status-head span { color: var(--muted); font-size: 12px; }
+      .system-status-panel.checking { border-color: #d48b1f; box-shadow: 0 0 0 3px rgba(212, 139, 31, 0.1), 0 12px 30px rgba(25, 36, 58, 0.05); }
+      .system-status-panel.checked { border-color: #2f7d62; box-shadow: 0 0 0 3px rgba(47, 125, 98, 0.11), 0 12px 30px rgba(25, 36, 58, 0.05); }
+      #refreshSystemStatusButton[disabled] { opacity: 0.72; cursor: wait; }
       .system-status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; padding: 14px 16px 16px; }
       .system-status-card { display: grid; gap: 6px; min-height: 92px; padding: 12px; border: 1px solid #dfe7f1; border-radius: 8px; background: #fbfdff; }
       .system-status-title { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; font-weight: 850; }
@@ -104,6 +110,14 @@
     if (!panel) return;
     const grid = panel.querySelector("#systemStatusGrid");
     const updated = panel.querySelector("#systemStatusUpdated");
+    const button = panel.querySelector("#refreshSystemStatusButton");
+    panel.classList.remove("checked");
+    panel.classList.add("checking");
+    if (button) {
+      button.disabled = true;
+      button.textContent = TEXT.checkingButton;
+    }
+    if (updated) updated.textContent = `${TEXT.checkingTitle}\uff1a${new Date().toLocaleString("zh-CN")}`;
     if (grid) grid.innerHTML = card(TEXT.checkingTitle, "warn", TEXT.checkingValue, TEXT.checkingNote);
 
     const checks = await Promise.allSettled([
@@ -140,7 +154,17 @@
         card(TEXT.adminApi, overviewOk ? "ok" : "bad", overviewOk ? TEXT.ok : "\u5f02\u5e38", overviewOk ? "\u53ef\u4ee5\u8bfb\u53d6\u7528\u6237\u3001\u9080\u8bf7\u7801\u548c\u91cd\u7f6e\u7533\u8bf7\u3002" : checks[2].reason?.message || "\u65e0\u6cd5\u8bfb\u53d6\u5f00\u53d1\u8005\u6570\u636e\u3002")
       ].join("");
     }
-    if (updated) updated.textContent = `${TEXT.updated}\uff1a${new Date().toLocaleString("zh-CN")}`;
+    panel.classList.remove("checking");
+    panel.classList.add("checked");
+    if (updated) updated.textContent = `${TEXT.completed}\uff1a${new Date().toLocaleString("zh-CN")}`;
+    if (button) {
+      button.disabled = false;
+      button.textContent = TEXT.completeButton;
+      setTimeout(() => {
+        button.textContent = TEXT.check;
+        panel.classList.remove("checked");
+      }, 1400);
+    }
   }
 
   function boot() {

@@ -19,15 +19,21 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          def replace(path, old, new):
+          def patch(path, fn):
               p = Path(path)
               text = p.read_text(encoding="utf-8")
-              if old not in text:
-                  raise SystemExit(f"Pattern not found in {path}")
-              p.write_text(text.replace(old, new), encoding="utf-8")
+              new_text = fn(text)
+              if new_text == text:
+                  print(f"No changes needed for {path}")
+              else:
+                  p.write_text(new_text, encoding="utf-8")
+                  print(f"Patched {path}")
 
-          bubble = "public/classmate-chat-bubble-fix.js"
-          replace(bubble, """      #classmatesPage .direct-message {
+          def replace_optional(text, old, new):
+              return text.replace(old, new) if old in text else text
+
+          def patch_bubble(text):
+              text = replace_optional(text, """      #classmatesPage .direct-message {
         display: flex !important;
         align-items: flex-end !important;
         justify-content: space-between !important;
@@ -69,7 +75,7 @@ jobs:
         display: block !important;
       }
 """)
-          replace(bubble, """        #classmatesPage .direct-message {
+              text = replace_optional(text, """        #classmatesPage .direct-message {
           align-items: flex-start !important;
           flex-direction: column !important;
           gap: 4px !important;
@@ -84,7 +90,7 @@ jobs:
           max-width: 92% !important;
         }
 """)
-          replace(bubble, """  function normalizeMessageCards() {
+              old_normalize = """  function normalizeMessageCards() {
     const page = document.querySelector("#classmatesPage:not([hidden])");
     if (!page) return;
     page.querySelectorAll(".direct-message").forEach((message) => {
@@ -97,7 +103,8 @@ jobs:
       message.dataset.normalizedBubble = "true";
     });
   }
-""", """  function normalizeMessageCards() {
+"""
+              new_normalize = """  function normalizeMessageCards() {
     const page = document.querySelector("#classmatesPage:not([hidden])");
     if (!page) return;
     page.querySelectorAll(".direct-message").forEach((message) => {
@@ -147,16 +154,18 @@ jobs:
     observer.observe(list, { childList: true, subtree: true });
     list.dataset.compactObserver = "true";
   }
-""")
-          replace(bubble, """    ensurePeerProfileCard();
+"""
+              text = replace_optional(text, old_normalize, new_normalize)
+              text = replace_optional(text, """    ensurePeerProfileCard();
     normalizeMessageCards();
 """, """    ensurePeerProfileCard();
     installMessageObserver();
     normalizeMessageCards();
 """)
+              return text
 
-          classmates = "public/classmates-request-patch.js"
-          replace(classmates, """      .direct-message {
+          def patch_classmates(text):
+              text = replace_optional(text, """      .direct-message {
         max-width: min(620px, 86%);
         padding: 11px 13px;
         border: 1px solid var(--line);
@@ -181,7 +190,7 @@ jobs:
         white-space: pre-wrap;
       }
 """)
-          replace(classmates, """      .direct-message time {
+              text = replace_optional(text, """      .direct-message time {
         display: block;
         margin-top: 5px;
         color: var(--muted);
@@ -196,7 +205,7 @@ jobs:
         text-align: right;
       }
 """)
-          replace(classmates, """          <article class="direct-message ${message.mine ? "mine" : ""}">
+              text = replace_optional(text, """          <article class="direct-message ${message.mine ? "mine" : ""}">
             ${escapeHtml(message.content)}
             <time>${formatDateTime(message.createdAt)}</time>
           </article>
@@ -205,10 +214,20 @@ jobs:
             <time>${formatDateTime(message.createdAt)}</time>
           </article>
 """)
+              return text
 
-          layout = "public/layout-fix.js"
-          replace(layout, 'loadScriptOnce("/classmates-request-patch.js?v=20261005-4");', 'loadScriptOnce("/classmates-request-patch.js?v=20261005-5");')
-          replace(layout, 'loadScriptOnce("/classmate-chat-bubble-fix.js?v=20261005-1");', 'loadScriptOnce("/classmate-chat-bubble-fix.js?v=20261005-2");')
+          def patch_layout(text):
+              text = replace_optional(text, 'loadScriptOnce("/classmates-request-patch.js?v=20261005-3");', 'loadScriptOnce("/classmates-request-patch.js?v=20261005-5");')
+              text = replace_optional(text, 'loadScriptOnce("/classmates-request-patch.js?v=20261005-4");', 'loadScriptOnce("/classmates-request-patch.js?v=20261005-5");')
+              text = replace_optional(text, 'loadScriptOnce("/classmate-chat-bubble-fix.js?v=20261005-1");', 'loadScriptOnce("/classmate-chat-bubble-fix.js?v=20261005-2");')
+              if 'classmate-chat-bubble-fix.js' not in text:
+                  marker = 'loadScriptOnce("/classmates-request-patch.js?v=20261005-5");'
+                  text = text.replace(marker, marker + '\n  loadScriptOnce("/classmate-chat-bubble-fix.js?v=20261005-2");')
+              return text
+
+          patch("public/classmate-chat-bubble-fix.js", patch_bubble)
+          patch("public/classmates-request-patch.js", patch_classmates)
+          patch("public/layout-fix.js", patch_layout)
           PY
       - name: Validate patched JavaScript
         run: |

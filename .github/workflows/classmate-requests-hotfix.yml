@@ -1,0 +1,281 @@
+name: Apply classmate request backend hotfix
+
+on:
+  push:
+    paths:
+      - ".github/triggers/classmate-requests-hotfix.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch classmate request backend
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+
+          function replaceBlock(text, startNeedle, endNeedle, replacement, fileName) {
+            const start = text.indexOf(startNeedle);
+            if (start === -1) throw new Error(`${fileName}: start not found: ${startNeedle}`);
+            const end = text.indexOf(endNeedle, start);
+            if (end === -1) throw new Error(`${fileName}: end not found: ${endNeedle}`);
+            return text.slice(0, start) + replacement + text.slice(end);
+          }
+
+          let db = fs.readFileSync('lib/database.js', 'utf8');
+          if (!db.includes('async listClassmateRequests(userId)')) {
+            const dbInsert = `
+  async listClassmateRequests(userId) {
+    if (this.dynamo) {
+      const rows = await this.dynamo.scanType("classmateRequest");
+      return rows
+        .filter((item) => item.fromUserId === userId || item.toUserId === userId)
+        .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
+    }
+    return this.local.read((db) =>
+      Object.values(db.classmateRequests || {})
+        .filter((item) => item.fromUserId === userId || item.toUserId === userId)
+        .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)))
+    );
+  }
+
+  async findClassmateRequestByUsers(fromUserId, toUserId) {
+    if (this.dynamo) {
+      const rows = await this.dynamo.scanType("classmateRequest");
+      return rows.find((item) => item.fromUserId === fromUserId && item.toUserId === toUserId && (item.status || "pending") === "pending") || null;
+    }
+    return this.local.read((db) =>
+      Object.values(db.classmateRequests || {}).find(
+        (item) => item.fromUserId === fromUserId && item.toUserId === toUserId && (item.status || "pending") === "pending"
+      ) || null
+    );
+  }
+
+  async createClassmateRequest(request) {
+    const record = { ...request, kind: "classmateRequest", status: request.status || "pending", createdAt: now(), updatedAt: now() };
+    if (this.dynamo) return this.dynamo.put(` + '`CLASSMATE_REQUEST#${record.id}`' + `, "META", "classmateRequest", record);
+    return this.local.write((db) => {
+      db.classmateRequests ||= {};
+      db.classmateRequests[record.id] = record;
+      return record;
+    });
+  }
+
+  async getClassmateRequest(userId, requestId) {
+    if (this.dynamo) {
+      const row = await this.dynamo.get(` + '`CLASSMATE_REQUEST#${requestId}`' + `, "META");
+      return row?.fromUserId === userId || row?.toUserId === userId ? row : null;
+    }
+    return this.local.read((db) => {
+      const row = db.classmateRequests?.[requestId];
+      return row?.fromUserId === userId || row?.toUserId === userId ? row : null;
+    });
+  }
+
+  async updateClassmateRequest(requestId, patch) {
+    if (this.dynamo) {
+      const rows = await this.dynamo.scanType("classmateRequest");
+      const existing = rows.find((item) => item.id === requestId);
+      if (!existing) return null;
+      const updated = { ...existing, ...patch, updatedAt: now() };
+      await this.dynamo.put(` + '`CLASSMATE_REQUEST#${updated.id}`' + `, "META", "classmateRequest", updated);
+      return updated;
+    }
+    return this.local.write((db) => {
+      const existing = db.classmateRequests?.[requestId];
+      if (!existing) return null;
+      db.classmateRequests[requestId] = { ...existing, ...patch, updatedAt: now() };
+      return db.classmateRequests[requestId];
+    });
+  }
+`;
+            db = db.replace('\n  async listDirectMessages(chatId, limit = 80) {', dbInsert + '\n  async listDirectMessages(chatId, limit = 80) {');
+            fs.writeFileSync('lib/database.js', db);
+          }
+
+          let server = fs.readFileSync('server.js', 'utf8');
+          if (!server.includes('function classmateConnectionId(userId, peerId)')) {
+            const helper = `
+function classmateConnectionId(userId, peerId) {
+  const key = [userId, peerId].sort().join(":");
+  return ` + '`mate_${crypto.createHash("sha1").update(key).digest("hex").slice(0, 18)}`' + `;
+}
+
+function publicClassmateRequest(request, viewerId, usersById) {
+  const from = usersById.get(request.fromUserId) || {};
+  const to = usersById.get(request.toUserId) || {};
+  const other = request.toUserId === viewerId ? from : to;
+  return {
+    id: request.id,
+    status: request.status || "pending",
+    direction: request.toUserId === viewerId ? "incoming" : "outgoing",
+    peer: {
+      id: other.id || "",
+      name: other.name || "同学",
+      email: other.email || "",
+      school: other.profile?.school || "",
+      major: other.profile?.major || "",
+      sbId: other.profile?.sbId || ""
+    },
+    createdAt: request.createdAt,
+    updatedAt: request.updatedAt
+  };
+}
+`;
+            server = server.replace('\nasync function publicClassmate(connection, viewerId) {', helper + '\nasync function publicClassmate(connection, viewerId) {');
+          }
+
+          const classmateRoutes = `if (url.pathname === "/api/classmates" && method === "GET") {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  const [connections, allRequests, users] = await Promise.all([db.listClassmates(user.id), db.listClassmateRequests(user.id), db.listUsers()]);
+  const usersById = new Map(users.map((item) => [item.id, item]));
+  const classmates = await Promise.all(connections.map((item) => publicClassmate(item, user.id)));
+  const connectedIds = new Set(connections.flatMap((item) => item.userIds || []));
+  const pendingRequests = allRequests.filter((request) => (request.status || "pending") === "pending");
+  const pendingIds = new Set(pendingRequests.flatMap((request) => [request.fromUserId, request.toUserId]).filter((id) => id && id !== user.id));
+  const school = String(user.profile?.school || "").trim();
+  const schoolKey = communitySchoolKey(school);
+  const candidates = users
+    .filter((candidate) => {
+      if (!schoolKey || candidate.id === user.id || connectedIds.has(candidate.id) || pendingIds.has(candidate.id)) return false;
+      return communitySchoolKey(candidate.profile?.school || "") === schoolKey;
+    })
+    .slice(0, 30)
+    .map((candidate) => ({
+      id: candidate.id,
+      name: candidate.name,
+      email: candidate.email,
+      school: candidate.profile?.school || "",
+      major: candidate.profile?.major || "",
+      sbId: candidate.profile?.sbId || ""
+    }));
+  const requests = pendingRequests.map((request) => publicClassmateRequest(request, user.id, usersById));
+  return sendJson(res, 200, {
+    school,
+    classmates,
+    candidates,
+    requests: {
+      incoming: requests.filter((request) => request.direction === "incoming"),
+      outgoing: requests.filter((request) => request.direction === "outgoing")
+    }
+  });
+}
+
+if (url.pathname === "/api/classmates" && method === "POST") {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  const body = await readJson(req);
+  const sbId = String(body.sbId || body.studentId || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^@+/, "");
+  const email = normalizeEmail(body.email);
+  if (sbId && !isValidSbId(sbId)) return sendError(res, 400, "Please enter a valid SB ID.");
+  if (!sbId && !email.includes("@")) return sendError(res, 400, "Please enter your classmate's SB ID.");
+  const peer = sbId ? await db.findUserBySbId(sbId) : await db.findUserByEmail(email);
+  if (!peer) return sendError(res, 404, sbId ? "No StudyBridge account was found for that SB ID." : "No StudyBridge account was found for that email.");
+  if (peer.id === user.id) return sendError(res, 400, "You cannot add yourself.");
+  const usersById = new Map([[user.id, user], [peer.id, peer]]);
+  const existing = await db.findClassmateByUsers(user.id, peer.id);
+  if (existing) {
+    return sendJson(res, 200, { status: "connected", classmate: await publicClassmate(existing, user.id) });
+  }
+
+  const reverseRequest = await db.findClassmateRequestByUsers(peer.id, user.id);
+  if (reverseRequest) {
+    const connection = await db.createClassmate({
+      id: classmateConnectionId(user.id, peer.id),
+      userIds: [user.id, peer.id],
+      schoolKey: communitySchoolKey(user.profile?.school || peer.profile?.school || ""),
+      createdBy: reverseRequest.fromUserId
+    });
+    await db.updateClassmateRequest(reverseRequest.id, { status: "accepted", respondedBy: user.id });
+    return sendJson(res, 201, { status: "accepted", classmate: await publicClassmate(connection, user.id) });
+  }
+
+  const existingRequest = await db.findClassmateRequestByUsers(user.id, peer.id);
+  if (existingRequest) {
+    return sendJson(res, 200, {
+      status: "pending",
+      request: publicClassmateRequest(existingRequest, user.id, usersById)
+    });
+  }
+
+  const request = await db.createClassmateRequest({
+    id: createId("mate_req"),
+    fromUserId: user.id,
+    toUserId: peer.id,
+    message: String(body.message || "").trim().slice(0, 240)
+  });
+  return sendJson(res, 201, { status: "pending", request: publicClassmateRequest(request, user.id, usersById) });
+}
+
+const classmateRequestMatch = url.pathname.match(/^\/api\/classmate-requests\/([^/]+)$/);
+if (classmateRequestMatch && method === "PATCH") {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  const request = await db.getClassmateRequest(user.id, classmateRequestMatch[1]);
+  if (!request) return sendError(res, 404, "Classmate request not found.");
+  if (request.toUserId !== user.id) return sendError(res, 403, "Only the recipient can respond to this request.");
+  if ((request.status || "pending") !== "pending") return sendError(res, 400, "This request has already been handled.");
+  const body = await readJson(req);
+  const action = String(body.action || "").toLowerCase();
+  if (action !== "accept" && action !== "ignore") return sendError(res, 400, "Choose accept or ignore.");
+  const users = await db.listUsers();
+  const usersById = new Map(users.map((item) => [item.id, item]));
+  if (action === "ignore") {
+    const ignored = await db.updateClassmateRequest(request.id, { status: "ignored", respondedBy: user.id });
+    return sendJson(res, 200, { request: publicClassmateRequest(ignored, user.id, usersById) });
+  }
+
+  const existing = await db.findClassmateByUsers(request.fromUserId, request.toUserId);
+  const from = usersById.get(request.fromUserId) || {};
+  const to = usersById.get(request.toUserId) || {};
+  const connection =
+    existing ||
+    (await db.createClassmate({
+      id: classmateConnectionId(request.fromUserId, request.toUserId),
+      userIds: [request.fromUserId, request.toUserId],
+      schoolKey: communitySchoolKey(from.profile?.school || to.profile?.school || ""),
+      createdBy: request.fromUserId
+    }));
+  const accepted = await db.updateClassmateRequest(request.id, { status: "accepted", respondedBy: user.id });
+  return sendJson(res, 200, {
+    request: publicClassmateRequest(accepted, user.id, usersById),
+    classmate: await publicClassmate(connection, user.id)
+  });
+}
+
+`;
+
+          server = replaceBlock(
+            server,
+            'if (url.pathname === "/api/classmates" && method === "GET") {',
+            'const directMessageMatch = url.pathname.match(/^\\/api\\/classmates\\/([^/]+)\\/messages$/);',
+            classmateRoutes,
+            'server.js'
+          );
+
+          fs.writeFileSync('server.js', server);
+          NODE
+          node --check lib/database.js
+          node --check server.js
+      - name: Commit classmate request backend
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "qinmingyu4-bot"
+          git config user.email "qinmingyu4-bot@users.noreply.github.com"
+          git add server.js lib/database.js
+          git commit -m "Require approval for classmate requests"
+          git push

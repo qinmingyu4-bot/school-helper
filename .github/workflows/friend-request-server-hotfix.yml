@@ -13,166 +13,38 @@ jobs:
   hotfix:
     if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
+    env:
+      GET_BLOCK_B64: >-
+        ICBpZiAodXJsLnBhdGhuYW1lID09PSAiL2FwaS9jbGFzc21hdGVzIiAmJiBtZXRob2QgPT09ICJHRVQiKSB7CiAgY29uc3QgdXNlciA9IGF3YWl0IHJlcXVpcmVVc2VyKHJlcSwgcmVzKTsKICBpZiAoIXVzZXIpIHJldHVybjsKICBjb25zdCBjb25uZWN0aW9ucyA9IGF3YWl0IGRiLmxpc3RDbGFzc21hdGVzKHVzZXIuaWQpOwogIGNvbnN0IGNsYXNzbWF0ZXMgPSBhd2FpdCBQcm9taXNlLmFsbChjb25uZWN0aW9ucy5tYXAoKGl0ZW0pID0+IHB1YmxpY0NsYXNzbWF0ZShpdGVtLCB1c2VyLmlkKSkpOwogIGNvbnN0IGNvbm5lY3RlZElkcyA9IG5ldyBTZXQoY29ubmVjdGlvbnMuZmxhdE1hcCgoaXRlbSkgPT4gaXRlbS51c2VySWRzIHx8IFtdKSk7CiAgY29uc3Qgc2Nob29sID0gU3RyaW5nKHVzZXIucHJvZmlsZT8uc2Nob29sIHx8ICIiKS50cmltKCk7CiAgY29uc3QgcGVuZGluZ1JlcXVlc3RzID0gKGF3YWl0IGRiLmxpc3RDbGFzc21hdGVSZXF1ZXN0cyh1c2VyLmlkKSkuZmlsdGVyKChpdGVtKSA9PiAoaXRlbS5zdGF0dXMgfHwgInBlbmRpbmciKSA9PT0gInBlbmRpbmciKTsKICBjb25zdCByZXF1ZXN0UGVlcklkcyA9IG5ldyBTZXQoCiAgICBwZW5kaW5nUmVxdWVzdHMKICAgICAgLmZsYXRNYXAoKGl0ZW0pID0+IFtpdGVtLmZyb21Vc2VySWQsIGl0ZW0udG9Vc2VySWRdKQogICAgICAuZmlsdGVyKChpZCkgPT4gaWQgJiYgaWQgIT09IHVzZXIuaWQpCiAgKTsKICBjb25zdCByZXF1ZXN0UGVlcnMgPSBhd2FpdCBQcm9taXNlLmFsbChbLi4ucmVxdWVzdFBlZXJJZHNdLm1hcCgoaWQpID0+IGRiLmdldFVzZXIoaWQpKSk7CiAgY29uc3QgcmVxdWVzdFBlZXJCeUlkID0gbmV3IE1hcChyZXF1ZXN0UGVlcnMuZmlsdGVyKEJvb2xlYW4pLm1hcCgocGVlcikgPT4gW3BlZXIuaWQsIHBlZXJdKSk7CiAgY29uc3QgcHVibGljUmVxdWVzdFBlZXIgPSAocGVlcikgPT4gKHsKICAgIGlkOiBwZWVyPy5pZCB8fCAiIiwKICAgIG5hbWU6IHBlZXI/Lm5hbWUgfHwgIj8/IiwKICAgIGVtYWlsOiBwZWVyPy5lbWFpbCB8fCAiIiwKICAgIHNjaG9vbDogcGVlcj8ucHJvZmlsZT8uc2Nob29sIHx8ICIiLAogICAgbWFqb3I6IHBlZXI/LnByb2ZpbGU/Lm1ham9yIHx8ICIiLAogICAgc2JJZDogcGVlcj8ucHJvZmlsZT8uc2JJZCB8fCAiIgogIH0pOwogIGNvbnN0IHJlcXVlc3RzID0gewogICAgaW5jb21pbmc6IHBlbmRpbmdSZXF1ZXN0cwogICAgICAuZmlsdGVyKChpdGVtKSA9PiBpdGVtLnRvVXNlcklkID09PSB1c2VyLmlkKQogICAgICAubWFwKChpdGVtKSA9PiAoewogICAgICAgIGlkOiBpdGVtLmlkLAogICAgICAgIHN0YXR1czogaXRlbS5zdGF0dXMgfHwgInBlbmRpbmciLAogICAgICAgIGNyZWF0ZWRBdDogaXRlbS5jcmVhdGVkQXQsCiAgICAgICAgZnJvbTogcHVibGljUmVxdWVzdFBlZXIocmVxdWVzdFBlZXJCeUlkLmdldChpdGVtLmZyb21Vc2VySWQpKQogICAgICB9KSksCiAgICBvdXRnb2luZzogcGVuZGluZ1JlcXVlc3RzCiAgICAgIC5maWx0ZXIoKGl0ZW0pID0+IGl0ZW0uZnJvbVVzZXJJZCA9PT0gdXNlci5pZCkKICAgICAgLm1hcCgoaXRlbSkgPT4gKHsKICAgICAgICBpZDogaXRlbS5pZCwKICAgICAgICBzdGF0dXM6IGl0ZW0uc3RhdHVzIHx8ICJwZW5kaW5nIiwKICAgICAgICBjcmVhdGVkQXQ6IGl0ZW0uY3JlYXRlZEF0LAogICAgICAgIHRvOiBwdWJsaWNSZXF1ZXN0UGVlcihyZXF1ZXN0UGVlckJ5SWQuZ2V0KGl0ZW0udG9Vc2VySWQpKQogICAgICB9KSkKICB9OwogIGNvbnN0IHVzZXJzID0gYXdhaXQgZGIubGlzdFVzZXJzKCk7CiAgY29uc3QgY2FuZGlkYXRlcyA9IHVzZXJzCiAgICAuZmlsdGVyKChjYW5kaWRhdGUpID0+IGNhbmRpZGF0ZS5pZCAhPT0gdXNlci5pZCkKICAgIC5maWx0ZXIoKGNhbmRpZGF0ZSkgPT4gIWNvbm5lY3RlZElkcy5oYXMoY2FuZGlkYXRlLmlkKSkKICAgIC5maWx0ZXIoKGNhbmRpZGF0ZSkgPT4gIXJlcXVlc3RQZWVySWRzLmhhcyhjYW5kaWRhdGUuaWQpKQogICAgLmZpbHRlcigoY2FuZGlkYXRlKSA9PiAhc2Nob29sIHx8IFN0cmluZyhjYW5kaWRhdGUucHJvZmlsZT8uc2Nob29sIHx8ICIiKS50cmltKCkudG9Mb3dlckNhc2UoKSA9PT0gc2Nob29sLnRvTG93ZXJDYXNlKCkpCiAgICAuc2xpY2UoMCwgMzApCiAgICAubWFwKChjYW5kaWRhdGUpID0+ICh7CiAgICAgIGlkOiBjYW5kaWRhdGUuaWQsCiAgICAgIG5hbWU6IGNhbmRpZGF0ZS5uYW1lLAogICAgICBlbWFpbDogY2FuZGlkYXRlLmVtYWlsLAogICAgICBzY2hvb2w6IGNhbmRpZGF0ZS5wcm9maWxlPy5zY2hvb2wgfHwgIiIsCiAgICAgIG1ham9yOiBjYW5kaWRhdGUucHJvZmlsZT8ubWFqb3IgfHwgIiIsCiAgICAgIHNiSWQ6IGNhbmRpZGF0ZS5wcm9maWxlPy5zYklkIHx8ICIiCiAgICB9KSk7CiAgcmV0dXJuIHNlbmRKc29uKHJlcywgMjAwLCB7IGNsYXNzbWF0ZXMsIGNhbmRpZGF0ZXMsIHNjaG9vbCwgcmVxdWVzdHMgfSk7Cn0KCg==
+      POST_BLOCK_B64: >-
+        aWYgKHVybC5wYXRobmFtZSA9PT0gIi9hcGkvY2xhc3NtYXRlcyIgJiYgbWV0aG9kID09PSAiUE9TVCIpIHsKICBjb25zdCB1c2VyID0gYXdhaXQgcmVxdWlyZVVzZXIocmVxLCByZXMpOwogIGlmICghdXNlcikgcmV0dXJuOwogIGNvbnN0IGJvZHkgPSBhd2FpdCByZWFkSnNvbihyZXEpOwogIGNvbnN0IHNiSWQgPSBTdHJpbmcoYm9keS5zYklkIHx8IGJvZHkuc3R1ZGVudElkIHx8ICIiKQogICAgLnRyaW0oKQogICAgLnRvTG93ZXJDYXNlKCkKICAgIC5yZXBsYWNlKC9eQCsvLCAiIik7CiAgY29uc3QgZW1haWwgPSBub3JtYWxpemVFbWFpbChib2R5LmVtYWlsKTsKICBpZiAoc2JJZCAmJiAhaXNWYWxpZFNiSWQoc2JJZCkpIHJldHVybiBzZW5kRXJyb3IocmVzLCA0MDAsICJQbGVhc2UgZW50ZXIgYSB2YWxpZCBTQiBJRC4iKTsKICBpZiAoIXNiSWQgJiYgIWVtYWlsLmluY2x1ZGVzKCJAIikpIHJldHVybiBzZW5kRXJyb3IocmVzLCA0MDAsICJQbGVhc2UgZW50ZXIgeW91ciBjbGFzc21hdGUncyBTQiBJRC4iKTsKICBjb25zdCBwZWVyID0gc2JJZCA/IGF3YWl0IGRiLmZpbmRVc2VyQnlTYklkKHNiSWQpIDogYXdhaXQgZGIuZmluZFVzZXJCeUVtYWlsKGVtYWlsKTsKICBpZiAoIXBlZXIpIHJldHVybiBzZW5kRXJyb3IocmVzLCA0MDQsIHNiSWQgPyAiTm8gU3R1ZHlCcmlkZ2UgYWNjb3VudCB3YXMgZm91bmQgZm9yIHRoYXQgU0IgSUQuIiA6ICJObyBTdHVkeUJyaWRnZSBhY2NvdW50IHdhcyBmb3VuZCBmb3IgdGhhdCBlbWFpbC4iKTsKICBpZiAocGVlci5pZCA9PT0gdXNlci5pZCkgcmV0dXJuIHNlbmRFcnJvcihyZXMsIDQwMCwgIllvdSBjYW5ub3QgYWRkIHlvdXJzZWxmLiIpOwogIGNvbnN0IGV4aXN0aW5nID0gYXdhaXQgZGIuZmluZENsYXNzbWF0ZUJ5VXNlcnModXNlci5pZCwgcGVlci5pZCk7CiAgaWYgKGV4aXN0aW5nKSB7CiAgICByZXR1cm4gc2VuZEpzb24ocmVzLCAyMDAsIHsgc3RhdHVzOiAiY29ubmVjdGVkIiwgY2xhc3NtYXRlOiBhd2FpdCBwdWJsaWNDbGFzc21hdGUoZXhpc3RpbmcsIHVzZXIuaWQpIH0pOwogIH0KCiAgY29uc3QgaW5jb21pbmdSZXF1ZXN0ID0gYXdhaXQgZGIuZmluZENsYXNzbWF0ZVJlcXVlc3RCeVVzZXJzKHBlZXIuaWQsIHVzZXIuaWQpOwogIGlmIChpbmNvbWluZ1JlcXVlc3QpIHsKICAgIGNvbnN0IGFjY2VwdGVkID0gYXdhaXQgZGIudXBkYXRlQ2xhc3NtYXRlUmVxdWVzdChpbmNvbWluZ1JlcXVlc3QuaWQsIHsKICAgICAgc3RhdHVzOiAiYWNjZXB0ZWQiLAogICAgICByZXNwb25kZWRBdDogbmV3IERhdGUoKS50b0lTT1N0cmluZygpCiAgICB9KTsKICAgIGNvbnN0IGNvbm5lY3Rpb24gPSBhd2FpdCBkYi5jcmVhdGVDbGFzc21hdGUoeyBpZDogY3JlYXRlSWQoIm1hdGUiKSwgdXNlcklkczogW3VzZXIuaWQsIHBlZXIuaWRdLCByZXF1ZXN0SWQ6IGluY29taW5nUmVxdWVzdC5pZCB9KTsKICAgIHJldHVybiBzZW5kSnNvbihyZXMsIDIwMSwgeyBzdGF0dXM6ICJjb25uZWN0ZWQiLCByZXF1ZXN0OiBhY2NlcHRlZCwgY2xhc3NtYXRlOiBhd2FpdCBwdWJsaWNDbGFzc21hdGUoY29ubmVjdGlvbiwgdXNlci5pZCkgfSk7CiAgfQoKICBjb25zdCBleGlzdGluZ1JlcXVlc3QgPSBhd2FpdCBkYi5maW5kQ2xhc3NtYXRlUmVxdWVzdEJ5VXNlcnModXNlci5pZCwgcGVlci5pZCk7CiAgY29uc3QgcmVxdWVzdCA9IGV4aXN0aW5nUmVxdWVzdCB8fCBhd2FpdCBkYi5jcmVhdGVDbGFzc21hdGVSZXF1ZXN0KHsKICAgIGlkOiBjcmVhdGVJZCgibWF0ZVJlcSIpLAogICAgZnJvbVVzZXJJZDogdXNlci5pZCwKICAgIHRvVXNlcklkOiBwZWVyLmlkCiAgfSk7CiAgcmV0dXJuIHNlbmRKc29uKHJlcywgZXhpc3RpbmdSZXF1ZXN0ID8gMjAwIDogMjAxLCB7CiAgICBzdGF0dXM6ICJwZW5kaW5nIiwKICAgIHJlcXVlc3Q6IHsKICAgICAgaWQ6IHJlcXVlc3QuaWQsCiAgICAgIHN0YXR1czogcmVxdWVzdC5zdGF0dXMgfHwgInBlbmRpbmciLAogICAgICBjcmVhdGVkQXQ6IHJlcXVlc3QuY3JlYXRlZEF0CiAgICB9CiAgfSk7Cn0KCmNvbnN0IGNsYXNzbWF0ZVJlcXVlc3RNYXRjaCA9IHVybC5wYXRobmFtZS5tYXRjaCgvXlwvYXBpXC9jbGFzc21hdGUtcmVxdWVzdHNcLyhbXi9dKykkLyk7CmlmIChjbGFzc21hdGVSZXF1ZXN0TWF0Y2ggJiYgbWV0aG9kID09PSAiUEFUQ0giKSB7CiAgY29uc3QgdXNlciA9IGF3YWl0IHJlcXVpcmVVc2VyKHJlcSwgcmVzKTsKICBpZiAoIXVzZXIpIHJldHVybjsKICBjb25zdCBib2R5ID0gYXdhaXQgcmVhZEpzb24ocmVxKTsKICBjb25zdCBhY3Rpb24gPSBTdHJpbmcoYm9keS5hY3Rpb24gfHwgIiIpLnRvTG93ZXJDYXNlKCk7CiAgaWYgKGFjdGlvbiAhPT0gImFjY2VwdCIgJiYgYWN0aW9uICE9PSAiaWdub3JlIikgcmV0dXJuIHNlbmRFcnJvcihyZXMsIDQwMCwgIlBsZWFzZSBjaG9vc2UgYWNjZXB0IG9yIGlnbm9yZS4iKTsKICBjb25zdCByZXF1ZXN0ID0gYXdhaXQgZGIuZ2V0Q2xhc3NtYXRlUmVxdWVzdCh1c2VyLmlkLCBjbGFzc21hdGVSZXF1ZXN0TWF0Y2hbMV0pOwogIGlmICghcmVxdWVzdCB8fCAocmVxdWVzdC5zdGF0dXMgfHwgInBlbmRpbmciKSAhPT0gInBlbmRpbmciKSByZXR1cm4gc2VuZEVycm9yKHJlcywgNDA0LCAiRnJpZW5kIHJlcXVlc3Qgbm90IGZvdW5kLiIpOwogIGlmIChyZXF1ZXN0LnRvVXNlcklkICE9PSB1c2VyLmlkKSByZXR1cm4gc2VuZEVycm9yKHJlcywgNDAzLCAiT25seSB0aGUgcmVjZWl2ZXIgY2FuIHJlc3BvbmQgdG8gdGhpcyByZXF1ZXN0LiIpOwoKICBpZiAoYWN0aW9uID09PSAiaWdub3JlIikgewogICAgY29uc3QgaWdub3JlZCA9IGF3YWl0IGRiLnVwZGF0ZUNsYXNzbWF0ZVJlcXVlc3QocmVxdWVzdC5pZCwgeyBzdGF0dXM6ICJpZ25vcmVkIiwgcmVzcG9uZGVkQXQ6IG5ldyBEYXRlKCkudG9JU09TdHJpbmcoKSB9KTsKICAgIHJldHVybiBzZW5kSnNvbihyZXMsIDIwMCwgeyBzdGF0dXM6ICJpZ25vcmVkIiwgcmVxdWVzdDogaWdub3JlZCB9KTsKICB9CgogIGNvbnN0IGV4aXN0aW5nQ29ubmVjdGlvbiA9IGF3YWl0IGRiLmZpbmRDbGFzc21hdGVCeVVzZXJzKHJlcXVlc3QuZnJvbVVzZXJJZCwgcmVxdWVzdC50b1VzZXJJZCk7CiAgY29uc3QgY29ubmVjdGlvbiA9IGV4aXN0aW5nQ29ubmVjdGlvbiB8fCBhd2FpdCBkYi5jcmVhdGVDbGFzc21hdGUoewogICAgaWQ6IGNyZWF0ZUlkKCJtYXRlIiksCiAgICB1c2VySWRzOiBbcmVxdWVzdC5mcm9tVXNlcklkLCByZXF1ZXN0LnRvVXNlcklkXSwKICAgIHJlcXVlc3RJZDogcmVxdWVzdC5pZAogIH0pOwogIGNvbnN0IGFjY2VwdGVkID0gYXdhaXQgZGIudXBkYXRlQ2xhc3NtYXRlUmVxdWVzdChyZXF1ZXN0LmlkLCB7IHN0YXR1czogImFjY2VwdGVkIiwgcmVzcG9uZGVkQXQ6IG5ldyBEYXRlKCkudG9JU09TdHJpbmcoKSB9KTsKICByZXR1cm4gc2VuZEpzb24ocmVzLCAyMDAsIHsgc3RhdHVzOiAiY29ubmVjdGVkIiwgcmVxdWVzdDogYWNjZXB0ZWQsIGNsYXNzbWF0ZTogYXdhaXQgcHVibGljQ2xhc3NtYXRlKGNvbm5lY3Rpb24sIHVzZXIuaWQpIH0pOwp9Cgo=
     steps:
       - uses: actions/checkout@v4
-      - name: Apply server friend request patch
+      - name: Patch server.js
         run: |
           python - <<'PY'
+          import base64
+          import os
           from pathlib import Path
-
           path = Path('server.js')
           source = path.read_text(encoding='utf-8')
           if 'const classmateRequestMatch = url.pathname.match' in source and 'requests });' in source:
-              print('server.js already has the friend request patch')
+              print('already patched')
               raise SystemExit(0)
-
+          get_block = base64.b64decode(os.environ['GET_BLOCK_B64']).decode('utf-8')
+          post_block = base64.b64decode(os.environ['POST_BLOCK_B64']).decode('utf-8')
           start = source.index('  if (url.pathname === "/api/classmates" && method === "GET") {')
           post = source.index('if (url.pathname === "/api/classmates" && method === "POST") {', start)
           end = source.index('const directMessageMatch = url.pathname.match', post)
-
-          get_block = '''  if (url.pathname === "/api/classmates" && method === "GET") {
-  const user = await requireUser(req, res);
-  if (!user) return;
-  const connections = await db.listClassmates(user.id);
-  const classmates = await Promise.all(connections.map((item) => publicClassmate(item, user.id)));
-  const connectedIds = new Set(connections.flatMap((item) => item.userIds || []));
-  const school = String(user.profile?.school || "").trim();
-  const pendingRequests = (await db.listClassmateRequests(user.id)).filter((item) => (item.status || "pending") === "pending");
-  const requestPeerIds = new Set(
-    pendingRequests
-      .flatMap((item) => [item.fromUserId, item.toUserId])
-      .filter((id) => id && id !== user.id)
-  );
-  const requestPeers = await Promise.all([...requestPeerIds].map((id) => db.getUser(id)));
-  const requestPeerById = new Map(requestPeers.filter(Boolean).map((peer) => [peer.id, peer]));
-  const publicRequestPeer = (peer) => ({
-    id: peer?.id || "",
-    name: peer?.name || "Classmate",
-    email: peer?.email || "",
-    school: peer?.profile?.school || "",
-    major: peer?.profile?.major || "",
-    sbId: peer?.profile?.sbId || ""
-  });
-  const requests = {
-    incoming: pendingRequests
-      .filter((item) => item.toUserId === user.id)
-      .map((item) => ({
-        id: item.id,
-        status: item.status || "pending",
-        createdAt: item.createdAt,
-        from: publicRequestPeer(requestPeerById.get(item.fromUserId))
-      })),
-    outgoing: pendingRequests
-      .filter((item) => item.fromUserId === user.id)
-      .map((item) => ({
-        id: item.id,
-        status: item.status || "pending",
-        createdAt: item.createdAt,
-        to: publicRequestPeer(requestPeerById.get(item.toUserId))
-      }))
-  };
-  const users = await db.listUsers();
-  const candidates = users
-    .filter((candidate) => candidate.id !== user.id)
-    .filter((candidate) => !connectedIds.has(candidate.id))
-    .filter((candidate) => !requestPeerIds.has(candidate.id))
-    .filter((candidate) => !school || String(candidate.profile?.school || "").trim().toLowerCase() === school.toLowerCase())
-    .slice(0, 30)
-    .map((candidate) => ({
-      id: candidate.id,
-      name: candidate.name,
-      email: candidate.email,
-      school: candidate.profile?.school || "",
-      major: candidate.profile?.major || "",
-      sbId: candidate.profile?.sbId || ""
-    }));
-  return sendJson(res, 200, { classmates, candidates, school, requests });
-}
-
-'''
-
-          post_block = '''if (url.pathname === "/api/classmates" && method === "POST") {
-  const user = await requireUser(req, res);
-  if (!user) return;
-  const body = await readJson(req);
-  const sbId = String(body.sbId || body.studentId || "")
-    .trim()
-    .toLowerCase()
-    .replace(/^@+/, "");
-  const email = normalizeEmail(body.email);
-  if (sbId && !isValidSbId(sbId)) return sendError(res, 400, "Please enter a valid SB ID.");
-  if (!sbId && !email.includes("@")) return sendError(res, 400, "Please enter your classmate's SB ID.");
-  const peer = sbId ? await db.findUserBySbId(sbId) : await db.findUserByEmail(email);
-  if (!peer) return sendError(res, 404, sbId ? "No StudyBridge account was found for that SB ID." : "No StudyBridge account was found for that email.");
-  if (peer.id === user.id) return sendError(res, 400, "You cannot add yourself.");
-  const existing = await db.findClassmateByUsers(user.id, peer.id);
-  if (existing) {
-    return sendJson(res, 200, { status: "connected", classmate: await publicClassmate(existing, user.id) });
-  }
-
-  const incomingRequest = await db.findClassmateRequestByUsers(peer.id, user.id);
-  if (incomingRequest) {
-    const accepted = await db.updateClassmateRequest(incomingRequest.id, {
-      status: "accepted",
-      respondedAt: new Date().toISOString()
-    });
-    const connection = await db.createClassmate({ id: createId("mate"), userIds: [user.id, peer.id], requestId: incomingRequest.id });
-    return sendJson(res, 201, { status: "connected", request: accepted, classmate: await publicClassmate(connection, user.id) });
-  }
-
-  const existingRequest = await db.findClassmateRequestByUsers(user.id, peer.id);
-  const request = existingRequest || await db.createClassmateRequest({
-    id: createId("mateReq"),
-    fromUserId: user.id,
-    toUserId: peer.id
-  });
-  return sendJson(res, existingRequest ? 200 : 201, {
-    status: "pending",
-    request: {
-      id: request.id,
-      status: request.status || "pending",
-      createdAt: request.createdAt
-    }
-  });
-}
-
-const classmateRequestMatch = url.pathname.match(/^\\/api\\/classmate-requests\\/([^/]+)$/);
-if (classmateRequestMatch && method === "PATCH") {
-  const user = await requireUser(req, res);
-  if (!user) return;
-  const body = await readJson(req);
-  const action = String(body.action || "").toLowerCase();
-  if (action !== "accept" && action !== "ignore") return sendError(res, 400, "Please choose accept or ignore.");
-  const request = await db.getClassmateRequest(user.id, classmateRequestMatch[1]);
-  if (!request || (request.status || "pending") !== "pending") return sendError(res, 404, "Friend request not found.");
-  if (request.toUserId !== user.id) return sendError(res, 403, "Only the receiver can respond to this request.");
-
-  if (action === "ignore") {
-    const ignored = await db.updateClassmateRequest(request.id, { status: "ignored", respondedAt: new Date().toISOString() });
-    return sendJson(res, 200, { status: "ignored", request: ignored });
-  }
-
-  const existingConnection = await db.findClassmateByUsers(request.fromUserId, request.toUserId);
-  const connection = existingConnection || await db.createClassmate({
-    id: createId("mate"),
-    userIds: [request.fromUserId, request.toUserId],
-    requestId: request.id
-  });
-  const accepted = await db.updateClassmateRequest(request.id, { status: "accepted", respondedAt: new Date().toISOString() });
-  return sendJson(res, 200, { status: "connected", request: accepted, classmate: await publicClassmate(connection, user.id) });
-}
-
-'''
-
           path.write_text(source[:start] + get_block + post_block + source[end:], encoding='utf-8')
           print('server.js patched')
           PY
-      - name: Validate server syntax
+      - name: Check syntax
         run: node --check server.js
-      - name: Commit server patch
+      - name: Commit server.js
         run: |
           if git diff --quiet -- server.js; then
-            echo "No server changes"
+            echo "No changes"
             exit 0
           fi
           git config user.name "github-actions[bot]"

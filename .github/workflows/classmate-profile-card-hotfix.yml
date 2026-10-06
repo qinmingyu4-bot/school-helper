@@ -8,27 +8,27 @@ on:
       - ".github/friend-request-ui-hotfix-trigger.txt"
       - ".github/workflows/classmate-profile-card-hotfix.yml"
       - "server.js"
-      - "public/classmates-request-patch.js"
       - "public/layout-fix.js"
+      - "public/classmate-profile-view.js"
 
 permissions:
   contents: write
 
 jobs:
   hotfix:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Apply classmate profile card patch
+      - name: Add friend profile card support
         run: |
           python3 <<'PY'
           from pathlib import Path
+          import re
 
-          server_path = Path("server.js")
-          server = server_path.read_text(encoding="utf-8")
-          if "avatarUrl: peer.profile?.avatarUrl" not in server:
+          server_path = Path('server.js')
+          server = server_path.read_text(encoding='utf-8')
+          if 'avatarUrl: peer.profile?.avatarUrl' not in server:
               old = '''          school: peer.profile?.school || "",
           sbId: peer.profile?.sbId || ""'''
               new = '''          school: peer.profile?.school || "",
@@ -37,18 +37,36 @@ jobs:
           backgroundUrl: peer.profile?.backgroundUrl || "",
           sbId: peer.profile?.sbId || ""'''
               if old not in server:
-                  raise SystemExit("publicClassmate peer block not found")
+                  raise SystemExit('publicClassmate peer block not found')
               server = server.replace(old, new, 1)
-              server_path.write_text(server, encoding="utf-8")
+              server_path.write_text(server, encoding='utf-8')
 
-          page_path = Path("public/classmates-request-patch.js")
-          page = page_path.read_text(encoding="utf-8")
-          page = page.replace(
-              "grid-template-rows: auto minmax(0, 1fr) auto;",
-              "grid-template-rows: auto auto minmax(0, 1fr) auto;"
-          )
+          profile_js = r'''(() => {
+  let cachedClassmates = [];
+  let lastActiveId = "";
 
-          css = r'''
+  function escapeHtml(value) {
+    return String(value == null ? "" : value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function initials(name) {
+    const text = String(name || "SB").trim();
+    return (text.slice(0, 2) || "SB").toUpperCase();
+  }
+
+  function installStyle() {
+    if (document.querySelector("#studybridge-peer-profile-style")) return;
+    const style = document.createElement("style");
+    style.id = "studybridge-peer-profile-style";
+    style.textContent = `
+      .classmates-chat-shell {
+        grid-template-rows: auto auto minmax(0, 1fr) auto !important;
+      }
 
       .peer-profile-card {
         margin: 14px 18px 0;
@@ -58,9 +76,7 @@ jobs:
         overflow: hidden;
       }
 
-      .peer-profile-card[hidden] {
-        display: none;
-      }
+      .peer-profile-card[hidden] { display: none !important; }
 
       .peer-profile-cover {
         position: relative;
@@ -69,10 +85,10 @@ jobs:
       }
 
       .peer-profile-cover > img {
+        display: block;
         width: 100%;
         height: 100%;
         object-fit: cover;
-        display: block;
       }
 
       .peer-profile-avatar {
@@ -93,10 +109,10 @@ jobs:
       }
 
       .peer-profile-avatar img {
+        display: block;
         width: 100%;
         height: 100%;
         object-fit: cover;
-        display: block;
       }
 
       .peer-profile-body {
@@ -124,103 +140,115 @@ jobs:
         padding: 4px 7px;
         border-radius: 999px;
         background: #f3f6fb;
-      }'''
-          if ".peer-profile-card" not in page:
-              anchor = '''      .classmates-chat-head h3 {
-        margin: 0;
-      }'''
-              if anchor not in page:
-                  raise SystemExit("chat head CSS anchor not found")
-              page = page.replace(anchor, anchor + css, 1)
-
-          if 'id="peerProfileCard"' not in page:
-              old = '          <div class="direct-message-list" id="directMessageList"></div>'
-              new = '          <article class="peer-profile-card" id="peerProfileCard" hidden></article>\n          <div class="direct-message-list" id="directMessageList"></div>'
-              if old not in page:
-                  raise SystemExit("message list markup anchor not found")
-              page = page.replace(old, new, 1)
-
-          functions = r'''
-  function initialsForProfile(name) {
-    return String(name || "SB").trim().slice(0, 2).toUpperCase() || "SB";
+      }
+    `;
+    document.head.appendChild(style);
   }
 
-  function renderPeerProfile(active) {
-    const card = page.querySelector("#peerProfileCard");
-    if (!card) return;
-    if (!active || !active.peer) {
+  function ensureCard() {
+    const shell = document.querySelector("#classmatesPage .classmates-chat-shell");
+    if (!shell) return null;
+    let card = shell.querySelector("#peerProfileCard");
+    if (card) return card;
+    const head = shell.querySelector(".classmates-chat-head");
+    const list = shell.querySelector("#directMessageList");
+    if (!head || !list) return null;
+    card = document.createElement("article");
+    card.id = "peerProfileCard";
+    card.className = "peer-profile-card";
+    card.hidden = true;
+    head.insertAdjacentElement("afterend", card);
+    return card;
+  }
+
+  function activeClassmateId() {
+    const active = document.querySelector("#classmatesPage .classmate-row.active [data-open-classmate]");
+    return active ? active.dataset.openClassmate || "" : "";
+  }
+
+  async function fetchClassmates() {
+    const response = await fetch("/api/classmates", { cache: "no-store" });
+    if (!response.ok) return cachedClassmates;
+    const payload = await response.json().catch(() => ({}));
+    cachedClassmates = payload.classmates || [];
+    return cachedClassmates;
+  }
+
+  function renderPeer(card, peer) {
+    if (!peer) {
       card.hidden = true;
       card.innerHTML = "";
       return;
     }
-    const peer = active.peer;
+    const cover = peer.backgroundUrl ? '<img src="' + escapeHtml(peer.backgroundUrl) + '" alt="" />' : "";
     const avatar = peer.avatarUrl
-      ? `<img src="${escapeHtml(peer.avatarUrl)}" alt="${escapeHtml(peer.name || "同学")} avatar" />`
-      : `<span>${escapeHtml(initialsForProfile(peer.name))}</span>`;
-    const cover = peer.backgroundUrl ? `<img src="${escapeHtml(peer.backgroundUrl)}" alt="" />` : "";
-    const school = peer.school ? `<span><strong>学校：</strong>${escapeHtml(peer.school)}</span>` : "";
-    const major = peer.major ? `<span><strong>专业：</strong>${escapeHtml(peer.major)}</span>` : "";
-    const sbId = peer.sbId ? `<span><strong>SB ID：</strong>@${escapeHtml(peer.sbId)}</span>` : "";
+      ? '<img src="' + escapeHtml(peer.avatarUrl) + '" alt="' + escapeHtml(peer.name || "classmate") + '" />'
+      : '<span>' + escapeHtml(initials(peer.name)) + '</span>';
+    const facts = [];
+    if (peer.school) facts.push('<span><strong>\u5b66\u6821\uff1a</strong>' + escapeHtml(peer.school) + '</span>');
+    if (peer.major) facts.push('<span><strong>\u4e13\u4e1a\uff1a</strong>' + escapeHtml(peer.major) + '</span>');
+    if (peer.sbId) facts.push('<span><strong>SB ID\uff1a</strong>@' + escapeHtml(peer.sbId) + '</span>');
+    if (!facts.length) facts.push('<span>\u8fd8\u6ca1\u6709\u586b\u5199\u516c\u5f00\u8d44\u6599</span>');
     card.hidden = false;
-    card.innerHTML = `
-      <div class="peer-profile-cover">
-        ${cover}
-        <div class="peer-profile-avatar">${avatar}</div>
-      </div>
-      <div class="peer-profile-body">
-        <strong class="peer-profile-name">${escapeHtml(peer.name || "同学")}</strong>
-        <div class="peer-profile-facts">
-          ${school}
-          ${major}
-          ${sbId}
-          ${!school && !major && !sbId ? "<span>还没有填写公开资料</span>" : ""}
-        </div>
-      </div>
-    `;
+    card.innerHTML =
+      '<div class="peer-profile-cover">' + cover + '<div class="peer-profile-avatar">' + avatar + '</div></div>' +
+      '<div class="peer-profile-body"><strong class="peer-profile-name">' + escapeHtml(peer.name || "\u540c\u5b66") + '</strong>' +
+      '<div class="peer-profile-facts">' + facts.join("") + '</div></div>';
   }
 
+  async function syncPeerProfile() {
+    installStyle();
+    const page = document.querySelector("#classmatesPage");
+    const card = ensureCard();
+    if (!page || page.hidden || !card) return;
+    const id = activeClassmateId();
+    if (!id) {
+      renderPeer(card, null);
+      return;
+    }
+    if (id !== lastActiveId || !cachedClassmates.length) {
+      lastActiveId = id;
+      await fetchClassmates();
+    }
+    const match = cachedClassmates.find((item) => item.id === id);
+    renderPeer(card, match ? match.peer : null);
+  }
+
+  document.addEventListener("click", () => setTimeout(syncPeerProfile, 120), true);
+  setInterval(syncPeerProfile, 2500);
+  syncPeerProfile();
+})();
 '''
-          if "function renderPeerProfile(active)" not in page:
-              anchor = "  async function addClassmate(event) {"
-              if anchor not in page:
-                  raise SystemExit("addClassmate anchor not found")
-              page = page.replace(anchor, functions + anchor, 1)
+          Path('public/classmate-profile-view.js').write_text(profile_js, encoding='utf-8')
 
-          if "renderPeerProfile(null);" not in page:
-              page = page.replace(
-                  '    if (!active) {\n      title.textContent = "请选择一位同学";',
-                  '    if (!active) {\n      renderPeerProfile(null);\n      title.textContent = "请选择一位同学";',
-                  1
+          layout_path = Path('public/layout-fix.js')
+          layout = layout_path.read_text(encoding='utf-8')
+          if 'classmate-profile-view.js' not in layout:
+              layout, count = re.subn(
+                  r'(  loadScriptOnce\("/classmates-request-patch\.js\?v=20261005-\d+"\);\n)',
+                  r'\1  loadScriptOnce("/classmate-profile-view.js?v=20261005-1");\n',
+                  layout,
+                  count=1
               )
-          if "renderPeerProfile(active);" not in page:
-              page = page.replace(
-                  '    title.textContent = active.peer?.name || "同学";',
-                  '    renderPeerProfile(active);\n    title.textContent = active.peer?.name || "同学";',
-                  1
-              )
-          page_path.write_text(page, encoding="utf-8")
-
-          layout_path = Path("public/layout-fix.js")
-          layout = layout_path.read_text(encoding="utf-8")
-          layout = layout.replace('/classmates-request-patch.js?v=20261005-3', '/classmates-request-patch.js?v=20261005-5')
-          layout = layout.replace('/classmates-request-patch.js?v=20261005-4', '/classmates-request-patch.js?v=20261005-5')
-          layout_path.write_text(layout, encoding="utf-8")
+              if count != 1:
+                  raise SystemExit('classmates script anchor not found')
+              layout_path.write_text(layout, encoding='utf-8')
           PY
 
       - name: Check JavaScript
         run: |
           node --check server.js
-          node --check public/classmates-request-patch.js
           node --check public/layout-fix.js
+          node --check public/classmate-profile-view.js
 
       - name: Commit patch
         run: |
           if git diff --quiet; then
-            echo "No classmate profile changes needed."
+            echo "No classmate profile card changes needed."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add server.js public/classmates-request-patch.js public/layout-fix.js
+          git add server.js public/layout-fix.js public/classmate-profile-view.js
           git commit -m "Add classmate profile card"
           git push

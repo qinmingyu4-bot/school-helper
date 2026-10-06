@@ -1,6 +1,7 @@
 (() => {
   const PAGE_KEY = "studybridgeLastOpenPage";
-  const RESTORE_DONE_KEY = "studybridgeRestoreDoneAt";
+  const PAGE_IDS = ["workspacePage", "profilePage", "schoolCommunityPage", "classmatesPage", "emailReplyPage", "schedulePage"];
+  const SECONDARY_PAGE_IDS = PAGE_IDS.filter((id) => id !== "workspacePage");
   const NAV_TARGETS = {
     openStudyAreaButton: "workspacePage",
     openProfilePageButton: "profilePage",
@@ -17,29 +18,50 @@
     emailReplyPage: "#openEmailReplyButton",
     schedulePage: "#openScheduleButton"
   };
+
+  const startupTarget = localStorage.getItem(PAGE_KEY) || "";
   let restoring = false;
+  let suppressWorkspaceRememberUntil = startupTarget && startupTarget !== "workspacePage" ? Date.now() + 15000 : 0;
 
   function appIsVisible() {
     const shell = document.querySelector("#appShell");
     return Boolean(shell && !shell.hidden);
   }
 
+  function shouldSuppressWorkspaceRemember(pageId) {
+    return pageId === "workspacePage" && Date.now() < suppressWorkspaceRememberUntil;
+  }
+
   function remember(pageId) {
     if (!pageId || restoring || !appIsVisible()) return;
+    if (shouldSuppressWorkspaceRemember(pageId)) return;
+    if (pageId !== "workspacePage") suppressWorkspaceRememberUntil = 0;
     localStorage.setItem(PAGE_KEY, pageId);
+  }
+
+  function detectVisiblePage() {
+    const visibleSecondary = SECONDARY_PAGE_IDS.find((id) => {
+      const element = document.querySelector(`#${id}`);
+      return element && !element.hidden;
+    });
+    if (visibleSecondary) return visibleSecondary;
+
+    const developerPanel = document.querySelector("#developerPanel");
+    if (developerPanel && !developerPanel.hidden) return "";
+
+    const chatForm = document.querySelector("#chatForm");
+    const chatArea = document.querySelector("#chatArea");
+    if ((chatForm && !chatForm.hidden) || (chatArea && !chatArea.hidden)) return "workspacePage";
+    return "";
   }
 
   function rememberVisiblePage() {
     if (!appIsVisible()) return;
-    const pages = ["schedulePage", "emailReplyPage", "classmatesPage", "schoolCommunityPage", "profilePage", "workspacePage"];
-    const visible = pages.find((id) => {
-      const element = document.querySelector(`#${id}`);
-      return element && !element.hidden;
-    });
+    const visible = detectVisiblePage();
     if (visible) remember(visible);
   }
 
-  function waitForElement(selector, timeout = 9000) {
+  function waitForElement(selector, timeout = 12000) {
     const start = Date.now();
     return new Promise((resolve) => {
       const timer = setInterval(() => {
@@ -48,39 +70,50 @@
           clearInterval(timer);
           resolve(element || null);
         }
-      }, 160);
+      }, 120);
     });
   }
 
   async function restorePage() {
     const targetPage = localStorage.getItem(PAGE_KEY);
     if (!targetPage || targetPage === "workspacePage") return;
-    const lastDone = Number(sessionStorage.getItem(RESTORE_DONE_KEY) || 0);
-    if (Date.now() - lastDone < 2500) return;
     const buttonSelector = PAGE_TO_BUTTON[targetPage];
     if (!buttonSelector) return;
+
     restoring = true;
     try {
-      await waitForElement("#appShell", 9000);
+      await waitForElement("#appShell", 12000);
       if (!appIsVisible()) return;
-      const button = await waitForElement(buttonSelector, 9000);
+      const button = await waitForElement(buttonSelector, 12000);
       if (!button || !appIsVisible()) return;
       button.click();
-      sessionStorage.setItem(RESTORE_DONE_KEY, String(Date.now()));
+
+      await waitForElement(`#${targetPage}`, 8000);
+      const page = document.querySelector(`#${targetPage}`);
+      if (page) {
+        SECONDARY_PAGE_IDS.forEach((id) => {
+          const element = document.querySelector(`#${id}`);
+          if (element && id !== targetPage) element.hidden = true;
+        });
+        page.hidden = false;
+      }
     } finally {
       setTimeout(() => {
         restoring = false;
-      }, 800);
+      }, 500);
     }
   }
 
   document.addEventListener(
     "click",
     (event) => {
-      const button = event.target.closest?.("button[id]");
-      if (!button) return;
-      const pageId = NAV_TARGETS[button.id];
-      if (pageId) remember(pageId);
+      const trigger = event.target.closest?.("button[id], .profile-card");
+      if (!trigger) return;
+      const pageId = NAV_TARGETS[trigger.id];
+      if (pageId) {
+        suppressWorkspaceRememberUntil = pageId === "workspacePage" ? 0 : Date.now() + 1200;
+        localStorage.setItem(PAGE_KEY, pageId);
+      }
     },
     true
   );
@@ -90,8 +123,6 @@
   });
   observer.observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ["hidden"] });
 
-  setInterval(rememberVisiblePage, 2500);
-  setTimeout(restorePage, 900);
-  setTimeout(restorePage, 2200);
-  setTimeout(restorePage, 4200);
+  setInterval(rememberVisiblePage, 1800);
+  [700, 1600, 3200, 6000, 9500, 13000].forEach((delay) => setTimeout(restorePage, delay));
 })();

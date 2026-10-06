@@ -1,16 +1,17 @@
 name: Classmate Profile Card Hotfix
 
 on:
-  workflow_dispatch:
   push:
-    paths:
-      - ".github/workflows/classmate-profile-card-hotfix.yml"
+    branches:
+      - main
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   hotfix:
+    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,40 +39,146 @@ jobs:
           writeIfChanged('server.js', server);
 
           let classmates = fs.readFileSync('public/classmates-request-patch.js', 'utf8');
-          classmates = classmates.replace(
-            'grid-template-rows: auto minmax(0, 1fr) auto;',
-            'grid-template-rows: auto auto minmax(0, 1fr) auto;'
-          );
+          classmates = classmates.replace('grid-template-rows: auto minmax(0, 1fr) auto;', 'grid-template-rows: auto auto minmax(0, 1fr) auto;');
 
           if (!classmates.includes('.peer-profile-card')) {
-            classmates = classmates.replace(
-              '      .classmates-chat-head h3 {\n        margin: 0;\n      }\n',
-              `      .classmates-chat-head h3 {\n        margin: 0;\n      }\n\n      .peer-profile-card {\n        margin: 14px 18px 0;\n        border: 1px solid var(--line);\n        border-radius: 8px;\n        overflow: hidden;\n        background: white;\n      }\n\n      .peer-profile-card[hidden] {\n        display: none;\n      }\n\n      .peer-profile-cover {\n        height: 86px;\n        background: linear-gradient(135deg, #234764, #2f7d62);\n        overflow: hidden;\n      }\n\n      .peer-profile-cover img {\n        width: 100%;\n        height: 100%;\n        object-fit: cover;\n        display: block;\n      }\n\n      .peer-profile-main {\n        display: grid;\n        grid-template-columns: auto minmax(0, 1fr);\n        gap: 12px;\n        align-items: center;\n        padding: 12px 14px 14px;\n      }\n\n      .peer-profile-avatar {\n        width: 58px;\n        height: 58px;\n        border-radius: 8px;\n        border: 3px solid white;\n        margin-top: -34px;\n        background: #1f4d5c;\n        color: white;\n        display: grid;\n        place-items: center;\n        font-weight: 800;\n        box-shadow: 0 8px 22px rgba(25, 36, 58, 0.16);\n        overflow: hidden;\n      }\n\n      .peer-profile-avatar img {\n        width: 100%;\n        height: 100%;\n        object-fit: cover;\n        display: block;\n      }\n\n      .peer-profile-name {\n        margin: 0;\n        font-size: 18px;\n        line-height: 1.2;\n      }\n\n      .peer-profile-facts {\n        display: flex;\n        flex-wrap: wrap;\n        gap: 6px;\n        margin-top: 7px;\n      }\n\n      .peer-profile-facts span {\n        border: 1px solid #dfe7f1;\n        border-radius: 999px;\n        padding: 4px 8px;\n        color: var(--muted);\n        font-size: 12px;\n        line-height: 1.2;\n        background: #f8fbff;\n      }\n`
-            );
+            const peerCss = String.raw`
+
+      .peer-profile-card {
+        margin: 14px 18px 0;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+        background: white;
+      }
+
+      .peer-profile-card[hidden] {
+        display: none;
+      }
+
+      .peer-profile-cover {
+        height: 86px;
+        background: linear-gradient(135deg, #234764, #2f7d62);
+        overflow: hidden;
+      }
+
+      .peer-profile-cover img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .peer-profile-main {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 12px;
+        align-items: center;
+        padding: 12px 14px 14px;
+      }
+
+      .peer-profile-avatar {
+        width: 58px;
+        height: 58px;
+        border-radius: 8px;
+        border: 3px solid white;
+        margin-top: -34px;
+        background: #1f4d5c;
+        color: white;
+        display: grid;
+        place-items: center;
+        font-weight: 800;
+        box-shadow: 0 8px 22px rgba(25, 36, 58, 0.16);
+        overflow: hidden;
+      }
+
+      .peer-profile-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .peer-profile-name {
+        margin: 0;
+        font-size: 18px;
+        line-height: 1.2;
+      }
+
+      .peer-profile-facts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 7px;
+      }
+
+      .peer-profile-facts span {
+        border: 1px solid #dfe7f1;
+        border-radius: 999px;
+        padding: 4px 8px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.2;
+        background: #f8fbff;
+      }`;
+            classmates = classmates.replace('      .classmates-chat-head h3 {\n        margin: 0;\n      }', '      .classmates-chat-head h3 {\n        margin: 0;\n      }' + peerCss);
           }
 
           if (!classmates.includes('id="peerProfileCard"')) {
-            classmates = classmates.replace(
-              '          <div class="direct-message-list" id="directMessageList"></div>',
-              '          <article class="peer-profile-card" id="peerProfileCard" hidden></article>\n          <div class="direct-message-list" id="directMessageList"></div>'
-            );
+            classmates = classmates.replace('          <div class="direct-message-list" id="directMessageList"></div>', '          <article class="peer-profile-card" id="peerProfileCard" hidden></article>\n          <div class="direct-message-list" id="directMessageList"></div>');
           }
 
           if (!classmates.includes('function renderPeerProfile(active)')) {
-            classmates = classmates.replace(
-              '\n  async function addClassmate(event) {',
-              `\n  function initialsForProfile(name) {\n    return String(name || "SB")\n      .trim()\n      .split(/\\s+/)\n      .map((part) => part[0])\n      .join("")\n      .slice(0, 2)\n      .toUpperCase() || "SB";\n  }\n\n  function renderPeerProfile(active) {\n    const card = page.querySelector("#peerProfileCard");\n    if (!card) return;\n    const peer = active?.peer;\n    if (!peer) {\n      card.hidden = true;\n      card.innerHTML = "";\n      return;\n    }\n    const name = peer.name || "\\u540c\\u5b66";\n    const facts = [\n      peer.school ? ` + "`\\u5b66\\u6821\\uff1a${peer.school}`" + ` : "",\n      peer.major ? ` + "`\\u4e13\\u4e1a\\uff1a${peer.major}`" + ` : "",\n      peer.sbId ? ` + "`SB ID：@${peer.sbId}`" + ` : ""\n    ].filter(Boolean);\n    card.hidden = false;\n    card.innerHTML = ` + "`" + `\n      <div class="peer-profile-cover">\n        ${peer.backgroundUrl ? `<img src="${escapeHtml(peer.backgroundUrl)}" alt="">` : ""}\n      </div>\n      <div class="peer-profile-main">\n        <div class="peer-profile-avatar">\n          ${peer.avatarUrl ? `<img src="${escapeHtml(peer.avatarUrl)}" alt="">` : escapeHtml(initialsForProfile(name))}\n        </div>\n        <div>\n          <h4 class="peer-profile-name">${escapeHtml(name)}</h4>\n          <div class="peer-profile-facts">\n            ${facts.length ? facts.map((fact) => `<span>${escapeHtml(fact)}</span>`).join("") : "<span>\\u8fd8\\u6ca1\\u6709\\u586b\\u5199\\u516c\\u5f00\\u8d44\\u6599</span>"}\n          </div>\n        </div>\n      </div>\n    ` + "`" + `;\n  }\n\n  async function addClassmate(event) {`
-            );
+            const peerFunction = String.raw`
+
+  function initialsForProfile(name) {
+    return String(name || "SB")
+      .trim()
+      .split(/\s+/)
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "SB";
+  }
+
+  function renderPeerProfile(active) {
+    const card = page.querySelector("#peerProfileCard");
+    if (!card) return;
+    const peer = active?.peer;
+    if (!peer) {
+      card.hidden = true;
+      card.innerHTML = "";
+      return;
+    }
+    const name = peer.name || "\u540c\u5b66";
+    const facts = [
+      peer.school ? ` + '`\u5b66\u6821\uff1a${peer.school}`' + ` : "",
+      peer.major ? ` + '`\u4e13\u4e1a\uff1a${peer.major}`' + ` : "",
+      peer.sbId ? ` + '`SB ID：@${peer.sbId}`' + ` : ""
+    ].filter(Boolean);
+    card.hidden = false;
+    card.innerHTML = ` + '`' + `
+      <div class="peer-profile-cover">
+        ${peer.backgroundUrl ? `<img src="${escapeHtml(peer.backgroundUrl)}" alt="">` : ""}
+      </div>
+      <div class="peer-profile-main">
+        <div class="peer-profile-avatar">
+          ${peer.avatarUrl ? `<img src="${escapeHtml(peer.avatarUrl)}" alt="">` : escapeHtml(initialsForProfile(name))}
+        </div>
+        <div>
+          <h4 class="peer-profile-name">${escapeHtml(name)}</h4>
+          <div class="peer-profile-facts">
+            ${facts.length ? facts.map((fact) => `<span>${escapeHtml(fact)}</span>`).join("") : "<span>\u8fd8\u6ca1\u6709\u586b\u5199\u516c\u5f00\u8d44\u6599</span>"}
+          </div>
+        </div>
+      </div>
+    ` + '`' + `;
+  }`;
+            classmates = classmates.replace('\n  async function addClassmate(event) {', peerFunction + '\n\n  async function addClassmate(event) {');
           }
 
-          classmates = classmates.replace(
-            '    if (!active) {\n      title.textContent = "请选择一位同学";',
-            '    if (!active) {\n      renderPeerProfile(null);\n      title.textContent = "请选择一位同学";'
-          );
-          classmates = classmates.replace(
-            '    title.textContent = active.peer?.name || "同学";',
-            '    renderPeerProfile(active);\n    title.textContent = active.peer?.name || "同学";'
-          );
+          classmates = classmates.replace('    if (!active) {\n      title.textContent = "请选择一位同学";', '    if (!active) {\n      renderPeerProfile(null);\n      title.textContent = "请选择一位同学";');
+          classmates = classmates.replace('    title.textContent = active.peer?.name || "同学";', '    renderPeerProfile(active);\n    title.textContent = active.peer?.name || "同学";');
           writeIfChanged('public/classmates-request-patch.js', classmates);
 
           let layout = fs.readFileSync('public/layout-fix.js', 'utf8');

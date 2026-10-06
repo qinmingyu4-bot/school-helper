@@ -10,6 +10,12 @@ const state = {
   workspaceMode: localStorage.getItem("studybridgeWorkspaceMode") || "student"
 };
 
+const SYSTEM_COURSE_NAMES = new Set(["Schedule & Deadlines", "Email Reply Helper"]);
+
+function visibleCourses() {
+  return state.courses.filter((course) => !SYSTEM_COURSE_NAMES.has(course.name));
+}
+
 const authPanel = document.querySelector("#authPanel");
 const appShell = document.querySelector("#appShell");
 const workspacePage = document.querySelector("#workspacePage");
@@ -373,11 +379,7 @@ async function enterApp() {
   renderProfile();
   renderPreferences();
   await loadCourses();
-  if (!state.courses.length) {
-    const result = await api("/api/courses", { method: "POST", body: { name: "My first course" } });
-    state.courses = [result.course];
-  }
-  state.activeCourseId = state.courses[0].id;
+  state.activeCourseId = visibleCourses()[0]?.id || null;
   await loadActiveCourseData();
   renderCourses();
   roleSwitch.hidden = state.user.role !== "admin";
@@ -589,13 +591,18 @@ function syncSchoolPreference() {
 }
 
 function renderCourses() {
-  if (!state.courses.length) {
+  const courses = visibleCourses();
+  if (!courses.length) {
     courseList.innerHTML = '<p class="empty">还没有课程。</p>';
     activeCourseTitle.textContent = "请选择课程";
     return;
   }
 
-  courseList.innerHTML = state.courses
+  if (!courses.some((course) => course.id === state.activeCourseId)) {
+    state.activeCourseId = courses[0].id;
+  }
+
+  courseList.innerHTML = courses
     .map(
       (course) => `
         <div class="course-item ${course.id === state.activeCourseId ? "active" : ""}">
@@ -623,7 +630,7 @@ function renderCourses() {
       if (!course || !confirm(`删除 ${course.name}？这会删除这门课的资料和聊天记录。`)) return;
       await api(`/api/courses/${course.id}`, { method: "DELETE" });
       state.courses = state.courses.filter((item) => item.id !== course.id);
-      state.activeCourseId = state.courses[0]?.id || null;
+      state.activeCourseId = visibleCourses()[0]?.id || null;
       await loadActiveCourseData();
       renderCourses();
       await maybeRefreshAdmin();

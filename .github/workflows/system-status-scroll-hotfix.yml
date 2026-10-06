@@ -1,0 +1,64 @@
+name: Apply system status scroll hotfix
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/system-status-scroll-hotfix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preserve developer scroll during system check
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          status_path = Path("public/system-status-patch.js")
+          text = status_path.read_text(encoding="utf-8")
+
+          if "function captureScrollState()" not in text:
+              marker = """  async function loadStatus() {\n    const panel = ensurePanel();"""
+              replacement = """  function captureScrollState() {\n    const workspace = document.querySelector(\".workspace\");\n    const appShell = document.querySelector(\"#appShell\");\n    return {\n      windowX: window.scrollX,\n      windowY: window.scrollY,\n      workspaceTop: workspace?.scrollTop || 0,\n      appShellTop: appShell?.scrollTop || 0,\n      activeElement: document.activeElement\n    };\n  }\n\n  function restoreScrollState(state) {\n    const workspace = document.querySelector(\".workspace\");\n    const appShell = document.querySelector(\"#appShell\");\n    if (workspace) workspace.scrollTop = state.workspaceTop;\n    if (appShell) appShell.scrollTop = state.appShellTop;\n    window.scrollTo(state.windowX, state.windowY);\n    if (state.activeElement && typeof state.activeElement.focus === \"function\") {\n      state.activeElement.focus({ preventScroll: true });\n    }\n  }\n\n  async function loadStatus(event) {\n    event?.preventDefault?.();\n    const scrollState = captureScrollState();\n    const panel = ensurePanel();"""
+              if marker not in text:
+                  raise SystemExit("loadStatus marker not found")
+              text = text.replace(marker, replacement, 1)
+
+          line = """    if (grid) grid.innerHTML = card(TEXT.checkingTitle, \"warn\", TEXT.checkingValue, TEXT.checkingNote);"""
+          if line in text and line + "\n    restoreScrollState(scrollState);" not in text:
+              text = text.replace(line, line + "\n    restoreScrollState(scrollState);", 1)
+
+          end_marker = """    if (button) {\n      button.disabled = false;\n      button.textContent = TEXT.completeButton;\n      setTimeout(() => {\n        button.textContent = TEXT.check;\n        panel.classList.remove(\"checked\");\n      }, 1400);\n    }\n  }\n\n  function boot() {"""
+          end_replacement = """    if (button) {\n      button.disabled = false;\n      button.textContent = TEXT.completeButton;\n      setTimeout(() => {\n        button.textContent = TEXT.check;\n        panel.classList.remove(\"checked\");\n      }, 1400);\n    }\n    restoreScrollState(scrollState);\n  }\n\n  function boot() {"""
+          if "restoreScrollState(scrollState);\n  }\n\n  function boot()" not in text:
+              if end_marker not in text:
+                  raise SystemExit("loadStatus ending marker not found")
+              text = text.replace(end_marker, end_replacement, 1)
+
+          status_path.write_text(text, encoding="utf-8")
+
+          layout_path = Path("public/layout-fix.js")
+          layout = layout_path.read_text(encoding="utf-8")
+          layout = layout.replace('/system-status-patch.js?v=20261006-1', '/system-status-patch.js?v=20261006-2')
+          layout_path.write_text(layout, encoding="utf-8")
+          PY
+      - name: Validate scripts
+        run: |
+          node --check public/system-status-patch.js
+          node --check public/layout-fix.js
+      - name: Commit scroll hotfix
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/system-status-patch.js public/layout-fix.js
+          git commit -m "Keep developer scroll position during system check"
+          git push

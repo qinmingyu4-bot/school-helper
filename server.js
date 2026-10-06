@@ -1,7 +1,9 @@
 const http = require("http");
+const https = require("https");
 const crypto = require("crypto");
 const fsSync = require("fs");
 const fs = require("fs/promises");
+const os = require("os");
 const path = require("path");
 const {
   SESSION_COOKIE,
@@ -56,6 +58,7 @@ loadEnvFile();
 const db = new StudyBridgeDatabase();
 const publicDir = path.join(__dirname, "public");
 const port = Number(process.env.PORT || 3000);
+const serverStartedAt = new Date().toISOString();
 const requireInviteCode = process.env.REQUIRE_INVITE_CODE !== "false";
 const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION === "true";
 const allowEmailCodeFallback = process.env.ALLOW_EMAIL_CODE_FALLBACK !== "false";
@@ -75,6 +78,7 @@ const solRoutePercent = Math.max(
 );
 const googleClientId = String(process.env.GOOGLE_CLIENT_ID || "").trim();
 const googleClientSecret = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();
+let cachedAiHealth = null;
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -641,6 +645,112 @@ function googleAuthEnabled() {
   return Boolean(googleClientId && googleClientSecret);
 }
 
+function emailDeliveryConfigured() {
+  const host = String(process.env.SMTP_HOST || "").trim();
+  const user = String(process.env.SMTP_USER || "").trim();
+  const pass = String(process.env.SMTP_PASS || "").trim();
+  const from = String(process.env.MAIL_FROM || process.env.SMTP_FROM || user).trim();
+  return Boolean(nodemailer && host && from && (!user || pass));
+}
+
+function packageVersion() {
+  try {
+    const pkg = JSON.parse(fsSync.readFileSync(path.join(__dirname, "package.json"), "utf8"));
+    return String(pkg.version || "unknown");
+  } catch {
+    return "unknown";
+  }
+}
+
+function fileIsoTime(filePath) {
+  try {
+    return fsSync.statSync(filePath).mtime.toISOString();
+  } catch {
+    return "";
+  }
+}
+
+function autoSyncStatus() {
+  const candidates = [path.join(os.homedir(), "studybridge-auto-deploy.sh"), "/home/ubuntu/studybridge-auto-deploy.sh"];
+  const scriptPath = candidates.find((item) => fsSync.existsSync(item)) || "";
+  const logPath = path.join(os.homedir(), "studybridge-deploy.log");
+  return {
+    configured: Boolean(scriptPath),
+    scriptPath: scriptPath ? scriptPath.replace(os.homedir(), "~") : "",
+    lastLogAt: fileIsoTime(logPath),
+    note: scriptPath ? "Server auto-sync script was detected." : "Server auto-sync script was not detected."
+  };
+}
+
+async function databaseStatus() {
+  const mode = db.mode || process.env.STUDYBRIDGE_DB || "local";
+  try {
+    const users = await db.listUsers();
+    return {
+      mode,
+      ready: true,
+      userCount: Array.isArray(users) ? users.length : 0,
+      note: mode === "local" ? "Local database is readable and writable. Add backups or a cloud database before larger public use." : "Cloud database connection is healthy."
+    };
+  } catch (error) {
+    return {
+      mode,
+      ready: false,
+      userCount: 0,
+      note: error?.message || "Database read failed."
+    };
+  }
+}
+
+function requestOpenAiModelsHealth() {
+  return new Promise((resolve) => {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      resolve({ configured: false, ok: false, detail: "OPENAI_API_KEY is not configured." });
+      return;
+    }
+    const req = https.request(
+      {
+        hostname: "api.openai.com",
+        path: "/v1/models",
+        method: "GET",
+        timeout: 4500,
+        headers: { authorization: "Bearer " + apiKey }
+      },
+      (response) => {
+        response.resume();
+        const ok = response.statusCode >= 200 && response.statusCode < 300;
+        resolve({
+          configured: true,
+          ok,
+          statusCode: response.statusCode,
+          detail: ok ? "OpenAI API is reachable." : "OpenAI API returned a non-success status."
+        });
+      }
+    );
+    req.on("timeout", () => {
+      req.destroy();
+      resolve({ configured: true, ok: false, detail: "OpenAI API check timed out." });
+    });
+    req.on("error", (error) => resolve({ configured: true, ok: false, detail: error.message || "OpenAI API connection failed." }));
+    req.end();
+  });
+}
+
+async function aiHealthStatus() {
+  if (cachedAiHealth && Date.now() - cachedAiHealth.checkedAtMs < 60000) return cachedAiHealth.payload;
+  const health = await requestOpenAiModelsHealth();
+  const payload = {
+    ...health,
+    simpleModel: simpleAiModel,
+    complexModel: complexAiModel,
+    complexRoutePercent: solRoutePercent,
+    checkedAt: new Date().toISOString()
+  };
+  cachedAiHealth = { checkedAtMs: Date.now(), payload };
+  return payload;
+}
+
 function signOAuthState(payload) {
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
   const signature = crypto
@@ -1110,6 +1220,38 @@ if (openCommunityLikeMatch && method === "PATCH") {
       invites: invites.filter((invite) => !isResetRequest(invite)).map(publicInvite),
       resetRequests,
       creator: publicUser(admin)
+    });
+  }
+
+  if (url.pathname === "/api/admin/system-status" && method === "GET") {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+    const ai = await aiHealthStatus();
+    return sendJson(res, 200, {
+      version: {
+        app: packageVersion(),
+        node: process.version,
+        environment: process.env.NODE_ENV || "development"
+      },
+      deploy: {
+        serverStartedAt,
+        lastCodeUpdateAt: fileIsoTime(path.join(__dirname, "server.js"))
+      },
+      database: await databaseStatus(),
+      ai,
+      google: {
+        enabled: googleAuthEnabled(),
+        clientIdConfigured: Boolean(googleClientId),
+        clientSecretConfigured: Boolean(googleClientSecret),
+        redirectUri: googleRedirectUri(req)
+      },
+      email: {
+        verificationRequired: requireEmailVerification,
+        fallbackAllowed: allowEmailCodeFallback,
+        sendingConfigured: emailDeliveryConfigured(),
+        senderInstalled: Boolean(nodemailer)
+      },
+      autoSync: autoSyncStatus()
     });
   }
 

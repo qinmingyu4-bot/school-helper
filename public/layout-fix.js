@@ -118,9 +118,9 @@
       body.creator-clean-mode #developerPanel:not([hidden]) {
         display: block !important;
         max-height: none !important;
-        min-height: calc(100vh - 24px);
+        min-height: 0 !important;
         margin: 0;
-        padding: 28px;
+        padding: 28px 28px 18px;
         border: 0;
         box-shadow: none;
         background: #f4f6f9;
@@ -374,7 +374,7 @@
   syncStudySidebarPanels();
   loadScriptOnce("/school-autocomplete.js?v=20261005-1");
   loadScriptOnce("/admin-console-patch.js?v=20261005-1");
-  loadScriptOnce("/system-status-patch.js?v=20261006-2");
+  loadScriptOnce("/system-status-patch.js?v=20261006-3");
   loadScriptOnce("/admin-boundary-patch.js?v=20261006-1");
   loadScriptOnce("/profile-onboarding-patch.js?v=20261005-1");
   loadScriptOnce("/profile-onboarding-fix.js?v=20261005-1");

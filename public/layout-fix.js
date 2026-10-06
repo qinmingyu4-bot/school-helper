@@ -1,4 +1,27 @@
 (() => {
+  const RESTORE_PAGE_KEY = "studybridgeLastOpenPage";
+  const SECONDARY_RESTORE_PAGES = new Set(["profilePage", "schoolCommunityPage", "classmatesPage", "emailReplyPage", "schedulePage"]);
+
+  function installEarlyRestoreGuard() {
+    let targetPage = "";
+    try {
+      targetPage = localStorage.getItem(RESTORE_PAGE_KEY) || "";
+    } catch {
+      targetPage = "";
+    }
+    if (!SECONDARY_RESTORE_PAGES.has(targetPage)) return;
+    document.documentElement.classList.add("studybridge-restore-pending");
+    if (document.querySelector("#studybridge-restore-shield-style")) return;
+    const style = document.createElement("style");
+    style.id = "studybridge-restore-shield-style";
+    style.textContent = `
+      html.studybridge-restore-pending #workspacePage {
+        visibility: hidden !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   function installCreatorLayoutFix() {
     let style = document.querySelector("#studybridge-creator-layout-fix");
     if (!style) {
@@ -316,6 +339,7 @@
     document.body.appendChild(script);
   }
 
+  installEarlyRestoreGuard();
   installCreatorLayoutFix();
   ensureStudyEntry();
   cleanFeatureEntries();
@@ -340,7 +364,7 @@
   loadScriptOnce("/schedule-patch.js?v=20261005-3");
   loadScriptOnce("/schedule-dashboard-patch.js?v=20261005-1");
   loadScriptOnce("/schedule-notification-patch.js?v=20261005-2");
-  loadScriptOnce("/page-restore-patch.js?v=20261005-1");
+  loadScriptOnce("/page-restore-patch.js?v=20261006-2");
   setInterval(() => {
     installCreatorLayoutFix();
     ensureStudyEntry();

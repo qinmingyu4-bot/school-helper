@@ -1,0 +1,228 @@
+name: Apply compact classmate chat bubble hotfix
+
+on:
+  push:
+    paths:
+      - ".github/workflows/chat-bubble-compact-hotfix.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch chat bubble first render
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p = Path(path)
+              text = p.read_text(encoding="utf-8")
+              if old not in text:
+                  raise SystemExit(f"Pattern not found in {path}")
+              p.write_text(text.replace(old, new), encoding="utf-8")
+
+          bubble = "public/classmate-chat-bubble-fix.js"
+          replace(bubble, """      #classmatesPage .direct-message {
+        display: flex !important;
+        align-items: flex-end !important;
+        justify-content: space-between !important;
+        gap: 16px !important;
+        width: fit-content !important;
+        min-width: min(360px, 72vw) !important;
+        max-width: min(720px, 86%) !important;
+        min-height: auto !important;
+        height: auto !important;
+        padding: 10px 14px !important;
+        border-radius: 8px !important;
+        line-height: 1.42 !important;
+        white-space: pre-wrap !important;
+      }
+
+      #classmatesPage .direct-message > span {
+        min-width: 0 !important;
+      }
+""", """      #classmatesPage .direct-message {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) auto !important;
+        align-items: end !important;
+        justify-content: space-between !important;
+        gap: 16px !important;
+        box-sizing: border-box !important;
+        width: fit-content !important;
+        min-width: min(360px, 72vw) !important;
+        max-width: min(720px, 86%) !important;
+        min-height: 0 !important;
+        height: auto !important;
+        padding: 9px 14px !important;
+        border-radius: 8px !important;
+        line-height: 1.42 !important;
+        white-space: pre-wrap !important;
+      }
+
+      #classmatesPage .direct-message > span {
+        min-width: 0 !important;
+        display: block !important;
+      }
+""")
+          replace(bubble, """        #classmatesPage .direct-message {
+          align-items: flex-start !important;
+          flex-direction: column !important;
+          gap: 4px !important;
+          min-width: min(260px, 82vw) !important;
+          max-width: 92% !important;
+        }
+""", """        #classmatesPage .direct-message {
+          grid-template-columns: 1fr !important;
+          align-items: flex-start !important;
+          gap: 4px !important;
+          min-width: min(260px, 82vw) !important;
+          max-width: 92% !important;
+        }
+""")
+          replace(bubble, """  function normalizeMessageCards() {
+    const page = document.querySelector("#classmatesPage:not([hidden])");
+    if (!page) return;
+    page.querySelectorAll(".direct-message").forEach((message) => {
+      if (message.dataset.normalizedBubble === "true") return;
+      const time = message.querySelector("time");
+      const timeHtml = time ? time.outerHTML : "";
+      if (time) time.remove();
+      const body = message.textContent.trim();
+      message.innerHTML = `<span>${escapeHtml(body)}</span>${timeHtml}`;
+      message.dataset.normalizedBubble = "true";
+    });
+  }
+""", """  function normalizeMessageCards() {
+    const page = document.querySelector("#classmatesPage:not([hidden])");
+    if (!page) return;
+    page.querySelectorAll(".direct-message").forEach((message) => {
+      if (message.dataset.normalizedBubble !== "true") {
+        const time = message.querySelector("time");
+        const timeHtml = time ? time.outerHTML : "";
+        if (time) time.remove();
+        const body = message.textContent.trim();
+        message.innerHTML = `<span>${escapeHtml(body)}</span>${timeHtml}`;
+        message.dataset.normalizedBubble = "true";
+      }
+      compactMessageCard(message);
+    });
+  }
+
+  function compactMessageCard(message) {
+    if (!message) return;
+    Object.assign(message.style, {
+      display: "grid",
+      gridTemplateColumns: "minmax(0, 1fr) auto",
+      alignItems: "end",
+      gap: "16px",
+      minHeight: "0px",
+      height: "auto",
+      padding: "9px 14px",
+      lineHeight: "1.42"
+    });
+    const text = message.querySelector("span");
+    if (text) text.style.display = "block";
+    const time = message.querySelector("time");
+    if (time) {
+      Object.assign(time.style, {
+        margin: "0",
+        alignSelf: "end",
+        whiteSpace: "nowrap",
+        textAlign: "right"
+      });
+    }
+  }
+
+  function installMessageObserver() {
+    const list = document.querySelector("#classmatesPage #directMessageList");
+    if (!list || list.dataset.compactObserver === "true") return;
+    const observer = new MutationObserver(() => {
+      requestAnimationFrame(normalizeMessageCards);
+    });
+    observer.observe(list, { childList: true, subtree: true });
+    list.dataset.compactObserver = "true";
+  }
+""")
+          replace(bubble, """    ensurePeerProfileCard();
+    normalizeMessageCards();
+""", """    ensurePeerProfileCard();
+    installMessageObserver();
+    normalizeMessageCards();
+""")
+
+          classmates = "public/classmates-request-patch.js"
+          replace(classmates, """      .direct-message {
+        max-width: min(620px, 86%);
+        padding: 11px 13px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: white;
+        line-height: 1.55;
+        white-space: pre-wrap;
+      }
+""", """      .direct-message {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
+        gap: 16px;
+        max-width: min(620px, 86%);
+        min-height: 0;
+        height: auto;
+        padding: 9px 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: white;
+        line-height: 1.42;
+        white-space: pre-wrap;
+      }
+""")
+          replace(classmates, """      .direct-message time {
+        display: block;
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+""", """      .direct-message time {
+        display: block;
+        margin: 0;
+        color: var(--muted);
+        font-size: 11px;
+        white-space: nowrap;
+        text-align: right;
+      }
+""")
+          replace(classmates, """          <article class="direct-message ${message.mine ? "mine" : ""}">
+            ${escapeHtml(message.content)}
+            <time>${formatDateTime(message.createdAt)}</time>
+          </article>
+""", """          <article class="direct-message ${message.mine ? "mine" : ""}" data-normalized-bubble="true">
+            <span>${escapeHtml(message.content)}</span>
+            <time>${formatDateTime(message.createdAt)}</time>
+          </article>
+""")
+
+          layout = "public/layout-fix.js"
+          replace(layout, 'loadScriptOnce("/classmates-request-patch.js?v=20261005-4");', 'loadScriptOnce("/classmates-request-patch.js?v=20261005-5");')
+          replace(layout, 'loadScriptOnce("/classmate-chat-bubble-fix.js?v=20261005-1");', 'loadScriptOnce("/classmate-chat-bubble-fix.js?v=20261005-2");')
+          PY
+      - name: Validate patched JavaScript
+        run: |
+          node --check public/classmate-chat-bubble-fix.js
+          node --check public/classmates-request-patch.js
+          node --check public/layout-fix.js
+      - name: Commit hotfix
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "qinmingyu4-bot"
+          git config user.email "qinmingyu4-bot@users.noreply.github.com"
+          git add public/classmate-chat-bubble-fix.js public/classmates-request-patch.js public/layout-fix.js
+          git commit -m "Fix first-render classmate chat bubble height"
+          git push

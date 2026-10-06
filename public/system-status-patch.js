@@ -48,15 +48,15 @@
     const style = document.createElement("style");
     style.id = "studybridge-system-status-style";
     style.textContent = `
-      .system-status-panel { margin-top: 18px; max-width: 1120px; border: 1px solid var(--line); border-radius: 8px; background: white; box-shadow: 0 12px 30px rgba(25, 36, 58, 0.05); }
+      .system-status-panel { margin-top: 14px; margin-bottom: 0; max-width: 1120px; border: 1px solid var(--line); border-radius: 8px; background: white; box-shadow: 0 12px 30px rgba(25, 36, 58, 0.05); }
       .system-status-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
       .system-status-head h4 { margin: 0; color: var(--navy); font-size: 16px; }
       .system-status-head span { color: var(--muted); font-size: 12px; }
       .system-status-panel.checking { border-color: #d48b1f; box-shadow: 0 0 0 3px rgba(212, 139, 31, 0.1), 0 12px 30px rgba(25, 36, 58, 0.05); }
       .system-status-panel.checked { border-color: #2f7d62; box-shadow: 0 0 0 3px rgba(47, 125, 98, 0.11), 0 12px 30px rgba(25, 36, 58, 0.05); }
       #refreshSystemStatusButton[disabled] { opacity: 0.72; cursor: wait; }
-      .system-status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; padding: 14px 16px 16px; }
-      .system-status-card { display: grid; gap: 6px; min-height: 92px; padding: 12px; border: 1px solid #dfe7f1; border-radius: 8px; background: #fbfdff; }
+      .system-status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; padding: 12px 16px 12px; }
+      .system-status-card { display: grid; gap: 6px; min-height: 86px; padding: 12px; border: 1px solid #dfe7f1; border-radius: 8px; background: #fbfdff; }
       .system-status-title { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; font-weight: 850; }
       .system-status-dot { width: 9px; height: 9px; border-radius: 999px; background: #9aa8bb; }
       .system-status-dot.ok { background: #2f7d62; }
@@ -165,6 +165,7 @@
     const emailRequired = Boolean(system?.email?.verificationRequired);
     const aiConfigured = systemReady ? Boolean(system?.ai?.configured) : true;
     const aiOk = Boolean(system?.ai?.ok);
+    const aiModel = system?.ai?.simpleModel || "";
     const autoSyncConfigured = Boolean(system?.autoSync?.configured);
     const version = system?.version?.app || "StudyBridge";
     const deployedAt = system?.deploy?.lastCodeUpdateAt || system?.deploy?.serverStartedAt || "";
@@ -174,9 +175,9 @@
         card(TEXT.currentVersion, systemReady ? "ok" : "warn", version, systemReady ? `Node ${system?.version?.node || ""}` : "\u540e\u7aef\u6df1\u5ea6\u8bca\u65ad\u63a5\u53e3\u5f85\u90e8\u7f72\u3002"),
         card(TEXT.deployTime, deployedAt ? "ok" : "warn", formatDate(deployedAt), deployedAt ? "\u6309\u670d\u52a1\u5668\u6587\u4ef6\u65f6\u95f4\u663e\u793a\u3002" : "\u53ef\u786e\u8ba4\u670d\u52a1\u5728\u7ebf\u3002"),
         card(TEXT.dbMode, dbReady ? "ok" : "bad", dbMode, system?.database?.note || (dbReady ? "Database is readable and writable." : "Database check failed.")),
-        card(TEXT.aiStatus, aiOk ? "ok" : aiConfigured ? "warn" : "bad", aiOk ? TEXT.ok : aiConfigured ? "\u5df2\u914d\u7f6e\uff0c\u5f85\u786e\u8ba4" : TEXT.notConfigured, system?.ai?.detail || "\u8bca\u65ad\u63a5\u53e3\u6b63\u5728\u7b49\u5f85\u540e\u7aef\u56de\u590d\uff0cAI key \u4e0d\u4f1a\u5728\u524d\u7aef\u663e\u793a\u3002"),
+        card(TEXT.aiStatus, aiOk ? "ok" : "bad", aiOk ? TEXT.ok : aiConfigured ? "\u68c0\u6d4b\u5931\u8d25" : TEXT.notConfigured, system?.ai?.detail || (aiModel ? `\u5f53\u524d\u6a21\u578b ${aiModel} \u8fd8\u6ca1\u6709\u68c0\u6d4b\u901a\u8fc7\u3002` : "\u540e\u7aef\u4f1a\u505a\u4e00\u6b21\u771f\u5b9e AI \u56de\u590d\u68c0\u6d4b\uff0cAI key \u4e0d\u4f1a\u5728\u524d\u7aef\u663e\u793a\u3002")),
         card(TEXT.googleLogin, googleEnabled ? "ok" : "warn", googleEnabled ? TEXT.configured : TEXT.notConfigured, googleEnabled ? "\u7528\u6237\u53ef\u4ee5\u4f7f\u7528 Google \u767b\u5f55\u3002" : "\u666e\u901a\u90ae\u7bb1\u6ce8\u518c\u4ecd\u53ef\u7528\u3002"),
-        card(TEXT.emailCode, emailConfigured || !emailRequired ? "ok" : "bad", emailConfigured ? "Real email sending is configured" : emailRequired ? "Verification required but email sending is missing" : "Not required", emailConfigured ? "Verification emails can be sent." : emailRequired ? "Registration depends on email codes." : "Invite codes are the main registration control, so SMTP is optional for now."),
+        card(TEXT.emailCode, emailConfigured || !emailRequired ? "ok" : "bad", emailConfigured ? "\u53d1\u4fe1\u5df2\u914d\u7f6e" : emailRequired ? "\u8981\u6c42\u9a8c\u8bc1\u4f46\u672a\u914d\u7f6e\u53d1\u4fe1" : "\u975e\u5fc5\u9700", emailConfigured ? "\u90ae\u7bb1\u9a8c\u8bc1\u7801\u53ef\u4ee5\u771f\u5b9e\u53d1\u9001\u3002" : emailRequired ? "\u6ce8\u518c\u4f1a\u4f9d\u8d56\u90ae\u7bb1\u9a8c\u8bc1\u7801\u3002" : "\u5f53\u524d\u4f7f\u7528\u9080\u8bf7\u7801\u63a7\u5236\u6ce8\u518c\uff0c\u6682\u4e0d\u5f3a\u5236\u90ae\u7bb1\u53d1\u4fe1\u3002"),
         card(TEXT.autoSync, autoSyncConfigured ? "ok" : "warn", autoSyncConfigured ? "\u5df2\u68c0\u6d4b\u5230" : "\u672a\u786e\u8ba4", system?.autoSync?.note || "\u5982\u679c\u9875\u9762\u6700\u8fd1\u5df2\u81ea\u52a8\u66f4\u65b0\uff0c\u8bf4\u660e\u540c\u6b65\u673a\u5236\u6b63\u5728\u5de5\u4f5c\u3002"),
         card(TEXT.adminApi, overviewOk ? "ok" : "bad", overviewOk ? TEXT.ok : "\u5f02\u5e38", overviewOk ? "\u53ef\u4ee5\u8bfb\u53d6\u7528\u6237\u3001\u9080\u8bf7\u7801\u548c\u91cd\u7f6e\u7533\u8bf7\u3002" : checks[2].reason?.message || "\u65e0\u6cd5\u8bfb\u53d6\u5f00\u53d1\u8005\u6570\u636e\u3002")
       ].join("");

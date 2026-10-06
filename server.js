@@ -68,10 +68,11 @@ const maxPdfBytes = 8 * 1024 * 1024;
 const legacyOpenAiModel = String(process.env.OPENAI_MODEL || "").trim();
 const simpleAiModel =
   String(process.env.OPENAI_SIMPLE_MODEL || process.env.STUDYBRIDGE_SIMPLE_MODEL || "").trim() ||
-  (legacyOpenAiModel && legacyOpenAiModel !== "gpt-4o-mini" ? legacyOpenAiModel : "gpt-6-luna");
+  legacyOpenAiModel ||
+  "gpt-4o-mini";
 const complexAiModel =
   String(process.env.OPENAI_COMPLEX_MODEL || process.env.STUDYBRIDGE_COMPLEX_MODEL || "").trim() ||
-  "gpt-6.1-sol";
+  "gpt-4o";
 const solRoutePercent = Math.max(
   0,
   Math.min(100, Number(process.env.OPENAI_SOL_ROUTE_PERCENT || process.env.STUDYBRIDGE_SOL_ROUTE_PERCENT || 15))
@@ -702,6 +703,45 @@ async function databaseStatus() {
   }
 }
 
+
+function autoSyncStatusClean() {
+  const candidates = [
+    path.join(os.homedir(), "studybridge-auto-deploy.sh"),
+    "/home/ubuntu/studybridge-auto-deploy.sh"
+  ];
+  const scriptPath = candidates.find((item) => fsSync.existsSync(item)) || "";
+  const logPath = path.join(os.homedir(), "studybridge-deploy.log");
+  return {
+    configured: Boolean(scriptPath),
+    scriptPath: scriptPath ? scriptPath.replace(os.homedir(), "~") : "",
+    lastLogAt: fileIsoTime(logPath),
+    note: scriptPath ? "Server auto-sync script was detected." : "Server auto-sync script was not detected."
+  };
+}
+
+async function databaseStatusClean() {
+  const mode = db.mode || process.env.STUDYBRIDGE_DB || "local";
+  try {
+    const users = await db.listUsers();
+    return {
+      mode,
+      ready: true,
+      userCount: Array.isArray(users) ? users.length : 0,
+      note:
+        mode === "local"
+          ? "Local database is readable and writable. Add backups or a cloud database before larger public use."
+          : "Cloud database connection is healthy."
+    };
+  } catch (error) {
+    return {
+      mode,
+      ready: false,
+      userCount: 0,
+      note: error?.message || "Database read failed."
+    };
+  }
+}
+
 function requestOpenAiModelsHealth() {
   return new Promise((resolve) => {
     const apiKey = process.env.OPENAI_API_KEY;
@@ -737,9 +777,73 @@ function requestOpenAiModelsHealth() {
   });
 }
 
+
+function requestOpenAiChatHealth(model) {
+  return new Promise((resolve) => {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      resolve({ configured: false, ok: false, detail: "OPENAI_API_KEY is not configured." });
+      return;
+    }
+
+    const body = JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: "Reply with OK only." },
+        { role: "user", content: "health check" }
+      ],
+      max_tokens: 4
+    });
+
+    const req = https.request(
+      {
+        hostname: "api.openai.com",
+        path: "/v1/chat/completions",
+        method: "POST",
+        timeout: 4500,
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+          "content-type": "application/json",
+          "content-length": Buffer.byteLength(body)
+        }
+      },
+      (response) => {
+        let raw = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk) => {
+          raw += chunk;
+        });
+        response.on("end", () => {
+          const ok = response.statusCode >= 200 && response.statusCode < 300;
+          let message = "";
+          try {
+            const payload = raw ? JSON.parse(raw) : {};
+            message = payload?.error?.message || payload?.choices?.[0]?.message?.content || "";
+          } catch {
+            message = raw.slice(0, 240);
+          }
+          resolve({
+            configured: true,
+            ok,
+            statusCode: response.statusCode,
+            detail: ok ? `Current model ${model} can respond normally.` : `Current model ${model} failed: ${message || "OpenAI API returned a non-success status."}`
+          });
+        });
+      }
+    );
+    req.on("timeout", () => {
+      req.destroy();
+      resolve({ configured: true, ok: false, detail: `Current model ${model} timed out.` });
+    });
+    req.on("error", (error) => resolve({ configured: true, ok: false, detail: error.message || "OpenAI API connection failed." }));
+    req.write(body);
+    req.end();
+  });
+}
+
 async function aiHealthStatus() {
   if (cachedAiHealth && Date.now() - cachedAiHealth.checkedAtMs < 60000) return cachedAiHealth.payload;
-  const health = await requestOpenAiModelsHealth();
+  const health = await requestOpenAiChatHealth(simpleAiModel);
   const payload = {
     ...health,
     simpleModel: simpleAiModel,
@@ -1237,7 +1341,7 @@ if (openCommunityLikeMatch && method === "PATCH") {
         serverStartedAt,
         lastCodeUpdateAt: fileIsoTime(path.join(__dirname, "server.js"))
       },
-      database: await databaseStatus(),
+      database: await databaseStatusClean(),
       ai,
       google: {
         enabled: googleAuthEnabled(),
@@ -1251,7 +1355,7 @@ if (openCommunityLikeMatch && method === "PATCH") {
         sendingConfigured: emailDeliveryConfigured(),
         senderInstalled: Boolean(nodemailer)
       },
-      autoSync: autoSyncStatus()
+      autoSync: autoSyncStatusClean()
     });
   }
 

@@ -120,12 +120,22 @@
         max-height: none !important;
         min-height: 0 !important;
         margin: 0;
-        padding: 28px 28px 18px;
+        padding: 24px 28px 8px;
         border: 0;
         box-shadow: none;
         background: #f4f6f9;
         overflow: visible !important;
         overscroll-behavior: auto !important;
+      }
+
+      body.creator-clean-mode #developerPanel:not([hidden]) > *:last-child {
+        margin-bottom: 0 !important;
+      }
+
+      body.creator-clean-mode #developerPanel + #chatArea,
+      body.creator-clean-mode #developerPanel + #quickPrompts,
+      body.creator-clean-mode #developerPanel + #chatForm {
+        display: none !important;
       }
 
       body.creator-clean-mode #developerPanel .panel-title,
@@ -374,7 +384,7 @@
   syncStudySidebarPanels();
   loadScriptOnce("/school-autocomplete.js?v=20261005-1");
   loadScriptOnce("/admin-console-patch.js?v=20261005-1");
-  loadScriptOnce("/system-status-patch.js?v=20261006-3");
+  loadScriptOnce("/system-status-patch.js?v=20261006-4");
   loadScriptOnce("/admin-boundary-patch.js?v=20261006-1");
   loadScriptOnce("/profile-onboarding-patch.js?v=20261005-1");
   loadScriptOnce("/profile-onboarding-fix.js?v=20261005-1");

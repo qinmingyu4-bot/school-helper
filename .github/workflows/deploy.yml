@@ -6,14 +6,184 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 concurrency:
   group: studybridge-production
   cancel-in-progress: true
 
 jobs:
   deploy:
+    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      - name: Patch friend request inbox
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('server.js')
+          source = path.read_text(encoding='utf-8')
+          if 'const classmateRequestMatch = url.pathname.match' in source and 'requests });' in source:
+              print('server.js already patched')
+              raise SystemExit(0)
+
+          start = source.index('  if (url.pathname === "/api/classmates" && method === "GET") {')
+          post = source.index('if (url.pathname === "/api/classmates" && method === "POST") {', start)
+          end = source.index('const directMessageMatch = url.pathname.match', post)
+
+          get_block = '''  if (url.pathname === "/api/classmates" && method === "GET") {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  const connections = await db.listClassmates(user.id);
+  const classmates = await Promise.all(connections.map((item) => publicClassmate(item, user.id)));
+  const connectedIds = new Set(connections.flatMap((item) => item.userIds || []));
+  const school = String(user.profile?.school || "").trim();
+  const pendingRequests = (await db.listClassmateRequests(user.id)).filter((item) => (item.status || "pending") === "pending");
+  const requestPeerIds = new Set(
+    pendingRequests
+      .flatMap((item) => [item.fromUserId, item.toUserId])
+      .filter((id) => id && id !== user.id)
+  );
+  const requestPeers = await Promise.all([...requestPeerIds].map((id) => db.getUser(id)));
+  const requestPeerById = new Map(requestPeers.filter(Boolean).map((peer) => [peer.id, peer]));
+  const publicRequestPeer = (peer) => ({
+    id: peer?.id || "",
+    name: peer?.name || "Classmate",
+    email: peer?.email || "",
+    school: peer?.profile?.school || "",
+    major: peer?.profile?.major || "",
+    sbId: peer?.profile?.sbId || ""
+  });
+  const requests = {
+    incoming: pendingRequests
+      .filter((item) => item.toUserId === user.id)
+      .map((item) => ({
+        id: item.id,
+        status: item.status || "pending",
+        createdAt: item.createdAt,
+        from: publicRequestPeer(requestPeerById.get(item.fromUserId))
+      })),
+    outgoing: pendingRequests
+      .filter((item) => item.fromUserId === user.id)
+      .map((item) => ({
+        id: item.id,
+        status: item.status || "pending",
+        createdAt: item.createdAt,
+        to: publicRequestPeer(requestPeerById.get(item.toUserId))
+      }))
+  };
+  const users = await db.listUsers();
+  const candidates = users
+    .filter((candidate) => candidate.id !== user.id)
+    .filter((candidate) => !connectedIds.has(candidate.id))
+    .filter((candidate) => !requestPeerIds.has(candidate.id))
+    .filter((candidate) => !school || String(candidate.profile?.school || "").trim().toLowerCase() === school.toLowerCase())
+    .slice(0, 30)
+    .map((candidate) => ({
+      id: candidate.id,
+      name: candidate.name,
+      email: candidate.email,
+      school: candidate.profile?.school || "",
+      major: candidate.profile?.major || "",
+      sbId: candidate.profile?.sbId || ""
+    }));
+  return sendJson(res, 200, { classmates, candidates, school, requests });
+}
+
+'''
+
+          post_block = '''if (url.pathname === "/api/classmates" && method === "POST") {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  const body = await readJson(req);
+  const sbId = String(body.sbId || body.studentId || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^@+/, "");
+  const email = normalizeEmail(body.email);
+  if (sbId && !isValidSbId(sbId)) return sendError(res, 400, "Please enter a valid SB ID.");
+  if (!sbId && !email.includes("@")) return sendError(res, 400, "Please enter your classmate's SB ID.");
+  const peer = sbId ? await db.findUserBySbId(sbId) : await db.findUserByEmail(email);
+  if (!peer) return sendError(res, 404, sbId ? "No StudyBridge account was found for that SB ID." : "No StudyBridge account was found for that email.");
+  if (peer.id === user.id) return sendError(res, 400, "You cannot add yourself.");
+  const existing = await db.findClassmateByUsers(user.id, peer.id);
+  if (existing) {
+    return sendJson(res, 200, { status: "connected", classmate: await publicClassmate(existing, user.id) });
+  }
+
+  const incomingRequest = await db.findClassmateRequestByUsers(peer.id, user.id);
+  if (incomingRequest) {
+    const accepted = await db.updateClassmateRequest(incomingRequest.id, {
+      status: "accepted",
+      respondedAt: new Date().toISOString()
+    });
+    const connection = await db.createClassmate({ id: createId("mate"), userIds: [user.id, peer.id], requestId: incomingRequest.id });
+    return sendJson(res, 201, { status: "connected", request: accepted, classmate: await publicClassmate(connection, user.id) });
+  }
+
+  const existingRequest = await db.findClassmateRequestByUsers(user.id, peer.id);
+  const request = existingRequest || await db.createClassmateRequest({
+    id: createId("mateReq"),
+    fromUserId: user.id,
+    toUserId: peer.id
+  });
+  return sendJson(res, existingRequest ? 200 : 201, {
+    status: "pending",
+    request: {
+      id: request.id,
+      status: request.status || "pending",
+      createdAt: request.createdAt
+    }
+  });
+}
+
+const classmateRequestMatch = url.pathname.match(/^\\/api\\/classmate-requests\\/([^/]+)$/);
+if (classmateRequestMatch && method === "PATCH") {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  const body = await readJson(req);
+  const action = String(body.action || "").toLowerCase();
+  if (action !== "accept" && action !== "ignore") return sendError(res, 400, "Please choose accept or ignore.");
+  const request = await db.getClassmateRequest(user.id, classmateRequestMatch[1]);
+  if (!request || (request.status || "pending") !== "pending") return sendError(res, 404, "Friend request not found.");
+  if (request.toUserId !== user.id) return sendError(res, 403, "Only the receiver can respond to this request.");
+
+  if (action === "ignore") {
+    const ignored = await db.updateClassmateRequest(request.id, { status: "ignored", respondedAt: new Date().toISOString() });
+    return sendJson(res, 200, { status: "ignored", request: ignored });
+  }
+
+  const existingConnection = await db.findClassmateByUsers(request.fromUserId, request.toUserId);
+  const connection = existingConnection || await db.createClassmate({
+    id: createId("mate"),
+    userIds: [request.fromUserId, request.toUserId],
+    requestId: request.id
+  });
+  const accepted = await db.updateClassmateRequest(request.id, { status: "accepted", respondedAt: new Date().toISOString() });
+  return sendJson(res, 200, { status: "connected", request: accepted, classmate: await publicClassmate(connection, user.id) });
+}
+
+'''
+
+          path.write_text(source[:start] + get_block + post_block + source[end:], encoding='utf-8')
+          print('server.js patched')
+          PY
+      - name: Validate server syntax
+        run: node --check server.js
+      - name: Commit friend request patch
+        run: |
+          if git diff --quiet -- server.js; then
+            echo "No server changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.js
+          git commit -m "Fix classmate friend request inbox"
+          git push
       - name: Deploy to Lightsail
         env:
           LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}

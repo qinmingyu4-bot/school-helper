@@ -403,7 +403,7 @@
   loadScriptOnce("/classmates-request-patch.js?v=20261005-5");
   loadScriptOnce("/classmate-chat-bubble-fix.js?v=20261005-2");
   loadScriptOnce("/chat-bubble-compact-live.js?v=20261005-1");
-  loadScriptOnce("/study-chat-bottom-fix.js?v=20261006-1");
+  loadScriptOnce("/study-chat-bottom-fix.js?v=20261006-4");
   loadScriptOnce("/email-reply-patch.js?v=20261005-1");
   loadScriptOnce("/schedule-patch.js?v=20261005-3");
   loadScriptOnce("/schedule-dashboard-patch.js?v=20261005-1");

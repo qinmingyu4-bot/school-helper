@@ -543,8 +543,7 @@ async function callAi(messages, model = simpleAiModel) {
     },
     body: JSON.stringify({
       model,
-      messages,
-      temperature: 0.35
+      messages
     })
   });
   const text = await response.text();

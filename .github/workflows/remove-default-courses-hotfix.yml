@@ -1,0 +1,72 @@
+name: Remove default system courses from course list
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/remove-default-courses-hotfix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch course list defaults
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'public/app.js';
+          let text = fs.readFileSync(path, 'utf8');
+
+          if (!text.includes('const SYSTEM_COURSE_NAMES')) {
+            text = text.replace(
+              /const state = \{[\s\S]*?\n\};\n/,
+              (match) => `${match}\nconst SYSTEM_COURSE_NAMES = new Set(["Schedule & Deadlines", "Email Reply Helper"]);\n\nfunction visibleCourses() {\n  return state.courses.filter((course) => !SYSTEM_COURSE_NAMES.has(course.name));\n}\n`
+            );
+          }
+
+          text = text.replace(
+            /  await loadCourses\(\);\n  if \(!state\.courses\.length\) \{\n    const result = await api\("\/api\/courses", \{ method: "POST", body: \{ name: "My first course" \} \}\);\n    state\.courses = \[result\.course\];\n  \}\n  state\.activeCourseId = state\.courses\[0\]\.id;/,
+            '  await loadCourses();\n  state.activeCourseId = visibleCourses()[0]?.id || null;'
+          );
+
+          text = text.replace(
+            /function renderCourses\(\) \{\n  if \(!state\.courses\.length\) \{/,
+            'function renderCourses() {\n  const courses = visibleCourses();\n  if (!courses.length) {'
+          );
+
+          text = text.replace(
+            /\n  courseList\.innerHTML = state\.courses\n    \.map\(/,
+            '\n  if (!courses.some((course) => course.id === state.activeCourseId)) {\n    state.activeCourseId = courses[0].id;\n  }\n\n  courseList.innerHTML = courses\n    .map('
+          );
+
+          text = text.replace(
+            /state\.activeCourseId = state\.courses\[0\]\?\.id \|\| null;/g,
+            'state.activeCourseId = visibleCourses()[0]?.id || null;'
+          );
+
+          if (text.includes('name: "My first course"')) {
+            throw new Error('Default My first course creation still exists.');
+          }
+          if (!text.includes('visibleCourses()')) {
+            throw new Error('Visible course filter was not installed.');
+          }
+
+          fs.writeFileSync(path, text);
+          NODE
+          node --check public/app.js
+      - name: Commit hotfix
+        run: |
+          if git diff --quiet; then
+            echo "No app.js changes needed."
+            exit 0
+          fi
+          git config user.name "qinmingyu4-bot"
+          git config user.email "qinmingyu4-bot@users.noreply.github.com"
+          git add public/app.js
+          git commit -m "Hide system courses and remove default course creation"
+          git push

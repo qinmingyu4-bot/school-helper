@@ -131,7 +131,7 @@
   }
 
   function loadCheatsheetPatch() {
-    const src = "/cheatsheet-mode-patch.js?v=20261006-1";
+    const src = "/cheatsheet-mode-patch.js?v=20261006-2";
     const cleanSrc = src.split("?")[0];
     if (document.querySelector(`script[src^="${cleanSrc}"]`)) return;
     const script = document.createElement("script");

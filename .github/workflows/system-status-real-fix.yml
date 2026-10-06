@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - .github/workflows/system-status-real-fix.yml
+      - .github/triggers/system-status-real-fix.txt
   workflow_dispatch:
 
 permissions:
@@ -27,7 +28,6 @@ jobs:
                   return text
               return text.replace(old, new, 1)
 
-          # Frontend creator layout and status card behavior.
           layout_path = Path("public/layout-fix.js")
           layout = layout_path.read_text(encoding="utf-8")
           layout = replace_once(
@@ -61,7 +61,6 @@ jobs:
           )
           status_path.write_text(status, encoding="utf-8")
 
-          # Backend deep diagnostics endpoint.
           server_path = Path("server.js")
           server = server_path.read_text(encoding="utf-8")
           if 'const https = require("https");' not in server:

@@ -225,6 +225,9 @@ async function publicClassmate(connection, viewerId) {
           name: peer.name || "同学",
           email: peer.email || "",
           school: peer.profile?.school || "",
+          major: peer.profile?.major || "",
+          avatarUrl: peer.profile?.avatarUrl || "",
+          backgroundUrl: peer.profile?.backgroundUrl || "",
           sbId: peer.profile?.sbId || ""
         }
       : null,

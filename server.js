@@ -450,7 +450,63 @@ async function verifyEmailCode(email, purpose, code) {
   await db.deleteAuthCode(email, purpose);
 }
 
-function buildStudyPrompt({ user, course, documents, history, mode, message }) {
+const scheduleItemPrefix = "[SCHEDULE_ITEM]";
+
+function parseScheduleDocument(doc, course = {}) {
+  if (!String(doc.title || "").startsWith(scheduleItemPrefix) && String(doc.type || "") !== "Schedule") return null;
+  try {
+    const data = JSON.parse(doc.text || "{}");
+    if (!data.title || !data.startsAt) return null;
+    return {
+      id: doc.id,
+      title: String(data.title || "").slice(0, 160),
+      kind: String(data.kind || "deadline").slice(0, 40),
+      course: String(data.course || course.name || "").slice(0, 100),
+      startsAt: data.startsAt,
+      location: String(data.location || "").slice(0, 160),
+      notes: String(data.notes || "").slice(0, 600),
+      completedAt: data.completedAt || ""
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function listUserScheduleItems(userId) {
+  const courses = await db.listCourses(userId);
+  const perCourse = await Promise.all(
+    courses.map(async (course) => ({
+      course,
+      documents: await db.listDocuments(userId, course.id)
+    }))
+  );
+  return perCourse
+    .flatMap(({ course, documents }) => documents.map((doc) => parseScheduleDocument(doc, course)).filter(Boolean))
+    .filter((item) => !item.completedAt)
+    .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+}
+
+function formatScheduleContext(scheduleItems = []) {
+  const upcoming = scheduleItems.filter((item) => Number.isFinite(new Date(item.startsAt).getTime())).slice(0, 20);
+  if (!upcoming.length) {
+    return "No unfinished schedule/deadline items are saved for this student.";
+  }
+  return upcoming
+    .map((item, index) => {
+      const bits = [
+        `${index + 1}. ${item.title}`,
+        `course=${item.course || "unknown"}`,
+        `kind=${item.kind || "deadline"}`,
+        `due=${item.startsAt}`
+      ];
+      if (item.location) bits.push(`location=${item.location}`);
+      if (item.notes) bits.push(`notes=${item.notes}`);
+      return bits.join(" | ");
+    })
+    .join("\n");
+}
+
+function buildStudyPrompt({ user, course, documents, history, scheduleItems, mode, message }) {
   const docContext = documents
     .slice(0, 8)
     .map((doc) => `Source: ${doc.title}\n${doc.text.slice(0, 1800)}`)
@@ -463,13 +519,13 @@ function buildStudyPrompt({ user, course, documents, history, mode, message }) {
     {
       role: "system",
       content:
-        "You are StudyBridge, a bilingual academic coach for international students. Explain in Chinese, preserve key English academic terms, help students learn without doing prohibited final submissions for them, and keep answers grounded in the provided course material. When the student has provided a school, tailor examples, terminology, planning advice, and campus context to that school when useful."
+        "You are StudyBridge, a bilingual academic coach for international students. Explain in Chinese, preserve key English academic terms, help students learn without doing prohibited final submissions for them, and keep answers grounded in the provided course material and the student's global schedule. When the student asks about due dates, unfinished work, deadlines, exams, or what to do next, always use the global unfinished schedule/deadline context, even if the current chat is inside a different course."
     },
     {
       role: "user",
       content: `Student: ${user.name}\nSchool: ${user.profile?.school || "Not provided"}\nMajor: ${user.profile?.major || "Not provided"}\nCourse: ${course.name}\nMode: ${mode}\nPreferences: ${JSON.stringify(
         user.preferences || {}
-      )}\n\nCourse material:\n${docContext || "No course material saved yet."}\n\nRecent chat:\n${recent || "No prior messages."}\n\nStudent question:\n${message}`
+      )}\nCurrent server time: ${new Date().toISOString()}\n\nGlobal unfinished schedule/deadline items across this student's account:\n${formatScheduleContext(scheduleItems)}\n\nCourse material for the current chat course:\n${docContext || "No course material saved yet."}\n\nRecent chat in the current course:\n${recent || "No prior messages."}\n\nStudent question:\n${message}`
     }
   ];
 }
@@ -1367,10 +1423,14 @@ if (directMessageMatch && method === "POST") {
       const mode = String(body.mode || "guided").slice(0, 40);
       if (!message) return sendError(res, 400, "Message is required.");
       const userMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId, role: "user", content: message, mode });
-      const [documents, history] = await Promise.all([db.listDocuments(user.id, courseId), db.listMessages(user.id, courseId)]);
+      const [documents, history, scheduleItems] = await Promise.all([
+      db.listDocuments(user.id, courseId),
+      db.listMessages(user.id, courseId),
+      listUserScheduleItems(user.id)
+    ]);
       const selectedModel = chooseAiModel({ documents, history, mode, message });
-      console.log(`StudyBridge AI route: ${selectedModel} | mode=${mode} | docs=${documents.length}`);
-      const aiContent = await callAi(buildStudyPrompt({ user, course, documents, history, mode, message }), selectedModel);
+      console.log(`StudyBridge AI route: ${selectedModel} | mode=${mode} | docs=${documents.length} | schedule=${scheduleItems.length}`);
+      const aiContent = await callAi(buildStudyPrompt({ user, course, documents, history, scheduleItems, mode, message }), selectedModel);
       const assistantMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId, role: "assistant", content: aiContent, mode });
       return sendJson(res, 201, { messages: [userMessage, assistantMessage], model: selectedModel });
     }

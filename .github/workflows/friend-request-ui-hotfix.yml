@@ -1,0 +1,80 @@
+name: Friend Request UI Hotfix
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/friend-request-ui-hotfix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch classmates UI refresh
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          let changed = false;
+
+          const classmatesPath = 'public/classmates-request-patch.js';
+          let classmates = fs.readFileSync(classmatesPath, 'utf8');
+          const originalClassmates = classmates;
+
+          if (!classmates.includes('classmatesRefreshTimer')) {
+            classmates = classmates.replace(
+              '  let activeClassmateId = "";\n',
+              '  let activeClassmateId = "";\n  let classmatesRefreshTimer = null;\n  let isLoadingClassmates = false;\n'
+            );
+          }
+
+          classmates = classmates.replace(
+            '    hideOtherPages();\n    page.hidden = false;\n    await loadClassmates();',
+            '    hideOtherPages();\n    page.hidden = false;\n    startClassmateRefreshTimer();\n    await loadClassmates();'
+          );
+
+          if (!classmates.includes('function startClassmateRefreshTimer()')) {
+            classmates = classmates.replace(
+              '\n  async function loadClassmates() {\n    if (!page) return;\n',
+              '\n  function startClassmateRefreshTimer() {\n    if (classmatesRefreshTimer) return;\n    classmatesRefreshTimer = setInterval(() => {\n      if (!page || page.hidden || document.visibilityState === "hidden") return;\n      loadClassmates({ silent: true });\n    }, 6000);\n  }\n\n  async function loadClassmates(options = {}) {\n    if (!page || isLoadingClassmates) return;\n    const silent = Boolean(options.silent);\n    isLoadingClassmates = true;\n'
+            );
+          }
+
+          classmates = classmates.replace(
+            '    status.textContent = "正在读取同学和申请...";',
+            '    if (!silent) status.textContent = "正在读取同学和申请...";'
+          );
+
+          const oldCatch = '    } catch (error) {\n      status.textContent = error.message;\n      page.querySelector("#classmateRequestList").innerHTML = "";\n      page.querySelector("#classmateList").innerHTML = `<p class="empty">${escapeHtml(error.message)}</p>`;\n      page.querySelector("#classmateCandidates").innerHTML = "";\n      page.querySelector("#directMessageList").innerHTML = "";\n    }\n  }';
+          const newCatch = '    } catch (error) {\n      if (!silent) {\n        status.textContent = error.message;\n        page.querySelector("#classmateRequestList").innerHTML = "";\n        page.querySelector("#classmateList").innerHTML = `<p class="empty">${escapeHtml(error.message)}</p>`;\n        page.querySelector("#classmateCandidates").innerHTML = "";\n        page.querySelector("#directMessageList").innerHTML = "";\n      }\n    } finally {\n      isLoadingClassmates = false;\n    }\n  }';
+          classmates = classmates.replace(oldCatch, newCatch);
+
+          if (classmates !== originalClassmates) {
+            fs.writeFileSync(classmatesPath, classmates);
+            changed = true;
+          }
+
+          const layoutPath = 'public/layout-fix.js';
+          let layout = fs.readFileSync(layoutPath, 'utf8');
+          const originalLayout = layout;
+          layout = layout.replace(/\/classmates-request-patch\.js\?v=20261005-\d+/g, '/classmates-request-patch.js?v=20261005-3');
+          if (layout !== originalLayout) {
+            fs.writeFileSync(layoutPath, layout);
+            changed = true;
+          }
+
+          if (!changed) {
+            console.log('Friend request UI hotfix already applied.');
+            process.exit(0);
+          }
+          NODE
+          node --check public/classmates-request-patch.js
+          node --check public/layout-fix.js
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/classmates-request-patch.js public/layout-fix.js
+          git commit -m "Refresh classmate requests automatically"
+          git push

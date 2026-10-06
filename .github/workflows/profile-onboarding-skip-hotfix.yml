@@ -1,0 +1,68 @@
+name: Add skip option to profile onboarding
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/profile-onboarding-skip-hotfix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch onboarding skip option
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'public/profile-onboarding-patch.js';
+          let text = fs.readFileSync(path, 'utf8');
+
+          if (!text.includes('profile-onboarding-secondary')) {
+            text = text.replace(
+              /      \.profile-onboarding-message \{[\s\S]*?        font-size: 12px;\n      \}\n/,
+              (match) => `${match}\n      .profile-onboarding-actions-inner {\n        display: flex;\n        gap: 8px;\n        align-items: center;\n        justify-content: flex-end;\n        flex-wrap: wrap;\n      }\n\n      .profile-onboarding-secondary {\n        border: 1px solid var(--line);\n        border-radius: 8px;\n        background: white;\n        color: var(--muted);\n        min-height: 40px;\n        padding: 0 14px;\n        font-weight: 800;\n        cursor: pointer;\n      }\n\n      .profile-onboarding-secondary:hover {\n        color: var(--navy);\n        border-color: var(--green);\n      }\n`
+            );
+          }
+
+          text = text.replace(
+            /          <p class="profile-onboarding-message" id="profileOnboardingMessage"><\/p>\n          <button class="primary-button" type="submit">保存并进入<\/button>/,
+            '          <p class="profile-onboarding-message" id="profileOnboardingMessage"></p>\n          <div class="profile-onboarding-actions-inner">\n            <button class="profile-onboarding-secondary" id="skipProfileOnboardingButton" type="button">暂时不填，以后再填</button>\n            <button class="primary-button" type="submit">保存并进入</button>\n          </div>'
+          );
+
+          if (!text.includes('skipProfileOnboardingButton')) {
+            throw new Error('Skip button was not inserted.');
+          }
+
+          if (!text.includes('localStorage.getItem("studybridgeProfileOnboardingDone")')) {
+            text = text.replace(
+              /  async function maybeShowOnboarding\(\) \{\n    const user = currentUser \|\| \(await refreshMe\(\)\);/,
+              '  async function maybeShowOnboarding() {\n    if (localStorage.getItem("studybridgeProfileOnboardingDone") === "true") return;\n    const user = currentUser || (await refreshMe());'
+            );
+          }
+
+          if (!text.includes('addEventListener("click", () => {\n      localStorage.setItem("studybridgeProfileOnboardingDone", "true");')) {
+            text = text.replace(
+              /    document\.body\.appendChild\(overlay\);\n\n    overlay\.querySelector\("#profileOnboardingForm"\)\?\.addEventListener/,
+              '    document.body.appendChild(overlay);\n\n    overlay.querySelector("#skipProfileOnboardingButton")?.addEventListener("click", () => {\n      localStorage.setItem("studybridgeProfileOnboardingDone", "true");\n      overlay.remove();\n    });\n\n    overlay.querySelector("#profileOnboardingForm")?.addEventListener'
+            );
+          }
+
+          fs.writeFileSync(path, text);
+          NODE
+          node --check public/profile-onboarding-patch.js
+      - name: Commit hotfix
+        run: |
+          if git diff --quiet; then
+            echo "No changes needed."
+            exit 0
+          fi
+          git config user.name "qinmingyu4-bot"
+          git config user.email "qinmingyu4-bot@users.noreply.github.com"
+          git add public/profile-onboarding-patch.js
+          git commit -m "Add skip option to profile onboarding"
+          git push

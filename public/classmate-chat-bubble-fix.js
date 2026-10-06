@@ -2,6 +2,7 @@
   let lastActiveClassmateId = "";
   let lastMessageSignature = "";
   let isPollingMessages = false;
+  let requestsExpanded = false;
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -29,6 +30,77 @@
       #classmatesPage .direct-message-list {
         align-content: end !important;
         gap: 10px !important;
+      }
+
+      #classmatesPage .classmates-side {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+      }
+
+      #classmatesPage .classmate-request-section {
+        flex: 0 0 auto !important;
+      }
+
+      #classmatesPage .classmate-list-section {
+        flex: 1 1 auto !important;
+        min-height: 120px !important;
+      }
+
+      #classmatesPage .request-toggle-title {
+        min-height: 42px !important;
+        padding: 8px 10px !important;
+        border: 1px solid #dfe7f1 !important;
+        border-radius: 8px !important;
+        background: #fbfdff !important;
+        cursor: pointer !important;
+        user-select: none !important;
+      }
+
+      #classmatesPage .request-toggle-title:hover {
+        border-color: rgba(47, 125, 98, 0.42) !important;
+        background: #f7fbf9 !important;
+      }
+
+      #classmatesPage .request-toggle-title h3 {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 7px !important;
+        margin: 0 !important;
+      }
+
+      #classmatesPage .request-toggle-title h3::after {
+        content: "展开" !important;
+        color: var(--muted) !important;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+      }
+
+      #classmatesPage .classmate-request-section.is-expanded .request-toggle-title h3::after {
+        content: "收起" !important;
+      }
+
+      #classmatesPage .request-alert-dot {
+        display: none;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        border-radius: 999px;
+        background: #df4d4d;
+        color: white;
+        font-size: 11px;
+        font-weight: 900;
+        line-height: 18px;
+        text-align: center;
+      }
+
+      #classmatesPage .classmate-request-section.has-requests .request-alert-dot {
+        display: inline-block !important;
+      }
+
+      #classmatesPage .classmate-request-section:not(.is-expanded) #classmateRequestList,
+      #classmatesPage .classmate-request-section:not(.is-expanded) #refreshClassmateRequestsButton {
+        display: none !important;
       }
 
       #classmatesPage .direct-message {
@@ -70,6 +142,57 @@
         }
       }
     `;
+  }
+
+  function countVisibleRequests(list) {
+    if (!list) return 0;
+    const empty = list.querySelector(".empty");
+    if (empty && /还没有|沒有|没有/.test(empty.textContent || "")) return 0;
+    return list.querySelectorAll(".request-row").length;
+  }
+
+  function installRequestListCollapse() {
+    const page = document.querySelector("#classmatesPage");
+    const list = page?.querySelector("#classmateRequestList");
+    const section = list?.closest("section");
+    const title = section?.querySelector(".classmate-section-title");
+    const heading = title?.querySelector("h3");
+    if (!page || !list || !section || !title || !heading) return;
+
+    section.classList.add("classmate-request-section");
+    const siblingSections = Array.from(page.querySelectorAll(".classmates-side > section"));
+    siblingSections[1]?.classList.add("classmate-list-section");
+    title.classList.add("request-toggle-title");
+    title.setAttribute("role", "button");
+    title.tabIndex = 0;
+    title.setAttribute("aria-expanded", requestsExpanded ? "true" : "false");
+
+    let dot = heading.querySelector(".request-alert-dot");
+    if (!dot) {
+      dot = document.createElement("span");
+      dot.className = "request-alert-dot";
+      heading.appendChild(dot);
+    }
+
+    const requestCount = countVisibleRequests(list);
+    dot.textContent = requestCount > 9 ? "9+" : String(requestCount || "");
+    section.classList.toggle("has-requests", requestCount > 0);
+    section.classList.toggle("is-expanded", requestsExpanded);
+
+    if (!title.dataset.requestToggleReady) {
+      title.dataset.requestToggleReady = "true";
+      title.addEventListener("click", (event) => {
+        if (event.target.closest("button")) return;
+        requestsExpanded = !requestsExpanded;
+        installRequestListCollapse();
+      });
+      title.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        requestsExpanded = !requestsExpanded;
+        installRequestListCollapse();
+      });
+    }
   }
 
   function getActiveClassmateId() {
@@ -124,7 +247,9 @@
   }
 
   installClassmateChatBubbleFix();
+  installRequestListCollapse();
   setInterval(installClassmateChatBubbleFix, 1500);
+  setInterval(installRequestListCollapse, 1200);
   setInterval(pollActiveClassmateMessages, 3500);
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) pollActiveClassmateMessages();

@@ -1,254 +1,208 @@
-name: Classmate Profile Card Hotfix
+name: System Status Repair Runner
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - ".github/friend-request-ui-hotfix-trigger.txt"
       - ".github/workflows/classmate-profile-card-hotfix.yml"
-      - "server.js"
       - "public/layout-fix.js"
-      - "public/classmate-profile-view.js"
+      - "public/system-status-patch.js"
+      - "server.js"
 
 permissions:
   contents: write
 
 jobs:
-  hotfix:
+  repair:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Add friend profile card support
+      - name: Repair diagnostics and creator spacing
         run: |
           python3 <<'PY'
           from pathlib import Path
           import re
 
-          server_path = Path('server.js')
-          server = server_path.read_text(encoding='utf-8')
-          if 'avatarUrl: peer.profile?.avatarUrl' not in server:
-              old = '''          school: peer.profile?.school || "",
-          sbId: peer.profile?.sbId || ""'''
-              new = '''          school: peer.profile?.school || "",
-          major: peer.profile?.major || "",
-          avatarUrl: peer.profile?.avatarUrl || "",
-          backgroundUrl: peer.profile?.backgroundUrl || "",
-          sbId: peer.profile?.sbId || ""'''
-              if old not in server:
-                  raise SystemExit('publicClassmate peer block not found')
-              server = server.replace(old, new, 1)
-              server_path.write_text(server, encoding='utf-8')
-
-          profile_js = r'''(() => {
-  let cachedClassmates = [];
-  let lastActiveId = "";
-
-  function escapeHtml(value) {
-    return String(value == null ? "" : value)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-
-  function initials(name) {
-    const text = String(name || "SB").trim();
-    return (text.slice(0, 2) || "SB").toUpperCase();
-  }
-
-  function installStyle() {
-    if (document.querySelector("#studybridge-peer-profile-style")) return;
-    const style = document.createElement("style");
-    style.id = "studybridge-peer-profile-style";
-    style.textContent = `
-      .classmates-chat-shell {
-        grid-template-rows: auto auto minmax(0, 1fr) auto !important;
-      }
-
-      .peer-profile-card {
-        margin: 14px 18px 0;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: white;
-        overflow: hidden;
-      }
-
-      .peer-profile-card[hidden] { display: none !important; }
-
-      .peer-profile-cover {
-        position: relative;
-        height: 92px;
-        background: linear-gradient(145deg, #1f3a5f, #67a989);
-      }
-
-      .peer-profile-cover > img {
-        display: block;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-
-      .peer-profile-avatar {
-        position: absolute;
-        left: 16px;
-        bottom: -24px;
-        display: grid;
-        place-items: center;
-        width: 54px;
-        height: 54px;
-        border: 3px solid white;
-        border-radius: 10px;
-        background: linear-gradient(145deg, #1f3a5f, #2f7d62);
-        color: white;
-        font-weight: 900;
-        overflow: hidden;
-        box-shadow: 0 10px 24px rgba(25, 36, 58, 0.12);
-      }
-
-      .peer-profile-avatar img {
-        display: block;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-
-      .peer-profile-body {
-        display: grid;
-        gap: 7px;
-        padding: 32px 16px 14px;
-      }
-
-      .peer-profile-name {
-        color: var(--navy);
-        font-size: 18px;
-        line-height: 1.2;
-      }
-
-      .peer-profile-facts {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        color: var(--muted);
-        font-size: 12px;
-        line-height: 1.35;
-      }
-
-      .peer-profile-facts span {
-        padding: 4px 7px;
-        border-radius: 999px;
-        background: #f3f6fb;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  function ensureCard() {
-    const shell = document.querySelector("#classmatesPage .classmates-chat-shell");
-    if (!shell) return null;
-    let card = shell.querySelector("#peerProfileCard");
-    if (card) return card;
-    const head = shell.querySelector(".classmates-chat-head");
-    const list = shell.querySelector("#directMessageList");
-    if (!head || !list) return null;
-    card = document.createElement("article");
-    card.id = "peerProfileCard";
-    card.className = "peer-profile-card";
-    card.hidden = true;
-    head.insertAdjacentElement("afterend", card);
-    return card;
-  }
-
-  function activeClassmateId() {
-    const active = document.querySelector("#classmatesPage .classmate-row.active [data-open-classmate]");
-    return active ? active.dataset.openClassmate || "" : "";
-  }
-
-  async function fetchClassmates() {
-    const response = await fetch("/api/classmates", { cache: "no-store" });
-    if (!response.ok) return cachedClassmates;
-    const payload = await response.json().catch(() => ({}));
-    cachedClassmates = payload.classmates || [];
-    return cachedClassmates;
-  }
-
-  function renderPeer(card, peer) {
-    if (!peer) {
-      card.hidden = true;
-      card.innerHTML = "";
-      return;
-    }
-    const cover = peer.backgroundUrl ? '<img src="' + escapeHtml(peer.backgroundUrl) + '" alt="" />' : "";
-    const avatar = peer.avatarUrl
-      ? '<img src="' + escapeHtml(peer.avatarUrl) + '" alt="' + escapeHtml(peer.name || "classmate") + '" />'
-      : '<span>' + escapeHtml(initials(peer.name)) + '</span>';
-    const facts = [];
-    if (peer.school) facts.push('<span><strong>\u5b66\u6821\uff1a</strong>' + escapeHtml(peer.school) + '</span>');
-    if (peer.major) facts.push('<span><strong>\u4e13\u4e1a\uff1a</strong>' + escapeHtml(peer.major) + '</span>');
-    if (peer.sbId) facts.push('<span><strong>SB ID\uff1a</strong>@' + escapeHtml(peer.sbId) + '</span>');
-    if (!facts.length) facts.push('<span>\u8fd8\u6ca1\u6709\u586b\u5199\u516c\u5f00\u8d44\u6599</span>');
-    card.hidden = false;
-    card.innerHTML =
-      '<div class="peer-profile-cover">' + cover + '<div class="peer-profile-avatar">' + avatar + '</div></div>' +
-      '<div class="peer-profile-body"><strong class="peer-profile-name">' + escapeHtml(peer.name || "\u540c\u5b66") + '</strong>' +
-      '<div class="peer-profile-facts">' + facts.join("") + '</div></div>';
-  }
-
-  async function syncPeerProfile() {
-    installStyle();
-    const page = document.querySelector("#classmatesPage");
-    const card = ensureCard();
-    if (!page || page.hidden || !card) return;
-    const id = activeClassmateId();
-    if (!id) {
-      renderPeer(card, null);
-      return;
-    }
-    if (id !== lastActiveId || !cachedClassmates.length) {
-      lastActiveId = id;
-      await fetchClassmates();
-    }
-    const match = cachedClassmates.find((item) => item.id === id);
-    renderPeer(card, match ? match.peer : null);
-  }
-
-  document.addEventListener("click", () => setTimeout(syncPeerProfile, 120), true);
-  setInterval(syncPeerProfile, 2500);
-  syncPeerProfile();
-})();
-'''
-          Path('public/classmate-profile-view.js').write_text(profile_js, encoding='utf-8')
-
           layout_path = Path('public/layout-fix.js')
           layout = layout_path.read_text(encoding='utf-8')
-          if 'classmate-profile-view.js' not in layout:
-              layout, count = re.subn(
-                  r'(  loadScriptOnce\("/classmates-request-patch\.js\?v=20261005-\d+"\);\n)',
-                  r'\1  loadScriptOnce("/classmate-profile-view.js?v=20261005-1");\n',
-                  layout,
-                  count=1
-              )
-              if count != 1:
-                  raise SystemExit('classmates script anchor not found')
-              layout_path.write_text(layout, encoding='utf-8')
+          layout = layout.replace('        min-height: calc(100vh - 24px);\n        margin: 0;\n        padding: 28px;', '        min-height: 0 !important;\n        margin: 0;\n        padding: 28px 28px 18px;')
+          layout = layout.replace('/system-status-patch.js?v=20261006-2', '/system-status-patch.js?v=20261006-3')
+          layout_path.write_text(layout, encoding='utf-8')
+
+          status_path = Path('public/system-status-patch.js')
+          status = status_path.read_text(encoding='utf-8')
+          if 'const dbReady = Boolean(system?.database?.ready ?? health?.ok);' not in status:
+              status = status.replace('    const dbMode = system?.database?.mode || health?.db || TEXT.unknown;\n', '    const dbMode = system?.database?.mode || health?.db || TEXT.unknown;\n    const dbReady = Boolean(system?.database?.ready ?? health?.ok);\n', 1)
+          status = re.sub(r'        card\(TEXT\.dbMode, .*?\),\n', '        card(TEXT.dbMode, dbReady ? "ok" : "bad", dbMode, system?.database?.note || (dbReady ? "Database is readable and writable." : "Database check failed.")),\n', status, count=1)
+          status = re.sub(r'        card\(TEXT\.emailCode, .*?\),\n', '        card(TEXT.emailCode, emailConfigured || !emailRequired ? "ok" : "bad", emailConfigured ? "Real email sending is configured" : emailRequired ? "Verification required but email sending is missing" : "Not required", emailConfigured ? "Verification emails can be sent." : emailRequired ? "Registration depends on email codes." : "Invite codes are the main registration control, so SMTP is optional for now."),\n', status, count=1)
+          status_path.write_text(status, encoding='utf-8')
+
+          server_path = Path('server.js')
+          server = server_path.read_text(encoding='utf-8')
+          if 'const https = require("https");' not in server:
+              server = server.replace('const http = require("http");\n', 'const http = require("http");\nconst https = require("https");\n', 1)
+          if 'const os = require("os");' not in server:
+              server = server.replace('const fs = require("fs/promises");\n', 'const fs = require("fs/promises");\nconst os = require("os");\n', 1)
+          if 'const serverStartedAt = new Date().toISOString();' not in server:
+              server = server.replace('const port = Number(process.env.PORT || 3000);\n', 'const port = Number(process.env.PORT || 3000);\nconst serverStartedAt = new Date().toISOString();\n', 1)
+          if 'let cachedAiHealth = null;' not in server:
+              server = server.replace('const googleClientSecret = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();\n', 'const googleClientSecret = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();\nlet cachedAiHealth = null;\n', 1)
+
+          helper_anchor = '''function googleAuthEnabled() {
+  return Boolean(googleClientId && googleClientSecret);
+}
+'''
+          helper_block = '''function googleAuthEnabled() {
+  return Boolean(googleClientId && googleClientSecret);
+}
+
+function emailDeliveryConfigured() {
+  const host = String(process.env.SMTP_HOST || "").trim();
+  const user = String(process.env.SMTP_USER || "").trim();
+  const pass = String(process.env.SMTP_PASS || "").trim();
+  const from = String(process.env.MAIL_FROM || process.env.SMTP_FROM || user).trim();
+  return Boolean(nodemailer && host && from && (!user || pass));
+}
+
+function packageVersion() {
+  try {
+    const pkg = JSON.parse(fsSync.readFileSync(path.join(__dirname, "package.json"), "utf8"));
+    return String(pkg.version || "unknown");
+  } catch {
+    return "unknown";
+  }
+}
+
+function fileIsoTime(filePath) {
+  try {
+    return fsSync.statSync(filePath).mtime.toISOString();
+  } catch {
+    return "";
+  }
+}
+
+function autoSyncStatus() {
+  const candidates = [path.join(os.homedir(), "studybridge-auto-deploy.sh"), "/home/ubuntu/studybridge-auto-deploy.sh"];
+  const scriptPath = candidates.find((item) => fsSync.existsSync(item)) || "";
+  const logPath = path.join(os.homedir(), "studybridge-deploy.log");
+  return {
+    configured: Boolean(scriptPath),
+    scriptPath: scriptPath ? scriptPath.replace(os.homedir(), "~") : "",
+    lastLogAt: fileIsoTime(logPath),
+    note: scriptPath ? "Server auto-sync script was detected." : "Server auto-sync script was not detected."
+  };
+}
+
+async function databaseStatus() {
+  const mode = db.mode || process.env.STUDYBRIDGE_DB || "local";
+  try {
+    const users = await db.listUsers();
+    return {
+      mode,
+      ready: true,
+      userCount: Array.isArray(users) ? users.length : 0,
+      note: mode === "local" ? "Local persistent database is readable and writable. Add backups or a cloud database before larger public use." : "Cloud database connection is normal."
+    };
+  } catch (error) {
+    return { mode, ready: false, userCount: 0, note: error && error.message ? error.message : "Database check failed." };
+  }
+}
+
+function requestOpenAiModelsHealth() {
+  return new Promise((resolve) => {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      resolve({ configured: false, ok: false, detail: "OPENAI_API_KEY is not configured." });
+      return;
+    }
+    const req = https.request(
+      { hostname: "api.openai.com", path: "/v1/models", method: "GET", timeout: 4500, headers: { authorization: `Bearer ${apiKey}` } },
+      (response) => {
+        response.resume();
+        const ok = response.statusCode >= 200 && response.statusCode < 300;
+        resolve({ configured: true, ok, statusCode: response.statusCode, detail: ok ? "OpenAI API is reachable." : "OpenAI API returned a non-success status." });
+      }
+    );
+    req.on("timeout", () => { req.destroy(); resolve({ configured: true, ok: false, detail: "OpenAI API check timed out." }); });
+    req.on("error", (error) => resolve({ configured: true, ok: false, detail: error.message || "OpenAI API connection failed." }));
+    req.end();
+  });
+}
+
+async function aiHealthStatus() {
+  if (cachedAiHealth && Date.now() - cachedAiHealth.checkedAtMs < 60000) return cachedAiHealth.payload;
+  const health = await requestOpenAiModelsHealth();
+  const payload = { ...health, simpleModel: simpleAiModel, complexModel: complexAiModel, complexRoutePercent: solRoutePercent, checkedAt: new Date().toISOString() };
+  cachedAiHealth = { checkedAtMs: Date.now(), payload };
+  return payload;
+}
+'''
+          if 'function emailDeliveryConfigured()' not in server:
+              if helper_anchor not in server:
+                  raise SystemExit('googleAuthEnabled helper anchor not found')
+              server = server.replace(helper_anchor, helper_block, 1)
+          if 'async function databaseStatus()' not in server and 'function databaseStatus()' not in server:
+              raise SystemExit('databaseStatus helper was not inserted')
+
+          route_anchor = '  if (url.pathname === "/api/admin/invites" && method === "POST") {\n'
+          route_block = '''  if (url.pathname === "/api/admin/system-status" && method === "GET") {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+    const ai = await aiHealthStatus();
+    return sendJson(res, 200, {
+      version: {
+        app: packageVersion(),
+        node: process.version,
+        environment: process.env.NODE_ENV || "development"
+      },
+      deploy: {
+        serverStartedAt,
+        lastCodeUpdateAt: fileIsoTime(path.join(__dirname, "server.js"))
+      },
+      database: await databaseStatus(),
+      ai,
+      google: {
+        enabled: googleAuthEnabled(),
+        clientIdConfigured: Boolean(googleClientId),
+        clientSecretConfigured: Boolean(googleClientSecret),
+        redirectUri: googleRedirectUri(req)
+      },
+      email: {
+        verificationRequired: requireEmailVerification,
+        fallbackAllowed: allowEmailCodeFallback,
+        sendingConfigured: emailDeliveryConfigured(),
+        senderInstalled: Boolean(nodemailer)
+      },
+      autoSync: autoSyncStatus()
+    });
+  }
+
+'''
+          if 'url.pathname === "/api/admin/system-status"' not in server:
+              if route_anchor not in server:
+                  raise SystemExit('admin invite route anchor not found')
+              server = server.replace(route_anchor, route_block + route_anchor, 1)
+          else:
+              server = re.sub(r'database:\s*\{\s*mode:\s*db\.mode \|\| process\.env\.STUDYBRIDGE_DB \|\| "local"\s*\}', 'database: await databaseStatus()', server, count=1)
+          server_path.write_text(server, encoding='utf-8')
           PY
 
       - name: Check JavaScript
         run: |
           node --check server.js
           node --check public/layout-fix.js
-          node --check public/classmate-profile-view.js
+          node --check public/system-status-patch.js
 
       - name: Commit patch
         run: |
           if git diff --quiet; then
-            echo "No classmate profile card changes needed."
+            echo "No system status changes needed."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add server.js public/layout-fix.js public/classmate-profile-view.js
-          git commit -m "Add classmate profile card"
+          git add server.js public/layout-fix.js public/system-status-patch.js
+          git commit -m "Repair system diagnostics and creator spacing"
           git push

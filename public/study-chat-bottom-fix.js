@@ -18,7 +18,8 @@
         scroll-padding-bottom: var(--study-chat-bottom-space, 168px) !important;
         min-height: 0 !important;
         overflow-y: auto !important;
-        overscroll-behavior: auto;
+        overscroll-behavior: contain !important;
+        scrollbar-gutter: stable;
       }
 
       #workspacePage #quickPrompts,
@@ -71,6 +72,32 @@
     if (stickToBottom) scrollStudyChatToBottom();
   }
 
+  function isStudyWorkspaceTarget(target) {
+    const workspacePage = document.querySelector("#workspacePage");
+    const developerPanel = document.querySelector("#developerPanel");
+    return Boolean(
+      workspacePage &&
+        isVisible(workspacePage) &&
+        workspacePage.contains(target) &&
+        !(developerPanel && !developerPanel.hidden)
+    );
+  }
+
+  function routeWheelToChat(event) {
+    const chatArea = document.querySelector("#chatArea");
+    if (!chatArea || !isStudyWorkspaceTarget(event.target)) return;
+    if (chatArea.scrollHeight <= chatArea.clientHeight + 2) return;
+
+    if (event.deltaY < 0 || distanceFromBottom(chatArea) > 80) {
+      stickToBottom = false;
+    }
+
+    event.preventDefault();
+    programmaticScrollUntil = Date.now() + 80;
+    chatArea.scrollTop += event.deltaY;
+    setTimeout(updateStickiness, 40);
+  }
+
   function boot() {
     installStyle();
     updateBottomSpace();
@@ -82,13 +109,8 @@
   document.addEventListener("scroll", updateStickiness, true);
   document.addEventListener(
     "wheel",
-    (event) => {
-      const chatArea = document.querySelector("#chatArea");
-      if (!chatArea || !chatArea.contains(event.target)) return;
-      if (event.deltaY < 0) stickToBottom = false;
-      setTimeout(updateStickiness, 30);
-    },
-    { passive: true }
+    routeWheelToChat,
+    { passive: false, capture: true }
   );
 
   const observer = new MutationObserver(() => {

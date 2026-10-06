@@ -17,12 +17,14 @@ jobs:
 
       - name: Add weather lookup support
         run: |
-          node <<'NODE'
-          const fs = require("fs");
-          const file = "server.js";
-          let text = fs.readFileSync(file, "utf8");
+          python3 <<'PY'
+          from pathlib import Path
+          import re
 
-          const helper = String.raw`
+          file_path = Path("server.js")
+          text = file_path.read_text(encoding="utf-8")
+
+          helper = r'''
 function looksLikeWeatherQuestion(message) {
   return /weather|temperature|forecast|rain|snow|\u5929\u6c14|\u6c14\u6e29|\u6e29\u5ea6|\u4e0b\u96e8|\u4e0b\u96ea|\u964d\u96e8|\u964d\u96ea/i.test(
     String(message || "")
@@ -123,37 +125,49 @@ async function getWeatherContextForQuestion(message, user) {
     return `Weather lookup failed: ${error?.message || "unknown error"}. Tell the student the live weather service is temporarily unavailable.`;
   }
 }
-`;
+'''
 
-          if (!text.includes("function getWeatherContextForQuestion")) {
-            text = text.replace("\n\nfunction buildStudyPrompt", `\n${helper}\nfunction buildStudyPrompt`);
-          }
+          if "function getWeatherContextForQuestion" not in text:
+            marker = "\n\nfunction buildStudyPrompt"
+            if marker not in text:
+              raise SystemExit("buildStudyPrompt marker was not found")
+            text = text.replace(marker, "\n" + helper + "\nfunction buildStudyPrompt", 1)
+
           text = text.replace(
             "function buildStudyPrompt({ user, course, documents, history, scheduleItems, mode, message })",
             "function buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message })"
-          );
+          )
           text = text.replace(
             "the provided course material and the student's global schedule. When the student asks about due dates",
             "the provided course material, the student's global schedule, and any real-time external context provided by the server. When the student asks about due dates"
-          );
+          )
           text = text.replace(
             "even if the current chat is inside a different course.",
             "even if the current chat is inside a different course. When real-time weather context is provided, answer the weather question directly and include practical clothing/commute advice."
-          );
+          )
           text = text.replace(
-            "Current server time: ${new Date().toISOString()}\\n\\nGlobal unfinished schedule/deadline items across this student's account:",
-            "Current server time: ${new Date().toISOString()}\\n\\nReal-time external context:\\n${weatherContext || \"No external context was needed or available for this question.\"}\\n\\nGlobal unfinished schedule/deadline items across this student's account:"
-          );
-          text = text.replace(
-            `const [documents, history, scheduleItems] = await Promise.all([\n        db.listDocuments(user.id, courseId),\n        db.listMessages(user.id, courseId),\n        listUserScheduleItems(user.id)\n      ]);`,
-            `const [documents, history, scheduleItems, weatherContext] = await Promise.all([\n        db.listDocuments(user.id, courseId),\n        db.listMessages(user.id, courseId),\n        listUserScheduleItems(user.id),\n        getWeatherContextForQuestion(message, user)\n      ]);`
-          );
+            r"Current server time: ${new Date().toISOString()}\n\nGlobal unfinished schedule/deadline items across this student's account:",
+            r"Current server time: ${new Date().toISOString()}\n\nReal-time external context:\n${weatherContext || \"No external context was needed or available for this question.\"}\n\nGlobal unfinished schedule/deadline items across this student's account:"
+          )
+          text = re.sub(
+            r"const \[documents, history, scheduleItems\] = await Promise\.all\(\[\s*db\.listDocuments\(user\.id, courseId\),\s*db\.listMessages\(user\.id, courseId\),\s*listUserScheduleItems\(user\.id\)\s*\]\);",
+            """const [documents, history, scheduleItems, weatherContext] = await Promise.all([
+        db.listDocuments(user.id, courseId),
+        db.listMessages(user.id, courseId),
+        listUserScheduleItems(user.id),
+        getWeatherContextForQuestion(message, user)
+      ]);""",
+            text,
+            count=1,
+            flags=re.S
+          )
           text = text.replace(
             "buildStudyPrompt({ user, course, documents, history, scheduleItems, mode, message })",
             "buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message })"
-          );
-          fs.writeFileSync(file, text, "utf8");
-          NODE
+          )
+
+          file_path.write_text(text, encoding="utf-8")
+          PY
 
           node --check server.js
 

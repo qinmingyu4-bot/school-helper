@@ -347,6 +347,7 @@
   syncStudySidebarPanels();
   loadScriptOnce("/school-autocomplete.js?v=20261005-1");
   loadScriptOnce("/admin-console-patch.js?v=20261005-1");
+  loadScriptOnce("/system-status-patch.js?v=20261006-1");
   loadScriptOnce("/profile-onboarding-patch.js?v=20261005-1");
   loadScriptOnce("/profile-onboarding-fix.js?v=20261005-1");
   loadScriptOnce("/google-auth-patch.js?v=20261005-1");

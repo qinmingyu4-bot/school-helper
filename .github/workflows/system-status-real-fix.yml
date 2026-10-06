@@ -1,0 +1,247 @@
+name: Fix system status diagnostics and creator layout
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/system-status-real-fix.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply targeted StudyBridge fixes
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(text, old, new, label):
+              if old not in text:
+                  print(f"skip {label}: already changed or anchor missing")
+                  return text
+              return text.replace(old, new, 1)
+
+          # Frontend creator layout and status card behavior.
+          layout_path = Path("public/layout-fix.js")
+          layout = layout_path.read_text(encoding="utf-8")
+          layout = replace_once(
+              layout,
+              "        min-height: calc(100vh - 24px);\n        margin: 0;\n        padding: 28px;",
+              "        min-height: 0 !important;\n        margin: 0;\n        padding: 28px 28px 18px;",
+              "creator panel spacing"
+          )
+          layout = layout.replace('/system-status-patch.js?v=20261006-2', '/system-status-patch.js?v=20261006-3')
+          layout_path.write_text(layout, encoding="utf-8")
+
+          status_path = Path("public/system-status-patch.js")
+          status = status_path.read_text(encoding="utf-8")
+          if "const dbReady = Boolean(system?.database?.ready ?? health?.ok);" not in status:
+              status = status.replace(
+                  "    const dbMode = system?.database?.mode || health?.db || TEXT.unknown;\n",
+                  "    const dbMode = system?.database?.mode || health?.db || TEXT.unknown;\n    const dbReady = Boolean(system?.database?.ready ?? health?.ok);\n",
+                  1,
+              )
+          status = re.sub(
+              r'        card\(TEXT\.dbMode, .*?\),\n',
+              '        card(TEXT.dbMode, dbReady ? "ok" : "bad", dbMode, system?.database?.note || (dbReady ? "Database is readable and writable." : "Database check failed.")),\n',
+              status,
+              count=1,
+          )
+          status = re.sub(
+              r'        card\(TEXT\.emailCode, .*?\),\n',
+              '        card(TEXT.emailCode, emailConfigured || !emailRequired ? "ok" : "bad", emailConfigured ? "Real email sending is configured" : emailRequired ? "Verification required but email sending is missing" : "Not required", emailConfigured ? "Verification emails can be sent." : emailRequired ? "Registration depends on email codes." : "Invite codes are the main registration control, so SMTP is optional for now."),\n',
+              status,
+              count=1,
+          )
+          status_path.write_text(status, encoding="utf-8")
+
+          # Backend deep diagnostics endpoint.
+          server_path = Path("server.js")
+          server = server_path.read_text(encoding="utf-8")
+          if 'const https = require("https");' not in server:
+              server = server.replace('const http = require("http");\n', 'const http = require("http");\nconst https = require("https");\n', 1)
+          if 'const os = require("os");' not in server:
+              server = server.replace('const fs = require("fs/promises");\n', 'const fs = require("fs/promises");\nconst os = require("os");\n', 1)
+          if 'const serverStartedAt = new Date().toISOString();' not in server:
+              server = server.replace(
+                  'const googleClientSecret = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();\n',
+                  'const googleClientSecret = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();\nconst serverStartedAt = new Date().toISOString();\nlet cachedAiHealth = null;\n',
+                  1,
+              )
+
+          helper_anchor = '''function googleAuthEnabled() {
+  return Boolean(googleClientId && googleClientSecret);
+}
+'''
+          helper_block = '''function googleAuthEnabled() {
+  return Boolean(googleClientId && googleClientSecret);
+}
+
+function emailDeliveryConfigured() {
+  const host = String(process.env.SMTP_HOST || "").trim();
+  const user = String(process.env.SMTP_USER || "").trim();
+  const pass = String(process.env.SMTP_PASS || "").trim();
+  const from = String(process.env.MAIL_FROM || process.env.SMTP_FROM || user).trim();
+  return Boolean(nodemailer && host && from && (!user || pass));
+}
+
+function packageVersion() {
+  try {
+    const pkg = JSON.parse(fsSync.readFileSync(path.join(__dirname, "package.json"), "utf8"));
+    return String(pkg.version || "unknown");
+  } catch {
+    return "unknown";
+  }
+}
+
+function fileIsoTime(filePath) {
+  try {
+    return fsSync.statSync(filePath).mtime.toISOString();
+  } catch {
+    return "";
+  }
+}
+
+function autoSyncStatus() {
+  const candidates = [path.join(os.homedir(), "studybridge-auto-deploy.sh"), "/home/ubuntu/studybridge-auto-deploy.sh"];
+  const scriptPath = candidates.find((item) => fsSync.existsSync(item)) || "";
+  const logPath = path.join(os.homedir(), "studybridge-deploy.log");
+  return {
+    configured: Boolean(scriptPath),
+    scriptPath: scriptPath ? scriptPath.replace(os.homedir(), "~") : "",
+    lastLogAt: fileIsoTime(logPath),
+    note: scriptPath ? "Server auto-sync script was detected." : "Server auto-sync script was not detected."
+  };
+}
+
+function databaseStatus() {
+  const mode = db.mode || process.env.STUDYBRIDGE_DB || "local";
+  if (mode !== "local") return { mode, ready: true, note: "Cloud database mode is enabled." };
+  const localFile = db.local?.file || process.env.LOCAL_DB_FILE || ".data/studybridge.json";
+  return {
+    mode,
+    ready: true,
+    file: String(localFile).replace(__dirname, "."),
+    lastSavedAt: fileIsoTime(localFile),
+    note: "Server local persistent database is available. Add backups or a cloud database before larger public use."
+  };
+}
+
+function requestOpenAiModelsHealth() {
+  return new Promise((resolve) => {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      resolve({ configured: false, ok: false, detail: "OPENAI_API_KEY is not configured." });
+      return;
+    }
+    const req = https.request(
+      {
+        hostname: "api.openai.com",
+        path: "/v1/models",
+        method: "GET",
+        timeout: 4500,
+        headers: { authorization: `Bearer ${apiKey}` }
+      },
+      (response) => {
+        response.resume();
+        const ok = response.statusCode >= 200 && response.statusCode < 300;
+        resolve({
+          configured: true,
+          ok,
+          statusCode: response.statusCode,
+          detail: ok ? "OpenAI API is reachable." : "OpenAI API returned a non-success status."
+        });
+      }
+    );
+    req.on("timeout", () => {
+      req.destroy();
+      resolve({ configured: true, ok: false, detail: "OpenAI API check timed out." });
+    });
+    req.on("error", (error) => resolve({ configured: true, ok: false, detail: error.message || "OpenAI API connection failed." }));
+    req.end();
+  });
+}
+
+async function aiHealthStatus() {
+  if (cachedAiHealth && Date.now() - cachedAiHealth.checkedAtMs < 60000) return cachedAiHealth.payload;
+  const health = await requestOpenAiModelsHealth();
+  const payload = {
+    ...health,
+    simpleModel: simpleAiModel,
+    complexModel: complexAiModel,
+    complexRoutePercent: solRoutePercent,
+    checkedAt: new Date().toISOString()
+  };
+  cachedAiHealth = { checkedAtMs: Date.now(), payload };
+  return payload;
+}
+'''
+          if "function emailDeliveryConfigured()" not in server:
+              server = server.replace(helper_anchor, helper_block, 1)
+
+          route_anchor = '''  if (url.pathname === "/api/admin/invites" && method === "POST") {
+'''
+          route_block = '''  if (url.pathname === "/api/admin/system-status" && method === "GET") {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+    const ai = await aiHealthStatus();
+    return sendJson(res, 200, {
+      version: {
+        app: packageVersion(),
+        node: process.version,
+        environment: process.env.NODE_ENV || "development"
+      },
+      deploy: {
+        serverStartedAt,
+        lastCodeUpdateAt: fileIsoTime(path.join(__dirname, "server.js"))
+      },
+      database: databaseStatus(),
+      ai,
+      google: {
+        enabled: googleAuthEnabled(),
+        clientIdConfigured: Boolean(googleClientId),
+        clientSecretConfigured: Boolean(googleClientSecret),
+        redirectUri: googleRedirectUri(req)
+      },
+      email: {
+        verificationRequired: requireEmailVerification,
+        fallbackAllowed: allowEmailCodeFallback,
+        sendingConfigured: emailDeliveryConfigured(),
+        senderInstalled: Boolean(nodemailer)
+      },
+      autoSync: autoSyncStatus()
+    });
+  }
+
+'''
+          if 'url.pathname === "/api/admin/system-status"' not in server:
+              server = server.replace(route_anchor, route_block + route_anchor, 1)
+          else:
+              server = re.sub(
+                  r'database:\s*\{\s*mode:\s*db\.mode \|\| process\.env\.STUDYBRIDGE_DB \|\| "local"\s*\}',
+                  'database: databaseStatus()',
+                  server,
+                  count=1,
+              )
+          server_path.write_text(server, encoding="utf-8")
+          PY
+          node --check public/layout-fix.js
+          node --check public/system-status-patch.js
+          node --check server.js
+      - name: Commit patched files
+        run: |
+          git config user.name "qinmingyu4-bot"
+          git config user.email "qinmingyu4-bot@users.noreply.github.com"
+          git add public/layout-fix.js public/system-status-patch.js server.js
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Repair system diagnostics and creator spacing"
+            git push
+          fi

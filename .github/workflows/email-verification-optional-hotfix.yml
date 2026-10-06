@@ -1,0 +1,66 @@
+name: Make email verification optional for invite registration
+
+on:
+  push:
+    paths:
+      - ".github/workflows/email-verification-optional-hotfix.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply email verification optional hotfix
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+
+          function replaceOnce(file, from, to) {
+            let text = fs.readFileSync(file, 'utf8');
+            if (!text.includes(from)) {
+              if (!text.includes(to)) throw new Error(`Could not find target in ${file}: ${from}`);
+              return false;
+            }
+            text = text.replace(from, to);
+            fs.writeFileSync(file, text);
+            return true;
+          }
+
+          replaceOnce(
+            'server.js',
+            'const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION !== "false";',
+            'const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION === "true";'
+          );
+
+          replaceOnce(
+            'public/app.js',
+            '  const codeRequired = registering || resetting;\n  nameField.hidden = !registering;\n  inviteField.hidden = !registering;\n  confirmPasswordField.hidden = !codeRequired;\n  emailCodeField.hidden = !codeRequired;\n  forgotPasswordButton.hidden = mode !== "login";\n  nameInput.required = registering;\n  inviteInput.required = registering;\n  passwordConfirmInput.required = codeRequired;\n  emailCodeInput.required = codeRequired;',
+            '  const codeRequired = resetting;\n  nameField.hidden = !registering;\n  inviteField.hidden = !registering;\n  confirmPasswordField.hidden = !(registering || resetting);\n  emailCodeField.hidden = !codeRequired;\n  forgotPasswordButton.hidden = mode !== "login";\n  nameInput.required = registering;\n  inviteInput.required = registering;\n  passwordConfirmInput.required = registering || resetting;\n  emailCodeInput.required = codeRequired;'
+          );
+
+          replaceOnce(
+            'public/app.js',
+            '  authMessage.textContent = resetting ? "输入邮箱，发送验证码，然后设置新密码。" : "";',
+            '  authMessage.textContent = resetting ? "输入邮箱，发送验证码，然后设置新密码。" : registering ? "邮箱验证码暂时不是必填；有邀请码就可以注册。" : "";'
+          );
+          NODE
+
+          node --check server.js
+          node --check public/app.js
+      - name: Commit hotfix
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "qinmingyu4-bot"
+          git config user.email "qinmingyu4-bot@users.noreply.github.com"
+          git add server.js public/app.js
+          git commit -m "Allow invite registration without email verification"
+          git push

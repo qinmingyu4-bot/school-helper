@@ -76,6 +76,7 @@ const complexAiModel =
 const webSearchEnabled = process.env.OPENAI_WEB_SEARCH !== "false";
 const webSearchModel =
   String(process.env.OPENAI_WEB_MODEL || process.env.STUDYBRIDGE_WEB_MODEL || "").trim() ||
+  complexAiModel ||
   simpleAiModel;
 const solRoutePercent = Math.max(
   0,
@@ -612,7 +613,7 @@ async function getWeatherContextForQuestion(message, user) {
       "Weather data time: " + (current.time || "unknown") + "."
     ].join("\n");
   } catch (error) {
-    return "Weather lookup failed: " + ((error && error.message) || "unknown error") + ". Tell the student the live weather service is temporarily unavailable.";
+    return "Weather lookup failed: " + ((error && error.message) || "unknown error") + ". If web search is available, use it to answer the weather question instead of stopping. If no live lookup is available, tell the student the weather service is temporarily unavailable.";
   }
 }
 
@@ -629,7 +630,7 @@ function buildStudyPrompt({ user, course, documents, history, scheduleItems, wea
     {
       role: "system",
       content:
-        "You are StudyBridge, a bilingual academic coach and general-purpose AI assistant for international students. Answer any user question that is allowed by OpenAI safety rules. Explain in Chinese by default, preserve key English academic terms, and help students learn without doing prohibited final submissions for them. For course, deadline, profile, or schedule questions, ground the answer in the provided StudyBridge data first. For general knowledge or current-information questions where the local StudyBridge data is missing, use reliable general knowledge and, when web search is available, use web search for fresh facts. When you rely on web information, briefly say the information comes from a live lookup and avoid pretending it came from saved course data. When the student asks about due dates, unfinished work, deadlines, exams, or what to do next, always use the global unfinished schedule/deadline context, even if the current chat is inside a different course. When real-time weather context is provided, answer the weather question directly and include practical clothing/commute advice."
+        "You are StudyBridge, a bilingual academic coach and general-purpose AI assistant for international students. Answer any user question that is allowed by OpenAI safety rules; do not refuse just because the question is not about school. Explain in Chinese by default, preserve key English academic terms, and help students learn without doing prohibited final submissions for them. For course, deadline, profile, or schedule questions, ground the answer in the provided StudyBridge data first. For general knowledge, current-information questions, weather, news, product prices, policies, rankings, or any question where local StudyBridge data is missing, use reliable general knowledge and, when web search is available, use web search for fresh facts instead of claiming you cannot browse. When you rely on web information, briefly say the information comes from a live lookup and avoid pretending it came from saved course data. When the student asks about due dates, unfinished work, deadlines, exams, or what to do next, always use the global unfinished schedule/deadline context, even if the current chat is inside a different course. When real-time weather context is provided, answer the weather question directly and include practical clothing/commute advice."
     },
     {
       role: "user",
@@ -708,7 +709,7 @@ function extractResponsesText(payload) {
   return parts.join("\n").trim();
 }
 
-async function callAiWithResponses(messages, model) {
+async function callAiWithResponses(messages, model, toolType = "web_search") {
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -723,7 +724,7 @@ async function callAiWithResponses(messages, model) {
       })),
       tools: [
         {
-          type: "web_search",
+          type: toolType,
           search_context_size: "medium"
         }
       ],
@@ -763,7 +764,16 @@ async function callAi(messages, model = simpleAiModel) {
     try {
       return await callAiWithResponses(messages, webSearchModel || model);
     } catch (error) {
-      console.warn("StudyBridge web AI route failed, falling back to chat completions: " + (error?.message || error));
+      const message = String((error && error.message) || error);
+      if (message.includes("web_search")) {
+        try {
+          return await callAiWithResponses(messages, webSearchModel || model, "web_search_preview");
+        } catch (previewError) {
+          console.warn("StudyBridge preview web route failed, falling back to chat completions: " + ((previewError && previewError.message) || previewError));
+        }
+      } else {
+        console.warn("StudyBridge web AI route failed, falling back to chat completions: " + message);
+      }
     }
   }
 

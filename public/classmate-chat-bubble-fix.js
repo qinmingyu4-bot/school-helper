@@ -3,6 +3,7 @@
   let lastMessageSignature = "";
   let isPollingMessages = false;
   let requestsExpanded = false;
+  let communityPickerLockUntil = 0;
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -195,6 +196,39 @@
     }
   }
 
+  function installCommunityDirectoryStability() {
+    if (!Element.prototype || Element.prototype.__studybridgeCommunitySelectStable) return;
+    const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, "innerHTML");
+    if (!descriptor?.get || !descriptor?.set) return;
+
+    Object.defineProperty(Element.prototype, "innerHTML", {
+      configurable: true,
+      enumerable: descriptor.enumerable,
+      get: descriptor.get,
+      set(value) {
+        const active = document.activeElement;
+        const pickerActive = Date.now() < communityPickerLockUntil || Boolean(active?.closest?.("#communityDirectory"));
+        const isCommunityChooser = this.id === "communityDirectory" || this.id === "communityChannelTabs";
+        if (pickerActive && isCommunityChooser) return;
+        return descriptor.set.call(this, value);
+      }
+    });
+
+    Element.prototype.__studybridgeCommunitySelectStable = true;
+    document.addEventListener("focusin", (event) => {
+      if (event.target?.closest?.("#communityDirectory")) communityPickerLockUntil = Date.now() + 12000;
+    });
+    document.addEventListener("pointerdown", (event) => {
+      if (event.target?.closest?.("#communityDirectory")) communityPickerLockUntil = Date.now() + 12000;
+    });
+    document.addEventListener("change", (event) => {
+      if (event.target?.closest?.("#communityDirectory")) communityPickerLockUntil = Date.now() + 300;
+    });
+    document.addEventListener("focusout", (event) => {
+      if (event.target?.closest?.("#communityDirectory")) communityPickerLockUntil = Date.now() + 300;
+    });
+  }
+
   function getActiveClassmateId() {
     const page = document.querySelector("#classmatesPage:not([hidden])");
     if (!page) return "";
@@ -247,6 +281,7 @@
   }
 
   installClassmateChatBubbleFix();
+  installCommunityDirectoryStability();
   installRequestListCollapse();
   setInterval(installClassmateChatBubbleFix, 1500);
   setInterval(installRequestListCollapse, 1200);

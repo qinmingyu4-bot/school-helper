@@ -1,2 +1,2 @@
-Trigger classmate profile card hotfix
-2026-10-05T21:58:00-04:00
+Trigger simplified classmate profile card hotfix
+2026-10-05T22:24:00-04:00

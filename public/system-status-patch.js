@@ -105,7 +105,32 @@
     `;
   }
 
-  async function loadStatus() {
+  function captureScrollState() {
+    const workspace = document.querySelector(".workspace");
+    const appShell = document.querySelector("#appShell");
+    return {
+      windowX: window.scrollX,
+      windowY: window.scrollY,
+      workspaceTop: workspace?.scrollTop || 0,
+      appShellTop: appShell?.scrollTop || 0,
+      activeElement: document.activeElement
+    };
+  }
+
+  function restoreScrollState(state) {
+    const workspace = document.querySelector(".workspace");
+    const appShell = document.querySelector("#appShell");
+    if (workspace) workspace.scrollTop = state.workspaceTop;
+    if (appShell) appShell.scrollTop = state.appShellTop;
+    window.scrollTo(state.windowX, state.windowY);
+    if (state.activeElement && typeof state.activeElement.focus === "function") {
+      state.activeElement.focus({ preventScroll: true });
+    }
+  }
+
+  async function loadStatus(event) {
+    event?.preventDefault?.();
+    const scrollState = captureScrollState();
     const panel = ensurePanel();
     if (!panel) return;
     const grid = panel.querySelector("#systemStatusGrid");
@@ -119,6 +144,7 @@
     }
     if (updated) updated.textContent = `${TEXT.checkingTitle}\uff1a${new Date().toLocaleString("zh-CN")}`;
     if (grid) grid.innerHTML = card(TEXT.checkingTitle, "warn", TEXT.checkingValue, TEXT.checkingNote);
+    restoreScrollState(scrollState);
 
     const checks = await Promise.allSettled([
       api("/api/health"),
@@ -165,6 +191,7 @@
         panel.classList.remove("checked");
       }, 1400);
     }
+    restoreScrollState(scrollState);
   }
 
   function boot() {

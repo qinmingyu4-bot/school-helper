@@ -13,11 +13,28 @@
       document.head.appendChild(style);
     }
     style.textContent = `
+      body:not(.creator-clean-mode) .workspace {
+        height: 100vh !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+      }
+
+      body:not(.creator-clean-mode) #workspacePage {
+        display: grid !important;
+        grid-template-rows: auto minmax(0, 1fr) auto auto !important;
+        height: 100vh !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+      }
+
       #workspacePage #chatArea {
         padding-bottom: var(--study-chat-bottom-space, 168px) !important;
         scroll-padding-bottom: var(--study-chat-bottom-space, 168px) !important;
+        height: auto !important;
         min-height: 0 !important;
+        max-height: none !important;
         overflow-y: auto !important;
+        overflow-x: hidden !important;
         overscroll-behavior: contain !important;
         scrollbar-gutter: stable;
       }
@@ -87,6 +104,7 @@
     const chatArea = document.querySelector("#chatArea");
     if (!chatArea || !isStudyWorkspaceTarget(event.target)) return;
     if (chatArea.scrollHeight <= chatArea.clientHeight + 2) return;
+    if (event.target.closest?.("textarea, input, select, button")) return;
 
     if (event.deltaY < 0 || distanceFromBottom(chatArea) > 80) {
       stickToBottom = false;
@@ -94,7 +112,11 @@
 
     event.preventDefault();
     programmaticScrollUntil = Date.now() + 80;
+    const before = chatArea.scrollTop;
     chatArea.scrollTop += event.deltaY;
+    if (chatArea.scrollTop === before && event.deltaY < 0) {
+      chatArea.scrollTop = Math.max(0, before - Math.abs(event.deltaY || 120));
+    }
     setTimeout(updateStickiness, 40);
   }
 

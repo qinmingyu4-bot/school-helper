@@ -61,9 +61,47 @@
   }
 
   function currentChannelLabel() {
-    if (activeChannel.type === "school") return currentChannelValue();
-    if (activeChannel.type === "major") return currentChannelValue();
+    if (activeChannel.type === "school" || activeChannel.type === "major") return currentChannelValue();
     return "StudyBridge";
+  }
+
+  function normalizeChannelText(value) {
+    return String(value || "").trim().toLowerCase();
+  }
+
+  function selectedChannelParams() {
+    const params = new URLSearchParams({ channel: activeChannel.type });
+    if (activeChannel.type !== "all") params.set("value", currentChannelValue());
+    return params;
+  }
+
+  function isOwnSelectedChannel() {
+    if (activeChannel.type === "all") return true;
+    const selected = normalizeChannelText(currentChannelValue());
+    const mine = activeChannel.type === "school" ? school() : major();
+    return Boolean(selected && selected === normalizeChannelText(mine));
+  }
+
+  function communityApiUrl() {
+    if (!isOwnSelectedChannel()) return "/api/community?channel=all";
+    return `/api/community?${selectedChannelParams().toString()}`;
+  }
+
+  function communityLikeUrl(postId) {
+    return `/api/community/posts/${encodeURIComponent(postId)}/like?${selectedChannelParams().toString()}`;
+  }
+
+  function filterPostsForSelected(posts = []) {
+    if (activeChannel.type === "all") return posts;
+    const selected = normalizeChannelText(currentChannelValue());
+    if (!selected) return posts;
+    return posts.filter((post) => {
+      if (post.channelType !== activeChannel.type) return false;
+      const label = normalizeChannelText(post.channelLabel || "");
+      const schoolLabel = normalizeChannelText(post.school || "");
+      const majorLabel = normalizeChannelText(post.major || "");
+      return label === selected || schoolLabel === selected || majorLabel === selected;
+    });
   }
 
   function installStyle() {
@@ -151,19 +189,19 @@
     communitySection.querySelector("#communityComposer")?.addEventListener("submit", submitPost);
   }
 
+  function currentChannelValueForType(type) {
+    if (activeChannel.type === type) return currentChannelValue();
+    if (type === "school") return school() || SCHOOL_OPTIONS[0];
+    if (type === "major") return major() || MAJOR_OPTIONS[0];
+    return "";
+  }
+
   function channelOptions() {
     return [
       { type: "all", title: "全部社区", subtitle: "所有公开讨论" },
       { type: "school", title: "学校社区", subtitle: currentChannelValueForType("school") || "选择一个学校" },
       { type: "major", title: "专业社区", subtitle: currentChannelValueForType("major") || "选择一个专业" }
     ];
-  }
-
-  function currentChannelValueForType(type) {
-    if (activeChannel.type === type) return currentChannelValue();
-    if (type === "school") return school() || SCHOOL_OPTIONS[0];
-    if (type === "major") return major() || MAJOR_OPTIONS[0];
-    return "";
   }
 
   function renderDirectory() {
@@ -249,7 +287,7 @@
     if (!feed) return;
     if (!posts.length) { feed.innerHTML = '<p class="empty">这个频道还没有帖子。你可以发第一条。</p>'; return; }
     feed.innerHTML = posts.map((post) => `<article class="community-post"><div class="community-post-head"><div><strong>${escapeHtml(post.authorName || "StudyBridge 同学")}</strong><div class="community-post-meta">${escapeHtml(new Date(post.createdAt).toLocaleString("zh-CN"))}</div></div><div class="community-tag-row"><span class="community-tag channel">${escapeHtml(channelLabel(post))}</span><span class="community-tag">${escapeHtml(post.topic || "问问题")}</span></div></div><div class="community-post-content">${escapeHtml(post.content || "")}</div><div class="community-post-actions"><button class="small-button" type="button" data-like-community-post="${escapeHtml(post.id)}">${post.likedByMe ? "已赞" : "点赞"}</button><span class="community-post-meta">${Number(post.likeCount || 0)} likes</span></div></article>`).join("");
-    feed.querySelectorAll("[data-like-community-post]").forEach((button) => button.addEventListener("click", async () => { button.disabled = true; try { await api(`${communityApiUrl()}/posts/${button.dataset.likeCommunityPost}/like`, { method: "PATCH" }); await loadCommunity(); } catch (error) { setMessage(error.message, true); } finally { button.disabled = false; } }));
+    feed.querySelectorAll("[data-like-community-post]").forEach((button) => button.addEventListener("click", async () => { button.disabled = true; try { await api(communityLikeUrl(button.dataset.likeCommunityPost), { method: "PATCH" }); await loadCommunity(); } catch (error) { setMessage(error.message, true); } finally { button.disabled = false; } }));
   }
 
   function setMessage(text, isError = false) {
@@ -267,20 +305,15 @@
     if (subtitle) subtitle.textContent = activeChannel.type === "all" ? "StudyBridge 全部公开帖子。" : "这是公开频道，不在这个学校或专业的人也可以浏览。";
   }
 
-  function communityApiUrl() {
-    const params = new URLSearchParams({ channel: activeChannel.type });
-    if (activeChannel.type !== "all") params.set("value", currentChannelValue());
-    return `/api/community?${params.toString()}`;
-  }
-
   async function loadCommunity() {
     renderChannelTabs();
     setMessage("正在加载社区...");
     try {
       const result = await api(`${communityApiUrl()}&t=${Date.now()}`);
+      const posts = filterPostsForSelected(result.posts || []);
       syncTitle(result);
-      renderPosts(result.posts || []);
-      setMessage(`已加载 ${result.posts?.length || 0} 条帖子。`);
+      renderPosts(posts);
+      setMessage(`已加载 ${posts.length} 条帖子。`);
     } catch (error) {
       syncTitle();
       renderPosts([]);

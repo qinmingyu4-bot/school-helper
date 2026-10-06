@@ -130,7 +130,18 @@
     updateBottomSpace();
   }
 
+  function loadCheatsheetPatch() {
+    const src = "/cheatsheet-mode-patch.js?v=20261006-1";
+    const cleanSrc = src.split("?")[0];
+    if (document.querySelector(`script[src^="${cleanSrc}"]`)) return;
+    const script = document.createElement("script");
+    script.src = src;
+    script.defer = true;
+    document.body.appendChild(script);
+  }
+
   boot();
+  loadCheatsheetPatch();
   window.addEventListener("resize", updateBottomSpace);
   window.addEventListener("load", () => setTimeout(scrollStudyChatToBottom, 80));
   document.addEventListener("scroll", updateStickiness, true);

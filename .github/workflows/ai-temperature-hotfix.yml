@@ -1,0 +1,43 @@
+name: Apply AI temperature hotfix
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/ai-temperature-hotfix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove unsupported AI temperature
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("server.js")
+          text = path.read_text(encoding="utf-8")
+          old = """    body: JSON.stringify({\n      model,\n      messages,\n      temperature: 0.35\n    })"""
+          new = """    body: JSON.stringify({\n      model,\n      messages\n    })"""
+          if old not in text:
+              print("No temperature block found; nothing to change.")
+          else:
+              path.write_text(text.replace(old, new), encoding="utf-8")
+              print("Removed unsupported AI temperature setting.")
+          PY
+      - name: Validate backend syntax
+        run: node --check server.js
+      - name: Commit server fix
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.js
+          git commit -m "Remove unsupported AI temperature setting"
+          git push

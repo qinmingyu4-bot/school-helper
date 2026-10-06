@@ -88,8 +88,31 @@
 
       body.creator-clean-mode #workspacePage {
         display: block !important;
-        overflow: auto !important;
+        overflow: visible !important;
         background: #f4f6f9;
+      }
+
+      body.creator-clean-mode #appShell {
+        height: 100vh !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+      }
+
+      body.creator-clean-mode .workspace {
+        height: 100vh !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        overscroll-behavior: contain !important;
+        scroll-behavior: auto !important;
+      }
+
+      body.creator-clean-mode .sidebar {
+        height: 100vh !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        overscroll-behavior: contain !important;
       }
 
       body.creator-clean-mode #developerPanel:not([hidden]) {
@@ -101,6 +124,8 @@
         border: 0;
         box-shadow: none;
         background: #f4f6f9;
+        overflow: visible !important;
+        overscroll-behavior: auto !important;
       }
 
       body.creator-clean-mode #developerPanel .panel-title,
@@ -112,7 +137,9 @@
       body.creator-clean-mode #developerPanel .invite-list,
       body.creator-clean-mode #developerPanel .user-list,
       body.creator-clean-mode #passwordResetList {
-        max-height: 54vh;
+        max-height: none !important;
+        overflow: visible !important;
+        overscroll-behavior: auto !important;
       }
 
       .study-entry,

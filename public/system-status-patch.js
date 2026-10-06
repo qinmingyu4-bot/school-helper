@@ -136,7 +136,7 @@
     const googleEnabled = Boolean(system?.google?.enabled ?? google?.enabled);
     const emailConfigured = Boolean(system?.email?.sendingConfigured);
     const emailRequired = Boolean(system?.email?.verificationRequired);
-    const aiConfigured = Boolean(system?.ai?.configured);
+    const aiConfigured = systemReady ? Boolean(system?.ai?.configured) : true;
     const aiOk = Boolean(system?.ai?.ok);
     const autoSyncConfigured = Boolean(system?.autoSync?.configured);
     const version = system?.version?.app || "StudyBridge";
@@ -147,7 +147,7 @@
         card(TEXT.currentVersion, systemReady ? "ok" : "warn", version, systemReady ? `Node ${system?.version?.node || ""}` : "\u540e\u7aef\u6df1\u5ea6\u8bca\u65ad\u63a5\u53e3\u5f85\u90e8\u7f72\u3002"),
         card(TEXT.deployTime, deployedAt ? "ok" : "warn", formatDate(deployedAt), deployedAt ? "\u6309\u670d\u52a1\u5668\u6587\u4ef6\u65f6\u95f4\u663e\u793a\u3002" : "\u53ef\u786e\u8ba4\u670d\u52a1\u5728\u7ebf\u3002"),
         card(TEXT.dbMode, dbMode === "local" ? "warn" : "ok", dbMode, dbMode === "local" ? "\u672c\u5730\u6570\u636e\u5e93\u53ef\u7528\uff0c\u6b63\u5f0f\u8fd0\u8425\u5efa\u8bae\u52a0\u5907\u4efd\u6216\u4e91\u6570\u636e\u5e93\u3002" : "\u4e91\u7aef\u6570\u636e\u5e93\u6a21\u5f0f\u3002"),
-        card(TEXT.aiStatus, aiOk ? "ok" : aiConfigured ? "warn" : "bad", aiOk ? TEXT.ok : aiConfigured ? "\u5df2\u914d\u7f6e\uff0c\u5f85\u786e\u8ba4" : TEXT.notConfigured, system?.ai?.detail || "\u540e\u7aef\u6df1\u5ea6\u8bca\u65ad\u63a5\u53e3\u90e8\u7f72\u540e\u4f1a\u663e\u793a\u771f\u5b9e AI \u72b6\u6001\u3002"),
+        card(TEXT.aiStatus, aiOk ? "ok" : aiConfigured ? "warn" : "bad", aiOk ? TEXT.ok : aiConfigured ? "\u5df2\u914d\u7f6e\uff0c\u5f85\u786e\u8ba4" : TEXT.notConfigured, system?.ai?.detail || "\u8bca\u65ad\u63a5\u53e3\u6b63\u5728\u7b49\u5f85\u540e\u7aef\u56de\u590d\uff0cAI key \u4e0d\u4f1a\u5728\u524d\u7aef\u663e\u793a\u3002"),
         card(TEXT.googleLogin, googleEnabled ? "ok" : "warn", googleEnabled ? TEXT.configured : TEXT.notConfigured, googleEnabled ? "\u7528\u6237\u53ef\u4ee5\u4f7f\u7528 Google \u767b\u5f55\u3002" : "\u666e\u901a\u90ae\u7bb1\u6ce8\u518c\u4ecd\u53ef\u7528\u3002"),
         card(TEXT.emailCode, emailConfigured ? "ok" : emailRequired ? "bad" : "warn", emailConfigured ? "\u53d1\u4fe1\u5df2\u914d\u7f6e" : emailRequired ? "\u8981\u6c42\u9a8c\u8bc1\u4f46\u672a\u914d\u7f6e\u53d1\u4fe1" : "\u672a\u542f\u7528\u771f\u5b9e\u53d1\u4fe1", emailRequired ? "\u6ce8\u518c\u4f1a\u4f9d\u8d56\u90ae\u7bb1\u9a8c\u8bc1\u7801\u3002" : "\u9080\u8bf7\u7801\u4ecd\u662f\u4e3b\u8981\u6ce8\u518c\u63a7\u5236\u3002"),
         card(TEXT.autoSync, autoSyncConfigured ? "ok" : "warn", autoSyncConfigured ? "\u5df2\u68c0\u6d4b\u5230" : "\u672a\u786e\u8ba4", system?.autoSync?.note || "\u5982\u679c\u9875\u9762\u6700\u8fd1\u5df2\u81ea\u52a8\u66f4\u65b0\uff0c\u8bf4\u660e\u540c\u6b65\u673a\u5236\u6b63\u5728\u5de5\u4f5c\u3002"),

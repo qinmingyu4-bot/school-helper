@@ -54,6 +54,17 @@
     quickPrompts.appendChild(button);
   }
 
+  function ensureCheatsheetModeOption() {
+    const modeSelect = document.querySelector("#modeSelect");
+    if (!modeSelect) return;
+    const hasOption = Array.from(modeSelect.options || []).some((option) => option.value === "cheatsheet");
+    if (hasOption) return;
+    const option = document.createElement("option");
+    option.value = "cheatsheet";
+    option.textContent = "Cheatsheet";
+    modeSelect.appendChild(option);
+  }
+
   function syncCheatsheetPlaceholder() {
     const modeSelect = document.querySelector("#modeSelect");
     const input = document.querySelector("#messageInput");
@@ -94,6 +105,7 @@
   }
 
   function boot() {
+    ensureCheatsheetModeOption();
     ensureCheatsheetQuickPrompt();
     syncCheatsheetPlaceholder();
     installFetchPatch();

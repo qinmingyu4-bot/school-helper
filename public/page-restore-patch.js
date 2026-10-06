@@ -22,6 +22,34 @@
   const startupTarget = localStorage.getItem(PAGE_KEY) || "";
   let restoring = false;
   let suppressWorkspaceRememberUntil = startupTarget && startupTarget !== "workspacePage" ? Date.now() + 15000 : 0;
+  let restoreShieldTimer = null;
+
+  function isSecondaryPage(pageId) {
+    return SECONDARY_PAGE_IDS.includes(pageId);
+  }
+
+  function installRestoreShield() {
+    if (!isSecondaryPage(startupTarget)) return;
+    document.documentElement.classList.add("studybridge-restore-pending");
+    if (document.querySelector("#studybridge-restore-shield-style")) return;
+    const style = document.createElement("style");
+    style.id = "studybridge-restore-shield-style";
+    style.textContent = `
+      html.studybridge-restore-pending #workspacePage {
+        visibility: hidden !important;
+      }
+    `;
+    document.head.appendChild(style);
+    restoreShieldTimer = setTimeout(clearRestoreShield, 9000);
+  }
+
+  function clearRestoreShield() {
+    document.documentElement.classList.remove("studybridge-restore-pending");
+    if (restoreShieldTimer) {
+      clearTimeout(restoreShieldTimer);
+      restoreShieldTimer = null;
+    }
+  }
 
   function appIsVisible() {
     const shell = document.querySelector("#appShell");
@@ -76,7 +104,10 @@
 
   async function restorePage() {
     const targetPage = localStorage.getItem(PAGE_KEY);
-    if (!targetPage || targetPage === "workspacePage") return;
+    if (!targetPage || targetPage === "workspacePage") {
+      clearRestoreShield();
+      return;
+    }
     const buttonSelector = PAGE_TO_BUTTON[targetPage];
     if (!buttonSelector) return;
 
@@ -96,10 +127,14 @@
           if (element && id !== targetPage) element.hidden = true;
         });
         page.hidden = false;
+        const workspacePage = document.querySelector("#workspacePage");
+        if (workspacePage) workspacePage.hidden = true;
+        clearRestoreShield();
       }
     } finally {
       setTimeout(() => {
         restoring = false;
+        if (!isSecondaryPage(localStorage.getItem(PAGE_KEY))) clearRestoreShield();
       }, 500);
     }
   }
@@ -123,6 +158,7 @@
   });
   observer.observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ["hidden"] });
 
+  installRestoreShield();
   setInterval(rememberVisiblePage, 1800);
-  [700, 1600, 3200, 6000, 9500, 13000].forEach((delay) => setTimeout(restorePage, delay));
+  [0, 100, 260, 520, 900, 1600, 3200, 6000, 9500, 13000].forEach((delay) => setTimeout(restorePage, delay));
 })();

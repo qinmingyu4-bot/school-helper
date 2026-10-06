@@ -1,0 +1,125 @@
+name: Apply community client filtering hotfix
+
+on:
+  push:
+    paths:
+      - ".github/workflows/community-client-filter-hotfix.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch community client filtering
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          let file = fs.readFileSync('public/school-community-patch.js', 'utf8');
+
+          file = file.replace(
+            'await api(`${communityApiUrl()}/posts/${button.dataset.likeCommunityPost}/like`, { method: "PATCH" });',
+            'await api(communityLikeUrl(button.dataset.likeCommunityPost), { method: "PATCH" });'
+          );
+
+          const oldBlock = `  function communityApiUrl() {
+    const params = new URLSearchParams({ channel: activeChannel.type });
+    if (activeChannel.type !== "all") params.set("value", currentChannelValue());
+    return `/api/community?${params.toString()}`;
+  }
+
+  async function loadCommunity() {
+    renderChannelTabs();
+    setMessage("正在加载社区...");
+    try {
+      const result = await api(`${communityApiUrl()}&t=${Date.now()}`);
+      syncTitle(result);
+      renderPosts(result.posts || []);
+      setMessage(`已加载 ${result.posts?.length || 0} 条帖子。`);
+    } catch (error) {
+      syncTitle();
+      renderPosts([]);
+      setMessage(error.message, true);
+    }
+  }`;
+
+          const newBlock = `  function selectedChannelParams() {
+    const params = new URLSearchParams({ channel: activeChannel.type });
+    if (activeChannel.type !== "all") params.set("value", currentChannelValue());
+    return params;
+  }
+
+  function isOwnSelectedChannel() {
+    if (activeChannel.type === "all") return true;
+    const selected = currentChannelValue().trim().toLowerCase();
+    const mine = activeChannel.type === "school" ? school() : major();
+    return selected && selected === String(mine || "").trim().toLowerCase();
+  }
+
+  function communityApiUrl() {
+    if (!isOwnSelectedChannel()) return `/api/community?channel=all`;
+    return `/api/community?${selectedChannelParams().toString()}`;
+  }
+
+  function communityLikeUrl(postId) {
+    return `/api/community/posts/${encodeURIComponent(postId)}/like?${selectedChannelParams().toString()}`;
+  }
+
+  function normalizeChannelText(value) {
+    return String(value || "").trim().toLowerCase();
+  }
+
+  function filterPostsForSelected(posts = []) {
+    if (activeChannel.type === "all") return posts;
+    const selected = normalizeChannelText(currentChannelValue());
+    if (!selected) return posts;
+    return posts.filter((post) => {
+      if (post.channelType !== activeChannel.type) return false;
+      const label = normalizeChannelText(post.channelLabel || "");
+      const schoolLabel = normalizeChannelText(post.school || "");
+      const majorLabel = normalizeChannelText(post.major || "");
+      if (label === selected || schoolLabel === selected || majorLabel === selected) return true;
+      return false;
+    });
+  }
+
+  async function loadCommunity() {
+    renderChannelTabs();
+    setMessage("正在加载社区...");
+    try {
+      const result = await api(`${communityApiUrl()}&t=${Date.now()}`);
+      const posts = filterPostsForSelected(result.posts || []);
+      syncTitle(result);
+      renderPosts(posts);
+      setMessage(`已加载 ${posts.length} 条帖子。`);
+    } catch (error) {
+      syncTitle();
+      renderPosts([]);
+      setMessage(error.message, true);
+    }
+  }`;
+
+          if (!file.includes(oldBlock) && !file.includes('filterPostsForSelected')) {
+            throw new Error('Target communityApiUrl/loadCommunity block not found');
+          }
+          if (file.includes(oldBlock)) file = file.replace(oldBlock, newBlock);
+
+          fs.writeFileSync('public/school-community-patch.js', file);
+          NODE
+          node --check public/school-community-patch.js
+      - name: Commit community client filtering
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "qinmingyu4-bot"
+          git config user.email "qinmingyu4-bot@users.noreply.github.com"
+          git add public/school-community-patch.js
+          git commit -m "Filter selectable community channels on the client"
+          git push

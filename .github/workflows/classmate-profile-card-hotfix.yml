@@ -1,55 +1,61 @@
 name: Classmate Profile Card Hotfix
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/friend-request-ui-hotfix-trigger.txt"
+      - ".github/workflows/classmate-profile-card-hotfix.yml"
+      - "server.js"
+      - "public/classmates-request-patch.js"
+      - "public/layout-fix.js"
 
 permissions:
   contents: write
 
 jobs:
   hotfix:
-    if: ${{ github.actor != 'github-actions[bot]' }}
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch classmate profile card
+
+      - name: Apply classmate profile card patch
         run: |
-          node <<'NODE'
-          const fs = require('fs');
-          let changed = false;
+          python3 <<'PY'
+          from pathlib import Path
 
-          function writeIfChanged(path, next) {
-            const current = fs.readFileSync(path, 'utf8');
-            if (current !== next) {
-              fs.writeFileSync(path, next);
-              changed = true;
-            }
-          }
+          server_path = Path("server.js")
+          server = server_path.read_text(encoding="utf-8")
+          if "avatarUrl: peer.profile?.avatarUrl" not in server:
+              old = '''          school: peer.profile?.school || "",
+          sbId: peer.profile?.sbId || ""'''
+              new = '''          school: peer.profile?.school || "",
+          major: peer.profile?.major || "",
+          avatarUrl: peer.profile?.avatarUrl || "",
+          backgroundUrl: peer.profile?.backgroundUrl || "",
+          sbId: peer.profile?.sbId || ""'''
+              if old not in server:
+                  raise SystemExit("publicClassmate peer block not found")
+              server = server.replace(old, new, 1)
+              server_path.write_text(server, encoding="utf-8")
 
-          let server = fs.readFileSync('server.js', 'utf8');
-          if (!server.includes('avatarUrl: peer.profile?.avatarUrl')) {
-            server = server.replace(
-              '          school: peer.profile?.school || "",\n          sbId: peer.profile?.sbId || ""',
-              '          school: peer.profile?.school || "",\n          major: peer.profile?.major || "",\n          avatarUrl: peer.profile?.avatarUrl || "",\n          backgroundUrl: peer.profile?.backgroundUrl || "",\n          sbId: peer.profile?.sbId || ""'
-            );
-          }
-          writeIfChanged('server.js', server);
+          page_path = Path("public/classmates-request-patch.js")
+          page = page_path.read_text(encoding="utf-8")
+          page = page.replace(
+              "grid-template-rows: auto minmax(0, 1fr) auto;",
+              "grid-template-rows: auto auto minmax(0, 1fr) auto;"
+          )
 
-          let classmates = fs.readFileSync('public/classmates-request-patch.js', 'utf8');
-          classmates = classmates.replace('grid-template-rows: auto minmax(0, 1fr) auto;', 'grid-template-rows: auto auto minmax(0, 1fr) auto;');
-
-          if (!classmates.includes('.peer-profile-card')) {
-            const peerCss = String.raw`
+          css = r'''
 
       .peer-profile-card {
         margin: 14px 18px 0;
         border: 1px solid var(--line);
         border-radius: 8px;
-        overflow: hidden;
         background: white;
+        overflow: hidden;
       }
 
       .peer-profile-card[hidden] {
@@ -57,39 +63,33 @@ jobs:
       }
 
       .peer-profile-cover {
-        height: 86px;
-        background: linear-gradient(135deg, #234764, #2f7d62);
-        overflow: hidden;
+        position: relative;
+        height: 92px;
+        background: linear-gradient(145deg, #1f3a5f, #67a989);
       }
 
-      .peer-profile-cover img {
+      .peer-profile-cover > img {
         width: 100%;
         height: 100%;
         object-fit: cover;
         display: block;
       }
 
-      .peer-profile-main {
-        display: grid;
-        grid-template-columns: auto minmax(0, 1fr);
-        gap: 12px;
-        align-items: center;
-        padding: 12px 14px 14px;
-      }
-
       .peer-profile-avatar {
-        width: 58px;
-        height: 58px;
-        border-radius: 8px;
-        border: 3px solid white;
-        margin-top: -34px;
-        background: #1f4d5c;
-        color: white;
+        position: absolute;
+        left: 16px;
+        bottom: -24px;
         display: grid;
         place-items: center;
-        font-weight: 800;
-        box-shadow: 0 8px 22px rgba(25, 36, 58, 0.16);
+        width: 54px;
+        height: 54px;
+        border: 3px solid white;
+        border-radius: 10px;
+        background: linear-gradient(145deg, #1f3a5f, #2f7d62);
+        color: white;
+        font-weight: 900;
         overflow: hidden;
+        box-shadow: 0 10px 24px rgba(25, 36, 58, 0.12);
       }
 
       .peer-profile-avatar img {
@@ -99,8 +99,14 @@ jobs:
         display: block;
       }
 
+      .peer-profile-body {
+        display: grid;
+        gap: 7px;
+        padding: 32px 16px 14px;
+      }
+
       .peer-profile-name {
-        margin: 0;
+        color: var(--navy);
         font-size: 18px;
         line-height: 1.2;
       }
@@ -109,92 +115,112 @@ jobs:
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
-        margin-top: 7px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.35;
       }
 
       .peer-profile-facts span {
-        border: 1px solid #dfe7f1;
+        padding: 4px 7px;
         border-radius: 999px;
-        padding: 4px 8px;
-        color: var(--muted);
-        font-size: 12px;
-        line-height: 1.2;
-        background: #f8fbff;
-      }`;
-            classmates = classmates.replace('      .classmates-chat-head h3 {\n        margin: 0;\n      }', '      .classmates-chat-head h3 {\n        margin: 0;\n      }' + peerCss);
-          }
+        background: #f3f6fb;
+      }'''
+          if ".peer-profile-card" not in page:
+              anchor = '''      .classmates-chat-head h3 {
+        margin: 0;
+      }'''
+              if anchor not in page:
+                  raise SystemExit("chat head CSS anchor not found")
+              page = page.replace(anchor, anchor + css, 1)
 
-          if (!classmates.includes('id="peerProfileCard"')) {
-            classmates = classmates.replace('          <div class="direct-message-list" id="directMessageList"></div>', '          <article class="peer-profile-card" id="peerProfileCard" hidden></article>\n          <div class="direct-message-list" id="directMessageList"></div>');
-          }
+          if 'id="peerProfileCard"' not in page:
+              old = '          <div class="direct-message-list" id="directMessageList"></div>'
+              new = '          <article class="peer-profile-card" id="peerProfileCard" hidden></article>\n          <div class="direct-message-list" id="directMessageList"></div>'
+              if old not in page:
+                  raise SystemExit("message list markup anchor not found")
+              page = page.replace(old, new, 1)
 
-          if (!classmates.includes('function renderPeerProfile(active)')) {
-            const peerFunction = String.raw`
-
+          functions = r'''
   function initialsForProfile(name) {
-    return String(name || "SB")
-      .trim()
-      .split(/\s+/)
-      .map((part) => part[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() || "SB";
+    return String(name || "SB").trim().slice(0, 2).toUpperCase() || "SB";
   }
 
   function renderPeerProfile(active) {
     const card = page.querySelector("#peerProfileCard");
     if (!card) return;
-    const peer = active?.peer;
-    if (!peer) {
+    if (!active || !active.peer) {
       card.hidden = true;
       card.innerHTML = "";
       return;
     }
-    const name = peer.name || "\u540c\u5b66";
-    const facts = [
-      peer.school ? ` + '`\u5b66\u6821\uff1a${peer.school}`' + ` : "",
-      peer.major ? ` + '`\u4e13\u4e1a\uff1a${peer.major}`' + ` : "",
-      peer.sbId ? ` + '`SB ID：@${peer.sbId}`' + ` : ""
-    ].filter(Boolean);
+    const peer = active.peer;
+    const avatar = peer.avatarUrl
+      ? `<img src="${escapeHtml(peer.avatarUrl)}" alt="${escapeHtml(peer.name || "同学")} avatar" />`
+      : `<span>${escapeHtml(initialsForProfile(peer.name))}</span>`;
+    const cover = peer.backgroundUrl ? `<img src="${escapeHtml(peer.backgroundUrl)}" alt="" />` : "";
+    const school = peer.school ? `<span><strong>学校：</strong>${escapeHtml(peer.school)}</span>` : "";
+    const major = peer.major ? `<span><strong>专业：</strong>${escapeHtml(peer.major)}</span>` : "";
+    const sbId = peer.sbId ? `<span><strong>SB ID：</strong>@${escapeHtml(peer.sbId)}</span>` : "";
     card.hidden = false;
-    card.innerHTML = ` + '`' + `
+    card.innerHTML = `
       <div class="peer-profile-cover">
-        ${peer.backgroundUrl ? `<img src="${escapeHtml(peer.backgroundUrl)}" alt="">` : ""}
+        ${cover}
+        <div class="peer-profile-avatar">${avatar}</div>
       </div>
-      <div class="peer-profile-main">
-        <div class="peer-profile-avatar">
-          ${peer.avatarUrl ? `<img src="${escapeHtml(peer.avatarUrl)}" alt="">` : escapeHtml(initialsForProfile(name))}
-        </div>
-        <div>
-          <h4 class="peer-profile-name">${escapeHtml(name)}</h4>
-          <div class="peer-profile-facts">
-            ${facts.length ? facts.map((fact) => `<span>${escapeHtml(fact)}</span>`).join("") : "<span>\u8fd8\u6ca1\u6709\u586b\u5199\u516c\u5f00\u8d44\u6599</span>"}
-          </div>
+      <div class="peer-profile-body">
+        <strong class="peer-profile-name">${escapeHtml(peer.name || "同学")}</strong>
+        <div class="peer-profile-facts">
+          ${school}
+          ${major}
+          ${sbId}
+          ${!school && !major && !sbId ? "<span>还没有填写公开资料</span>" : ""}
         </div>
       </div>
-    ` + '`' + `;
-  }`;
-            classmates = classmates.replace('\n  async function addClassmate(event) {', peerFunction + '\n\n  async function addClassmate(event) {');
-          }
+    `;
+  }
 
-          classmates = classmates.replace('    if (!active) {\n      title.textContent = "请选择一位同学";', '    if (!active) {\n      renderPeerProfile(null);\n      title.textContent = "请选择一位同学";');
-          classmates = classmates.replace('    title.textContent = active.peer?.name || "同学";', '    renderPeerProfile(active);\n    title.textContent = active.peer?.name || "同学";');
-          writeIfChanged('public/classmates-request-patch.js', classmates);
+'''
+          if "function renderPeerProfile(active)" not in page:
+              anchor = "  async function addClassmate(event) {"
+              if anchor not in page:
+                  raise SystemExit("addClassmate anchor not found")
+              page = page.replace(anchor, functions + anchor, 1)
 
-          let layout = fs.readFileSync('public/layout-fix.js', 'utf8');
-          layout = layout.replace(/\/classmates-request-patch\.js\?v=20261005-\d+/g, '/classmates-request-patch.js?v=20261005-4');
-          writeIfChanged('public/layout-fix.js', layout);
+          if "renderPeerProfile(null);" not in page:
+              page = page.replace(
+                  '    if (!active) {\n      title.textContent = "请选择一位同学";',
+                  '    if (!active) {\n      renderPeerProfile(null);\n      title.textContent = "请选择一位同学";',
+                  1
+              )
+          if "renderPeerProfile(active);" not in page:
+              page = page.replace(
+                  '    title.textContent = active.peer?.name || "同学";',
+                  '    renderPeerProfile(active);\n    title.textContent = active.peer?.name || "同学";',
+                  1
+              )
+          page_path.write_text(page, encoding="utf-8")
 
-          if (!changed) {
-            console.log('Classmate profile card hotfix already applied.');
-            process.exit(0);
-          }
-          NODE
+          layout_path = Path("public/layout-fix.js")
+          layout = layout_path.read_text(encoding="utf-8")
+          layout = layout.replace('/classmates-request-patch.js?v=20261005-3', '/classmates-request-patch.js?v=20261005-5')
+          layout = layout.replace('/classmates-request-patch.js?v=20261005-4', '/classmates-request-patch.js?v=20261005-5')
+          layout_path.write_text(layout, encoding="utf-8")
+          PY
+
+      - name: Check JavaScript
+        run: |
           node --check server.js
           node --check public/classmates-request-patch.js
           node --check public/layout-fix.js
+
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then
+            echo "No classmate profile changes needed."
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add server.js public/classmates-request-patch.js public/layout-fix.js
-          git commit -m "Show classmate profile cards"
+          git commit -m "Add classmate profile card"
           git push

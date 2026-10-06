@@ -91,6 +91,43 @@
     return input;
   }
 
+  function markProfileInputsDirty() {
+    document.querySelectorAll("#profileForm input, #profileForm textarea").forEach((input) => {
+      if (input.dataset.profileDirtyWatcher === "true") return;
+      input.dataset.profileDirtyWatcher = "true";
+      input.addEventListener("input", () => {
+        input.dataset.profileDirty = "true";
+      });
+    });
+  }
+
+  function clearProfileDirtyFlags() {
+    document.querySelectorAll("#profileForm input, #profileForm textarea").forEach((input) => {
+      delete input.dataset.profileDirty;
+    });
+  }
+
+  function isProfileFormEditing() {
+    const form = $("#profileForm");
+    if (!form || form.hidden) return false;
+    return form.contains(document.activeElement);
+  }
+
+  function canOverwriteInput(input, force = false) {
+    if (!input) return false;
+    if (force) return true;
+    if (input.dataset.profileDirty === "true") return false;
+    if (document.activeElement === input) return false;
+    if (isProfileFormEditing()) return false;
+    return true;
+  }
+
+  function setFormValue(selector, value, options = {}) {
+    const input = $(selector);
+    if (!canOverwriteInput(input, options.force === true)) return;
+    input.value = value || "";
+  }
+
   function ensureFields() {
     const schoolInput = $("#schoolInput");
     if (!schoolInput) return;
@@ -100,6 +137,7 @@
     const sbIdInput = ensureLabeledInput("sbIdInput", "SB ID", "例如 adam2026", majorLabel);
     sbIdInput.autocomplete = "off";
     sbIdInput.spellcheck = false;
+    markProfileInputsDirty();
   }
 
   function ensureEditButton() {
@@ -141,14 +179,14 @@
     return line;
   }
 
-  function fillForm(user) {
+  function fillForm(user, options = {}) {
     const profile = user?.profile || {};
-    if ($("#profileNameInput")) $("#profileNameInput").value = user?.name || "";
-    if ($("#schoolInput")) $("#schoolInput").value = profile.school || "";
-    if ($("#majorInput")) $("#majorInput").value = profile.major || "";
-    if ($("#sbIdInput")) $("#sbIdInput").value = profile.sbId || "";
-    if ($("#avatarUrlInput")) $("#avatarUrlInput").value = profile.avatarUrl || "";
-    if ($("#backgroundUrlInput")) $("#backgroundUrlInput").value = profile.backgroundUrl || "";
+    setFormValue("#profileNameInput", user?.name || "", options);
+    setFormValue("#schoolInput", profile.school || "", options);
+    setFormValue("#majorInput", profile.major || "", options);
+    setFormValue("#sbIdInput", profile.sbId || "", options);
+    setFormValue("#avatarUrlInput", profile.avatarUrl || "", options);
+    setFormValue("#backgroundUrlInput", profile.backgroundUrl || "", options);
   }
 
   function renderUser(user) {
@@ -174,7 +212,8 @@
     const form = $("#profileForm");
     if (!form) return;
     ensureFields();
-    fillForm(cachedUser);
+    fillForm(cachedUser, { force: true });
+    clearProfileDirtyFlags();
     form.hidden = false;
     if (clearMessage && $("#profileMessage")) $("#profileMessage").textContent = "";
   }
@@ -207,12 +246,13 @@
         }
       });
       cachedUser = result.user;
+      clearProfileDirtyFlags();
+      if (form) form.hidden = true;
       renderUser(result.user);
       if ($("#profileName")) $("#profileName").textContent = result.user.name || "StudyBridge user";
       if ($("#profileSchool")) $("#profileSchool").textContent = result.user.profile?.school || "添加学校后，AI 会更懂你的学习环境。";
       if ($("#userLine")) $("#userLine").textContent = `${result.user.name} | ${result.user.email}`;
       if (message) message.textContent = "已保存。需要修改时点左侧预览卡里的“编辑资料”。";
-      if (form) form.hidden = true;
     } catch (error) {
       if (message) message.textContent = error.message;
     }
@@ -240,6 +280,7 @@
     ensureDisplay();
     installSubmitSync();
     installOpenHandlers();
+    markProfileInputsDirty();
     if (cachedUser) renderUser(cachedUser);
   }
 

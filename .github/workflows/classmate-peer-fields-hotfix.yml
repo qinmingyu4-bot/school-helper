@@ -19,21 +19,20 @@ jobs:
       - name: Patch server public classmate profile fields
         run: |
           python3 - <<'PY'
+          import re
           from pathlib import Path
           path = Path('server.js')
           text = path.read_text(encoding='utf-8')
-          old = '''          school: peer.profile?.school || "",
-          sbId: peer.profile?.sbId || ""'''
-          new = '''          school: peer.profile?.school || "",
-          major: peer.profile?.major || "",
-          avatarUrl: peer.profile?.avatarUrl || "",
-          backgroundUrl: peer.profile?.backgroundUrl || "",
-          sbId: peer.profile?.sbId || ""'''
-          if old in text:
-              text = text.replace(old, new, 1)
-              path.write_text(text, encoding='utf-8')
-          elif 'avatarUrl: peer.profile?.avatarUrl || ""' not in text:
+          if 'avatarUrl: peer.profile?.avatarUrl || ""' not in text:
+              text = re.sub(
+                  r'(school:\s*peer\.profile\?\.school \|\| "",\n)(\s*)sbId:\s*peer\.profile\?\.sbId \|\| ""',
+                  r'\1\2major: peer.profile?.major || "",\n\2avatarUrl: peer.profile?.avatarUrl || "",\n\2backgroundUrl: peer.profile?.backgroundUrl || "",\n\2sbId: peer.profile?.sbId || ""',
+                  text,
+                  count=1
+              )
+          if 'avatarUrl: peer.profile?.avatarUrl || ""' not in text:
               raise SystemExit('publicClassmate peer profile block was not found')
+          path.write_text(text, encoding='utf-8')
           PY
       - name: Verify server syntax
         run: node --check server.js

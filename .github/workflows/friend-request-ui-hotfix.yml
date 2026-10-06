@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - ".github/workflows/friend-request-ui-hotfix.yml"
+      - ".github/friend-request-ui-hotfix-trigger.txt"
 
 permissions:
   contents: write
@@ -14,15 +15,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch classmates UI refresh
+      - name: Patch classmates UI and profile cards
         run: |
           node <<'NODE'
           const fs = require('fs');
           let changed = false;
 
+          function writeIfChanged(path, next) {
+            const current = fs.readFileSync(path, 'utf8');
+            if (current !== next) {
+              fs.writeFileSync(path, next);
+              changed = true;
+            }
+          }
+
+          let server = fs.readFileSync('server.js', 'utf8');
+          if (!server.includes('avatarUrl: peer.profile?.avatarUrl')) {
+            server = server.replace(
+              '          school: peer.profile?.school || "",\n          sbId: peer.profile?.sbId || ""',
+              '          school: peer.profile?.school || "",\n          major: peer.profile?.major || "",\n          avatarUrl: peer.profile?.avatarUrl || "",\n          backgroundUrl: peer.profile?.backgroundUrl || "",\n          sbId: peer.profile?.sbId || ""'
+            );
+          }
+          writeIfChanged('server.js', server);
+
           const classmatesPath = 'public/classmates-request-patch.js';
           let classmates = fs.readFileSync(classmatesPath, 'utf8');
-          const originalClassmates = classmates;
 
           if (!classmates.includes('classmatesRefreshTimer')) {
             classmates = classmates.replace(
@@ -30,51 +47,193 @@ jobs:
               '  let activeClassmateId = "";\n  let classmatesRefreshTimer = null;\n  let isLoadingClassmates = false;\n'
             );
           }
-
           classmates = classmates.replace(
             '    hideOtherPages();\n    page.hidden = false;\n    await loadClassmates();',
             '    hideOtherPages();\n    page.hidden = false;\n    startClassmateRefreshTimer();\n    await loadClassmates();'
           );
-
           if (!classmates.includes('function startClassmateRefreshTimer()')) {
             classmates = classmates.replace(
               '\n  async function loadClassmates() {\n    if (!page) return;\n',
               '\n  function startClassmateRefreshTimer() {\n    if (classmatesRefreshTimer) return;\n    classmatesRefreshTimer = setInterval(() => {\n      if (!page || page.hidden || document.visibilityState === "hidden") return;\n      loadClassmates({ silent: true });\n    }, 6000);\n  }\n\n  async function loadClassmates(options = {}) {\n    if (!page || isLoadingClassmates) return;\n    const silent = Boolean(options.silent);\n    isLoadingClassmates = true;\n'
             );
           }
-
           classmates = classmates.replace(
             '    status.textContent = "正在读取同学和申请...";',
             '    if (!silent) status.textContent = "正在读取同学和申请...";'
           );
-
           const oldCatch = '    } catch (error) {\n      status.textContent = error.message;\n      page.querySelector("#classmateRequestList").innerHTML = "";\n      page.querySelector("#classmateList").innerHTML = `<p class="empty">${escapeHtml(error.message)}</p>`;\n      page.querySelector("#classmateCandidates").innerHTML = "";\n      page.querySelector("#directMessageList").innerHTML = "";\n    }\n  }';
           const newCatch = '    } catch (error) {\n      if (!silent) {\n        status.textContent = error.message;\n        page.querySelector("#classmateRequestList").innerHTML = "";\n        page.querySelector("#classmateList").innerHTML = `<p class="empty">${escapeHtml(error.message)}</p>`;\n        page.querySelector("#classmateCandidates").innerHTML = "";\n        page.querySelector("#directMessageList").innerHTML = "";\n      }\n    } finally {\n      isLoadingClassmates = false;\n    }\n  }';
           classmates = classmates.replace(oldCatch, newCatch);
 
-          if (classmates !== originalClassmates) {
-            fs.writeFileSync(classmatesPath, classmates);
-            changed = true;
+          classmates = classmates.replace(
+            'grid-template-rows: auto minmax(0, 1fr) auto;',
+            'grid-template-rows: auto auto minmax(0, 1fr) auto;'
+          );
+          if (!classmates.includes('.peer-profile-card')) {
+            const peerCss = String.raw`
+
+      .peer-profile-card {
+        margin: 14px 18px 0;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+        background: white;
+      }
+
+      .peer-profile-card[hidden] {
+        display: none;
+      }
+
+      .peer-profile-cover {
+        height: 86px;
+        background: linear-gradient(135deg, #234764, #2f7d62);
+        overflow: hidden;
+      }
+
+      .peer-profile-cover img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .peer-profile-main {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 12px;
+        align-items: center;
+        padding: 12px 14px 14px;
+      }
+
+      .peer-profile-avatar {
+        width: 58px;
+        height: 58px;
+        border-radius: 8px;
+        border: 3px solid white;
+        margin-top: -34px;
+        background: #1f4d5c;
+        color: white;
+        display: grid;
+        place-items: center;
+        font-weight: 800;
+        box-shadow: 0 8px 22px rgba(25, 36, 58, 0.16);
+        overflow: hidden;
+      }
+
+      .peer-profile-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .peer-profile-name {
+        margin: 0;
+        font-size: 18px;
+        line-height: 1.2;
+      }
+
+      .peer-profile-facts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 7px;
+      }
+
+      .peer-profile-facts span {
+        border: 1px solid #dfe7f1;
+        border-radius: 999px;
+        padding: 4px 8px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.2;
+        background: #f8fbff;
+      }`;
+            classmates = classmates.replace(
+              '      .classmates-chat-head h3 {\n        margin: 0;\n      }',
+              '      .classmates-chat-head h3 {\n        margin: 0;\n      }' + peerCss
+            );
           }
 
-          const layoutPath = 'public/layout-fix.js';
-          let layout = fs.readFileSync(layoutPath, 'utf8');
-          const originalLayout = layout;
-          layout = layout.replace(/\/classmates-request-patch\.js\?v=20261005-\d+/g, '/classmates-request-patch.js?v=20261005-3');
-          if (layout !== originalLayout) {
-            fs.writeFileSync(layoutPath, layout);
-            changed = true;
+          if (!classmates.includes('id="peerProfileCard"')) {
+            classmates = classmates.replace(
+              '          <div class="direct-message-list" id="directMessageList"></div>',
+              '          <article class="peer-profile-card" id="peerProfileCard" hidden></article>\n          <div class="direct-message-list" id="directMessageList"></div>'
+            );
           }
+
+          if (!classmates.includes('function renderPeerProfile(active)')) {
+            const peerFunction = String.raw`
+
+  function initialsForProfile(name) {
+    return String(name || "SB")
+      .trim()
+      .split(/\s+/)
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "SB";
+  }
+
+  function renderPeerProfile(active) {
+    const card = page.querySelector("#peerProfileCard");
+    if (!card) return;
+    const peer = active?.peer;
+    if (!peer) {
+      card.hidden = true;
+      card.innerHTML = "";
+      return;
+    }
+    const name = peer.name || "\u540c\u5b66";
+    const facts = [
+      peer.school ? ` + '`\u5b66\u6821\uff1a${peer.school}`' + ` : "",
+      peer.major ? ` + '`\u4e13\u4e1a\uff1a${peer.major}`' + ` : "",
+      peer.sbId ? ` + '`SB ID：@${peer.sbId}`' + ` : ""
+    ].filter(Boolean);
+    card.hidden = false;
+    card.innerHTML = ` + '`' + `
+      <div class="peer-profile-cover">
+        ${peer.backgroundUrl ? `<img src="${escapeHtml(peer.backgroundUrl)}" alt="">` : ""}
+      </div>
+      <div class="peer-profile-main">
+        <div class="peer-profile-avatar">
+          ${peer.avatarUrl ? `<img src="${escapeHtml(peer.avatarUrl)}" alt="">` : escapeHtml(initialsForProfile(name))}
+        </div>
+        <div>
+          <h4 class="peer-profile-name">${escapeHtml(name)}</h4>
+          <div class="peer-profile-facts">
+            ${facts.length ? facts.map((fact) => `<span>${escapeHtml(fact)}</span>`).join("") : "<span>\u8fd8\u6ca1\u6709\u586b\u5199\u516c\u5f00\u8d44\u6599</span>"}
+          </div>
+        </div>
+      </div>
+    ` + '`' + `;
+  }`;
+            classmates = classmates.replace('\n  async function addClassmate(event) {', peerFunction + '\n\n  async function addClassmate(event) {');
+          }
+          classmates = classmates.replace(
+            '    if (!active) {\n      title.textContent = "请选择一位同学";',
+            '    if (!active) {\n      renderPeerProfile(null);\n      title.textContent = "请选择一位同学";'
+          );
+          classmates = classmates.replace(
+            '    title.textContent = active.peer?.name || "同学";',
+            '    renderPeerProfile(active);\n    title.textContent = active.peer?.name || "同学";'
+          );
+          writeIfChanged(classmatesPath, classmates);
+
+          let layout = fs.readFileSync('public/layout-fix.js', 'utf8');
+          layout = layout.replace(/\/classmates-request-patch\.js\?v=20261005-\d+/g, '/classmates-request-patch.js?v=20261005-4');
+          writeIfChanged('public/layout-fix.js', layout);
 
           if (!changed) {
-            console.log('Friend request UI hotfix already applied.');
+            console.log('Friend request UI/profile hotfix already applied.');
             process.exit(0);
           }
           NODE
+          node --check server.js
           node --check public/classmates-request-patch.js
           node --check public/layout-fix.js
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/classmates-request-patch.js public/layout-fix.js
-          git commit -m "Refresh classmate requests automatically"
+          git add server.js public/classmates-request-patch.js public/layout-fix.js
+          git commit -m "Show classmate profile cards"
           git push

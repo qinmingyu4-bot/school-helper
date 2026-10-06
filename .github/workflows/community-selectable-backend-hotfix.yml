@@ -1,0 +1,83 @@
+name: Apply selectable community backend hotfix
+
+on:
+  push:
+    paths:
+      - ".github/workflows/community-selectable-backend-hotfix.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch selectable community backend
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          let server = fs.readFileSync('server.js', 'utf8');
+
+          const oldFn = `function communityChannelForUser(user, requestedType = "all") {
+  const channelType = String(requestedType || "all").toLowerCase();
+  if (channelType === "school") {
+    const school = String(user.profile?.school || "").trim();
+    const schoolKey = communitySchoolKey(school);
+    if (!schoolKey) throw new Error("Please fill in your school in Profile first.");
+    return { type: "school", label: school, key: communityChannelKey("school", school) };
+  }
+  if (channelType === "major") {
+    const major = String(user.profile?.major || "").trim();
+    const majorKey = communitySchoolKey(major);
+    if (!majorKey) throw new Error("Please fill in your major in Profile first.");
+    return { type: "major", label: major, key: communityChannelKey("major", major) };
+  }
+  return { type: "all", label: "StudyBridge", key: "all" };
+}`;
+          const newFn = `function communityChannelForUser(user, requestedType = "all", requestedValue = "") {
+  const channelType = String(requestedType || "all").toLowerCase();
+  if (channelType === "school") {
+    const school = String(requestedValue || user.profile?.school || "").trim();
+    const schoolKey = communitySchoolKey(school);
+    if (!schoolKey) throw new Error("Please choose a school channel first.");
+    return { type: "school", label: school, key: communityChannelKey("school", school) };
+  }
+  if (channelType === "major") {
+    const major = String(requestedValue || user.profile?.major || "").trim();
+    const majorKey = communitySchoolKey(major);
+    if (!majorKey) throw new Error("Please choose a major channel first.");
+    return { type: "major", label: major, key: communityChannelKey("major", major) };
+  }
+  return { type: "all", label: "StudyBridge", key: "all" };
+}`;
+          if (server.includes(oldFn)) server = server.replace(oldFn, newFn);
+          else if (!server.includes('requestedValue = ""')) throw new Error('communityChannelForUser target not found');
+
+          server = server.replaceAll(
+            'communityChannelForUser(user, url.searchParams.get("channel") || "all");',
+            'communityChannelForUser(user, url.searchParams.get("channel") || "all", url.searchParams.get("value") || "");'
+          );
+          server = server.replaceAll(
+            'communityChannelForUser(user, body.channel || "all");',
+            'communityChannelForUser(user, body.channel || "all", body.value || body.channelValue || "");'
+          );
+
+          fs.writeFileSync('server.js', server);
+          NODE
+          node --check server.js
+          node --check public/school-community-patch.js
+      - name: Commit selectable community backend
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "qinmingyu4-bot"
+          git config user.email "qinmingyu4-bot@users.noreply.github.com"
+          git add server.js
+          git commit -m "Allow selecting school and major community channels"
+          git push

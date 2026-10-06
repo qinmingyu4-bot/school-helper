@@ -16,7 +16,9 @@
       #workspacePage #chatArea {
         padding-bottom: var(--study-chat-bottom-space, 168px) !important;
         scroll-padding-bottom: var(--study-chat-bottom-space, 168px) !important;
-        overscroll-behavior: contain;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        overscroll-behavior: auto;
       }
 
       #workspacePage #quickPrompts,
@@ -41,12 +43,32 @@
     document.documentElement.style.setProperty("--study-chat-bottom-space", `${bottomSpace}px`);
   }
 
+  let stickToBottom = true;
+  let programmaticScrollUntil = 0;
+
+  function distanceFromBottom(chatArea) {
+    return chatArea.scrollHeight - chatArea.scrollTop - chatArea.clientHeight;
+  }
+
+  function updateStickiness() {
+    const chatArea = document.querySelector("#chatArea");
+    if (!chatArea) return;
+    if (Date.now() < programmaticScrollUntil) return;
+    stickToBottom = distanceFromBottom(chatArea) < 120;
+  }
+
   function scrollStudyChatToBottom() {
     const chatArea = document.querySelector("#chatArea");
     const workspacePage = document.querySelector("#workspacePage");
     if (!isVisible(chatArea) || !isVisible(workspacePage)) return;
     updateBottomSpace();
+    programmaticScrollUntil = Date.now() + 160;
     chatArea.scrollTop = chatArea.scrollHeight;
+    stickToBottom = true;
+  }
+
+  function maybeScrollStudyChatToBottom() {
+    if (stickToBottom) scrollStudyChatToBottom();
   }
 
   function boot() {
@@ -57,12 +79,23 @@
   boot();
   window.addEventListener("resize", updateBottomSpace);
   window.addEventListener("load", () => setTimeout(scrollStudyChatToBottom, 80));
+  document.addEventListener("scroll", updateStickiness, true);
+  document.addEventListener(
+    "wheel",
+    (event) => {
+      const chatArea = document.querySelector("#chatArea");
+      if (!chatArea || !chatArea.contains(event.target)) return;
+      if (event.deltaY < 0) stickToBottom = false;
+      setTimeout(updateStickiness, 30);
+    },
+    { passive: true }
+  );
 
   const observer = new MutationObserver(() => {
     boot();
-    setTimeout(scrollStudyChatToBottom, 30);
-    setTimeout(scrollStudyChatToBottom, 180);
-    setTimeout(scrollStudyChatToBottom, 500);
+    setTimeout(maybeScrollStudyChatToBottom, 30);
+    setTimeout(maybeScrollStudyChatToBottom, 180);
+    setTimeout(maybeScrollStudyChatToBottom, 500);
   });
 
   observer.observe(document.body, {
@@ -75,7 +108,6 @@
     updateBottomSpace();
     const chatArea = document.querySelector("#chatArea");
     if (!chatArea) return;
-    const distanceFromBottom = chatArea.scrollHeight - chatArea.scrollTop - chatArea.clientHeight;
-    if (distanceFromBottom < 240) scrollStudyChatToBottom();
+    if (stickToBottom && distanceFromBottom(chatArea) < 240) scrollStudyChatToBottom();
   }, 1200);
 })();

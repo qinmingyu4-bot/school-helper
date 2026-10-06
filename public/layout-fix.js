@@ -120,7 +120,7 @@
         max-height: none !important;
         min-height: 0 !important;
         margin: 0;
-        padding: 24px 28px 8px;
+        padding: 20px 28px 0;
         border: 0;
         box-shadow: none;
         background: #f4f6f9;
@@ -129,6 +129,10 @@
       }
 
       body.creator-clean-mode #developerPanel:not([hidden]) > *:last-child {
+        margin-bottom: 0 !important;
+      }
+
+      body.creator-clean-mode #systemStatusPanel {
         margin-bottom: 0 !important;
       }
 

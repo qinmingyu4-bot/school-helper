@@ -6,14 +6,171 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 concurrency:
   group: studybridge-production
   cancel-in-progress: true
 
 jobs:
   deploy:
+    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      - name: Patch weather support into server
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path('server.js')
+          source = path.read_text(encoding='utf-8')
+
+          helper = r'''
+function looksLikeWeatherQuestion(message) {
+  return /weather|temperature|forecast|rain|snow|天气|气温|温度|下雨|下雪|降雨|降雪/i.test(
+    String(message || "")
+  );
+}
+
+function inferWeatherLocation(message, user) {
+  const text = String(message || "").toLowerCase();
+  const cityHints = [
+    [/(toronto|多伦多)/i, "Toronto"],
+    [/(vancouver|温哥华)/i, "Vancouver"],
+    [/(montreal|montr[eé]al|蒙特利尔)/i, "Montreal"],
+    [/(ottawa|渥太华)/i, "Ottawa"],
+    [/(calgary|卡尔加里)/i, "Calgary"],
+    [/(edmonton|埃德蒙顿)/i, "Edmonton"],
+    [/(waterloo|滑铁卢)/i, "Waterloo"],
+    [/(new york|nyc|纽约)/i, "New York"],
+    [/(los angeles|la|洛杉矶)/i, "Los Angeles"],
+    [/(boston|波士顿)/i, "Boston"],
+    [/(chicago|芝加哥)/i, "Chicago"],
+    [/(seattle|西雅图)/i, "Seattle"]
+  ];
+  const direct = cityHints.find(([pattern]) => pattern.test(text));
+  if (direct) return direct[1];
+  const school = String(user?.profile?.school || "").toLowerCase();
+  if (/toronto|centennial|seneca|george brown|humber|york/.test(school)) return "Toronto";
+  if (/waterloo|laurier/.test(school)) return "Waterloo";
+  if (/british columbia|ubc|simon fraser|sfu/.test(school)) return "Vancouver";
+  if (/mcgill|concordia/.test(school)) return "Montreal";
+  if (/ottawa|carleton/.test(school)) return "Ottawa";
+  if (/calgary/.test(school)) return "Calgary";
+  if (/alberta/.test(school)) return "Edmonton";
+  return "Toronto";
+}
+
+function weatherCodeLabel(code) {
+  const labels = {
+    0: "clear sky",
+    1: "mainly clear",
+    2: "partly cloudy",
+    3: "overcast",
+    45: "fog",
+    48: "depositing rime fog",
+    51: "light drizzle",
+    53: "moderate drizzle",
+    55: "dense drizzle",
+    61: "slight rain",
+    63: "moderate rain",
+    65: "heavy rain",
+    71: "slight snow",
+    73: "moderate snow",
+    75: "heavy snow",
+    80: "slight rain showers",
+    81: "moderate rain showers",
+    82: "violent rain showers",
+    95: "thunderstorm"
+  };
+  return labels[Number(code)] || `Weather code ${code}`;
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url, { headers: { "accept": "application/json" } });
+  if (!response.ok) throw new Error(`Weather API returned ${response.status}`);
+  return response.json();
+}
+
+async function getWeatherContextForQuestion(message, user) {
+  if (!looksLikeWeatherQuestion(message)) return "";
+  const location = inferWeatherLocation(message, user);
+  if (!location) {
+    return "Weather question detected, but no city was clear from the message or student profile. Ask the student for the city before answering.";
+  }
+  try {
+    const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=en&format=json`;
+    const geo = await fetchJson(geoUrl);
+    const place = geo.results?.[0];
+    if (!place) return `Weather lookup could not find coordinates for ${location}.`;
+    const forecastUrl =
+      `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}` +
+      "&current=temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m" +
+      "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum" +
+      "&timezone=auto&forecast_days=1";
+    const forecast = await fetchJson(forecastUrl);
+    const current = forecast.current || {};
+    const daily = forecast.daily || {};
+    return [
+      `Real-time weather lookup for ${place.name}${place.admin1 ? `, ${place.admin1}` : ""}${place.country ? `, ${place.country}` : ""}.`,
+      `Current condition: ${weatherCodeLabel(current.weather_code)}.`,
+      `Current temperature: ${current.temperature_2m}${forecast.current_units?.temperature_2m || "C"}.`,
+      `Feels like: ${current.apparent_temperature}${forecast.current_units?.apparent_temperature || "C"}.`,
+      `Wind speed: ${current.wind_speed_10m}${forecast.current_units?.wind_speed_10m || "km/h"}.`,
+      `Today's high/low: ${daily.temperature_2m_max?.[0]}${forecast.daily_units?.temperature_2m_max || "C"} / ${daily.temperature_2m_min?.[0]}${forecast.daily_units?.temperature_2m_min || "C"}.`,
+      `Today's precipitation total: ${daily.precipitation_sum?.[0]}${forecast.daily_units?.precipitation_sum || "mm"}.`,
+      `Weather data time: ${current.time || "unknown"}.`
+    ].join("\n");
+  } catch (error) {
+    return `Weather lookup failed: ${error?.message || "unknown error"}. Tell the student the live weather service is temporarily unavailable.`;
+  }
+}
+'''
+
+          if 'function looksLikeWeatherQuestion(message)' not in source:
+              marker = 'function buildStudyPrompt('
+              if marker not in source:
+                  raise SystemExit('Could not find buildStudyPrompt marker')
+              source = source.replace(marker, helper + '\n' + marker, 1)
+
+          source = source.replace(
+              'function buildStudyPrompt({ user, course, documents, history, scheduleItems, mode, message }) {',
+              'function buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message }) {'
+          )
+          source = source.replace(
+              'provided course material and the student\'s global schedule. When the student asks about due dates, unfinished work, deadlines, exams, or what to do next, always use the global unfinished schedule/deadline context, even if the current chat is inside a different course.',
+              'provided course material, the student\'s global schedule, and any real-time external context provided by the server. When the student asks about due dates, unfinished work, deadlines, exams, or what to do next, always use the global unfinished schedule/deadline context, even if the current chat is inside a different course. When real-time weather context is provided, answer the weather question directly and include practical clothing/commute advice.'
+          )
+          source = source.replace(
+              'Current server time: ${new Date().toISOString()}\\n\\nGlobal unfinished schedule/deadline items across this student\'s account:',
+              'Current server time: ${new Date().toISOString()}\\n\\nReal-time external context:\\n${weatherContext || "No external context was needed or available for this question."}\\n\\nGlobal unfinished schedule/deadline items across this student\'s account:'
+          )
+          source = source.replace(
+              'const [documents, history, scheduleItems] = await Promise.all([\n        db.listDocuments(user.id, courseId),\n        db.listMessages(user.id, courseId),\n        db.listUserScheduleItems(user.id)\n      ]);',
+              'const [documents, history, scheduleItems, weatherContext] = await Promise.all([\n        db.listDocuments(user.id, courseId),\n        db.listMessages(user.id, courseId),\n        db.listUserScheduleItems(user.id),\n        getWeatherContextForQuestion(message, user)\n      ]);'
+          )
+          source = source.replace(
+              'buildStudyPrompt({ user, course, documents, history, scheduleItems, mode, message })',
+              'buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message })'
+          )
+
+          path.write_text(source, encoding='utf-8')
+          print('weather support patch applied or already present')
+          PY
+      - name: Check and commit server patch
+        run: |
+          node --check server.js
+          if git diff --quiet -- server.js; then
+            echo "No server changes"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add server.js
+            git commit -m "Add live weather lookup for study chat"
+            git push
+          fi
       - name: Deploy to Lightsail
         env:
           LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}

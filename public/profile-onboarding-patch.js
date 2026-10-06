@@ -124,6 +124,30 @@
         color: var(--red);
         font-size: 12px;
       }
+
+      .profile-onboarding-actions-inner {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+      }
+
+      .profile-onboarding-secondary {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: white;
+        color: var(--muted);
+        min-height: 40px;
+        padding: 0 14px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .profile-onboarding-secondary:hover {
+        color: var(--navy);
+        border-color: var(--green);
+      }
     `;
     document.head.appendChild(style);
   }
@@ -258,11 +282,19 @@
         </label>
         <div class="profile-onboarding-actions">
           <p class="profile-onboarding-message" id="profileOnboardingMessage"></p>
-          <button class="primary-button" type="submit">保存并进入</button>
+          <div class="profile-onboarding-actions-inner">
+            <button class="profile-onboarding-secondary" id="skipProfileOnboardingButton" type="button">暂时不填，以后再填</button>
+            <button class="primary-button" type="submit">保存并进入</button>
+          </div>
         </div>
       </form>
     `;
     document.body.appendChild(overlay);
+
+    overlay.querySelector("#skipProfileOnboardingButton")?.addEventListener("click", () => {
+      localStorage.setItem("studybridgeProfileOnboardingDone", "true");
+      overlay.remove();
+    });
 
     overlay.querySelector("#profileOnboardingForm")?.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -282,6 +314,7 @@
   }
 
   async function maybeShowOnboarding() {
+    if (localStorage.getItem("studybridgeProfileOnboardingDone") === "true") return;
     const user = currentUser || (await refreshMe());
     if (!user || user.role === "admin") return;
     const profile = user.profile || {};

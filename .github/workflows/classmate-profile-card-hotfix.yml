@@ -1,0 +1,93 @@
+name: Classmate Profile Card Hotfix
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/classmate-profile-card-hotfix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch classmate profile card
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          let changed = false;
+
+          function writeIfChanged(path, next) {
+            const current = fs.readFileSync(path, 'utf8');
+            if (current !== next) {
+              fs.writeFileSync(path, next);
+              changed = true;
+            }
+          }
+
+          let server = fs.readFileSync('server.js', 'utf8');
+          if (!server.includes('avatarUrl: peer.profile?.avatarUrl')) {
+            server = server.replace(
+              '          school: peer.profile?.school || "",\n          sbId: peer.profile?.sbId || ""',
+              '          school: peer.profile?.school || "",\n          major: peer.profile?.major || "",\n          avatarUrl: peer.profile?.avatarUrl || "",\n          backgroundUrl: peer.profile?.backgroundUrl || "",\n          sbId: peer.profile?.sbId || ""'
+            );
+          }
+          writeIfChanged('server.js', server);
+
+          let classmates = fs.readFileSync('public/classmates-request-patch.js', 'utf8');
+          classmates = classmates.replace(
+            'grid-template-rows: auto minmax(0, 1fr) auto;',
+            'grid-template-rows: auto auto minmax(0, 1fr) auto;'
+          );
+
+          if (!classmates.includes('.peer-profile-card')) {
+            classmates = classmates.replace(
+              '      .classmates-chat-head h3 {\n        margin: 0;\n      }\n',
+              `      .classmates-chat-head h3 {\n        margin: 0;\n      }\n\n      .peer-profile-card {\n        margin: 14px 18px 0;\n        border: 1px solid var(--line);\n        border-radius: 8px;\n        overflow: hidden;\n        background: white;\n      }\n\n      .peer-profile-card[hidden] {\n        display: none;\n      }\n\n      .peer-profile-cover {\n        height: 86px;\n        background: linear-gradient(135deg, #234764, #2f7d62);\n        overflow: hidden;\n      }\n\n      .peer-profile-cover img {\n        width: 100%;\n        height: 100%;\n        object-fit: cover;\n        display: block;\n      }\n\n      .peer-profile-main {\n        display: grid;\n        grid-template-columns: auto minmax(0, 1fr);\n        gap: 12px;\n        align-items: center;\n        padding: 12px 14px 14px;\n      }\n\n      .peer-profile-avatar {\n        width: 58px;\n        height: 58px;\n        border-radius: 8px;\n        border: 3px solid white;\n        margin-top: -34px;\n        background: #1f4d5c;\n        color: white;\n        display: grid;\n        place-items: center;\n        font-weight: 800;\n        box-shadow: 0 8px 22px rgba(25, 36, 58, 0.16);\n        overflow: hidden;\n      }\n\n      .peer-profile-avatar img {\n        width: 100%;\n        height: 100%;\n        object-fit: cover;\n        display: block;\n      }\n\n      .peer-profile-name {\n        margin: 0;\n        font-size: 18px;\n        line-height: 1.2;\n      }\n\n      .peer-profile-facts {\n        display: flex;\n        flex-wrap: wrap;\n        gap: 6px;\n        margin-top: 7px;\n      }\n\n      .peer-profile-facts span {\n        border: 1px solid #dfe7f1;\n        border-radius: 999px;\n        padding: 4px 8px;\n        color: var(--muted);\n        font-size: 12px;\n        line-height: 1.2;\n        background: #f8fbff;\n      }\n`
+            );
+          }
+
+          if (!classmates.includes('id="peerProfileCard"')) {
+            classmates = classmates.replace(
+              '          <div class="direct-message-list" id="directMessageList"></div>',
+              '          <article class="peer-profile-card" id="peerProfileCard" hidden></article>\n          <div class="direct-message-list" id="directMessageList"></div>'
+            );
+          }
+
+          if (!classmates.includes('function renderPeerProfile(active)')) {
+            classmates = classmates.replace(
+              '\n  async function addClassmate(event) {',
+              `\n  function initialsForProfile(name) {\n    return String(name || "SB")\n      .trim()\n      .split(/\\s+/)\n      .map((part) => part[0])\n      .join("")\n      .slice(0, 2)\n      .toUpperCase() || "SB";\n  }\n\n  function renderPeerProfile(active) {\n    const card = page.querySelector("#peerProfileCard");\n    if (!card) return;\n    const peer = active?.peer;\n    if (!peer) {\n      card.hidden = true;\n      card.innerHTML = "";\n      return;\n    }\n    const name = peer.name || "\\u540c\\u5b66";\n    const facts = [\n      peer.school ? ` + "`\\u5b66\\u6821\\uff1a${peer.school}`" + ` : "",\n      peer.major ? ` + "`\\u4e13\\u4e1a\\uff1a${peer.major}`" + ` : "",\n      peer.sbId ? ` + "`SB ID：@${peer.sbId}`" + ` : ""\n    ].filter(Boolean);\n    card.hidden = false;\n    card.innerHTML = ` + "`" + `\n      <div class="peer-profile-cover">\n        ${peer.backgroundUrl ? `<img src="${escapeHtml(peer.backgroundUrl)}" alt="">` : ""}\n      </div>\n      <div class="peer-profile-main">\n        <div class="peer-profile-avatar">\n          ${peer.avatarUrl ? `<img src="${escapeHtml(peer.avatarUrl)}" alt="">` : escapeHtml(initialsForProfile(name))}\n        </div>\n        <div>\n          <h4 class="peer-profile-name">${escapeHtml(name)}</h4>\n          <div class="peer-profile-facts">\n            ${facts.length ? facts.map((fact) => `<span>${escapeHtml(fact)}</span>`).join("") : "<span>\\u8fd8\\u6ca1\\u6709\\u586b\\u5199\\u516c\\u5f00\\u8d44\\u6599</span>"}\n          </div>\n        </div>\n      </div>\n    ` + "`" + `;\n  }\n\n  async function addClassmate(event) {`
+            );
+          }
+
+          classmates = classmates.replace(
+            '    if (!active) {\n      title.textContent = "请选择一位同学";',
+            '    if (!active) {\n      renderPeerProfile(null);\n      title.textContent = "请选择一位同学";'
+          );
+          classmates = classmates.replace(
+            '    title.textContent = active.peer?.name || "同学";',
+            '    renderPeerProfile(active);\n    title.textContent = active.peer?.name || "同学";'
+          );
+          writeIfChanged('public/classmates-request-patch.js', classmates);
+
+          let layout = fs.readFileSync('public/layout-fix.js', 'utf8');
+          layout = layout.replace(/\/classmates-request-patch\.js\?v=20261005-\d+/g, '/classmates-request-patch.js?v=20261005-4');
+          writeIfChanged('public/layout-fix.js', layout);
+
+          if (!changed) {
+            console.log('Classmate profile card hotfix already applied.');
+            process.exit(0);
+          }
+          NODE
+          node --check server.js
+          node --check public/classmates-request-patch.js
+          node --check public/layout-fix.js
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add server.js public/classmates-request-patch.js public/layout-fix.js
+          git commit -m "Show classmate profile cards"
+          git push

@@ -105,18 +105,23 @@
       }
 
       #classmatesPage .direct-message {
-        display: grid !important;
-        grid-template-columns: minmax(0, 1fr) auto !important;
-        align-items: end !important;
-        column-gap: 16px !important;
+        display: flex !important;
+        align-items: flex-end !important;
+        justify-content: space-between !important;
+        gap: 16px !important;
         width: fit-content !important;
         min-width: min(360px, 72vw) !important;
         max-width: min(720px, 86%) !important;
-        min-height: 0 !important;
+        min-height: auto !important;
+        height: auto !important;
         padding: 10px 14px !important;
         border-radius: 8px !important;
         line-height: 1.42 !important;
         white-space: pre-wrap !important;
+      }
+
+      #classmatesPage .direct-message > span {
+        min-width: 0 !important;
       }
 
       #classmatesPage .direct-message.mine {
@@ -125,7 +130,7 @@
 
       #classmatesPage .direct-message time {
         display: block !important;
-        align-self: end !important;
+        align-self: flex-end !important;
         margin: 0 !important;
         white-space: nowrap !important;
         text-align: right !important;
@@ -133,7 +138,9 @@
 
       @media (max-width: 640px) {
         #classmatesPage .direct-message {
-          grid-template-columns: 1fr !important;
+          align-items: flex-start !important;
+          flex-direction: column !important;
+          gap: 4px !important;
           min-width: min(260px, 82vw) !important;
           max-width: 92% !important;
         }

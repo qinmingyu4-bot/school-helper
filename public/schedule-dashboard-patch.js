@@ -22,10 +22,18 @@
   }
 
   function installStyle() {
-    if (document.querySelector("#studybridge-schedule-dashboard-patch-style")) return;
-    const style = document.createElement("style");
-    style.id = "studybridge-schedule-dashboard-patch-style";
+    let style = document.querySelector("#studybridge-schedule-dashboard-patch-style");
+    if (!style) {
+      style = document.createElement("style");
+      style.id = "studybridge-schedule-dashboard-patch-style";
+      document.head.appendChild(style);
+    }
     style.textContent = `
+      #scheduleDashboard {
+        position: relative;
+        z-index: 2;
+      }
+
       .schedule-dashboard-list {
         display: grid;
         gap: 8px;
@@ -107,7 +115,6 @@
         box-shadow: 0 8px 20px rgba(25, 36, 58, 0.06);
       }
     `;
-    document.head.appendChild(style);
   }
 
   function parseScheduleDoc(doc) {
@@ -131,28 +138,30 @@
   function countdownParts(value) {
     const target = new Date(value).getTime();
     const diff = target - Date.now();
-    if (Number.isNaN(target)) return { past: false, totalMinutes: 0, primary: "--", secondary: "倒计时", compact: "" };
-    if (diff < 0) return { past: true, totalMinutes: Math.floor(diff / 60000), primary: "已过期", secondary: "请尽快处理", compact: "已过期" };
+    if (Number.isNaN(target)) {
+      return { past: false, totalMinutes: 0, primary: "--", secondary: "倒计时", compact: "--" };
+    }
+    if (diff < 0) {
+      return { past: true, totalMinutes: Math.floor(diff / 60000), primary: "已过期", secondary: "请尽快处理", compact: "已过期" };
+    }
     const minutes = Math.max(1, Math.ceil(diff / 60000));
     const days = Math.floor(minutes / 1440);
     const hours = Math.floor((minutes % 1440) / 60);
     const mins = minutes % 60;
     if (days > 0) {
-      return {
-        past: false,
-        totalMinutes: minutes,
-        primary: hours > 0 ? `${days}天${hours}小时` : `${days}天`,
-        secondary: "后 due",
-        compact: `${days}天${hours}小时`
-      };
+      const label = hours > 0 ? `${days}天${hours}小时` : `${days}天`;
+      return { past: false, totalMinutes: minutes, primary: label, secondary: "后 due", compact: label };
     }
-    if (hours > 0) return { past: false, totalMinutes: minutes, primary: `${hours}小时`, secondary: `${mins}分钟后 due`, compact: `${hours}小时${mins}分钟` };
+    if (hours > 0) {
+      const label = mins > 0 ? `${hours}小时${mins}分钟` : `${hours}小时`;
+      return { past: false, totalMinutes: minutes, primary: label, secondary: "后 due", compact: label };
+    }
     return { past: false, totalMinutes: minutes, primary: `${mins}分钟`, secondary: "马上要 due", compact: `${mins}分钟` };
   }
 
   function timeUntil(value) {
     const countdown = countdownParts(value);
-    return countdown.past ? "已经过去" : `还有 ${countdown.compact}`;
+    return countdown.past ? "已经过期" : `还有 ${countdown.compact}`;
   }
 
   function formatItemMeta(item) {
@@ -193,9 +202,9 @@
       card.classList.remove("urgent");
       card.innerHTML = `
         <div data-dashboard-patch="1">
-          <p class="eyebrow">Next Due</p>
+          <p class="eyebrow">最近要做</p>
           <h3>5 天内暂时没有 deadline</h3>
-          <span class="schedule-dashboard-meta">${upcoming[0] ? `下一个是 ${escapeHtml(upcoming[0].title)} · ${escapeHtml(timeUntil(upcoming[0].startsAt))}` : "添加作业、考试或上传 syllabus 后，这里会直接显示最近倒计时。"}</span>
+          <span class="schedule-dashboard-meta">${upcoming[0] ? `下一个是 ${escapeHtml(upcoming[0].title)} · ${escapeHtml(timeUntil(upcoming[0].startsAt))}` : "添加作业、考试或上传 syllabus 后，这里会显示最近倒计时。"}</span>
         </div>
         <div class="schedule-dashboard-countdown">
           <strong>--</strong>

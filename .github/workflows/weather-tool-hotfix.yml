@@ -2,8 +2,8 @@ name: Apply StudyBridge weather lookup hotfix
 
 on:
   push:
-    paths:
-      - ".github/workflows/weather-tool-hotfix.yml"
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   hotfix:
+    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,30 +53,14 @@ function inferWeatherLocation(message, user) {
     ["Chicago", ["chicago", "uchicago", "northwestern", "\u829d\u52a0\u54e5"]]
   ];
   const match = locations.find(([, keys]) => keys.some((key) => text.includes(key)));
-  return match ? match[0] : "";
+  return match ? match[0] : "Toronto";
 }
 
 function weatherCodeLabel(code) {
   const labels = {
-    0: "Clear sky",
-    1: "Mainly clear",
-    2: "Partly cloudy",
-    3: "Overcast",
-    45: "Fog",
-    48: "Depositing rime fog",
-    51: "Light drizzle",
-    53: "Moderate drizzle",
-    55: "Dense drizzle",
-    61: "Slight rain",
-    63: "Moderate rain",
-    65: "Heavy rain",
-    71: "Slight snow",
-    73: "Moderate snow",
-    75: "Heavy snow",
-    80: "Slight rain showers",
-    81: "Moderate rain showers",
-    82: "Violent rain showers",
-    95: "Thunderstorm"
+    0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast", 45: "Fog", 48: "Depositing rime fog",
+    51: "Light drizzle", 53: "Moderate drizzle", 55: "Dense drizzle", 61: "Slight rain", 63: "Moderate rain", 65: "Heavy rain",
+    71: "Slight snow", 73: "Moderate snow", 75: "Heavy snow", 80: "Slight rain showers", 81: "Moderate rain showers", 82: "Violent rain showers", 95: "Thunderstorm"
   };
   return labels[Number(code)] || `Weather code ${code}`;
 }
@@ -95,20 +80,16 @@ async function fetchJsonWithTimeout(url, timeoutMs = 6500) {
 async function getWeatherContextForQuestion(message, user) {
   if (!looksLikeWeatherQuestion(message)) return "";
   const location = inferWeatherLocation(message, user);
-  if (!location) {
-    return "Weather question detected, but no city was clear from the message or student profile. Ask the student for the city before answering.";
-  }
   try {
-    const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=en&format=json`;
-    const geo = await fetchJsonWithTimeout(geoUrl);
+    const geo = await fetchJsonWithTimeout(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=en&format=json`);
     const place = geo?.results?.[0];
     if (!place) return `Weather lookup could not find coordinates for ${location}.`;
-    const forecastUrl =
+    const forecast = await fetchJsonWithTimeout(
       `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}` +
       "&current=temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m" +
       "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum" +
-      "&forecast_days=1&timezone=auto";
-    const forecast = await fetchJsonWithTimeout(forecastUrl);
+      "&forecast_days=1&timezone=auto"
+    );
     const current = forecast.current || {};
     const daily = forecast.daily || {};
     return [
@@ -138,23 +119,23 @@ async function getWeatherContextForQuestion(message, user) {
             "function buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message })"
           )
           text = text.replace(
-            "the provided course material and the student's global schedule. When the student asks about due dates",
-            "the provided course material, the student's global schedule, and any real-time external context provided by the server. When the student asks about due dates"
+            "keep answers grounded in the provided course material and the student's global schedule.",
+            "keep answers grounded in the provided course material, the student's global schedule, and any real-time external context provided by the server."
           )
           text = text.replace(
-            "even if the current chat is inside a different course.",
-            "even if the current chat is inside a different course. When real-time weather context is provided, answer the weather question directly and include practical clothing/commute advice."
+            "even if the current chat is inside a different course.\"",
+            "even if the current chat is inside a different course. When real-time weather context is provided, answer the weather question directly and include practical clothing/commute advice.\""
           )
           text = text.replace(
             r"Current server time: ${new Date().toISOString()}\n\nGlobal unfinished schedule/deadline items across this student's account:",
             r"Current server time: ${new Date().toISOString()}\n\nReal-time external context:\n${weatherContext || \"No external context was needed or available for this question.\"}\n\nGlobal unfinished schedule/deadline items across this student's account:"
           )
           text = re.sub(
-            r"const \[documents, history, scheduleItems\] = await Promise\.all\(\[\s*db\.listDocuments\(user\.id, courseId\),\s*db\.listMessages\(user\.id, courseId\),\s*listUserScheduleItems\(user\.id\)\s*\]\);",
+            r"const \[documents, history, scheduleItems\] = await Promise\.all\(\[\s*db\.listDocuments\(user\.id, courseId\),\s*db\.listMessages\(user\.id, courseId\),\s*(?:db\.)?listUserScheduleItems\(user\.id\)\s*\]\);",
             """const [documents, history, scheduleItems, weatherContext] = await Promise.all([
         db.listDocuments(user.id, courseId),
         db.listMessages(user.id, courseId),
-        listUserScheduleItems(user.id),
+        db.listUserScheduleItems(user.id),
         getWeatherContextForQuestion(message, user)
       ]);""",
             text,
@@ -173,12 +154,12 @@ async function getWeatherContextForQuestion(message, user) {
 
       - name: Commit hotfix
         run: |
-          if git diff --quiet; then
+          if git diff --quiet -- server.js; then
             echo "No changes to commit."
             exit 0
           fi
-          git config user.name "qinmingyu4-bot"
-          git config user.email "qinmingyu4-bot@users.noreply.github.com"
-          git add server.js .github/workflows/weather-tool-hotfix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.js
           git commit -m "Add live weather lookup for study chat"
           git push

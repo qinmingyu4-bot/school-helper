@@ -1,0 +1,149 @@
+name: Apply schedule completion hotfix
+
+on:
+  push:
+    paths:
+      - ".github/workflows/schedule-completion-hotfix.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch schedule completion support
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          def write(path, text):
+              Path(path).write_text(text, encoding='utf-8')
+
+          # lib/database.js: allow updating persisted documents.
+          path = Path('lib/database.js')
+          text = path.read_text(encoding='utf-8')
+          if 'async updateDocument(userId, courseId, documentId, patch)' not in text:
+              marker = '''  async deleteDocument(userId, courseId, documentId) {\n'''
+              insert = '''  async updateDocument(userId, courseId, documentId, patch) {\n    const existing = this.dynamo\n      ? await this.dynamo.get(`USER#${userId}`, `COURSE#${courseId}#DOC#${documentId}`)\n      : await this.local.read((db) => db.documents[documentId] || null);\n    if (!existing || existing.userId !== userId || existing.courseId !== courseId) return null;\n    const updated = { ...existing, ...patch, id: documentId, userId, courseId, kind: "document", updatedAt: now() };\n    if (this.dynamo) {\n      return this.dynamo.put(\n        `USER#${userId}`,\n        `COURSE#${courseId}#DOC#${documentId}`,\n        "document",\n        updated\n      );\n    }\n    return this.local.write((db) => {\n      db.documents[documentId] = updated;\n      return updated;\n    });\n  }\n\n'''
+              text = text.replace(marker, insert + marker)
+              write(path, text)
+
+          # server.js: expose PATCH/PUT for course documents.
+          path = Path('server.js')
+          text = path.read_text(encoding='utf-8')
+          if 'method === "PUT" || method === "PATCH"' not in text:
+              marker = '''    if (child === "documents" && childId && method === "DELETE") {\n'''
+              insert = '''    if (child === "documents" && childId && (method === "PUT" || method === "PATCH")) {\n      const body = await readJson(req);\n      const title = String(body.title || "Course note").trim().slice(0, 160);\n      let text;\n      try {\n        text = compactDocumentText(body.text);\n      } catch (error) {\n        return sendError(res, 400, error.message);\n      }\n      if (!title || !text) return sendError(res, 400, "Document title and text are required.");\n      const document = await db.updateDocument(user.id, courseId, childId, {\n        title,\n        text,\n        type: String(body.type || "Note").slice(0, 60)\n      });\n      if (!document) return sendError(res, 404, "Document not found.");\n      return sendJson(res, 200, { document });\n    }\n'''
+              text = text.replace(marker, insert + marker)
+              write(path, text)
+
+          # public/schedule-patch.js: completed list + completion action.
+          path = Path('public/schedule-patch.js')
+          text = path.read_text(encoding='utf-8')
+          if '.schedule-item.completed' not in text:
+              text = text.replace('''      .schedule-item.past {\n        opacity: 0.58;\n      }\n\n''', '''      .schedule-item.past {\n        opacity: 0.58;\n      }\n\n      .schedule-item.completed {\n        background: #f7faf9;\n        opacity: 0.76;\n      }\n\n''')
+          if '.schedule-item-actions' not in text:
+              text = text.replace('''      .schedule-actions {\n        display: flex;\n        gap: 8px;\n        flex-wrap: wrap;\n      }\n\n''', '''      .schedule-actions {\n        display: flex;\n        gap: 8px;\n        flex-wrap: wrap;\n      }\n\n      .schedule-item-actions {\n        display: flex;\n        align-items: center;\n        gap: 8px;\n      }\n\n      .schedule-complete-button {\n        min-height: 34px;\n        padding: 0 12px;\n        border: 1px solid rgba(47, 125, 98, 0.24);\n        border-radius: 8px;\n        background: rgba(47, 125, 98, 0.08);\n        color: var(--green);\n        font-weight: 850;\n      }\n\n      .schedule-complete-button:hover {\n        border-color: var(--green);\n        background: rgba(47, 125, 98, 0.14);\n      }\n\n      .schedule-section-title {\n        margin: 6px 0 2px;\n        color: var(--muted);\n        font-size: 12px;\n        font-weight: 900;\n        letter-spacing: 0.04em;\n        text-transform: uppercase;\n      }\n\n''')
+          text = text.replace('''        notes: String(data.notes || "").slice(0, 600),\n        createdAt: doc.createdAt\n''', '''        notes: String(data.notes || "").slice(0, 600),\n        completedAt: data.completedAt || "",\n        createdAt: doc.createdAt\n''')
+          if 'function schedulePayload(item, overrides = {})' not in text:
+              text = text.replace('''  async function saveScheduleItem(item) {\n    const course = await getScheduleCourse();\n    const payload = {\n      kind: item.kind || "deadline",\n      title: item.title,\n      course: item.course || "",\n      startsAt: normalizeDateInput(item.startsAt),\n      location: item.location || "",\n      notes: item.notes || ""\n    };\n    if (!payload.title || !payload.startsAt) throw new Error("请填写标题和时间。");\n    const dateLabel = payload.startsAt.replace("T", " ").slice(0, 16);\n    await api(`/api/courses/${course.id}/documents`, {\n      method: "POST",\n      body: {\n        title: `${ITEM_PREFIX} ${dateLabel} ${payload.title}`.slice(0, 160),\n        text: JSON.stringify(payload),\n        type: "Schedule"\n      }\n    });\n  }\n''', '''  function schedulePayload(item, overrides = {}) {\n    return {\n      kind: item.kind || "deadline",\n      title: item.title,\n      course: item.course || "",\n      startsAt: normalizeDateInput(item.startsAt),\n      location: item.location || "",\n      notes: item.notes || "",\n      completedAt: item.completedAt || "",\n      ...overrides\n    };\n  }\n\n  function scheduleDocumentTitle(payload) {\n    const dateLabel = payload.startsAt.replace("T", " ").slice(0, 16);\n    return `${ITEM_PREFIX} ${dateLabel} ${payload.title}`.slice(0, 160);\n  }\n\n  async function saveScheduleItem(item) {\n    const course = await getScheduleCourse();\n    const payload = schedulePayload(item);\n    if (!payload.title || !payload.startsAt) throw new Error("请填写标题和时间。");\n    await api(`/api/courses/${course.id}/documents`, {\n      method: "POST",\n      body: {\n        title: scheduleDocumentTitle(payload),\n        text: JSON.stringify(payload),\n        type: "Schedule"\n      }\n    });\n  }\n\n  async function updateScheduleItem(item, overrides = {}) {\n    const course = await getScheduleCourse();\n    const payload = schedulePayload(item, overrides);\n    if (!payload.title || !payload.startsAt) throw new Error("这条提醒缺少标题或时间，不能更新。");\n    await api(`/api/courses/${course.id}/documents/${item.id}`, {\n      method: "PATCH",\n      body: {\n        title: scheduleDocumentTitle(payload),\n        text: JSON.stringify(payload),\n        type: "Schedule"\n      }\n    });\n  }\n\n  async function completeScheduleItem(itemId) {\n    const item = scheduleItems.find((row) => row.id === itemId);\n    if (!item) return;\n    await updateScheduleItem(item, { completedAt: new Date().toISOString() });\n    await loadSchedule();\n  }\n''')
+          new_render = r'''  function renderList() {
+    const list = page?.querySelector("#scheduleList");
+    if (!list) return;
+    if (!scheduleItems.length) {
+      list.innerHTML = `<p class="schedule-message">还没有时间节点。你可以手动添加，或上传 syllabus / 课程表 PDF 自动提取。</p>`;
+      return;
+    }
+    const now = Date.now();
+    const activeItems = scheduleItems.filter((item) => !item.completedAt);
+    const completedItems = scheduleItems.filter((item) => item.completedAt);
+    const renderItem = (item, completed = false) => {
+      const past = new Date(item.startsAt).getTime() < now;
+      const countdown = countdownParts(item.startsAt);
+      return `
+        <article class="schedule-item ${past ? "past" : ""} ${completed ? "completed" : ""}">
+          <div>
+            <div class="schedule-item-top">
+              <span class="schedule-kind">${escapeHtml(kindLabel(item.kind))}</span>
+              <span class="schedule-countdown-pill ${completed || past ? "past" : countdown.totalMinutes <= 24 * 60 ? "urgent" : ""}">
+                ${escapeHtml(completed ? "已完成" : past ? "已过期" : timeUntil(item.startsAt))}
+              </span>
+            </div>
+            <strong>${escapeHtml(item.title)}</strong>
+            <span>${escapeHtml(formatItemMeta(item))}</span>
+            ${item.notes ? `<span>${escapeHtml(item.notes)}</span>` : ""}
+          </div>
+          <div class="schedule-item-actions">
+            ${completed ? "" : `<button class="schedule-complete-button" type="button" data-complete-schedule="${escapeHtml(item.id)}">已完成</button>`}
+            <button class="delete-button" type="button" data-delete-schedule="${escapeHtml(item.id)}" aria-label="删除提醒">×</button>
+          </div>
+        </article>
+      `;
+    };
+    list.innerHTML = [
+      activeItems.length
+        ? `<p class="schedule-section-title">未完成</p>${activeItems.map((item) => renderItem(item)).join("")}`
+        : `<p class="schedule-message">没有未完成的提醒。</p>`,
+      completedItems.length
+        ? `<p class="schedule-section-title">已完成</p>${completedItems.map((item) => renderItem(item, true)).join("")}`
+        : `<p class="schedule-section-title">已完成</p><p class="schedule-message">完成 deadline 后会进入这里，不再继续提醒。</p>`
+    ].join("");
+    list.querySelectorAll("[data-complete-schedule]").forEach((completeButton) => {
+      completeButton.addEventListener("click", async () => {
+        completeButton.disabled = true;
+        completeButton.textContent = "保存中";
+        await completeScheduleItem(completeButton.dataset.completeSchedule);
+      });
+    });
+    list.querySelectorAll("[data-delete-schedule]").forEach((deleteButton) => {
+      deleteButton.addEventListener("click", async () => {
+        const course = await getScheduleCourse();
+        await api(`/api/courses/${course.id}/documents/${deleteButton.dataset.deleteSchedule}`, { method: "DELETE" });
+        await loadSchedule();
+      });
+    });
+  }
+
+'''
+          text = re.sub(r'  function renderList\(\) \{.*?\n  function updateEntryHint\(\) \{', new_render + '  function updateEntryHint() {', text, flags=re.S)
+          text = re.sub(r'  function getUpcomingItems\(\) \{.*?\n  function kindLabel\(kind\) \{', '''  function getUpcomingItems() {\n    const now = Date.now();\n    return scheduleItems\n      .filter((item) => !item.completedAt && new Date(item.startsAt).getTime() >= now)\n      .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));\n  }\n\n  function kindLabel(kind) {''', text, flags=re.S)
+          text = text.replace('''    const soon = scheduleItems.find((item) => {\n      const target = new Date(item.startsAt).getTime();\n''', '''    const soon = scheduleItems.find((item) => {\n      if (item.completedAt) return false;\n      const target = new Date(item.startsAt).getTime();\n''')
+          write(path, text)
+
+          # Dashboard patch: skip completed schedule items.
+          path = Path('public/schedule-dashboard-patch.js')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('''        startsAt: data.startsAt,\n        location: String(data.location || "").slice(0, 160)\n''', '''        startsAt: data.startsAt,\n        location: String(data.location || "").slice(0, 160),\n        completedAt: data.completedAt || ""\n''')
+          text = text.replace('''    const upcoming = items.filter((item) => new Date(item.startsAt).getTime() >= now);\n''', '''    const upcoming = items.filter((item) => !item.completedAt && new Date(item.startsAt).getTime() >= now);\n''')
+          write(path, text)
+
+          # Notification patch: skip completed schedule items.
+          path = Path('public/schedule-notification-patch.js')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('''        startsAt: data.startsAt\n''', '''        startsAt: data.startsAt,\n        completedAt: data.completedAt || ""\n''')
+          text = text.replace('''    const soon = (await loadItems()).find((item) => {\n      const target = new Date(item.startsAt).getTime();\n''', '''    const soon = (await loadItems()).find((item) => {\n      if (item.completedAt) return false;\n      const target = new Date(item.startsAt).getTime();\n''')
+          write(path, text)
+          PY
+      - name: Verify syntax
+        run: |
+          node --check server.js
+          node --check lib/database.js
+          node --check public/schedule-patch.js
+          node --check public/schedule-dashboard-patch.js
+          node --check public/schedule-notification-patch.js
+      - name: Commit hotfix
+        run: |
+          if git diff --quiet; then
+            echo "No changes needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.js lib/database.js public/schedule-patch.js public/schedule-dashboard-patch.js public/schedule-notification-patch.js
+          git commit -m "Add completed state for schedule deadlines"
+          git push

@@ -71,8 +71,8 @@
   function ensureFields() {
     const schoolInput = $("#schoolInput");
     if (!schoolInput) return;
-    const majorInput = ensureInput("majorInput", "涓撲笟锛屼緥濡?Business / Engineering", schoolInput);
-    const sbIdInput = ensureInput("sbIdInput", "SB ID锛屼緥濡?adam2026", majorInput);
+    const majorInput = ensureInput("majorInput", "专业，例如 Business / Engineering", schoolInput);
+    const sbIdInput = ensureInput("sbIdInput", "SB ID，例如 adam2026", majorInput);
     sbIdInput.autocomplete = "off";
     sbIdInput.spellcheck = false;
   }
@@ -102,9 +102,9 @@
     const line = ensureDisplay();
     if (!line) return;
     const rows = [];
-    if (profile.major) rows.push(`<span><b>涓撲笟</b> ${escapeHtml(profile.major)}</span>`);
+    if (profile.major) rows.push(`<span><b>专业</b> ${escapeHtml(profile.major)}</span>`);
     if (profile.sbId) rows.push(`<span><b>SB ID:</b> ${escapeHtml(profile.sbId)}</span>`);
-    line.innerHTML = rows.length ? rows.join("") : `<span>璁剧疆涓撲笟鍜?SB ID 鍚庯紝鍚屽鏇村鏄撴壘鍒颁綘銆?/span>`;
+    line.innerHTML = rows.length ? rows.join("") : `<span>设置专业和 SB ID 后，同学更容易找到你。</span>`;
   }
 
   async function refreshProfile() {

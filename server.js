@@ -57,7 +57,7 @@ const db = new StudyBridgeDatabase();
 const publicDir = path.join(__dirname, "public");
 const port = Number(process.env.PORT || 3000);
 const requireInviteCode = process.env.REQUIRE_INVITE_CODE !== "false";
-const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION !== "false";
+const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION === "true";
 const allowEmailCodeFallback = process.env.ALLOW_EMAIL_CODE_FALLBACK !== "false";
 const emailCodeTtlMs = Number(process.env.EMAIL_CODE_TTL_MINUTES || 15) * 60 * 1000;
 const maxJsonBytes = 16 * 1024 * 1024;

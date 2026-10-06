@@ -434,20 +434,20 @@ function setAuthMode(mode) {
   });
   const registering = mode === "register";
   const resetting = mode === "reset";
-  const codeRequired = registering || resetting;
+  const codeRequired = resetting;
   nameField.hidden = !registering;
   inviteField.hidden = !registering;
-  confirmPasswordField.hidden = !codeRequired;
+  confirmPasswordField.hidden = !(registering || resetting);
   emailCodeField.hidden = !codeRequired;
   forgotPasswordButton.hidden = mode !== "login";
   nameInput.required = registering;
   inviteInput.required = registering;
-  passwordConfirmInput.required = codeRequired;
+  passwordConfirmInput.required = registering || resetting;
   emailCodeInput.required = codeRequired;
   passwordInput.autocomplete = mode === "login" ? "current-password" : "new-password";
   passwordInput.placeholder = resetting ? "输入新密码" : "至少 8 位";
   authSubmit.textContent = registering ? "创建账号" : resetting ? "重设密码" : "登录";
-  authMessage.textContent = resetting ? "输入邮箱，发送验证码，然后设置新密码。" : "";
+  authMessage.textContent = resetting ? "输入邮箱，发送验证码，然后设置新密码。" : registering ? "邮箱验证码暂时不是必填；有邀请码就可以注册。" : "";
 }
 
 async function loadCourses() {

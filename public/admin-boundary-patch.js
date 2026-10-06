@@ -14,6 +14,25 @@
     const style = document.createElement("style");
     style.id = "studybridge-admin-boundary-style";
     style.textContent = `
+      body.admin-boundary-active #profileCard,
+      body.admin-boundary-active #openProfilePageButton,
+      body.admin-boundary-active #openStudyAreaButton,
+      body.admin-boundary-active #openSchoolCommunityButton,
+      body.admin-boundary-active #openClassmatesButton,
+      body.admin-boundary-active #openEmailReplyButton,
+      body.admin-boundary-active #openScheduleButton,
+      body.admin-boundary-active #profilePage,
+      body.admin-boundary-active #schoolCommunityPage,
+      body.admin-boundary-active #classmatesPage,
+      body.admin-boundary-active #emailReplyPage,
+      body.admin-boundary-active #schedulePage,
+      body.admin-boundary-active .profile-card,
+      body.admin-boundary-active .feature-entry,
+      body.admin-boundary-active .community-entry,
+      body.admin-boundary-active .classmates-entry,
+      body.admin-boundary-active .email-helper-entry,
+      body.admin-boundary-active .schedule-entry,
+      body.admin-boundary-active .study-entry,
       body.creator-clean-mode #profileCard,
       body.creator-clean-mode #openProfilePageButton,
       body.creator-clean-mode #openStudyAreaButton,
@@ -21,6 +40,7 @@
       body.creator-clean-mode #openClassmatesButton,
       body.creator-clean-mode #openEmailReplyButton,
       body.creator-clean-mode #openScheduleButton,
+      body.creator-clean-mode #emailReplyPage,
       body.creator-clean-mode .profile-card,
       body.creator-clean-mode .feature-entry,
       body.creator-clean-mode .community-entry,
@@ -145,11 +165,13 @@
     installStyle();
     ensureScopeNotice();
     protectStudentEntrypoints();
-    if (!isCreatorMode()) return;
+    const creatorMode = isCreatorMode();
+    document.body.classList.toggle("admin-boundary-active", creatorMode);
+    if (!creatorMode) return;
     hideStudentPages();
     ensureWorkspaceShell();
   }
 
   syncBoundary();
-  setInterval(syncBoundary, 700);
+  setInterval(syncBoundary, 250);
 })();

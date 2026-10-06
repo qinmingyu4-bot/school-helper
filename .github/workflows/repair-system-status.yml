@@ -1,0 +1,34 @@
+name: Repair System Status
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - repair-system-status.js
+      - .github/workflows/repair-system-status.yml
+      - .github/triggers/repair-system-status.txt
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node repair-system-status.js
+      - run: node --check public/layout-fix.js
+      - run: node --check public/system-status-patch.js
+      - run: node --check server.js
+      - run: |
+          git config user.name "qinmingyu4-bot"
+          git config user.email "qinmingyu4-bot@users.noreply.github.com"
+          git add public/layout-fix.js public/system-status-patch.js server.js repair-system-status.js
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Repair system diagnostics endpoint"
+            git push
+          fi

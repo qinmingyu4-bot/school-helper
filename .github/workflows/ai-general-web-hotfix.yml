@@ -97,3 +97,5 @@ jobs:
           git add server.js .env.example
           git commit -m "Improve StudyBridge AI web answers"
           git push
+
+# trigger: 2026-10-06T20:51:00Z

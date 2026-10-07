@@ -1,6 +1,6 @@
 (() => {
-  if (window.__studybridgeSidebarDirectRouter === "20261007-1") return;
-  window.__studybridgeSidebarDirectRouter = "20261007-1";
+  if (window.__studybridgeSidebarDirectRouter === "20261007-2") return;
+  window.__studybridgeSidebarDirectRouter = "20261007-2";
 
   const PAGE_KEY = "studybridgeLastOpenPage";
   const PAGE_IDS = ["workspacePage", "profilePage", "schoolCommunityPage", "classmatesPage", "emailReplyPage", "schedulePage"];
@@ -39,6 +39,7 @@
   };
 
   const scriptPromises = (window.__studybridgeDirectRouterScripts ||= new Map());
+  let visibleLockTimer = 0;
 
   function wait(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -87,10 +88,21 @@
     });
   }
 
+  function removeDuplicateScheduleDashboards() {
+    const dashboards = Array.from(document.querySelectorAll("#scheduleDashboard"));
+    dashboards.slice(1).forEach((element) => element.remove());
+    const first = dashboards[0];
+    const topbar = document.querySelector("#workspacePage > .topbar");
+    if (first && topbar && first.previousElementSibling !== topbar) {
+      topbar.insertAdjacentElement("afterend", first);
+    }
+  }
+
   function showOnly(pageId) {
     const targetPage = document.querySelector(`#${pageId}`);
     if (!targetPage) return false;
     forceStudentMode();
+    removeDuplicateScheduleDashboards();
     PAGE_IDS.forEach((id) => {
       const page = document.querySelector(`#${id}`);
       if (page) page.hidden = id !== pageId;
@@ -104,20 +116,51 @@
     return true;
   }
 
+  function keepVisible(pageId, duration = 1800) {
+    clearInterval(visibleLockTimer);
+    const started = Date.now();
+    const tick = () => {
+      removeDuplicateScheduleDashboards();
+      showOnly(pageId);
+      if (Date.now() - started > duration) {
+        clearInterval(visibleLockTimer);
+        visibleLockTimer = 0;
+      }
+    };
+    tick();
+    visibleLockTimer = setInterval(tick, 90);
+  }
+
+  function findExistingScript(src) {
+    const pathname = new URL(src.split("?")[0], window.location.href).pathname;
+    return Array.from(document.scripts).find((script) => {
+      const scriptSrc = script.getAttribute("src");
+      return scriptSrc && new URL(scriptSrc, window.location.href).pathname === pathname;
+    });
+  }
+
   function scriptAlreadyUsable(src, openerName) {
     if (openerName && typeof window[openerName] === "function") return true;
-    const pathname = new URL(src.split("?")[0], window.location.href).pathname;
-    return Array.from(document.scripts).some((script) => {
-      const scriptSrc = script.getAttribute("src");
-      return scriptSrc && new URL(scriptSrc, window.location.href).pathname === pathname && script.dataset.loaded === "true";
-    });
+    const existing = findExistingScript(src);
+    return Boolean(existing && existing.dataset.loaded === "true");
   }
 
   function loadScript(src, openerName) {
     const pathname = new URL(src.split("?")[0], window.location.href).pathname;
-    const key = `${pathname}|${openerName || ""}`;
+    const key = pathname;
     if (scriptAlreadyUsable(src, openerName)) return Promise.resolve();
     if (scriptPromises.has(key)) return scriptPromises.get(key);
+    const existing = findExistingScript(src);
+
+    if (existing) {
+      const promise = new Promise((resolve) => {
+        existing.addEventListener("load", resolve, { once: true });
+        existing.addEventListener("error", resolve, { once: true });
+        setTimeout(resolve, 1800);
+      });
+      scriptPromises.set(key, promise);
+      return promise;
+    }
 
     const promise = new Promise((resolve) => {
       const script = document.createElement("script");
@@ -165,6 +208,7 @@
     try {
       if (target.pageId === "workspacePage" || target.pageId === "profilePage") {
         showOnly(target.pageId);
+        keepVisible(target.pageId, 900);
         setStatus("Workspace is ready.");
         return;
       }
@@ -173,10 +217,12 @@
       for (const delay of [0, 80, 180, 360, 700, 1200]) {
         if (delay) await wait(delay);
         if (await callOpener(target)) {
+          keepVisible(target.pageId);
           setStatus("Page opened.");
           return;
         }
         if (showOnly(target.pageId)) {
+          keepVisible(target.pageId);
           setStatus("Page opened.");
           return;
         }
@@ -205,6 +251,7 @@
       const button = document.querySelector(`#${buttonId}`);
       if (!button || button.dataset.directRouterReady === "true") return;
       button.dataset.directRouterReady = "true";
+      button.onclick = handleClick;
       button.addEventListener("click", handleClick, true);
       button.addEventListener(
         "keydown",
@@ -249,7 +296,12 @@
   window.studybridgeDirectOpenPage = openTarget;
   window.addEventListener("click", handleClick, true);
   document.addEventListener("DOMContentLoaded", attachButtonHandlers, { once: true });
-  new MutationObserver(attachButtonHandlers).observe(document.documentElement, { childList: true, subtree: true });
+  new MutationObserver(() => {
+    attachButtonHandlers();
+    removeDuplicateScheduleDashboards();
+  }).observe(document.documentElement, { childList: true, subtree: true });
   installStyle();
   attachButtonHandlers();
+  removeDuplicateScheduleDashboards();
+  setInterval(removeDuplicateScheduleDashboards, 1200);
 })();

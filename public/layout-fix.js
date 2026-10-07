@@ -390,6 +390,7 @@
     }
     registry.add(key);
     const script = document.createElement("script");
+    script.async = false;
     script.src = src;
     script.defer = true;
     script.addEventListener("error", () => registry.delete(key), { once: true });
@@ -426,14 +427,15 @@
   loadScriptOnce("/school-datalist-patch.js?v=20261005-1");
   loadScriptOnce("/us-school-library-patch.js?v=20261005-1");
   loadScriptOnce("/admin-refresh-patch.js?v=20261005-1");
+  loadScriptOnce("/sidebar-direct-router.js?v=20261007-1");
   loadScriptOnce("/school-community-patch.js?v=20261005-3");
   loadScriptOnce("/classmates-patch.js?v=20261005-2");
   loadScriptOnce("/classmates-request-patch.js?v=20261006-1");
   loadScriptOnce("/classmate-chat-bubble-fix.js?v=20261006-1");
-  loadScriptOnce("/student-nav-hardening-patch.js?v=20261007-2");
-  loadScriptOnce("/chat-bubble-compact-live.js?v=20261007-2");
+  loadScriptOnce("/student-nav-hardening-patch.js?v=20261007-4");
+  loadScriptOnce("/chat-bubble-compact-live.js?v=20261007-4");
   loadScriptOnce("/cheatsheet-mode-patch.js?v=20261006-1");
-  loadScriptOnce("/study-chat-bottom-fix.js?v=20261007-3");
+  loadScriptOnce("/study-chat-bottom-fix.js?v=20261007-4");
   loadScriptOnce("/email-reply-patch.js?v=20261005-1");
   loadScriptOnce("/schedule-patch.js?v=20261005-3");
   loadScriptOnce("/schedule-dashboard-patch.js?v=20261006-2");

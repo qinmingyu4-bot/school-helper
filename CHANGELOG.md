@@ -4,6 +4,9 @@
 
 ### Added
 
+- Bumped StudyBridge Cloud to `1.0.16`.
+- Added a stable student page shell router so Profile, Community, Classmates, Email Helper, Schedule, and Study Area cannot be hidden by older navigation patches.
+- Kept developer access loading the new student router automatically while preserving the developer/student boundary.
 - Bumped StudyBridge Cloud to `1.0.15`.
 - Restored the developer console entrance after the student navigation hardening added in the `1.0.13` line.
 - Added a developer access guard so student page restore/navigation loops cannot hide the admin panel.

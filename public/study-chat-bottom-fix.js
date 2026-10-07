@@ -33,6 +33,9 @@
       }
 
       #workspacePage #chatArea {
+        position: relative !important;
+        z-index: 1 !important;
+        padding-top: 24px !important;
         padding-bottom: var(--study-chat-bottom-space, 168px) !important;
         scroll-padding-bottom: var(--study-chat-bottom-space, 168px) !important;
         height: auto !important;
@@ -40,7 +43,8 @@
         max-height: none !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
-        overscroll-behavior: contain !important;
+        overscroll-behavior: auto !important;
+        -webkit-overflow-scrolling: touch;
         scrollbar-gutter: stable;
       }
 
@@ -109,19 +113,16 @@
     const chatArea = document.querySelector("#chatArea");
     if (!chatArea || !isStudyWorkspaceTarget(event.target)) return;
     if (chatArea.scrollHeight <= chatArea.clientHeight + 2) return;
-    if (event.target.closest?.("textarea, input, select, button")) return;
+    if (event.target.closest?.("#chatForm, #quickPrompts, textarea, input, select")) return;
 
     if (event.deltaY < 0 || distanceFromBottom(chatArea) > 80) {
       stickToBottom = false;
     }
 
     event.preventDefault();
+    event.stopImmediatePropagation();
     programmaticScrollUntil = Date.now() + 80;
-    const before = chatArea.scrollTop;
     chatArea.scrollTop += event.deltaY;
-    if (chatArea.scrollTop === before && event.deltaY < 0) {
-      chatArea.scrollTop = Math.max(0, before - Math.abs(event.deltaY || 120));
-    }
     setTimeout(updateStickiness, 40);
   }
 
@@ -145,7 +146,7 @@
   window.addEventListener("resize", updateBottomSpace);
   window.addEventListener("load", () => setTimeout(scrollStudyChatToBottom, 80));
   document.addEventListener("scroll", updateStickiness, true);
-  document.addEventListener(
+  window.addEventListener(
     "wheel",
     routeWheelToChat,
     { passive: false, capture: true }
@@ -153,9 +154,10 @@
 
   const observer = new MutationObserver(() => {
     boot();
-    setTimeout(maybeScrollStudyChatToBottom, 30);
-    setTimeout(maybeScrollStudyChatToBottom, 180);
-    setTimeout(maybeScrollStudyChatToBottom, 500);
+    if (stickToBottom) {
+      setTimeout(maybeScrollStudyChatToBottom, 30);
+      setTimeout(maybeScrollStudyChatToBottom, 180);
+    }
   });
 
   observer.observe(document.body, {
@@ -168,6 +170,6 @@
     updateBottomSpace();
     const chatArea = document.querySelector("#chatArea");
     if (!chatArea) return;
-    if (stickToBottom && distanceFromBottom(chatArea) < 240) scrollStudyChatToBottom();
+    if (stickToBottom && distanceFromBottom(chatArea) < 80) scrollStudyChatToBottom();
   }, 1200);
 })();

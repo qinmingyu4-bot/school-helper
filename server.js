@@ -372,6 +372,116 @@ async function extractUploadedText(body = {}) {
   return compactDocumentText(body.text || body.fileText || "");
 }
 
+function cleanAttachmentName(name) {
+  return String(name || "Uploaded attachment").replace(/[^\w .()[\]\-@#&,+]/g, "").trim().slice(0, 180) || "Uploaded attachment";
+}
+
+function attachmentMime(body = {}) {
+  return String(body.mime || body.fileType || body.type || "").trim().toLowerCase().slice(0, 120);
+}
+
+function attachmentBuffer(dataUrl = "") {
+  const raw = String(dataUrl || "");
+  if (!raw) return Buffer.alloc(0);
+  return decodeBase64Data(raw);
+}
+
+async function normalizeChatAttachments(input = []) {
+  if (!Array.isArray(input)) return [];
+  const normalized = [];
+  for (const raw of input.slice(0, 8)) {
+    const name = cleanAttachmentName(raw.name || raw.fileName || raw.title);
+    const mime = attachmentMime(raw);
+    const size = Math.max(0, Math.min(Number(raw.size || 0), maxJsonBytes));
+    const dataUrl = String(raw.dataUrl || raw.fileData || "").trim();
+    const text = String(raw.text || raw.fileText || "").trim();
+    const lowerName = name.toLowerCase();
+    const kind =
+      String(raw.kind || "").toLowerCase() ||
+      (mime.startsWith("image/")
+        ? "image"
+        : mime.includes("pdf") || lowerName.endsWith(".pdf")
+          ? "pdf"
+          : mime.startsWith("text/") || text
+            ? "text"
+            : "file");
+
+    if (kind === "image" && dataUrl.startsWith("data:image/")) {
+      if (dataUrl.length > maxJsonBytes) {
+        normalized.push({ name, mime, size, kind: "file", text: "Image was too large to send to AI vision." });
+      } else {
+        normalized.push({ name, mime, size, kind: "image", dataUrl });
+      }
+      continue;
+    }
+
+    if ((kind === "pdf" || mime.includes("pdf") || lowerName.endsWith(".pdf")) && dataUrl) {
+      if (!pdfParse) {
+        normalized.push({ name, mime: mime || "application/pdf", size, kind: "file", text: "PDF parser is not installed on the server yet." });
+        continue;
+      }
+      try {
+        const buffer = attachmentBuffer(dataUrl);
+        if (buffer.length > maxPdfBytes) throw new Error("PDF is over 8 MB.");
+        const parsed = await pdfParse(buffer);
+        normalized.push({
+          name,
+          mime: mime || "application/pdf",
+          size: buffer.length || size,
+          kind: "pdf",
+          text: compactDocumentText(parsed.text || "").slice(0, 9000)
+        });
+      } catch (error) {
+        normalized.push({ name, mime: mime || "application/pdf", size, kind: "file", text: `PDF could not be read: ${error.message}` });
+      }
+      continue;
+    }
+
+    if (text) {
+      normalized.push({ name, mime: mime || "text/plain", size, kind: "text", text: compactDocumentText(text).slice(0, 9000) });
+      continue;
+    }
+
+    normalized.push({ name, mime: mime || "application/octet-stream", size, kind: "file", text: "The file was attached, but StudyBridge could not extract readable text from this format yet." });
+  }
+  return normalized;
+}
+
+function formatAttachmentContext(attachments = []) {
+  if (!attachments.length) return "";
+  return attachments
+    .map((item, index) => {
+      const lines = [`Attachment ${index + 1}: ${item.name}`, `type=${item.kind}`, `mime=${item.mime || "unknown"}`];
+      if (item.kind === "image") {
+        lines.push("The image is attached as vision input. Inspect it directly before answering.");
+      } else if (item.text) {
+        lines.push(`Extracted/readable content:\n${item.text}`);
+      } else {
+        lines.push("No readable content was extracted.");
+      }
+      return lines.join("\n");
+    })
+    .join("\n\n");
+}
+
+function chatAttachmentLabel(attachments = []) {
+  if (!attachments.length) return "";
+  return "\n\nAttachments:\n" + attachments.map((item) => `- ${item.name} (${item.kind}${item.mime ? `, ${item.mime}` : ""})`).join("\n");
+}
+
+function buildUserPromptContent(text, attachments = []) {
+  const context = formatAttachmentContext(attachments);
+  const promptText = context ? `${text}\n\nAttached files:\n${context}` : text;
+  const imageParts = attachments
+    .filter((item) => item.kind === "image" && item.dataUrl)
+    .map((item) => ({
+      type: "image_url",
+      image_url: { url: item.dataUrl }
+    }));
+  if (!imageParts.length) return promptText;
+  return [{ type: "text", text: promptText }, ...imageParts];
+}
+
 function generateEmailCode() {
   return String(crypto.randomInt(100000, 1000000));
 }
@@ -617,7 +727,7 @@ async function getWeatherContextForQuestion(message, user) {
   }
 }
 
-function buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message }) {
+function buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message, attachments = [] }) {
   const preferenceInstruction = buildPreferenceInstruction(user.preferences || {});
   const docContext = documents
     .slice(0, 8)
@@ -660,9 +770,9 @@ function buildStudyPrompt({ user, course, documents, history, scheduleItems, wea
     },
     {
       role: "user",
-      content: `Student: ${user.name}\nSchool: ${user.profile?.school || "Not provided"}\nMajor: ${user.profile?.major || "Not provided"}\nCourse: ${course.name}\nMode: ${mode}\nLearning style instructions:\n${preferenceInstruction || "Use StudyBridge defaults: Chinese explanation with helpful English academic terms."}\nRaw preferences: ${JSON.stringify(
+      content: buildUserPromptContent(`Student: ${user.name}\nSchool: ${user.profile?.school || "Not provided"}\nMajor: ${user.profile?.major || "Not provided"}\nCourse: ${course.name}\nMode: ${mode}\nLearning style instructions:\n${preferenceInstruction || "Use StudyBridge defaults: Chinese explanation with helpful English academic terms."}\nRaw preferences: ${JSON.stringify(
         user.preferences || {}
-      )}\nCurrent server time: ${new Date().toISOString()}\n\nReal-time external context:\n${weatherContext || "No external context was needed or available for this question."}\n\nGlobal unfinished schedule/deadline items across this student's account:\n${formatScheduleContext(scheduleItems)}\n\nCourse material for the current chat course:\n${docContext || "No course material saved yet."}\n\nRecent chat in the current course:\n${recent || "No prior messages."}\n\nStudent question:\n${message}`
+      )}\nCurrent server time: ${new Date().toISOString()}\n\nReal-time external context:\n${weatherContext || "No external context was needed or available for this question."}\n\nGlobal unfinished schedule/deadline items across this student's account:\n${formatScheduleContext(scheduleItems)}\n\nCourse material for the current chat course:\n${docContext || "No course material saved yet."}\n\nRecent chat in the current course:\n${recent || "No prior messages."}\n\nStudent question:\n${message}`, attachments)
     }
   ];
 }
@@ -771,6 +881,40 @@ function extractResponsesText(payload) {
   return parts.join("\n").trim();
 }
 
+function toResponsesContent(content) {
+  if (!Array.isArray(content)) return content;
+  return content.map((part) => {
+    if (part.type === "image_url") {
+      return {
+        type: "input_image",
+        image_url: part.image_url?.url || part.image_url || ""
+      };
+    }
+    return {
+      type: "input_text",
+      text: String(part.text || "")
+    };
+  });
+}
+
+function toChatContent(content) {
+  if (!Array.isArray(content)) return content;
+  return content.map((part) => {
+    if (part.type === "image_url") {
+      return {
+        type: "image_url",
+        image_url: {
+          url: part.image_url?.url || part.image_url || ""
+        }
+      };
+    }
+    return {
+      type: "text",
+      text: String(part.text || "")
+    };
+  });
+}
+
 async function callAiWithResponses(messages, model, toolType = "web_search") {
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
@@ -782,7 +926,7 @@ async function callAiWithResponses(messages, model, toolType = "web_search") {
       model,
       input: messages.map((item) => ({
         role: item.role,
-        content: item.content
+        content: toResponsesContent(item.content)
       })),
       tools: [
         {
@@ -808,7 +952,10 @@ async function callAiWithChatCompletions(messages, model) {
     },
     body: JSON.stringify({
       model,
-      messages
+      messages: messages.map((item) => ({
+        role: item.role,
+        content: toChatContent(item.content)
+      }))
     })
   });
   const text = await response.text();
@@ -1894,19 +2041,21 @@ if (directMessageMatch && method === "POST") {
     }
     if (child === "chat" && method === "POST") {
       const body = await readJson(req);
-      const message = String(body.message || "").trim().slice(0, 4000);
+      const rawMessage = String(body.message || "").trim().slice(0, 4000);
       const mode = String(body.mode || "guided").slice(0, 40);
+      const attachments = await normalizeChatAttachments(body.attachments);
+      const message = rawMessage || (attachments.length ? "Please analyze the attached file(s)." : "");
       if (!message) return sendError(res, 400, "Message is required.");
-      const userMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId, role: "user", content: message, mode });
+      const userMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId, role: "user", content: `${message}${chatAttachmentLabel(attachments)}`, mode });
       const [documents, history, scheduleItems, weatherContext] = await Promise.all([
         db.listDocuments(user.id, courseId),
         db.listMessages(user.id, courseId),
         listUserScheduleItems(user.id),
         getWeatherContextForQuestion(message, user)
       ]);
-      const selectedModel = chooseAiModel({ documents, history, mode, message });
-      console.log(`StudyBridge AI route: ${selectedModel} | mode=${mode} | docs=${documents.length} | schedule=${scheduleItems.length}`);
-      const aiContent = await callAi(buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message }), selectedModel);
+      const selectedModel = chooseAiModel({ documents, history, mode, message: `${message} ${chatAttachmentLabel(attachments)}` });
+      console.log(`StudyBridge AI route: ${selectedModel} | mode=${mode} | docs=${documents.length} | schedule=${scheduleItems.length} | attachments=${attachments.length}`);
+      const aiContent = await callAi(buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message, attachments }), selectedModel);
       const assistantMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId, role: "assistant", content: aiContent, mode });
       return sendJson(res, 201, { messages: [userMessage, assistantMessage], model: selectedModel });
     }

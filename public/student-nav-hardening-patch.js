@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = "20261007-nav-hardening-1.0.52";
+  const VERSION = "20261007-nav-hardening-1.0.53";
   if (window.__studybridgeStudentNavHardening === VERSION) return;
   window.__studybridgeStudentNavHardening = VERSION;
 
@@ -168,7 +168,7 @@
   function showDeveloper() {
     activeRoute = "developer";
     shell();
-    workspace();
+    const root = workspace();
     hideFeaturePages("");
     setStudyVisible(false);
     const panel = $("#developerPanel");
@@ -176,10 +176,12 @@
       setStatus("开发者端没有加载出来，请刷新后再试。");
       return false;
     }
+    if (root && panel.parentElement !== root) root.appendChild(panel);
     panel.hidden = false;
     panel.removeAttribute("hidden");
     panel.style.display = "block";
     panel.style.visibility = "visible";
+    panel.style.opacity = "1";
     document.body.classList.remove("studybridge-secondary-page", "study-sidebar-hidden");
     document.body.classList.add("creator-clean-mode", "admin-boundary-active");
     document.body.dataset.studybridgeActivePage = "developerPanel";
@@ -189,6 +191,41 @@
     setStatus("开发者端已打开。");
     setTimeout(() => $("#refreshAdminButton")?.click(), 100);
     return true;
+  }
+
+  function repairDeveloperPanel() {
+    const root = workspace();
+    const panel = $("#developerPanel");
+    if (!root || !panel) return false;
+    if (panel.parentElement !== root) root.appendChild(panel);
+    root.hidden = false;
+    root.removeAttribute("hidden");
+    root.style.display = "block";
+    root.style.visibility = "visible";
+    panel.hidden = false;
+    panel.removeAttribute("hidden");
+    panel.style.display = "block";
+    panel.style.visibility = "visible";
+    panel.style.opacity = "1";
+    hideFeaturePages("");
+    setStudyVisible(false);
+    document.body.classList.remove("studybridge-secondary-page", "study-sidebar-hidden");
+    document.body.classList.add("creator-clean-mode", "admin-boundary-active");
+    document.body.dataset.studybridgeActivePage = "developerPanel";
+    $("#studentViewButton")?.classList.remove("active");
+    $("#creatorViewButton")?.classList.add("active");
+    mark("developer");
+    return true;
+  }
+
+  function lockDeveloperPanel(duration = 2200) {
+    const started = Date.now();
+    const tick = () => {
+      repairDeveloperPanel();
+      if (Date.now() - started < duration) requestAnimationFrame(tick);
+      else setTimeout(() => $("#refreshAdminButton")?.click(), 50);
+    };
+    tick();
   }
 
   function hasContent(page) {
@@ -333,6 +370,13 @@
   function onNavigate(event) {
     const routeName = routeFromTarget(event.target);
     if (!routeName) return;
+    if (routeName === "developer") {
+      setTimeout(() => {
+        activeRoute = "developer";
+        lockDeveloperPanel();
+      }, 0);
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();

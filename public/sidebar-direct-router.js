@@ -1,6 +1,6 @@
 (() => {
-  if (window.__studybridgeSidebarDirectRouter === "20261007-2") return;
-  window.__studybridgeSidebarDirectRouter = "20261007-2";
+  if (window.__studybridgeSidebarDirectRouter === "20261007-3") return;
+  window.__studybridgeSidebarDirectRouter = "20261007-3";
 
   const PAGE_KEY = "studybridgeLastOpenPage";
   const PAGE_IDS = ["workspacePage", "profilePage", "schoolCommunityPage", "classmatesPage", "emailReplyPage", "schedulePage"];
@@ -81,6 +81,7 @@
   }
 
   function setSidebarState(pageId) {
+    document.body.dataset.studybridgeActivePage = pageId;
     document.body.classList.toggle("study-sidebar-hidden", pageId !== "workspacePage");
     Object.entries(TARGETS).forEach(([buttonId, target]) => {
       const button = document.querySelector(`#${buttonId}`);
@@ -302,6 +303,24 @@
       #openEmailReplyButton *,
       #openScheduleButton * {
         pointer-events: none !important;
+      }
+
+      html body[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage,
+      html body:not(.creator-clean-mode) #workspacePage[hidden] {
+        display: none !important;
+        visibility: hidden !important;
+      }
+
+      html body[data-studybridge-active-page="workspacePage"] #workspacePage:not([hidden]) {
+        visibility: visible !important;
+      }
+
+      html body #profilePage[hidden],
+      html body #schoolCommunityPage[hidden],
+      html body #classmatesPage[hidden],
+      html body #emailReplyPage[hidden],
+      html body #schedulePage[hidden] {
+        display: none !important;
       }
     `;
     document.head.appendChild(style);

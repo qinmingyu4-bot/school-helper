@@ -20,7 +20,7 @@ text = text.replace(
   'Course: ${course.name}\\nMode: ${mode}\\nLearning style instructions:\\n${preferenceInstruction || "Use StudyBridge defaults: Chinese explanation with helpful English academic terms."}\\nRaw preferences: ${JSON.stringify(\n        user.preferences || {}\n      )}\\nCurrent server time:'
 );
 
-const preferenceHelper = String.raw`
+const preferenceHelper = `
 function buildPreferenceInstruction(preferences = {}) {
   const englishTerms = preferences.englishTerms !== false;
   const englishAnswers = preferences.englishAnswers !== false;
@@ -59,9 +59,6 @@ function buildPreferenceInstruction(preferences = {}) {
 
 const marker = 'function buildPreferenceInstruction(preferences = {}) {';
 const chooser = 'function chooseAiModel(';
-if (marker in String.prototype) {
-  // unreachable guard to keep older linters quiet
-}
 if (text.includes(marker)) {
   const start = text.indexOf(marker);
   const end = text.indexOf(chooser, start);

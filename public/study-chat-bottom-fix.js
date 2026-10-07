@@ -184,7 +184,57 @@
       // Ignore private browsing/localStorage errors.
     }
     document.body.classList.toggle("study-sidebar-hidden", pageId !== "workspacePage");
+    refreshStudentPage(pageId);
     return true;
+  }
+
+  function refreshStudentPage(pageId) {
+    const refreshButtonByPage = {
+      schoolCommunityPage: "#refreshCommunityButton",
+      classmatesPage: "#refreshClassmatesButton, #refreshClassmateRequestsButton",
+      schedulePage: "#refreshScheduleButton"
+    };
+    const selector = refreshButtonByPage[pageId];
+    if (!selector) return;
+    setTimeout(() => {
+      const button = document.querySelector(selector);
+      if (button && !button.disabled) button.click();
+    }, 80);
+  }
+
+  function ensureNavigationScripts(buttonId) {
+    const scriptMap = {
+      openSchoolCommunityButton: ["/school-community-patch.js?v=20261007-nav"],
+      openClassmatesButton: [
+        "/classmates-patch.js?v=20261007-nav",
+        "/classmates-request-patch.js?v=20261007-nav",
+        "/classmate-chat-bubble-fix.js?v=20261007-nav",
+        "/classmates-performance-patch.js?v=20261007-nav"
+      ],
+      openEmailReplyButton: ["/email-reply-patch.js?v=20261007-nav"],
+      openScheduleButton: [
+        "/schedule-patch.js?v=20261007-nav",
+        "/schedule-dashboard-patch.js?v=20261007-nav",
+        "/schedule-notification-patch.js?v=20261007-nav"
+      ]
+    };
+    (scriptMap[buttonId] || []).forEach(loadScriptOnce);
+  }
+
+  function callDirectOpener(buttonId) {
+    const openerMap = {
+      openSchoolCommunityButton: "studybridgeOpenCommunityPage",
+      openClassmatesButton: "studybridgeOpenClassmatesPage",
+      openEmailReplyButton: "studybridgeOpenEmailReplyPage",
+      openScheduleButton: "studybridgeOpenSchedulePage"
+    };
+    const openerName = openerMap[buttonId];
+    const opener = openerName ? window[openerName] : null;
+    if (typeof opener === "function") {
+      opener();
+      return true;
+    }
+    return false;
   }
 
   function attachStudentNavigationFallback() {
@@ -205,10 +255,12 @@
         if (!button || isCreatorMode()) return;
         const pageId = pageByButton[button.id];
         if (!pageId) return;
+        ensureNavigationScripts(button.id);
 
         const ensureOpened = () => {
+          if (button.id !== "openStudyAreaButton" && callDirectOpener(button.id)) return;
           const targetPage = document.querySelector(`#${pageId}`);
-          if (!targetPage) return;
+          if (!targetPage) return false;
           const workspacePage = document.querySelector("#workspacePage");
           if (pageId !== "workspacePage" && workspacePage && !workspacePage.hidden && targetPage.hidden) {
             showStudentPage(pageId);
@@ -216,11 +268,10 @@
           if (pageId === "workspacePage" && workspacePage?.hidden) {
             showStudentPage(pageId);
           }
+          return true;
         };
 
-        setTimeout(ensureOpened, 60);
-        setTimeout(ensureOpened, 240);
-        setTimeout(ensureOpened, 700);
+        [0, 60, 180, 360, 700, 1300, 2200].forEach((delay) => setTimeout(ensureOpened, delay));
       },
       true
     );

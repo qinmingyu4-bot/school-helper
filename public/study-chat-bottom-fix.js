@@ -132,7 +132,11 @@
   }
 
   function loadCheatsheetPatch() {
-    const src = "/cheatsheet-mode-patch.js?v=20261006-2";
+    loadScriptOnce("/cheatsheet-mode-patch.js?v=20261006-2");
+    loadScriptOnce("/classmates-performance-patch.js?v=20261007-1");
+  }
+
+  function loadScriptOnce(src) {
     const cleanSrc = src.split("?")[0];
     if (document.querySelector(`script[src^="${cleanSrc}"]`)) return;
     const script = document.createElement("script");

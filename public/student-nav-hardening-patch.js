@@ -35,6 +35,7 @@
       ]
     }
   };
+  const scriptPromises = (window.__studybridgeScriptPromises ||= new Map());
 
   function installStyle() {
     if (document.querySelector(`#${STYLE_ID}`)) return;
@@ -63,22 +64,43 @@
     const cleanSrc = src.split("?")[0];
     const key = new URL(cleanSrc, window.location.href).pathname;
     const registry = (window.__studybridgeLoadedScripts ||= new Set());
-    if (
-      registry.has(key) ||
-      Array.from(document.scripts).some((script) => {
-        const scriptSrc = script.getAttribute("src");
-        return scriptSrc && new URL(scriptSrc, window.location.href).pathname === key;
-      })
-    ) {
+    if (scriptPromises.has(key)) return scriptPromises.get(key);
+
+    const existing = Array.from(document.scripts).find((script) => {
+      const scriptSrc = script.getAttribute("src");
+      return scriptSrc && new URL(scriptSrc, window.location.href).pathname === key;
+    });
+
+    if (registry.has(key) && !existing) {
       registry.add(key);
       return Promise.resolve();
     }
+
+    if (existing) {
+      registry.add(key);
+      if (existing.dataset.loaded === "true") return Promise.resolve();
+      const promise = new Promise((resolve) => {
+        existing.addEventListener("load", resolve, { once: true });
+        existing.addEventListener("error", resolve, { once: true });
+        setTimeout(resolve, 1200);
+      });
+      scriptPromises.set(key, promise);
+      return promise;
+    }
+
     registry.add(key);
-    return new Promise((resolve) => {
+    const promise = new Promise((resolve) => {
       const script = document.createElement("script");
       script.src = src;
       script.defer = true;
-      script.addEventListener("load", resolve, { once: true });
+      script.addEventListener(
+        "load",
+        () => {
+          script.dataset.loaded = "true";
+          resolve();
+        },
+        { once: true }
+      );
       script.addEventListener(
         "error",
         () => {
@@ -89,6 +111,12 @@
       );
       document.body.appendChild(script);
     });
+    scriptPromises.set(key, promise);
+    return promise;
+  }
+
+  function wait(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   function remember(pageId) {
@@ -110,10 +138,14 @@
   }
 
   function showOnly(pageId) {
+    const targetPage = document.querySelector(`#${pageId}`);
+    if (!targetPage) return false;
     PAGE_IDS.forEach((id) => {
       const page = document.querySelector(`#${id}`);
       if (page) page.hidden = id !== pageId;
     });
+    const developerPanel = document.querySelector("#developerPanel");
+    if (developerPanel && pageId !== "workspacePage") developerPanel.hidden = true;
     setSidebarState(pageId);
     remember(pageId);
     if (pageId === "workspacePage") {
@@ -123,34 +155,37 @@
     return Boolean(document.querySelector(`#${pageId}`));
   }
 
-  async function openTarget(target) {
-    if (!target || isCreatorMode()) return;
-    installStyle();
-    (target.scripts || []).forEach((src) => loadScriptOnce(src));
-
+  async function tryOpener(target) {
     const opener = target.opener ? window[target.opener] : null;
-    if (typeof opener === "function") {
+    if (typeof opener !== "function") return false;
+    try {
       await opener();
       setSidebarState(target.pageId);
       remember(target.pageId);
-      return;
+      return true;
+    } catch (error) {
+      console.warn("StudyBridge navigation opener failed:", error);
+      return showOnly(target.pageId);
     }
+  }
 
-    showOnly(target.pageId);
+  async function openTarget(target) {
+    if (!target || isCreatorMode()) return;
+    installStyle();
+    document.body.classList.add("studybridge-page-switching");
+    try {
+      await Promise.all((target.scripts || []).map((src) => loadScriptOnce(src)));
+      if (await tryOpener(target)) return;
+      if (showOnly(target.pageId)) return;
 
-    const delays = [40, 100, 220, 420, 800, 1400, 2400];
-    delays.forEach((delay) => {
-      setTimeout(async () => {
-        const lateOpener = target.opener ? window[target.opener] : null;
-        if (typeof lateOpener === "function") {
-          await lateOpener();
-          setSidebarState(target.pageId);
-          remember(target.pageId);
-          return;
-        }
-        showOnly(target.pageId);
-      }, delay);
-    });
+      for (const delay of [80, 180, 360, 700, 1200]) {
+        await wait(delay);
+        if (await tryOpener(target)) return;
+        if (showOnly(target.pageId)) return;
+      }
+    } finally {
+      setTimeout(() => document.body.classList.remove("studybridge-page-switching"), 220);
+    }
   }
 
   function handleNavigationClick(event) {

@@ -1,12 +1,16 @@
 (() => {
-  const VERSION = "20261007-nav-hardening-2";
+  const VERSION = "20261007-nav-hardening-3";
   if (window.__studybridgeStudentNavHardening === VERSION) return;
   window.__studybridgeStudentNavHardening = VERSION;
 
   function loadStableRouter() {
     if (window.studybridgeNavigationHotfixOpen) return;
-    const src = "/sidebar-direct-router.js?v=20261007-nav-hardening-2";
-    const exists = Array.from(document.scripts).some((script) => script.getAttribute("src") === src);
+    const src = "/student-navigation-hotfix.js?v=20261007-3";
+    const path = new URL(src.split("?")[0], location.href).pathname;
+    const exists = Array.from(document.scripts).some((script) => {
+      const value = script.getAttribute("src");
+      return value && new URL(value, location.href).pathname === path;
+    });
     if (exists) return;
     const script = document.createElement("script");
     script.async = false;

@@ -4,6 +4,14 @@
 
 ### Added
 
+- Bumped StudyBridge Cloud to `1.0.19`.
+- Added a final student navigation rescue layer so Profile, Community, Classmates, Email Helper, and Schedule are shown as workspace-level pages instead of being pushed below the Study Area.
+- Preserved the existing feature pages while preventing older navigation helpers from swallowing sidebar clicks or leaving a blank right panel.
+
+## 2026-10-07
+
+### Added
+
 - Bumped StudyBridge Cloud to `1.0.18`.
 - Replaced the aggressive student page route lock with a lightweight click-based router to prevent browser out-of-memory crashes.
 - Reduced developer mode observer work so developer/student switching no longer loops over hidden/class changes.

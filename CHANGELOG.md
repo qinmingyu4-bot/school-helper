@@ -4,6 +4,14 @@
 
 ### Fixed
 
+- Bumped StudyBridge Cloud to `1.0.21`.
+- Added an early inline student router inside the compact browser patch so Community, Classmates, Email Helper, Schedule, Profile, and Study Area clicks are handled before older navigation helpers can hide the workspace.
+- Removed the older direct sidebar routers from the compact patch load path to reduce blank right-panel conflicts.
+
+## 2026-10-07
+
+### Fixed
+
 - Bumped StudyBridge Cloud to `1.0.20`.
 - Fixed the student navigation rescue layer so it no longer hides the whole Study Area container when opening Profile, Community, Classmates, Email Helper, or Schedule.
 - Kept the right-side workspace shell visible and only hides the Study Area chat chrome, so secondary student pages can render instead of leaving a blank panel.

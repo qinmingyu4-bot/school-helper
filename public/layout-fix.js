@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = "20261007-layout-loader-2";
+  const VERSION = "20261007-layout-loader-3";
   if (window.__studybridgeLayoutFix === VERSION) return;
   window.__studybridgeLayoutFix = VERSION;
 
@@ -69,8 +69,8 @@
     syncCreatorMode();
   }
 
-  loadScriptOnce("/student-navigation-hotfix.js?v=20261007-2");
-  loadScriptOnce("/sidebar-direct-router.js?v=20261007-nav-hardening-2");
+  loadScriptOnce("/student-navigation-hotfix.js?v=20261007-3");
+  loadScriptOnce("/sidebar-direct-router.js?v=20261007-sidebar-3");
   loadScriptOnce("/school-autocomplete.js?v=20261005-1");
   loadScriptOnce("/admin-console-patch.js?v=20261005-1");
   loadScriptOnce("/system-status-patch.js?v=20261007-1");

@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = "20261007-2";
+  const VERSION = "20261007-3";
   if (window.__studybridgeStudentNavigationRescue === VERSION) return;
   window.__studybridgeStudentNavigationRescue = VERSION;
 
@@ -74,6 +74,21 @@
     const page = $("#workspacePage") || $(".workspace > section:first-child");
     if (page && !page.id) page.id = "workspacePage";
     return page;
+  }
+
+  function workspaceIsStudyPage() {
+    const shell = workspaceShell();
+    const mainStudyPage = studyPage();
+    return Boolean(shell && mainStudyPage && shell === mainStudyPage);
+  }
+
+  function setStudyChromeHidden(hidden) {
+    const mainStudyPage = studyPage();
+    if (!mainStudyPage) return;
+    [".topbar", "#developerPanel", "#scheduleDashboard", "#chatArea", "#quickPrompts", "#chatForm"].forEach((selector) => {
+      const element = mainStudyPage.querySelector(`:scope > ${selector}`);
+      if (element) element.hidden = hidden;
+    });
   }
 
   function appIsOpen() {
@@ -168,8 +183,11 @@
     shell.style.display = "";
     shell.style.visibility = "visible";
 
+    const mainIsShell = workspaceIsStudyPage();
+
     if (pageId === "workspacePage") {
       mainStudyPage.hidden = false;
+      setStudyChromeHidden(false);
       SECONDARY_PAGES.forEach((id) => {
         const page = $("#" + id);
         if (page) page.hidden = true;
@@ -178,7 +196,9 @@
       setStatus("Workspace is ready.");
     } else {
       moveToWorkspaceShell(target);
-      mainStudyPage.hidden = true;
+      mainStudyPage.hidden = false;
+      if (!mainIsShell) mainStudyPage.hidden = true;
+      setStudyChromeHidden(true);
       SECONDARY_PAGES.forEach((id) => {
         const page = $("#" + id);
         if (!page) return;

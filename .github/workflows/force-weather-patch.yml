@@ -14,9 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Apply weather patch
+      - name: Apply server patches
         run: |
           node .github/scripts/apply-weather-patch.js
+          node .github/scripts/apply-learning-style-patch.js
           node --check server.js
       - name: Commit server patch
         run: |
@@ -27,5 +28,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add server.js
-          git commit -m "Add live weather lookup for study chat"
+          git commit -m "Enforce Learning Style in AI replies"
           git push

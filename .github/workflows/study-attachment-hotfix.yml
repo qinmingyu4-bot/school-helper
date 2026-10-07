@@ -1,0 +1,272 @@
+name: Apply StudyBridge attachment support
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/study-attachment-hotfix.yml"
+      - "public/study-attachment-patch.js"
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Patch server attachment support
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+
+          const serverPath = "server.js";
+          let text = fs.readFileSync(serverPath, "utf8");
+
+          const helpers = [
+            'function cleanAttachmentName(name) {',
+            '  return String(name || "Uploaded attachment").replace(/[^\\w .()[\\]\\-@#&,+]/g, "").trim().slice(0, 180) || "Uploaded attachment";',
+            '}',
+            '',
+            'function attachmentMime(body = {}) {',
+            '  return String(body.mime || body.fileType || body.type || "").trim().toLowerCase().slice(0, 120);',
+            '}',
+            '',
+            'function attachmentBuffer(dataUrl = "") {',
+            '  const raw = String(dataUrl || "");',
+            '  if (!raw) return Buffer.alloc(0);',
+            '  return decodeBase64Data(raw);',
+            '}',
+            '',
+            'async function normalizeChatAttachments(input = []) {',
+            '  if (!Array.isArray(input)) return [];',
+            '  const normalized = [];',
+            '  for (const raw of input.slice(0, 8)) {',
+            '    const name = cleanAttachmentName(raw.name || raw.fileName || raw.title);',
+            '    const mime = attachmentMime(raw);',
+            '    const size = Math.max(0, Math.min(Number(raw.size || 0), maxJsonBytes));',
+            '    const dataUrl = String(raw.dataUrl || raw.fileData || "").trim();',
+            '    const text = String(raw.text || raw.fileText || "").trim();',
+            '    const lowerName = name.toLowerCase();',
+            '    const kind =',
+            '      String(raw.kind || "").toLowerCase() ||',
+            '      (mime.startsWith("image/")',
+            '        ? "image"',
+            '        : mime.includes("pdf") || lowerName.endsWith(".pdf")',
+            '          ? "pdf"',
+            '          : mime.startsWith("text/") || text',
+            '            ? "text"',
+            '            : "file");',
+            '',
+            '    if (kind === "image" && dataUrl.startsWith("data:image/")) {',
+            '      if (dataUrl.length > maxJsonBytes) {',
+            '        normalized.push({ name, mime, size, kind: "file", text: "Image was too large to send to AI vision." });',
+            '      } else {',
+            '        normalized.push({ name, mime, size, kind: "image", dataUrl });',
+            '      }',
+            '      continue;',
+            '    }',
+            '',
+            '    if ((kind === "pdf" || mime.includes("pdf") || lowerName.endsWith(".pdf")) && dataUrl) {',
+            '      if (!pdfParse) {',
+            '        normalized.push({ name, mime: mime || "application/pdf", size, kind: "file", text: "PDF parser is not installed on the server yet." });',
+            '        continue;',
+            '      }',
+            '      try {',
+            '        const buffer = attachmentBuffer(dataUrl);',
+            '        if (buffer.length > maxPdfBytes) throw new Error("PDF is over 8 MB.");',
+            '        const parsed = await pdfParse(buffer);',
+            '        normalized.push({',
+            '          name,',
+            '          mime: mime || "application/pdf",',
+            '          size: buffer.length || size,',
+            '          kind: "pdf",',
+            '          text: compactDocumentText(parsed.text || "").slice(0, 9000)',
+            '        });',
+            '      } catch (error) {',
+            '        normalized.push({ name, mime: mime || "application/pdf", size, kind: "file", text: `PDF could not be read: ${error.message}` });',
+            '      }',
+            '      continue;',
+            '    }',
+            '',
+            '    if (text) {',
+            '      normalized.push({ name, mime: mime || "text/plain", size, kind: "text", text: compactDocumentText(text).slice(0, 9000) });',
+            '      continue;',
+            '    }',
+            '',
+            '    normalized.push({ name, mime: mime || "application/octet-stream", size, kind: "file", text: "The file was attached, but StudyBridge could not extract readable text from this format yet." });',
+            '  }',
+            '  return normalized;',
+            '}',
+            '',
+            'function formatAttachmentContext(attachments = []) {',
+            '  if (!attachments.length) return "";',
+            '  return attachments',
+            '    .map((item, index) => {',
+            '      const lines = [`Attachment ${index + 1}: ${item.name}`, `type=${item.kind}`, `mime=${item.mime || "unknown"}`];',
+            '      if (item.kind === "image") {',
+            '        lines.push("The image is attached as vision input. Inspect it directly before answering.");',
+            '      } else if (item.text) {',
+            '        lines.push(`Extracted/readable content:\\n${item.text}`);',
+            '      } else {',
+            '        lines.push("No readable content was extracted.");',
+            '      }',
+            '      return lines.join("\\n");',
+            '    })',
+            '    .join("\\n\\n");',
+            '}',
+            '',
+            'function chatAttachmentLabel(attachments = []) {',
+            '  if (!attachments.length) return "";',
+            '  return "\\n\\nAttachments:\\n" + attachments.map((item) => `- ${item.name} (${item.kind}${item.mime ? `, ${item.mime}` : ""})`).join("\\n");',
+            '}',
+            '',
+            'function buildUserPromptContent(text, attachments = []) {',
+            '  const context = formatAttachmentContext(attachments);',
+            '  const promptText = context ? `${text}\\n\\nAttached files:\\n${context}` : text;',
+            '  const imageParts = attachments',
+            '    .filter((item) => item.kind === "image" && item.dataUrl)',
+            '    .map((item) => ({',
+            '      type: "image_url",',
+            '      image_url: { url: item.dataUrl }',
+            '    }));',
+            '  if (!imageParts.length) return promptText;',
+            '  return [{ type: "text", text: promptText }, ...imageParts];',
+            '}',
+            ''
+          ].join("\n");
+
+          if (!text.includes("function normalizeChatAttachments(")) {
+            text = text.replace("\nfunction generateEmailCode() {", `\n${helpers}\nfunction generateEmailCode() {`);
+          }
+
+          text = text.replace(
+            'function buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message }) {',
+            'function buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message, attachments = [] }) {'
+          );
+          text = text.replace(
+            '      content: `Student: ${user.name}\\nSchool:',
+            '      content: buildUserPromptContent(`Student: ${user.name}\\nSchool:'
+          );
+          text = text.replace(
+            '\\n\\nStudent question:\\n${message}`\n    }\n  ];',
+            '\\n\\nStudent question:\\n${message}`, attachments)\n    }\n  ];'
+          );
+
+          const aiHelpers = [
+            'function toResponsesContent(content) {',
+            '  if (!Array.isArray(content)) return content;',
+            '  return content.map((part) => {',
+            '    if (part.type === "image_url") {',
+            '      return {',
+            '        type: "input_image",',
+            '        image_url: part.image_url?.url || part.image_url || ""',
+            '      };',
+            '    }',
+            '    return {',
+            '      type: "input_text",',
+            '      text: String(part.text || "")',
+            '    };',
+            '  });',
+            '}',
+            '',
+            'function toChatContent(content) {',
+            '  if (!Array.isArray(content)) return content;',
+            '  return content.map((part) => {',
+            '    if (part.type === "image_url") {',
+            '      return {',
+            '        type: "image_url",',
+            '        image_url: {',
+            '          url: part.image_url?.url || part.image_url || ""',
+            '        }',
+            '      };',
+            '    }',
+            '    return {',
+            '      type: "text",',
+            '      text: String(part.text || "")',
+            '    };',
+            '  });',
+            '}',
+            ''
+          ].join("\n");
+
+          if (!text.includes("function toResponsesContent(")) {
+            text = text.replace("\nasync function callAiWithResponses", `\n${aiHelpers}\nasync function callAiWithResponses`);
+          }
+          text = text.replace("content: item.content", "content: toResponsesContent(item.content)");
+          text = text.replace(
+            "      model,\n      messages\n    })",
+            "      model,\n      messages: messages.map((item) => ({\n        role: item.role,\n        content: toChatContent(item.content)\n      }))\n    })"
+          );
+
+          const oldChat = [
+            '    if (child === "chat" && method === "POST") {',
+            '      const body = await readJson(req);',
+            '      const message = String(body.message || "").trim().slice(0, 4000);',
+            '      const mode = String(body.mode || "guided").slice(0, 40);',
+            '      if (!message) return sendError(res, 400, "Message is required.");',
+            '      const userMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId, role: "user", content: message, mode });',
+            '      const [documents, history, scheduleItems, weatherContext] = await Promise.all([',
+            '        db.listDocuments(user.id, courseId),',
+            '        db.listMessages(user.id, courseId),',
+            '        listUserScheduleItems(user.id),',
+            '        getWeatherContextForQuestion(message, user)',
+            '      ]);',
+            '      const selectedModel = chooseAiModel({ documents, history, mode, message });',
+            '      console.log(`StudyBridge AI route: ${selectedModel} | mode=${mode} | docs=${documents.length} | schedule=${scheduleItems.length}`);',
+            '      const aiContent = await callAi(buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message }), selectedModel);',
+            '      const assistantMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId, role: "assistant", content: aiContent, mode });',
+            '      return sendJson(res, 201, { messages: [userMessage, assistantMessage], model: selectedModel });',
+            '    }'
+          ].join("\n");
+
+          const newChat = [
+            '    if (child === "chat" && method === "POST") {',
+            '      const body = await readJson(req);',
+            '      const rawMessage = String(body.message || "").trim().slice(0, 4000);',
+            '      const mode = String(body.mode || "guided").slice(0, 40);',
+            '      const attachments = await normalizeChatAttachments(body.attachments);',
+            '      const message = rawMessage || (attachments.length ? "Please analyze the attached file(s)." : "");',
+            '      if (!message) return sendError(res, 400, "Message is required.");',
+            '      const userMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId, role: "user", content: `${message}${chatAttachmentLabel(attachments)}`, mode });',
+            '      const [documents, history, scheduleItems, weatherContext] = await Promise.all([',
+            '        db.listDocuments(user.id, courseId),',
+            '        db.listMessages(user.id, courseId),',
+            '        listUserScheduleItems(user.id),',
+            '        getWeatherContextForQuestion(message, user)',
+            '      ]);',
+            '      const selectedModel = chooseAiModel({ documents, history, mode, message: `${message} ${chatAttachmentLabel(attachments)}` });',
+            '      console.log(`StudyBridge AI route: ${selectedModel} | mode=${mode} | docs=${documents.length} | schedule=${scheduleItems.length} | attachments=${attachments.length}`);',
+            '      const aiContent = await callAi(buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message, attachments }), selectedModel);',
+            '      const assistantMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId, role: "assistant", content: aiContent, mode });',
+            '      return sendJson(res, 201, { messages: [userMessage, assistantMessage], model: selectedModel });',
+            '    }'
+          ].join("\n");
+
+          if (text.includes(oldChat)) {
+            text = text.replace(oldChat, newChat);
+          } else if (!text.includes("const attachments = await normalizeChatAttachments(body.attachments);")) {
+            throw new Error("Could not locate chat route for attachment patch.");
+          }
+
+          fs.writeFileSync(serverPath, text);
+          NODE
+      - name: Validate
+        run: |
+          node --check server.js
+          node --check public/study-attachment-patch.js
+          node --check public/chat-bubble-compact-live.js
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then
+            echo "No attachment server changes needed."
+            exit 0
+          fi
+          git config user.name "qinmingyu4-bot"
+          git config user.email "qinmingyu4-bot@users.noreply.github.com"
+          git add server.js
+          git commit -m "Enable StudyBridge study attachments backend"
+          git push

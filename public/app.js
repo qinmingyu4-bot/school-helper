@@ -418,13 +418,42 @@ function requestWorkspaceMode(mode) {
   setWorkspaceMode(nextMode);
 }
 
+function setWorkspaceChromeHidden(hidden) {
+  const workspacePage = document.querySelector("#workspacePage");
+  if (!workspacePage) return;
+  [".topbar", "#scheduleDashboard", "#chatArea", "#quickPrompts", "#chatForm"].forEach((selector) => {
+    const element = workspacePage.querySelector(`:scope > ${selector}`);
+    if (element) element.hidden = hidden;
+  });
+}
+
+function closeSecondaryPages() {
+  ["#profilePage", "#schoolCommunityPage", "#classmatesPage", "#emailReplyPage", "#schedulePage"].forEach((selector) => {
+    const element = document.querySelector(selector);
+    if (element) element.hidden = true;
+  });
+}
+
+function syncWorkspaceModeShell() {
+  const creatorMode = state.user?.role === "admin" && state.workspaceMode === "creator";
+  const workspacePage = document.querySelector("#workspacePage");
+  if (workspacePage) workspacePage.hidden = false;
+  closeSecondaryPages();
+  setWorkspaceChromeHidden(creatorMode);
+  developerPanel.hidden = !creatorMode;
+  document.body.classList.toggle("creator-clean-mode", creatorMode);
+  document.body.classList.toggle("admin-boundary-active", creatorMode);
+  document.body.classList.remove("study-sidebar-hidden");
+  document.body.dataset.studybridgeActivePage = creatorMode ? "developerPanel" : "workspacePage";
+}
+
 async function setWorkspaceMode(mode) {
   state.workspaceMode = mode === "creator" && state.user?.role === "admin" ? "creator" : "student";
   localStorage.setItem("studybridgeWorkspaceMode", state.workspaceMode);
   studentViewButton.classList.toggle("active", state.workspaceMode === "student");
   creatorViewButton.classList.toggle("active", state.workspaceMode === "creator");
-  developerPanel.hidden = state.user?.role !== "admin" || state.workspaceMode !== "creator";
-  if (!developerPanel.hidden) await loadAdminOverview();
+  syncWorkspaceModeShell();
+  if (state.workspaceMode === "creator") await loadAdminOverview();
 }
 
 function setAuthMode(mode) {

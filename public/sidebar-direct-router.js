@@ -333,12 +333,12 @@
         overscroll-behavior: contain !important;
       }
 
-      html body[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage > .topbar,
-      html body[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage > #developerPanel,
-      html body[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage > #scheduleDashboard,
-      html body[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage > #chatArea,
-      html body[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage > #quickPrompts,
-      html body[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage > #chatForm {
+      html body:not(.creator-clean-mode)[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage > .topbar,
+      html body:not(.creator-clean-mode)[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage > #developerPanel,
+      html body:not(.creator-clean-mode)[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage > #scheduleDashboard,
+      html body:not(.creator-clean-mode)[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage > #chatArea,
+      html body:not(.creator-clean-mode)[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage > #quickPrompts,
+      html body:not(.creator-clean-mode)[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage > #chatForm {
         display: none !important;
       }
 

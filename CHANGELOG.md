@@ -4,6 +4,9 @@
 
 ### Added
 
+- Bumped StudyBridge Cloud to `1.0.15`.
+- Restored the developer console entrance after the student navigation hardening added in the `1.0.13` line.
+- Added a developer access guard so student page restore/navigation loops cannot hide the admin panel.
 - Bumped StudyBridge Cloud to `1.0.14`.
 - Added server-side local database backup checks and automatic JSON backups for the local file database.
 - Added developer system-status cards confirming account-based data persistence and latest backup time.

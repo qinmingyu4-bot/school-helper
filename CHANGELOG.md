@@ -4,6 +4,8 @@
 
 ### Added
 
+- Bumped StudyBridge Cloud to `1.0.13`.
+- Fixed secondary student pages so Community, Classmates, Email Helper, Schedule, and Profile render inside the shared workspace shell instead of being hidden with the Study Area container.
 - Bumped StudyBridge Cloud to `1.0.12`.
 - Fixed the student page shell so Study Area no longer stays forcibly visible over Profile, Community, Classmates, Email Helper, or Schedule.
 - Added a stronger active-page guard so older layout patches cannot visually cover secondary pages with Study Area.
@@ -104,7 +106,7 @@
 - Repositioned the product for international students in North American schools.
 - Replaced the Chinese classroom teacher persona with an academic coach style.
 - Updated the interface language around syllabus, rubric, assignment, office hours, quiz prep, and academic writing.
-- Adjusted the visual style to feel more like a modern campus productivity tool.
+-Adjusted the visual style to feel more like a modern campus productivity tool.
 
 ### Added
 

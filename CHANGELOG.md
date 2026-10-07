@@ -4,6 +4,14 @@
 
 ### Fixed
 
+- Bumped StudyBridge Cloud to `1.0.23`.
+- Fixed the student sidebar router so Profile, Community, Classmates, Email Helper, Schedule, and Study Area open their target workspace immediately instead of leaving the right panel blank.
+- Restored the shared `studybridgeDirectOpenPage` navigation hook used by the later stability scripts.
+
+## 2026-10-07
+
+### Fixed
+
 - Bumped StudyBridge Cloud to `1.0.22`.
 - Disabled the legacy sidebar router and old student navigation hardening scripts that were still loaded by the live page and could blank the right workspace when opening Community, Classmates, Email Helper, Schedule, or Profile.
 - Kept the final inline student router as the only active student-page switcher so the left sidebar features are no longer fighting each other.

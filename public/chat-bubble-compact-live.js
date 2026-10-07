@@ -28,6 +28,7 @@
     loadScriptOnce("/student-nav-hardening-patch.js?v=20261007-1");
     loadScriptOnce("/study-chat-bottom-fix.js?v=20261007-2");
     loadScriptOnce("/study-scroll-hardening-patch.js?v=20261007-1");
+    loadScriptOnce("/study-attachment-patch.js?v=20261007-1");
     loadScriptOnce("/admin-scroll-fix.js?v=20261007-1");
     loadScriptOnce("/classmates-performance-patch.js?v=20261007-1");
     loadScriptOnce("/no-course-notice-patch.js?v=20261007-1");

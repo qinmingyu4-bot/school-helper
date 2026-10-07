@@ -1,0 +1,64 @@
+name: Apply StudyBridge static asset guard
+
+on:
+  push:
+    paths:
+      - ".github/workflows/static-asset-guard.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Patch static asset fallback
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+
+          const serverPath = "server.js";
+          let server = fs.readFileSync(serverPath, "utf8");
+
+          if (!server.includes("const staticAssetExtensions = new Set")) {
+            server = server.replace(
+              'const mimeTypes = {\n  ".html": "text/html; charset=utf-8",\n  ".css": "text/css; charset=utf-8",\n  ".js": "text/javascript; charset=utf-8",\n  ".json": "application/json; charset=utf-8",\n  ".png": "image/png",\n  ".jpg": "image/jpeg",\n  ".jpeg": "image/jpeg",\n  ".svg": "image/svg+xml"\n};\n',
+              'const mimeTypes = {\n  ".html": "text/html; charset=utf-8",\n  ".css": "text/css; charset=utf-8",\n  ".js": "text/javascript; charset=utf-8",\n  ".json": "application/json; charset=utf-8",\n  ".png": "image/png",\n  ".jpg": "image/jpeg",\n  ".jpeg": "image/jpeg",\n  ".svg": "image/svg+xml"\n};\n\nconst staticAssetExtensions = new Set([\n  ".css",\n  ".js",\n  ".json",\n  ".map",\n  ".png",\n  ".jpg",\n  ".jpeg",\n  ".svg",\n  ".ico",\n  ".pdf",\n  ".txt",\n  ".webp"\n]);\n'
+            );
+          }
+
+          if (!server.includes("Static asset not found:")) {
+            server = server.replace(
+              '  if (!filePath.startsWith(publicDir)) return sendError(res, 403, "Forbidden");\n  try {\n    const file = await fs.readFile(filePath);\n    res.writeHead(200, {\n      "content-type": mimeTypes[path.extname(filePath)] || "application/octet-stream",\n      "cache-control": "no-store"\n    });\n    res.end(file);\n  } catch {\n    const fallback = await fs.readFile(path.join(publicDir, "index.html"));',
+              '  if (!filePath.startsWith(publicDir)) return sendError(res, 403, "Forbidden");\n  const extension = path.extname(filePath).toLowerCase();\n  try {\n    const file = await fs.readFile(filePath);\n    res.writeHead(200, {\n      "content-type": mimeTypes[extension] || "application/octet-stream",\n      "cache-control": "no-store"\n    });\n    res.end(file);\n  } catch {\n    if (staticAssetExtensions.has(extension)) {\n      return sendError(res, 404, `Static asset not found: ${requested}`);\n    }\n    const fallback = await fs.readFile(path.join(publicDir, "index.html"));'
+            );
+          }
+
+          fs.writeFileSync(serverPath, server, "utf8");
+
+          const packagePath = "package.json";
+          const pkg = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+          if (pkg.version === "1.0.28") {
+            pkg.version = "1.0.29";
+            fs.writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`, "utf8");
+          }
+          NODE
+
+          node --check server.js
+
+      - name: Commit hotfix
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "qinmingyu4-bot"
+          git config user.email "qinmingyu4-bot@users.noreply.github.com"
+          git add server.js package.json
+          git commit -m "Guard missing static assets"
+          git push

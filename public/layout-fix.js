@@ -1,6 +1,7 @@
 (() => {
   const RESTORE_PAGE_KEY = "studybridgeLastOpenPage";
   const SECONDARY_RESTORE_PAGES = new Set(["profilePage", "schoolCommunityPage", "classmatesPage", "emailReplyPage", "schedulePage"]);
+  let layoutSyncFrame = 0;
 
   function installEarlyRestoreGuard() {
     let targetPage = "";
@@ -29,6 +30,7 @@
       style.id = "studybridge-creator-layout-fix";
       document.head.appendChild(style);
     }
+    if (style.dataset.ready === "true") return;
 
     style.textContent = `
       #workspacePage {
@@ -307,6 +309,7 @@
         }
       }
     `;
+    style.dataset.ready = "true";
   }
 
   function ensureStudyEntry() {
@@ -373,19 +376,44 @@
 
   function loadScriptOnce(src) {
     const cleanSrc = src.split("?")[0];
-    if (document.querySelector(`script[src^="${cleanSrc}"]`)) return;
+    const registry = (window.__studybridgeLoadedScripts ||= new Set());
+    const key = new URL(cleanSrc, window.location.href).pathname;
+    if (
+      registry.has(key) ||
+      Array.from(document.scripts).some((script) => {
+        const scriptSrc = script.getAttribute("src");
+        return scriptSrc && new URL(scriptSrc, window.location.href).pathname === key;
+      })
+    ) {
+      registry.add(key);
+      return;
+    }
+    registry.add(key);
     const script = document.createElement("script");
     script.src = src;
     script.defer = true;
+    script.addEventListener("error", () => registry.delete(key), { once: true });
     document.body.appendChild(script);
   }
 
+  function syncLayoutState() {
+    installCreatorLayoutFix();
+    ensureStudyEntry();
+    cleanFeatureEntries();
+    syncCreatorCleanMode();
+    syncStudySidebarPanels();
+  }
+
+  function scheduleLayoutSync() {
+    if (layoutSyncFrame) return;
+    layoutSyncFrame = requestAnimationFrame(() => {
+      layoutSyncFrame = 0;
+      syncLayoutState();
+    });
+  }
+
   installEarlyRestoreGuard();
-  installCreatorLayoutFix();
-  ensureStudyEntry();
-  cleanFeatureEntries();
-  syncCreatorCleanMode();
-  syncStudySidebarPanels();
+  syncLayoutState();
   loadScriptOnce("/school-autocomplete.js?v=20261005-1");
   loadScriptOnce("/admin-console-patch.js?v=20261005-1");
   loadScriptOnce("/system-status-patch.js?v=20261006-4");
@@ -400,20 +428,22 @@
   loadScriptOnce("/admin-refresh-patch.js?v=20261005-1");
   loadScriptOnce("/school-community-patch.js?v=20261005-3");
   loadScriptOnce("/classmates-patch.js?v=20261005-2");
-  loadScriptOnce("/classmates-request-patch.js?v=20261005-5");
-  loadScriptOnce("/classmate-chat-bubble-fix.js?v=20261005-2");
+  loadScriptOnce("/classmates-request-patch.js?v=20261006-1");
+  loadScriptOnce("/classmate-chat-bubble-fix.js?v=20261006-1");
   loadScriptOnce("/chat-bubble-compact-live.js?v=20261005-1");
+  loadScriptOnce("/cheatsheet-mode-patch.js?v=20261006-1");
   loadScriptOnce("/study-chat-bottom-fix.js?v=20261006-5");
   loadScriptOnce("/email-reply-patch.js?v=20261005-1");
   loadScriptOnce("/schedule-patch.js?v=20261005-3");
   loadScriptOnce("/schedule-dashboard-patch.js?v=20261006-2");
   loadScriptOnce("/schedule-notification-patch.js?v=20261005-2");
   loadScriptOnce("/page-restore-patch.js?v=20261006-2");
-  setInterval(() => {
-    installCreatorLayoutFix();
-    ensureStudyEntry();
-    cleanFeatureEntries();
-    syncCreatorCleanMode();
-    syncStudySidebarPanels();
-  }, 1000);
+  const observer = new MutationObserver(scheduleLayoutSync);
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["hidden", "class", "style"]
+  });
+  setInterval(scheduleLayoutSync, 7000);
 })();

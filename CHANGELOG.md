@@ -4,6 +4,9 @@
 
 ### Added
 
+- Bumped StudyBridge Cloud to `1.0.12`.
+- Fixed the student page shell so Study Area no longer stays forcibly visible over Profile, Community, Classmates, Email Helper, or Schedule.
+- Added a stronger active-page guard so older layout patches cannot visually cover secondary pages with Study Area.
 - Bumped StudyBridge Cloud to `1.0.11`.
 - Added a final navigation stability layer so Community, Classmates, Email Helper, and Schedule open directly from Study Area.
 - Added repeated cleanup for duplicate Schedule dashboard cards so the "Next Due" reminder only appears once.

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-07
+
+### Changed
+
+- Bumped StudyBridge Cloud to `1.0.1`.
+- Adopted the rule that each shipped update should bump the app version so the developer system status can confirm the deployed build.
+
 ## 2026-05-08
 
 ### Added
@@ -65,4 +72,3 @@
 - Added the first study mode set for course support workflows.
 - Added course material type detection for syllabus, rubric, assignment, and lecture notes.
 - Added quick prompts for common North American college study workflows.
-- Added README documentation for the new positioning.

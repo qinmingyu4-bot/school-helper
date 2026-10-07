@@ -1,10 +1,10 @@
 (() => {
-  const VERSION = "20261007-router-loader-2";
+  const VERSION = "20261007-router-loader-5";
   if (window.__studybridgeRouterLoader === VERSION) return;
   window.__studybridgeRouterLoader = VERSION;
 
   const ROUTER_PATH = "/sidebar-direct-router.js";
-  const ROUTER_SRC = `${ROUTER_PATH}?v=20261007-main-router-5`;
+  const ROUTER_SRC = `${ROUTER_PATH}?v=20261007-router-bridge-1`;
 
   function hasRouterScript() {
     return Array.from(document.scripts).some((script) => {

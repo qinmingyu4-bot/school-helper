@@ -2,7 +2,7 @@
   const VERSION = "20261007-router-loader-8";
   if (window.__studybridgeStudentNavHardening === VERSION) return;
   window.__studybridgeStudentNavHardening = VERSION;
-  if (window.studybridgeDirectOpenPage) return;
+  if (window.__studybridgeNavigationHotfix === "20261007.8") return;
 
   const script = document.createElement("script");
   script.async = false;

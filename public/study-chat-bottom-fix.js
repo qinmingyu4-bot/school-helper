@@ -163,15 +163,27 @@
     if (isCreatorMode()) return false;
     const targetPage = document.querySelector(`#${pageId}`);
     if (!targetPage) return false;
+    const workspacePage = document.querySelector("#workspacePage");
+    if (workspacePage) workspacePage.hidden = false;
     ["workspacePage", "profilePage", "schoolCommunityPage", "classmatesPage", "emailReplyPage", "schedulePage"].forEach((id) => {
       const page = document.querySelector(`#${id}`);
-      if (page) page.hidden = id !== pageId;
+      if (!page) return;
+      if (id === "workspacePage") {
+        page.hidden = false;
+        return;
+      }
+      page.hidden = id !== pageId;
+    });
+    [".topbar", "#developerPanel", "#scheduleDashboard", "#chatArea", "#quickPrompts", "#chatForm"].forEach((selector) => {
+      const element = document.querySelector(`#workspacePage > ${selector}`);
+      if (element) element.hidden = pageId !== "workspacePage";
     });
     try {
       localStorage.setItem("studybridgeLastOpenPage", pageId);
     } catch {
       // Ignore private browsing/localStorage errors.
     }
+    document.body.dataset.studybridgeActivePage = pageId;
     document.body.classList.toggle("study-sidebar-hidden", pageId !== "workspacePage");
     refreshStudentPage(pageId);
     return true;

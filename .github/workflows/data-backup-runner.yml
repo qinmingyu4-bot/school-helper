@@ -1,0 +1,50 @@
+name: Run StudyBridge data backup diagnostics
+
+on:
+  push:
+    paths:
+      - ".github/triggers/data-backup-runner.txt"
+      - ".github/workflows/data-backup-runner.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run backup diagnostics patch
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          text = Path(".github/workflows/data-backup-diagnostics.yml").read_text(encoding="utf-8")
+          marker = "          const fs = require"
+          start = text.index(marker)
+          end = text.index("\n          NODE", start)
+          lines = text[start:end].splitlines()
+          script = "\n".join(line[10:] if line.startswith("          ") else line for line in lines)
+          Path("/tmp/studybridge_backup_patch.js").write_text(script, encoding="utf-8")
+          PY
+          node /tmp/studybridge_backup_patch.js
+      - name: Validate patched app
+        run: |
+          node --check server.js
+          node --check public/system-status-patch.js
+          node --check public/layout-fix.js
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "No changes to commit."
+          else
+            git add server.js public/system-status-patch.js public/layout-fix.js package.json .env.example CHANGELOG.md
+            git commit -m "Add data persistence backup diagnostics"
+            git push
+          fi

@@ -8,14 +8,14 @@
     openSchoolCommunityButton: {
       pageId: "schoolCommunityPage",
       opener: "studybridgeOpenCommunityPage",
-      scripts: ["/school-community-patch.js?v=20261007-nav-hardening"]
+      scripts: ["/school-community-patch.js?v=20261007-2"]
     },
     openClassmatesButton: {
       pageId: "classmatesPage",
       opener: "studybridgeOpenClassmatesPage",
       scripts: [
         "/classmates-patch.js?v=20261007-nav-hardening",
-        "/classmates-request-patch.js?v=20261007-nav-hardening",
+        "/classmates-request-patch.js?v=20261007-2",
         "/classmate-chat-bubble-fix.js?v=20261007-nav-hardening",
         "/classmates-performance-patch.js?v=20261007-nav-hardening"
       ]
@@ -23,13 +23,13 @@
     openEmailReplyButton: {
       pageId: "emailReplyPage",
       opener: "studybridgeOpenEmailReplyPage",
-      scripts: ["/email-reply-patch.js?v=20261007-nav-hardening"]
+      scripts: ["/email-reply-patch.js?v=20261007-2"]
     },
     openScheduleButton: {
       pageId: "schedulePage",
       opener: "studybridgeOpenSchedulePage",
       scripts: [
-        "/schedule-patch.js?v=20261007-nav-hardening",
+        "/schedule-patch.js?v=20261007-2",
         "/schedule-dashboard-patch.js?v=20261007-nav-hardening",
         "/schedule-notification-patch.js?v=20261007-nav-hardening"
       ]
@@ -150,6 +150,7 @@
   }
 
   function setSidebarState(pageId) {
+    document.body.dataset.studybridgeActivePage = pageId;
     document.body.classList.toggle("study-sidebar-hidden", pageId !== "workspacePage");
     Object.entries(TARGETS).forEach(([buttonId, target]) => {
       const button = document.querySelector(`#${buttonId}`);
@@ -159,14 +160,31 @@
     });
   }
 
+  function setStudyWorkspaceChromeHidden(hidden) {
+    const workspacePage = document.querySelector("#workspacePage");
+    if (!workspacePage) return;
+    [".topbar", "#developerPanel", "#scheduleDashboard", "#chatArea", "#quickPrompts", "#chatForm"].forEach((selector) => {
+      const element = workspacePage.querySelector(`:scope > ${selector}`);
+      if (element) element.hidden = hidden;
+    });
+  }
+
   function showOnly(pageId) {
     const targetPage = document.querySelector(`#${pageId}`);
     if (!targetPage) return false;
     forceStudentMode();
+    const workspacePage = document.querySelector("#workspacePage");
+    if (workspacePage) workspacePage.hidden = false;
     PAGE_IDS.forEach((id) => {
       const page = document.querySelector(`#${id}`);
-      if (page) page.hidden = id !== pageId;
+      if (!page) return;
+      if (id === "workspacePage") {
+        page.hidden = false;
+        return;
+      }
+      page.hidden = id !== pageId;
     });
+    setStudyWorkspaceChromeHidden(pageId !== "workspacePage");
     const developerPanel = document.querySelector("#developerPanel");
     if (developerPanel && pageId !== "workspacePage") developerPanel.hidden = true;
     setSidebarState(pageId);
@@ -223,6 +241,10 @@
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
+    if (typeof window.studybridgeDirectOpenPage === "function") {
+      window.studybridgeDirectOpenPage(button.id);
+      return;
+    }
     openTarget(target);
   }
 

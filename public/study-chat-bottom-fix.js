@@ -1,5 +1,8 @@
 (() => {
   const STYLE_ID = "studybridge-study-chat-bottom-fix";
+  let stickToBottom = true;
+  let lastScrollTop = 0;
+  let lastScrollHeight = 0;
 
   function isVisible(element) {
     return Boolean(element && !element.hidden && element.offsetParent !== null);
@@ -13,7 +16,8 @@
       document.head.appendChild(style);
     }
     style.textContent = `
-      body:not(.creator-clean-mode) .workspace {
+      body:not(.creator-clean-mode) .workspace,
+      body:not(.creator-clean-mode) #workspacePage {
         height: 100vh !important;
         min-height: 0 !important;
         overflow: hidden !important;
@@ -22,43 +26,58 @@
       body:not(.creator-clean-mode) #workspacePage {
         display: grid !important;
         grid-template-rows: auto auto minmax(0, 1fr) auto auto !important;
-        height: 100vh !important;
-        min-height: 0 !important;
-        overflow: hidden !important;
+      }
+
+      body:not(.creator-clean-mode) #workspacePage .topbar,
+      body:not(.creator-clean-mode) #workspacePage #scheduleDashboard,
+      body:not(.creator-clean-mode) #workspacePage #quickPrompts,
+      body:not(.creator-clean-mode) #workspacePage #chatForm {
+        position: relative !important;
+        z-index: 3 !important;
+        flex: 0 0 auto !important;
       }
 
       body:not(.creator-clean-mode) #workspacePage #scheduleDashboard {
-        position: relative !important;
-        z-index: 2 !important;
+        align-self: start !important;
       }
 
-      #workspacePage #chatArea {
+      body:not(.creator-clean-mode) #workspacePage #chatArea {
         position: relative !important;
         z-index: 1 !important;
-        padding-top: 24px !important;
-        padding-bottom: var(--study-chat-bottom-space, 168px) !important;
-        scroll-padding-bottom: var(--study-chat-bottom-space, 168px) !important;
-        height: auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        grid-row: auto !important;
         min-height: 0 !important;
+        height: auto !important;
         max-height: none !important;
+        padding-top: 26px !important;
+        padding-bottom: max(28px, var(--study-chat-bottom-space, 28px)) !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
-        overscroll-behavior: auto !important;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-gutter: stable;
+        overscroll-behavior: contain !important;
+        scroll-behavior: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-gutter: stable !important;
       }
 
-      #workspacePage #quickPrompts,
-      #workspacePage #chatForm {
-        position: relative;
-        z-index: 3;
+      body:not(.creator-clean-mode) #workspacePage #chatArea .message:first-child {
+        margin-top: 0 !important;
+      }
+
+      body:not(.creator-clean-mode) #workspacePage #quickPrompts,
+      body:not(.creator-clean-mode) #workspacePage #chatForm {
         background: #f4f6f9 !important;
       }
 
-      #workspacePage #quickPrompts {
+      body:not(.creator-clean-mode) #workspacePage #quickPrompts {
         padding-bottom: 8px !important;
       }
     `;
+  }
+
+  function ensureWorkspacePageId() {
+    const workspace = document.querySelector(".workspace");
+    if (workspace && !workspace.id) workspace.id = "workspacePage";
   }
 
   function updateBottomSpace() {
@@ -66,12 +85,9 @@
     const chatForm = document.querySelector("#chatForm");
     const quickHeight = isVisible(quickPrompts) ? quickPrompts.getBoundingClientRect().height : 0;
     const formHeight = isVisible(chatForm) ? chatForm.getBoundingClientRect().height : 0;
-    const bottomSpace = Math.max(150, Math.ceil(quickHeight + formHeight + 34));
+    const bottomSpace = Math.max(28, Math.ceil((quickHeight + formHeight) * 0.12));
     document.documentElement.style.setProperty("--study-chat-bottom-space", `${bottomSpace}px`);
   }
-
-  let stickToBottom = true;
-  let programmaticScrollUntil = 0;
 
   function distanceFromBottom(chatArea) {
     return chatArea.scrollHeight - chatArea.scrollTop - chatArea.clientHeight;
@@ -79,56 +95,47 @@
 
   function updateStickiness() {
     const chatArea = document.querySelector("#chatArea");
-    if (!chatArea) return;
-    if (Date.now() < programmaticScrollUntil) return;
-    stickToBottom = distanceFromBottom(chatArea) < 120;
+    if (!chatArea || !isVisible(chatArea)) return;
+    const scrollMovedUp = chatArea.scrollTop < lastScrollTop - 4;
+    const heightChanged = chatArea.scrollHeight !== lastScrollHeight;
+    if (scrollMovedUp) stickToBottom = false;
+    if (!heightChanged) stickToBottom = distanceFromBottom(chatArea) < 120;
+    lastScrollTop = chatArea.scrollTop;
+    lastScrollHeight = chatArea.scrollHeight;
   }
 
-  function scrollStudyChatToBottom() {
+  function scrollStudyChatToBottom(force = false) {
     const chatArea = document.querySelector("#chatArea");
     const workspacePage = document.querySelector("#workspacePage");
     if (!isVisible(chatArea) || !isVisible(workspacePage)) return;
     updateBottomSpace();
-    programmaticScrollUntil = Date.now() + 160;
+    if (!force && !stickToBottom) return;
     chatArea.scrollTop = chatArea.scrollHeight;
+    lastScrollTop = chatArea.scrollTop;
+    lastScrollHeight = chatArea.scrollHeight;
     stickToBottom = true;
   }
 
-  function maybeScrollStudyChatToBottom() {
-    if (stickToBottom) scrollStudyChatToBottom();
-  }
-
-  function isStudyWorkspaceTarget(target) {
+  function markManualScrollIntent(event) {
     const workspacePage = document.querySelector("#workspacePage");
+    if (!workspacePage || !isVisible(workspacePage) || !workspacePage.contains(event.target)) return;
     const developerPanel = document.querySelector("#developerPanel");
-    return Boolean(
-      workspacePage &&
-        isVisible(workspacePage) &&
-        workspacePage.contains(target) &&
-        !(developerPanel && !developerPanel.hidden)
-    );
+    if (developerPanel && !developerPanel.hidden) return;
+    if (event.deltaY < 0) stickToBottom = false;
   }
 
-  function routeWheelToChat(event) {
+  function attachChatScrollListener() {
     const chatArea = document.querySelector("#chatArea");
-    if (!chatArea || !isStudyWorkspaceTarget(event.target)) return;
-    if (chatArea.scrollHeight <= chatArea.clientHeight + 2) return;
-    if (event.target.closest?.("#chatForm, #quickPrompts, textarea, input, select")) return;
-
-    if (event.deltaY < 0 || distanceFromBottom(chatArea) > 80) {
-      stickToBottom = false;
-    }
-
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    programmaticScrollUntil = Date.now() + 80;
-    chatArea.scrollTop += event.deltaY;
-    setTimeout(updateStickiness, 40);
+    if (!chatArea || chatArea.dataset.studyScrollReady === "true") return;
+    chatArea.dataset.studyScrollReady = "true";
+    chatArea.addEventListener("scroll", updateStickiness, { passive: true });
   }
 
   function boot() {
+    ensureWorkspacePageId();
     installStyle();
     updateBottomSpace();
+    attachChatScrollListener();
   }
 
   function loadCheatsheetPatch() {
@@ -149,19 +156,13 @@
   boot();
   loadCheatsheetPatch();
   window.addEventListener("resize", updateBottomSpace);
-  window.addEventListener("load", () => setTimeout(scrollStudyChatToBottom, 80));
-  document.addEventListener("scroll", updateStickiness, true);
-  window.addEventListener(
-    "wheel",
-    routeWheelToChat,
-    { passive: false, capture: true }
-  );
+  window.addEventListener("load", () => setTimeout(() => scrollStudyChatToBottom(true), 120));
+  window.addEventListener("wheel", markManualScrollIntent, { passive: true, capture: true });
 
   const observer = new MutationObserver(() => {
     boot();
     if (stickToBottom) {
-      setTimeout(maybeScrollStudyChatToBottom, 30);
-      setTimeout(maybeScrollStudyChatToBottom, 180);
+      setTimeout(() => scrollStudyChatToBottom(false), 40);
     }
   });
 
@@ -170,11 +171,4 @@
     subtree: true,
     characterData: true
   });
-
-  setInterval(() => {
-    updateBottomSpace();
-    const chatArea = document.querySelector("#chatArea");
-    if (!chatArea) return;
-    if (stickToBottom && distanceFromBottom(chatArea) < 80) scrollStudyChatToBottom();
-  }, 1200);
 })();

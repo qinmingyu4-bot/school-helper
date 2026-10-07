@@ -43,8 +43,16 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if git diff --quiet; then
             echo "No changes to commit."
-          else
-            git add server.js public/system-status-patch.js public/layout-fix.js package.json .env.example CHANGELOG.md
-            git commit -m "Add data persistence backup diagnostics"
-            git push
+            exit 0
           fi
+          git add server.js public/system-status-patch.js public/layout-fix.js package.json .env.example CHANGELOG.md
+          git commit -m "Add data persistence backup diagnostics"
+          for attempt in 1 2 3; do
+            if git push; then
+              exit 0
+            fi
+            echo "Push was rejected, rebasing on latest main (attempt ${attempt})."
+            git fetch origin main
+            git rebase origin/main
+          done
+          git push

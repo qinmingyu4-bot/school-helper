@@ -24,9 +24,9 @@
   }
 
   function loadLatestPatches() {
-    loadScriptOnce("/layout-fix.js?v=20261007-2");
-    loadScriptOnce("/student-nav-hardening-patch.js?v=20261007-2");
-    loadScriptOnce("/study-chat-bottom-fix.js?v=20261007-3");
+    loadScriptOnce("/layout-fix.js?v=20261007-4");
+    loadScriptOnce("/student-nav-hardening-patch.js?v=20261007-4");
+    loadScriptOnce("/study-chat-bottom-fix.js?v=20261007-4");
     loadScriptOnce("/study-scroll-hardening-patch.js?v=20261007-2");
     loadScriptOnce("/study-attachment-patch.js?v=20261007-1");
     loadScriptOnce("/assistant-typing-patch.js?v=20261007-1");

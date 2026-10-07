@@ -3,6 +3,9 @@
   let stickToBottom = true;
   let lastScrollTop = 0;
   let lastScrollHeight = 0;
+  let bootFrame = 0;
+  let bottomSpaceFrame = 0;
+  let scrollTimer = 0;
 
   function isVisible(element) {
     return Boolean(element && !element.hidden && element.offsetParent !== null);
@@ -15,6 +18,7 @@
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
+    if (style.dataset.ready === "true") return;
     style.textContent = `
       body:not(.creator-clean-mode) .workspace,
       body:not(.creator-clean-mode) #workspacePage {
@@ -73,6 +77,7 @@
         padding-bottom: 8px !important;
       }
     `;
+    style.dataset.ready = "true";
   }
 
   function ensureWorkspacePageId() {
@@ -91,6 +96,14 @@
     const topSpace = Math.max(34, Math.ceil(dashboardHeight * 0.22));
     document.documentElement.style.setProperty("--study-chat-bottom-space", `${bottomSpace}px`);
     document.documentElement.style.setProperty("--study-chat-top-space", `${topSpace}px`);
+  }
+
+  function scheduleBottomSpaceUpdate() {
+    if (bottomSpaceFrame) return;
+    bottomSpaceFrame = requestAnimationFrame(() => {
+      bottomSpaceFrame = 0;
+      updateBottomSpace();
+    });
   }
 
   function distanceFromBottom(chatArea) {
@@ -118,6 +131,11 @@
     lastScrollTop = chatArea.scrollTop;
     lastScrollHeight = chatArea.scrollHeight;
     stickToBottom = true;
+  }
+
+  function scheduleStudyChatScroll(force = false, delay = 40) {
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => scrollStudyChatToBottom(force), delay);
   }
 
   function markManualScrollIntent(event) {
@@ -163,6 +181,14 @@
     updateBottomSpace();
     attachChatScrollListener();
     attachStudentNavigationFallback();
+  }
+
+  function scheduleBoot() {
+    if (bootFrame) return;
+    bootFrame = requestAnimationFrame(() => {
+      bootFrame = 0;
+      boot();
+    });
   }
 
   function isCreatorMode() {
@@ -285,24 +311,37 @@
 
   function loadScriptOnce(src) {
     const cleanSrc = src.split("?")[0];
-    if (document.querySelector(`script[src^="${cleanSrc}"]`)) return;
+    const registry = (window.__studybridgeLoadedScripts ||= new Set());
+    const key = new URL(cleanSrc, window.location.href).pathname;
+    if (
+      registry.has(key) ||
+      Array.from(document.scripts).some((script) => {
+        const scriptSrc = script.getAttribute("src");
+        return scriptSrc && new URL(scriptSrc, window.location.href).pathname === key;
+      })
+    ) {
+      registry.add(key);
+      return;
+    }
+    registry.add(key);
     const script = document.createElement("script");
     script.src = src;
     script.defer = true;
+    script.addEventListener("error", () => registry.delete(key), { once: true });
     document.body.appendChild(script);
   }
 
   boot();
   loadCheatsheetPatch();
-  window.addEventListener("resize", updateBottomSpace);
-  window.addEventListener("load", () => setTimeout(() => scrollStudyChatToBottom(true), 120));
+  window.addEventListener("resize", scheduleBottomSpaceUpdate);
+  window.addEventListener("load", () => scheduleStudyChatScroll(true, 120));
   window.addEventListener("wheel", markManualScrollIntent, { passive: true, capture: true });
   window.addEventListener("wheel", routeWheelToStudyChat, { passive: false, capture: true });
 
   const observer = new MutationObserver(() => {
-    boot();
+    scheduleBoot();
     if (stickToBottom) {
-      setTimeout(() => scrollStudyChatToBottom(false), 40);
+      scheduleStudyChatScroll(false, 40);
     }
   });
 

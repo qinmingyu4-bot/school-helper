@@ -54,7 +54,7 @@
         -webkit-overflow-scrolling: touch !important;
       }
 
-      body:not(.creator-clean-mode) #workspacePage {
+      body:not(.creator-clean-mode) #workspacePage:not([hidden]) {
         height: 100dvh !important;
         min-height: 0 !important;
         display: grid !important;
@@ -215,16 +215,16 @@
 
   function ensureNavigationScripts(buttonId) {
     const scriptMap = {
-      openSchoolCommunityButton: ["/school-community-patch.js?v=20261007-nav2"],
+      openSchoolCommunityButton: ["/school-community-patch.js?v=20261007-2"],
       openClassmatesButton: [
         "/classmates-patch.js?v=20261007-nav2",
-        "/classmates-request-patch.js?v=20261007-nav2",
+        "/classmates-request-patch.js?v=20261007-2",
         "/classmate-chat-bubble-fix.js?v=20261007-nav2",
         "/classmates-performance-patch.js?v=20261007-nav2"
       ],
-      openEmailReplyButton: ["/email-reply-patch.js?v=20261007-nav2"],
+      openEmailReplyButton: ["/email-reply-patch.js?v=20261007-2"],
       openScheduleButton: [
-        "/schedule-patch.js?v=20261007-nav2",
+        "/schedule-patch.js?v=20261007-2",
         "/schedule-dashboard-patch.js?v=20261007-nav2",
         "/schedule-notification-patch.js?v=20261007-nav2"
       ]
@@ -266,6 +266,11 @@
         if (!button || isCreatorMode()) return;
         const pageId = pageByButton[button.id];
         if (!pageId) return;
+        if (typeof window.studybridgeDirectOpenPage === "function") {
+          event.preventDefault();
+          window.studybridgeDirectOpenPage(button.id);
+          return;
+        }
         ensureNavigationScripts(button.id);
 
         const ensureOpened = () => {

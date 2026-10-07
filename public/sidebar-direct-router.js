@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = "20261007-main-router-3";
+  const VERSION = "20261007-main-router-5";
   if (window.__studybridgeMainRouter === VERSION) return;
   window.__studybridgeMainRouter = VERSION;
 
@@ -40,7 +40,7 @@
       selectors: ["#openSchoolCommunityButton", ".community-entry"],
       words: [label.community, "Community"],
       opener: "studybridgeOpenCommunityPage",
-      scripts: ["/school-community-patch.js?v=20261007-main-router-3"]
+      scripts: ["/school-community-patch.js?v=20261007-main-router-5"]
     },
     classmates: {
       pageId: "classmatesPage",
@@ -50,9 +50,9 @@
       words: [label.classmates, "Classmates", "SB ID"],
       opener: "studybridgeOpenClassmatesPage",
       scripts: [
-        "/classmates-request-patch.js?v=20261007-main-router-3",
-        "/classmate-chat-bubble-fix.js?v=20261007-main-router-3",
-        "/classmates-performance-patch.js?v=20261007-main-router-3"
+        "/classmates-request-patch.js?v=20261007-main-router-5",
+        "/classmate-chat-bubble-fix.js?v=20261007-main-router-5",
+        "/classmates-performance-patch.js?v=20261007-main-router-5"
       ]
     },
     email: {
@@ -62,7 +62,7 @@
       selectors: ["#openEmailReplyButton", ".email-helper-entry"],
       words: [label.email, "Email"],
       opener: "studybridgeOpenEmailReplyPage",
-      scripts: ["/email-reply-patch.js?v=20261007-main-router-3"]
+      scripts: ["/email-reply-patch.js?v=20261007-main-router-5"]
     },
     schedule: {
       pageId: "schedulePage",
@@ -72,9 +72,9 @@
       words: [label.schedule, "Schedule"],
       opener: "studybridgeOpenSchedulePage",
       scripts: [
-        "/schedule-patch.js?v=20261007-main-router-3",
-        "/schedule-dashboard-patch.js?v=20261007-main-router-3",
-        "/schedule-notification-patch.js?v=20261007-main-router-3"
+        "/schedule-patch.js?v=20261007-main-router-5",
+        "/schedule-dashboard-patch.js?v=20261007-main-router-5",
+        "/schedule-notification-patch.js?v=20261007-main-router-5"
       ]
     },
     study: {
@@ -141,6 +141,48 @@
     return $(`#${STUDY_PAGE_ID}`);
   }
 
+  function studyChrome() {
+    const study = studyPage();
+    if (!study) return [];
+    return [".topbar", "#developerPanel", "#scheduleDashboard", "#chatArea", "#quickPrompts", "#chatForm"]
+      .map((selector) => study.querySelector(`:scope > ${selector}`))
+      .filter(Boolean);
+  }
+
+  function setStudyChromeHidden(hidden) {
+    studyChrome().forEach((element) => {
+      element.hidden = hidden;
+      element.toggleAttribute("hidden", hidden);
+      element.style.display = hidden ? "none" : "";
+      element.style.visibility = hidden ? "hidden" : "visible";
+      element.style.opacity = hidden ? "0" : "1";
+    });
+  }
+
+  function workspaceIsStudyPage() {
+    const shell = workspaceShell();
+    const study = studyPage();
+    return Boolean(shell && study && shell === study);
+  }
+
+  function featureMount(create = true) {
+    const shell = workspaceShell();
+    if (!shell) return null;
+    let mount = $("#routerFeatureMount");
+    if (!mount && create) {
+      mount = document.createElement("section");
+      mount.id = "routerFeatureMount";
+      mount.hidden = true;
+      shell.appendChild(mount);
+    }
+    if (mount) {
+      mount.style.display = mount.hidden ? "none" : "";
+      mount.style.visibility = "visible";
+      mount.style.opacity = "1";
+    }
+    return mount;
+  }
+
   function setStatus(message) {
     const status = $("#statusLine");
     if (status) status.textContent = message;
@@ -178,9 +220,9 @@
   }
 
   function movePageToShell(page) {
-    const shell = workspaceShell();
-    if (!shell || !page) return false;
-    if (page.parentElement !== shell) shell.appendChild(page);
+    const mount = featureMount(true);
+    if (!mount || !page) return false;
+    if (page.parentElement !== mount) mount.appendChild(page);
     return true;
   }
 
@@ -209,11 +251,18 @@
     if (!shell || !study) return false;
     resetModeClasses();
     hideFeaturePages("");
+    const mount = featureMount(false);
+    if (mount) {
+      mount.hidden = true;
+      mount.setAttribute("hidden", "");
+      mount.style.display = "none";
+    }
     study.hidden = false;
     study.removeAttribute("hidden");
     study.style.display = "";
     study.style.visibility = "visible";
     study.style.opacity = "1";
+    setStudyChromeHidden(false);
     document.body.classList.remove("studybridge-secondary-page", "study-sidebar-hidden");
     document.body.dataset.studybridgeActivePage = STUDY_PAGE_ID;
     shell.scrollTop = 0;
@@ -231,11 +280,29 @@
     if (!shell || !study || !page || !pageHasContent(page)) return false;
     resetModeClasses();
     movePageToShell(page);
-    study.hidden = true;
-    study.setAttribute("hidden", "");
+    const mount = featureMount(true);
+    if (mount) {
+      mount.hidden = false;
+      mount.removeAttribute("hidden");
+      mount.style.display = "";
+      mount.style.visibility = "visible";
+      mount.style.opacity = "1";
+    }
+    if (workspaceIsStudyPage()) {
+      study.hidden = false;
+      study.removeAttribute("hidden");
+      study.style.display = "";
+      study.style.visibility = "visible";
+      study.style.opacity = "1";
+      setStudyChromeHidden(true);
+    } else {
+      study.hidden = true;
+      study.setAttribute("hidden", "");
+    }
     hideFeaturePages(route.pageId);
     document.body.classList.add("studybridge-secondary-page", "study-sidebar-hidden");
     document.body.dataset.studybridgeActivePage = route.pageId;
+    if (mount) mount.scrollTop = 0;
     shell.scrollTop = 0;
     markActive(routeKey);
     remember(route.pageId);
@@ -259,13 +326,13 @@
 
   function fallbackPage(routeKey, message) {
     const route = routes[routeKey];
-    const shell = workspaceShell();
-    if (!shell || !route) return null;
+    const mount = featureMount(true);
+    if (!mount || !route) return null;
     let page = $(`#${route.pageId}`);
     if (!page) {
       page = document.createElement("section");
       page.id = route.pageId;
-      shell.appendChild(page);
+      mount.appendChild(page);
     }
     page.className = `${routeKey}-page router-feature-page`;
     page.innerHTML = `
@@ -280,14 +347,14 @@
 
   function loadingPage(routeKey) {
     const route = routes[routeKey];
-    const shell = workspaceShell();
     const study = studyPage();
-    if (!shell || !study || !route) return null;
+    const mount = featureMount(true);
+    if (!mount || !study || !route) return null;
     let page = $("#routerLoadingPage");
     if (!page) {
       page = document.createElement("section");
       page.id = "routerLoadingPage";
-      shell.appendChild(page);
+      mount.appendChild(page);
     }
     page.className = "router-feature-page";
     page.innerHTML = `
@@ -295,8 +362,20 @@
       <div class="router-page-body"><section class="router-card">${label.opening}</section></div>
     `;
     page.querySelector("[data-router-back]")?.addEventListener("click", showStudy);
-    study.hidden = true;
-    study.setAttribute("hidden", "");
+    if (workspaceIsStudyPage()) {
+      study.hidden = false;
+      study.removeAttribute("hidden");
+      study.style.display = "";
+      study.style.visibility = "visible";
+      study.style.opacity = "1";
+      setStudyChromeHidden(true);
+    } else {
+      study.hidden = true;
+      study.setAttribute("hidden", "");
+    }
+    mount.hidden = false;
+    mount.removeAttribute("hidden");
+    mount.style.display = "";
     hideFeaturePages("routerLoadingPage");
     document.body.classList.add("studybridge-secondary-page", "study-sidebar-hidden");
     markActive(routeKey);
@@ -413,11 +492,22 @@
   }
 
   function bindRouteElement(element, routeKey) {
-    if (!element || !routeKey || element.dataset.studybridgeMainRoute === routeKey) return;
+    if (!element || !routeKey) return;
     element.dataset.studybridgeMainRoute = routeKey;
     element.style.cursor = "pointer";
     element.style.pointerEvents = "auto";
     if (element.tagName === "BUTTON") element.type = "button";
+    if (element.dataset.studybridgeDirectRouteBound === routeKey) return;
+    element.dataset.studybridgeDirectRouteBound = routeKey;
+    const open = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      openRoute(routeKey);
+    };
+    element.addEventListener("click", open, true);
+    element.addEventListener("pointerup", open, true);
+    element.onclick = open;
   }
 
   function ensureFeatureButton(routeKey) {
@@ -461,8 +551,8 @@
   }
 
   function ensureProfilePage() {
-    const shell = workspaceShell();
-    if (!shell) return null;
+    const mount = featureMount(true);
+    if (!mount) return null;
     let page = $("#profilePage");
     if (!page) {
       page = document.createElement("section");
@@ -612,6 +702,12 @@
         text-overflow: ellipsis !important;
       }
       #workspacePage[hidden] { display: none !important; }
+      #routerFeatureMount {
+        display: block;
+        min-height: 100dvh;
+        background: #f4f6f9;
+      }
+      #routerFeatureMount[hidden] { display: none !important; }
       body.studybridge-secondary-page:not(.creator-clean-mode) .workspace { background: #f4f6f9 !important; }
       .router-feature-page {
         display: block;
@@ -669,7 +765,10 @@
     setTimeout(restoreRememberedPage, 350);
   }
 
+  window.addEventListener("pointerup", handleNav, true);
   window.addEventListener("click", handleNav, true);
+  document.addEventListener("pointerup", handleNav, true);
+  document.addEventListener("click", handleNav, true);
   window.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
     handleNav(event);

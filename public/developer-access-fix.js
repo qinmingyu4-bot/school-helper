@@ -1,10 +1,10 @@
 (() => {
-if (window.__studybridgeDeveloperAccessFix === "20261007-2") return;
-window.__studybridgeDeveloperAccessFix = "20261007-2";
+if (window.__studybridgeDeveloperAccessFix === "20261007-3") return;
+window.__studybridgeDeveloperAccessFix = "20261007-3";
 const SECONDARY_PAGES = ["profilePage", "schoolCommunityPage", "classmatesPage", "emailReplyPage", "schedulePage"];
 const WORKSPACE_CHROME = [".topbar", "#scheduleDashboard", "#chatArea", "#quickPrompts", "#chatForm"];
 let creatorLockTimer = 0;
-function loadStudentShellFix() { const path = "/student-page-shell-fix.js"; const exists = Array.from(document.scripts).some((script) => { const src = script.getAttribute("src"); return src && new URL(src, location.href).pathname === path; }); if (exists) return; const script = document.createElement("script"); script.src = path + "?v=20261007-1"; script.defer = true; document.body.appendChild(script); }
+function loadStudentShellFix() { /* loaded as the final script in index.html so old routers cannot override it */ }
 function isAdminUser() { const roleSwitch = document.querySelector("#roleSwitch"); return Boolean(roleSwitch && !roleSwitch.hidden); }
 function setWorkspaceChromeHidden(hidden) { const workspacePage = document.querySelector("#workspacePage"); if (!workspacePage) return; WORKSPACE_CHROME.forEach((selector) => { const element = workspacePage.querySelector(":scope > " + selector); if (element) element.hidden = hidden; }); }
 function hideSecondaryPages() { SECONDARY_PAGES.forEach((id) => { const page = document.querySelector("#" + id); if (page) page.hidden = true; }); }

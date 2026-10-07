@@ -4,6 +4,8 @@
 
 ### Added
 
+- Bumped StudyBridge Cloud to `1.0.7`.
+- Stabilized the student sidebar navigation so Community, Classmates, Email Helper, Schedule, and Study Area open directly without flicker or needing another page first.
 - Bumped StudyBridge Cloud to `1.0.6`.
 - Reworked the Study Area into a native viewport shell so the chat history scrolls through the browser's own scroll container instead of intercepted wheel events.
 - Bumped StudyBridge Cloud to `1.0.5`.

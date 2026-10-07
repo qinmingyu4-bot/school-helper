@@ -40,6 +40,8 @@
 
   const scriptPromises = (window.__studybridgeDirectRouterScripts ||= new Map());
   let visibleLockTimer = 0;
+  let lastPointerOpenAt = 0;
+  let lastPointerButtonId = "";
 
   function wait(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -243,6 +245,16 @@
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
+    if (Date.now() - lastPointerOpenAt > 500 || lastPointerButtonId !== button.id) {
+      openTarget(button.id);
+    }
+  }
+
+  function handlePointer(event) {
+    const button = findNavButton(event);
+    if (!button) return;
+    lastPointerOpenAt = Date.now();
+    lastPointerButtonId = button.id;
     openTarget(button.id);
   }
 
@@ -252,6 +264,8 @@
       if (!button || button.dataset.directRouterReady === "true") return;
       button.dataset.directRouterReady = "true";
       button.onclick = handleClick;
+      button.onpointerdown = handlePointer;
+      button.addEventListener("pointerdown", handlePointer, true);
       button.addEventListener("click", handleClick, true);
       button.addEventListener(
         "keydown",
@@ -294,6 +308,7 @@
   }
 
   window.studybridgeDirectOpenPage = openTarget;
+  window.addEventListener("pointerdown", handlePointer, true);
   window.addEventListener("click", handleClick, true);
   document.addEventListener("DOMContentLoaded", attachButtonHandlers, { once: true });
   new MutationObserver(() => {

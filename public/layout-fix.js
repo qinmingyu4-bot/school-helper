@@ -368,7 +368,7 @@
       "/schedule-dashboard-patch.js?v=20261007-6",
       "/schedule-notification-patch.js?v=20261007-6",
       "/cheatsheet-mode-patch.js?v=20261007-6",
-      "/student-navigation-hotfix.js?v=20261007-6"
+      "/student-navigation-rescue.js?v=20261007-11"
     ].forEach(loadScriptOnce);
   }
 

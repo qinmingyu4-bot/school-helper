@@ -1,60 +1,141 @@
 (() => {
-  const VERSION = "20261007-master-bridge-1";
+  const VERSION = "20261007-master-bridge-3";
   if (window.__studybridgeSidebarDirectRouter === VERSION) return;
   window.__studybridgeSidebarDirectRouter = VERSION;
 
+  const RESCUE_PATH = "/student-navigation-rescue-v2.js";
+  const RESCUE_SRC = `${RESCUE_PATH}?v=20261007-rescue-v6`;
   const MASTER_PATH = "/student-navigation-master.js";
-  const MASTER_SRC = `${MASTER_PATH}?v=20261007-master-nav-3`;
-  const pageToRoute = {
+  const MASTER_SRC = `${MASTER_PATH}?v=20261007-master-nav-4`;
+
+  const aliases = {
     workspacePage: "study",
+    study: "study",
     profilePage: "profile",
+    profile: "profile",
     schoolCommunityPage: "community",
+    communityPage: "community",
+    community: "community",
     classmatesPage: "classmates",
+    classmates: "classmates",
     emailReplyPage: "email",
+    emailPage: "email",
+    email: "email",
     schedulePage: "schedule",
-    developerPanel: "developer"
+    schedule: "schedule",
+    developerPanel: "developer",
+    developer: "developer",
+    openProfilePageButton: "profile",
+    editProfileButton: "profile",
+    openSchoolCommunityButton: "community",
+    openClassmatesButton: "classmates",
+    openEmailReplyButton: "email",
+    openScheduleButton: "schedule",
+    openStudyAreaButton: "study",
+    studentViewButton: "study",
+    creatorViewButton: "developer"
   };
 
-  function hasMasterRouter() {
-    if (window.studybridgeMasterOpen || window.studybridgeOpenMainPage) return true;
+  const selectorRoutes = [
+    ["#profileCard, #openProfilePageButton, #editProfileButton, .profile-card", "profile"],
+    ["#openSchoolCommunityButton, .community-entry", "community"],
+    ["#openClassmatesButton, .classmates-entry", "classmates"],
+    ["#openEmailReplyButton, .email-helper-entry", "email"],
+    ["#openScheduleButton, .schedule-entry", "schedule"],
+    ["#openStudyAreaButton, .study-entry", "study"],
+    ["#studentViewButton, .student-mode-entry", "study"],
+    ["#creatorViewButton, .developer-mode-entry", "developer"]
+  ];
+
+  function normalize(routeName) {
+    const key = String(routeName || "").trim();
+    return aliases[key] || key;
+  }
+
+  function scriptLoaded(path) {
     return Array.from(document.scripts).some((script) => {
       const src = script.getAttribute("src") || "";
       try {
-        return new URL(src, window.location.href).pathname === MASTER_PATH;
+        return new URL(src, window.location.href).pathname === path;
       } catch {
-        return src.includes(MASTER_PATH);
+        return src.includes(path);
       }
     });
   }
 
-  function loadMasterRouter() {
-    if (hasMasterRouter()) return;
+  function loadScript(path, src) {
+    if (scriptLoaded(path)) return;
     const script = document.createElement("script");
     script.async = false;
-    script.src = MASTER_SRC;
+    script.src = src;
     document.body.appendChild(script);
   }
 
-  function openPage(pageId) {
-    loadMasterRouter();
-    const routeName = pageToRoute[pageId] || pageId;
-    const start = Date.now();
-    const timer = setInterval(() => {
-      if (window.studybridgeMasterOpen) {
-        clearInterval(timer);
-        window.studybridgeMasterOpen(routeName);
-      } else if (Date.now() - start > 3000) {
-        clearInterval(timer);
-      }
-    }, 50);
+  function loadRouters() {
+    loadScript(MASTER_PATH, MASTER_SRC);
+    loadScript(RESCUE_PATH, RESCUE_SRC);
   }
 
-  window.studybridgeDirectOpen = (pageId) => openPage(pageId);
-  window.studybridgeOpenStudentPage = (pageId) => openPage(pageId);
+  function openPage(routeName) {
+    const route = normalize(routeName);
+    if (!route) return false;
+
+    loadRouters();
+
+    let attempts = 0;
+    const run = () => {
+      attempts += 1;
+      if (typeof window.studybridgeNavigationRescueOpen === "function") {
+        window.studybridgeNavigationRescueOpen(route);
+        return true;
+      }
+      if (typeof window.studybridgeMasterOpen === "function") {
+        window.studybridgeMasterOpen(route);
+        return true;
+      }
+      return attempts > 70;
+    };
+
+    if (run()) return true;
+
+    const timer = window.setInterval(() => {
+      if (run()) window.clearInterval(timer);
+    }, 50);
+    return true;
+  }
+
+  function routeFromTarget(target) {
+    if (!target?.closest) return "";
+    const declared = normalize(target.closest("[data-studybridge-route]")?.dataset?.studybridgeRoute);
+    if (declared) return declared;
+
+    for (const [selector, route] of selectorRoutes) {
+      if (target.closest(selector)) return route;
+    }
+    return "";
+  }
+
+  function handleClick(event) {
+    const route = routeFromTarget(event.target);
+    if (!route) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+    openPage(route);
+  }
+
+  function init() {
+    loadRouters();
+    document.addEventListener("click", handleClick, true);
+    document.addEventListener("pointerup", handleClick, true);
+  }
+
+  window.studybridgeDirectOpen = openPage;
+  window.studybridgeOpenStudentPage = openPage;
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", loadMasterRouter, { once: true });
+    document.addEventListener("DOMContentLoaded", init, { once: true });
   } else {
-    loadMasterRouter();
+    init();
   }
 })();

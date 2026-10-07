@@ -27,11 +27,11 @@
   }
 
   function loadStudentPageShell() {
-    loadScriptOnce("/student-page-shell-fix.js", "20261007-2");
+    loadScriptOnce("/student-page-shell-fix.js", "20261007-3");
   }
 
   function loadStudentNavigationRescue() {
-    loadScriptOnce("/student-navigation-rescue.js", "20261007-2");
+    loadScriptOnce("/student-navigation-rescue.js", "20261007-3");
   }
 
   function toReadableMath(value) {

@@ -4,6 +4,13 @@
 
 ### Fixed
 
+- Bumped StudyBridge Cloud to `1.0.3`.
+- Made the student sidebar navigation open Study Area, Community, Classmates, Email Helper, and Schedule directly from any student page without needing to click Email Helper first.
+
+## 2026-10-07
+
+### Fixed
+
 - Bumped StudyBridge Cloud to `1.0.2`.
 - Restored vertical scrolling in the developer console without changing the student learning area layout.
 

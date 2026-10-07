@@ -430,7 +430,8 @@
   loadScriptOnce("/classmates-patch.js?v=20261005-2");
   loadScriptOnce("/classmates-request-patch.js?v=20261006-1");
   loadScriptOnce("/classmate-chat-bubble-fix.js?v=20261006-1");
-  loadScriptOnce("/chat-bubble-compact-live.js?v=20261007-1");
+  loadScriptOnce("/student-nav-hardening-patch.js?v=20261007-2");
+  loadScriptOnce("/chat-bubble-compact-live.js?v=20261007-2");
   loadScriptOnce("/cheatsheet-mode-patch.js?v=20261006-1");
   loadScriptOnce("/study-chat-bottom-fix.js?v=20261007-3");
   loadScriptOnce("/email-reply-patch.js?v=20261005-1");

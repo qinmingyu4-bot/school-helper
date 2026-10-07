@@ -13,6 +13,7 @@
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
+    if (style.dataset.ready === "true") return;
 
     style.textContent = `
       #classmatesPage.classmates-page {
@@ -74,6 +75,7 @@
         scroll-behavior: auto !important;
       }
     `;
+    style.dataset.ready = "true";
   }
 
   function installFetchThrottle() {

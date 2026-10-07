@@ -4,6 +4,8 @@
 
 ### Added
 
+- Bumped StudyBridge Cloud to `1.0.5`.
+- Added ChatGPT-style progressive assistant reply typing in the Study Area.
 - Bumped StudyBridge Cloud to `1.0.4`.
 - Added Study Area attachments: upload button, screenshot paste, drag-and-drop, image vision input, PDF/text extraction, and file metadata support.
 

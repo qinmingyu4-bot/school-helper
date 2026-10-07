@@ -4,6 +4,16 @@
 
 ### Added
 
+- Bumped StudyBridge Cloud to `1.0.11`.
+- Added a final navigation stability layer so Community, Classmates, Email Helper, and Schedule open directly from Study Area.
+- Added repeated cleanup for duplicate Schedule dashboard cards so the "Next Due" reminder only appears once.
+- Bumped StudyBridge Cloud to `1.0.10`.
+- Hardened student feature navigation so Community, Classmates, Email Helper, and Schedule cannot be pulled back to Study Area by older patch loops.
+- Prevented repeated Schedule dashboard cards when the planner scripts are loaded through multiple patch bundles.
+- Bumped StudyBridge Cloud to `1.0.9`.
+- Added a direct sidebar router so Community, Classmates, Email Helper, and Schedule open from Study Area without being blocked by older page patches.
+- Bumped StudyBridge Cloud to `1.0.8`.
+- Updated the public entry scripts so the live site loads the latest student navigation fix instead of cached older helpers.
 - Bumped StudyBridge Cloud to `1.0.7`.
 - Stabilized the student sidebar navigation so Community, Classmates, Email Helper, Schedule, and Study Area open directly without flicker or needing another page first.
 - Bumped StudyBridge Cloud to `1.0.6`.

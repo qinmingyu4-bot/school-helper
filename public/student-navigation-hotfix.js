@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = "20261007.7";
+  const VERSION = "20261007.8";
   if (window.__studybridgeNavigationHotfix === VERSION) return;
   window.__studybridgeNavigationHotfix = VERSION;
 
@@ -10,60 +10,66 @@
   let openToken = 0;
 
   const ROUTES = {
-    openStudyAreaButton: { pageId: "workspacePage", navId: "openStudyAreaButton", title: "学习区" },
+    openStudyAreaButton: { pageId: "workspacePage", navId: "openStudyAreaButton", title: "Study area" },
     openProfilePageButton: {
       pageId: "profilePage",
       navId: "openProfilePageButton",
       title: "Profile",
-      scripts: ["/student-page-shell-fix.js?v=20261007-nav7"]
+      opener: "studybridgeOpenStudentPage",
+      openerArg: "profilePage",
+      scripts: ["/student-page-shell-fix.js?v=20261007-nav8"]
     },
     editProfileButton: {
       pageId: "profilePage",
       navId: "openProfilePageButton",
       title: "Profile",
-      scripts: ["/student-page-shell-fix.js?v=20261007-nav7"]
+      opener: "studybridgeOpenStudentPage",
+      openerArg: "profilePage",
+      scripts: ["/student-page-shell-fix.js?v=20261007-nav8"]
     },
     profileCard: {
       pageId: "profilePage",
       navId: "openProfilePageButton",
       title: "Profile",
-      scripts: ["/student-page-shell-fix.js?v=20261007-nav7"]
+      opener: "studybridgeOpenStudentPage",
+      openerArg: "profilePage",
+      scripts: ["/student-page-shell-fix.js?v=20261007-nav8"]
     },
     openSchoolCommunityButton: {
       pageId: "schoolCommunityPage",
       navId: "openSchoolCommunityButton",
-      title: "社区",
+      title: "Community",
       opener: "studybridgeOpenCommunityPage",
-      scripts: ["/school-community-patch.js?v=20261007-nav7"]
+      scripts: ["/school-community-patch.js?v=20261007-nav8"]
     },
     openClassmatesButton: {
       pageId: "classmatesPage",
       navId: "openClassmatesButton",
-      title: "同学",
+      title: "Classmates",
       opener: "studybridgeOpenClassmatesPage",
       scripts: [
-        "/classmates-patch.js?v=20261007-nav7",
-        "/classmates-request-patch.js?v=20261007-nav7",
-        "/classmate-chat-bubble-fix.js?v=20261007-nav7",
-        "/classmates-performance-patch.js?v=20261007-nav7"
+        "/classmates-patch.js?v=20261007-nav8",
+        "/classmates-request-patch.js?v=20261007-nav8",
+        "/classmate-chat-bubble-fix.js?v=20261007-nav8",
+        "/classmates-performance-patch.js?v=20261007-nav8"
       ]
     },
     openEmailReplyButton: {
       pageId: "emailReplyPage",
       navId: "openEmailReplyButton",
-      title: "邮件助手",
+      title: "Email assistant",
       opener: "studybridgeOpenEmailReplyPage",
-      scripts: ["/email-reply-patch.js?v=20261007-nav7"]
+      scripts: ["/email-reply-patch.js?v=20261007-nav8"]
     },
     openScheduleButton: {
       pageId: "schedulePage",
       navId: "openScheduleButton",
-      title: "时间表",
+      title: "Schedule",
       opener: "studybridgeOpenSchedulePage",
       scripts: [
-        "/schedule-patch.js?v=20261007-nav7",
-        "/schedule-dashboard-patch.js?v=20261007-nav7",
-        "/schedule-notification-patch.js?v=20261007-nav7"
+        "/schedule-patch.js?v=20261007-nav8",
+        "/schedule-dashboard-patch.js?v=20261007-nav8",
+        "/schedule-notification-patch.js?v=20261007-nav8"
       ]
     }
   };
@@ -201,11 +207,15 @@
       loading.className = "studybridge-route-loading";
       root.appendChild(loading);
     }
-    loading.innerHTML = `<div class="route-loading-card">正在打开 ${route.title}...</div>`;
+    loading.innerHTML = `<div class="route-loading-card">Opening ${route.title}...</div>`;
     forceStudentMode();
     setStudyVisible(false);
     hideSecondaryPages("");
     root.hidden = false;
+    root.removeAttribute("hidden");
+    root.style.display = "";
+    root.style.visibility = "visible";
+    root.style.opacity = "1";
     loading.hidden = false;
     document.body.classList.add("studybridge-secondary-page", "study-sidebar-hidden", "studybridge-nav-hotfix-page");
     document.body.dataset.studybridgeActivePage = route.pageId;
@@ -215,6 +225,19 @@
   function hideLoading() {
     const loading = $("#studybridgeRouteLoadingPage");
     if (loading) loading.hidden = true;
+  }
+
+  function keepRouteVisible(route, token, duration = 2600) {
+    const deadline = Date.now() + duration;
+    const tick = () => {
+      if (token !== openToken || !appIsOpen()) return;
+      if (Date.now() > deadline) return;
+      if (route.pageId !== "workspacePage") {
+        if (!showSecondaryPage(route)) showLoading(route);
+      }
+      window.setTimeout(tick, 80);
+    };
+    tick();
   }
 
   function scriptPath(src) {
@@ -241,7 +264,7 @@
       script.addEventListener("load", resolve, { once: true });
       script.addEventListener("error", resolve, { once: true });
       document.body.appendChild(script);
-      setTimeout(resolve, 1600);
+      setTimeout(resolve, 1800);
     });
     scriptLoads.set(path, promise);
     return promise;
@@ -250,7 +273,8 @@
   async function callOpener(route) {
     if (!route.opener || typeof window[route.opener] !== "function") return false;
     try {
-      await window[route.opener]();
+      const args = Object.prototype.hasOwnProperty.call(route, "openerArg") ? [route.openerArg] : [];
+      await window[route.opener](...args);
       return true;
     } catch (error) {
       console.warn("StudyBridge page opener failed:", error);
@@ -268,7 +292,7 @@
     setTimeout(() => {
       const button = $(selector);
       if (button && !button.disabled) button.click();
-    }, 200);
+    }, 220);
   }
 
   async function openRouteById(id) {
@@ -283,11 +307,13 @@
     }
 
     if (!showSecondaryPage(route)) showLoading(route);
+    keepRouteVisible(route, token, 3400);
     await Promise.all((route.scripts || []).map((src) => loadScript(src, route.opener)));
     if (token !== openToken) return;
     await callOpener(route);
+    keepRouteVisible(route, token, 2200);
 
-    for (const delay of [0, 80, 220, 520, 1000]) {
+    for (const delay of [0, 80, 220, 520, 1000, 1600]) {
       if (token !== openToken) return;
       if (delay) await wait(delay);
       if (showSecondaryPage(route)) {
@@ -297,7 +323,7 @@
       }
     }
 
-    setStatus(`${route.title} 暂时没有打开，请刷新页面后再试。`);
+    setStatus(`${route.title} did not open. Please refresh and try again.`);
   }
 
   function routeIdFromEvent(event) {
@@ -427,10 +453,7 @@
   window.studybridgeNavigationHotfixOpen = openRouteById;
   window.studybridgeDirectOpenPage = openRouteById;
   window.studybridgeFinalOpenPage = openRouteById;
-  window.studybridgeOpenStudentPage = (pageId) => {
-    const entry = Object.entries(ROUTES).find(([, route]) => route.pageId === pageId);
-    if (entry) openRouteById(entry[0]);
-  };
+  window.studybridgeOpenStudentPageRoute = openRouteById;
 
   window.addEventListener("pointerdown", intercept, true);
   window.addEventListener("click", intercept, true);

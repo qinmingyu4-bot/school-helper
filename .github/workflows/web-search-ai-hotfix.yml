@@ -1,4 +1,4 @@
-name: Apply StudyBridge web-search AI route
+name: Apply StudyBridge Learning Style hotfix
 
 on:
   push:
@@ -13,65 +13,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch server AI route and learning style
+      - name: Patch Learning Style backend prompt
         run: |
-          cat > /tmp/apply-ai-route-and-style.js <<'NODE'
-          const fs = require("fs");
-          const path = "server.js";
-          let text = fs.readFileSync(path, "utf8");
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("server.js")
+          text = path.read_text(encoding="utf-8")
 
           text = text.replace(
-            /const webSearchModel =\n  String\(process\.env\.OPENAI_WEB_MODEL \|\| process\.env\.STUDYBRIDGE_WEB_MODEL \|\| ""\)\.trim\(\) \|\|\n  simpleAiModel;/,
-            'const webSearchModel =\n  String(process.env.OPENAI_WEB_MODEL || process.env.STUDYBRIDGE_WEB_MODEL || "").trim() ||\n  complexAiModel ||\n  simpleAiModel;'
-          );
+              'function buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message }) {\n  const docContext = documents',
+              'function buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message }) {\n  const preferenceInstruction = buildPreferenceInstruction(user.preferences || {});\n  const docContext = documents'
+          )
 
           text = text.replace(
-            'return "Weather lookup failed: " + ((error && error.message) || "unknown error") + ". Tell the student the live weather service is temporarily unavailable.";',
-            'return "Weather lookup failed: " + ((error && error.message) || "unknown error") + ". If web search is available, use it to answer the weather question instead of stopping. If no live lookup is available, tell the student the weather service is temporarily unavailable.";'
-          );
+              'When real-time weather context is provided, answer the weather question directly and include practical clothing/commute advice."',
+              'When real-time weather context is provided, answer the weather question directly and include practical clothing/commute advice." +\n        preferenceInstruction'
+          )
 
           text = text.replace(
-            'Answer any user question that is allowed by OpenAI safety rules. Explain in Chinese by default, preserve key English academic terms, and help students learn without doing prohibited final submissions for them.',
-            'Answer any user question that is allowed by OpenAI safety rules; do not refuse just because the question is not about school. Explain in Chinese by default, preserve key English academic terms, and help students learn without doing prohibited final submissions for them.'
-          );
-          text = text.replace(
-            'For general knowledge or current-information questions where the local StudyBridge data is missing, use reliable general knowledge and, when web search is available, use web search for fresh facts.',
-            'For general knowledge, current-information questions, weather, news, product prices, policies, rankings, or any question where local StudyBridge data is missing, use reliable general knowledge and, when web search is available, use web search for fresh facts instead of claiming you cannot browse.'
-          );
+              'Course: ${course.name}\\nMode: ${mode}\\nPreferences: ${JSON.stringify(\n        user.preferences || {}\n      )}\\nCurrent server time:',
+              'Course: ${course.name}\\nMode: ${mode}\\nLearning style instructions:\\n${preferenceInstruction || "Use StudyBridge defaults: Chinese explanation with helpful English academic terms."}\\nRaw preferences: ${JSON.stringify(\n        user.preferences || {}\n      )}\\nCurrent server time:'
+          )
 
-          text = text.replace(
-            'async function callAiWithResponses(messages, model) {',
-            'async function callAiWithResponses(messages, model, toolType = "web_search") {'
-          );
-          text = text.replace(
-            'type: "web_search",\n          search_context_size: "medium"',
-            'type: toolType,\n          search_context_size: "medium"'
-          );
-
-          if (!text.includes('web_search_preview')) {
-            text = text.replace(
-              `    } catch (error) {\n      console.warn("StudyBridge web AI route failed, falling back to chat completions: " + (error?.message || error));\n    }`,
-              `    } catch (error) {\n      const message = String((error && error.message) || error);\n      if (message.includes("web_search")) {\n        try {\n          return await callAiWithResponses(messages, webSearchModel || model, "web_search_preview");\n        } catch (previewError) {\n          console.warn("StudyBridge preview web route failed, falling back to chat completions: " + ((previewError && previewError.message) || previewError));\n        }\n      } else {\n        console.warn("StudyBridge web AI route failed, falling back to chat completions: " + message);\n      }\n    }`
-            );
-          }
-
-          const promptStart = 'function buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message }) {\n';
-          if (text.includes(promptStart) && !text.includes('const preferenceInstruction = buildPreferenceInstruction(user.preferences || {});')) {
-            text = text.replace(
-              promptStart + '  const docContext = documents',
-              promptStart + '  const preferenceInstruction = buildPreferenceInstruction(user.preferences || {});\n  const docContext = documents'
-            );
-          }
-          text = text.replace(
-            'When real-time weather context is provided, answer the weather question directly and include practical clothing/commute advice." +\n        buildCheatSheetInstruction(mode, message)',
-            'When real-time weather context is provided, answer the weather question directly and include practical clothing/commute advice." +\n        preferenceInstruction +\n        buildCheatSheetInstruction(mode, message)'
-          );
-          text = text.replace(
-            'Course: ${course.name}\\nMode: ${mode}\\nPreferences: ${JSON.stringify(\n        user.preferences || {}\n      )}\\nCurrent server time:',
-            'Course: ${course.name}\\nMode: ${mode}\\nLearning style instructions:\\n${preferenceInstruction || "Use StudyBridge defaults: Chinese explanation with helpful English academic terms."}\\nRaw preferences: ${JSON.stringify(\n        user.preferences || {}\n      )}\\nCurrent server time:'
-          );
-
-          const helper = `function buildPreferenceInstruction(preferences = {}) {
+          helper = '''function buildPreferenceInstruction(preferences = {}) {
   const englishTerms = preferences.englishTerms !== false;
   const englishAnswers = preferences.englishAnswers !== false;
   const chineseExplanations = preferences.chineseExplanations !== false;
@@ -106,25 +71,24 @@ jobs:
   return lines.join("\\n");
 }
 
-`;
+'''
 
-          if (text.includes('function buildPreferenceInstruction(preferences = {}) {')) {
-            const start = text.indexOf('function buildPreferenceInstruction(preferences = {}) {');
-            const end = text.indexOf('function chooseAiModel(', start);
-            if (end === -1) throw new Error('Could not locate chooseAiModel after buildPreferenceInstruction.');
-            text = text.slice(0, start) + helper + text.slice(end);
-          } else {
-            text = text.replace('function chooseAiModel(', helper + 'function chooseAiModel(');
-          }
+          marker = 'function buildPreferenceInstruction(preferences = {}) {'
+          chooser = 'function chooseAiModel('
+          if marker in text:
+              start = text.index(marker)
+              end = text.index(chooser, start)
+              text = text[:start] + helper + text[end:]
+          else:
+              text = text.replace('\nfunction chooseAiModel(', '\n' + helper + 'function chooseAiModel(')
 
-          fs.writeFileSync(path, text, "utf8");
-          NODE
-          node /tmp/apply-ai-route-and-style.js
+          path.write_text(text, encoding="utf-8")
+          PY
           node --check server.js
-      - name: Commit hotfix
+      - name: Commit Learning Style patch
         run: |
           if git diff --quiet -- server.js; then
-            echo "No server AI changes needed."
+            echo "No Learning Style server changes needed."
             exit 0
           fi
           git config user.name "github-actions[bot]"

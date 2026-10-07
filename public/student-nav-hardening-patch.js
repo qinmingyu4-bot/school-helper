@@ -57,7 +57,29 @@
 
   function isCreatorMode() {
     const developerPanel = document.querySelector("#developerPanel");
-    return Boolean(developerPanel && !developerPanel.hidden);
+    const creatorButton = document.querySelector("#creatorViewButton");
+    return Boolean(
+      document.body.classList.contains("creator-clean-mode") ||
+        document.body.classList.contains("admin-boundary-active") ||
+        (developerPanel && !developerPanel.hidden && creatorButton?.classList.contains("active"))
+    );
+  }
+
+  function forceStudentMode() {
+    try {
+      localStorage.setItem("studybridgeWorkspaceMode", "student");
+    } catch {
+      // Ignore browser storage restrictions.
+    }
+    const developerPanel = document.querySelector("#developerPanel");
+    if (developerPanel) developerPanel.hidden = true;
+    document.body.classList.remove("creator-clean-mode", "admin-boundary-active");
+    const studentButton = document.querySelector("#studentViewButton");
+    const creatorButton = document.querySelector("#creatorViewButton");
+    if (studentButton && creatorButton) {
+      studentButton.classList.add("active");
+      creatorButton.classList.remove("active");
+    }
   }
 
   function loadScriptOnce(src) {
@@ -140,6 +162,7 @@
   function showOnly(pageId) {
     const targetPage = document.querySelector(`#${pageId}`);
     if (!targetPage) return false;
+    forceStudentMode();
     PAGE_IDS.forEach((id) => {
       const page = document.querySelector(`#${id}`);
       if (page) page.hidden = id !== pageId;
@@ -159,7 +182,10 @@
     const opener = target.opener ? window[target.opener] : null;
     if (typeof opener !== "function") return false;
     try {
+      forceStudentMode();
       await opener();
+      forceStudentMode();
+      showOnly(target.pageId);
       setSidebarState(target.pageId);
       remember(target.pageId);
       return true;
@@ -170,7 +196,8 @@
   }
 
   async function openTarget(target) {
-    if (!target || isCreatorMode()) return;
+    if (!target) return;
+    forceStudentMode();
     installStyle();
     document.body.classList.add("studybridge-page-switching");
     try {
@@ -190,7 +217,7 @@
 
   function handleNavigationClick(event) {
     const button = event.target.closest?.(Object.keys(TARGETS).map((id) => `#${id}`).join(", "));
-    if (!button || isCreatorMode()) return;
+    if (!button) return;
     const target = TARGETS[button.id];
     if (!target) return;
     event.preventDefault();
@@ -200,5 +227,6 @@
   }
 
   installStyle();
+  window.addEventListener("click", handleNavigationClick, true);
   document.addEventListener("click", handleNavigationClick, true);
 })();

@@ -1,14 +1,14 @@
 (() => {
-  const VERSION = "20261007-final-nav-1";
+  const VERSION = "20261007-final-nav-2";
   if (window.__studybridgeFinalNavigation === VERSION) return;
   window.__studybridgeFinalNavigation = VERSION;
 
   const routes = {
-    profile: { pageId: "profilePage", selectors: ["#profileCard", "#openProfilePageButton", "#editProfileButton"], words: ["Adam", "SB ID", "个人资料", "Profile"] },
-    community: { pageId: "schoolCommunityPage", selectors: ["#openSchoolCommunityButton", ".community-entry"], words: ["社区", "Community"], opener: "studybridgeOpenCommunityPage", scripts: ["/school-community-patch.js?v=20261007-final-nav-1"] },
-    classmates: { pageId: "classmatesPage", selectors: ["#openClassmatesButton", ".classmates-entry"], words: ["同学", "Classmates", "好友"], opener: "studybridgeOpenClassmatesPage", scripts: ["/classmates-request-patch.js?v=20261007-final-nav-1", "/classmate-chat-bubble-fix.js?v=20261007-final-nav-1", "/classmates-performance-patch.js?v=20261007-final-nav-1"] },
-    email: { pageId: "emailReplyPage", selectors: ["#openEmailReplyButton", ".email-helper-entry"], words: ["邮件助手", "Email"], opener: "studybridgeOpenEmailReplyPage", scripts: ["/email-reply-patch.js?v=20261007-final-nav-1"] },
-    schedule: { pageId: "schedulePage", selectors: ["#openScheduleButton", ".schedule-entry"], words: ["时间表", "Schedule", "Deadline"], opener: "studybridgeOpenSchedulePage", scripts: ["/schedule-patch.js?v=20261007-final-nav-1", "/schedule-dashboard-patch.js?v=20261007-final-nav-1", "/schedule-notification-patch.js?v=20261007-final-nav-1"] },
+    profile: { pageId: "profilePage", selectors: ["#profileCard", "#openProfilePageButton", "#editProfileButton"], words: ["个人资料", "Profile"] },
+    community: { pageId: "schoolCommunityPage", selectors: ["#openSchoolCommunityButton", ".community-entry"], words: ["社区", "Community"], opener: "studybridgeOpenCommunityPage", scripts: ["/school-community-patch.js?v=20261007-final-nav-2"] },
+    classmates: { pageId: "classmatesPage", selectors: ["#openClassmatesButton", ".classmates-entry"], words: ["同学", "Classmates", "好友"], opener: "studybridgeOpenClassmatesPage", scripts: ["/classmates-request-patch.js?v=20261007-final-nav-2", "/classmate-chat-bubble-fix.js?v=20261007-final-nav-2", "/classmates-performance-patch.js?v=20261007-final-nav-2"] },
+    email: { pageId: "emailReplyPage", selectors: ["#openEmailReplyButton", ".email-helper-entry"], words: ["邮件助手", "Email"], opener: "studybridgeOpenEmailReplyPage", scripts: ["/email-reply-patch.js?v=20261007-final-nav-2"] },
+    schedule: { pageId: "schedulePage", selectors: ["#openScheduleButton", ".schedule-entry"], words: ["时间表", "Schedule", "Deadline"], opener: "studybridgeOpenSchedulePage", scripts: ["/schedule-patch.js?v=20261007-final-nav-2", "/schedule-dashboard-patch.js?v=20261007-final-nav-2", "/schedule-notification-patch.js?v=20261007-final-nav-2"] },
     study: { pageId: "workspacePage", selectors: ["#openStudyAreaButton", ".study-entry"], words: ["学习区", "Academic Coach"] }
   };
 
@@ -175,8 +175,8 @@
     const tagged = element.closest("[data-studybridge-final-route],[data-studybridge-main-route]");
     if (tagged) return tagged.dataset.studybridgeFinalRoute || tagged.dataset.studybridgeMainRoute || "";
     for (const [key, route] of Object.entries(routes)) if (route.selectors.some((selector) => element.closest(selector))) return key;
-    const item = element.closest(".sidebar button,.sidebar .panel,.sidebar article,.sidebar section,.sidebar div");
-    const text = String(item?.textContent || element.textContent || "").replace(/\s+/g, " ");
+    const item = element.closest(".sidebar button,.sidebar [role='button'],.community-entry,.classmates-entry,.email-helper-entry,.schedule-entry,.study-entry");
+    const text = String(item?.textContent || "").replace(/\s+/g, " ");
     const found = Object.entries(routes).find(([, route]) => route.words.some((word) => text.includes(word)));
     return found ? found[0] : "";
   }

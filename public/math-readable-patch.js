@@ -14,6 +14,19 @@
     document.head.appendChild(style);
   }
 
+  function loadStudentPageShell() {
+    const path = "/student-page-shell-fix.js";
+    const alreadyLoaded = Array.from(document.scripts).some((script) => {
+      const src = script.getAttribute("src");
+      return src && new URL(src, location.href).pathname === path;
+    });
+    if (alreadyLoaded) return;
+    const script = document.createElement("script");
+    script.src = `${path}?v=20261007-1`;
+    script.defer = true;
+    document.body.appendChild(script);
+  }
+
   function toReadableMath(value) {
     let text = String(value || "");
 
@@ -80,6 +93,8 @@
   }
 
   normalizeMessages();
+  loadStudentPageShell();
+  setTimeout(loadStudentPageShell, 250);
   new MutationObserver(scheduleNormalize).observe(document.body, {
     childList: true,
     subtree: true,

@@ -1,39 +1,38 @@
 (() => {
-  const VERSION = "20261007-final-sidebar-router-1";
-  if (window.__studybridgeSidebarRouter === VERSION) return;
-  window.__studybridgeSidebarRouter = VERSION;
+  const VERSION = "20261007.2";
+  if (window.__studybridgeStudentNavigationHotfix === VERSION) return;
+  window.__studybridgeStudentNavigationHotfix = VERSION;
 
   const PAGE_KEY = "studybridgeLastOpenPage";
-  const PAGES = ["profilePage", "schoolCommunityPage", "classmatesPage", "emailReplyPage", "schedulePage"];
-  const STUDY_CHROME = [".topbar", "#developerPanel", "#scheduleDashboard", "#chatArea", "#quickPrompts", "#chatForm"];
+  const STUDY_SELECTORS = ["#workspacePage > .topbar", "#developerPanel", "#chatArea", "#quickPrompts", "#chatForm"];
+  const PAGE_IDS = ["profilePage", "schoolCommunityPage", "classmatesPage", "emailReplyPage", "schedulePage"];
   const ROUTES = {
-    openStudyAreaButton: { pageId: "workspacePage", title: "Study Area", eyebrow: "ACADEMIC COACH" },
-    openProfilePageButton: { pageId: "profilePage", title: "Profile", eyebrow: "PROFILE" },
-    editProfileButton: { pageId: "profilePage", title: "Profile", eyebrow: "PROFILE" },
-    profileCard: { pageId: "profilePage", title: "Profile", eyebrow: "PROFILE" },
-    openSchoolCommunityButton: { pageId: "schoolCommunityPage", title: "Community", eyebrow: "COMMUNITY", opener: "studybridgeOpenCommunityPage", scripts: ["/school-community-patch.js?v=20261007-final-router"] },
-    openClassmatesButton: { pageId: "classmatesPage", title: "Classmates", eyebrow: "CLASSMATES", opener: "studybridgeOpenClassmatesPage", scripts: ["/classmates-patch.js?v=20261007-final-router", "/classmates-request-patch.js?v=20261007-final-router", "/classmate-chat-bubble-fix.js?v=20261007-final-router", "/classmates-performance-patch.js?v=20261007-final-router"] },
-    openEmailReplyButton: { pageId: "emailReplyPage", title: "Email Helper", eyebrow: "EMAIL COACH", opener: "studybridgeOpenEmailReplyPage", scripts: ["/email-reply-patch.js?v=20261007-final-router"] },
-    openScheduleButton: { pageId: "schedulePage", title: "Schedule", eyebrow: "SCHEDULE", opener: "studybridgeOpenSchedulePage", scripts: ["/schedule-patch.js?v=20261007-final-router", "/schedule-dashboard-patch.js?v=20261007-final-router", "/schedule-notification-patch.js?v=20261007-final-router"] }
+    openStudyAreaButton: { pageId: "workspacePage", title: "学习区" },
+    openProfilePageButton: { pageId: "profilePage", title: "个人资料" },
+    profileCard: { pageId: "profilePage", title: "个人资料" },
+    openSchoolCommunityButton: { pageId: "schoolCommunityPage", title: "社区", opener: "studybridgeOpenCommunityPage", scripts: ["/school-community-patch.js?v=20261007-nav2"] },
+    openClassmatesButton: { pageId: "classmatesPage", title: "同学", opener: "studybridgeOpenClassmatesPage", scripts: ["/classmates-patch.js?v=20261007-nav2", "/classmates-request-patch.js?v=20261007-nav2", "/classmate-chat-bubble-fix.js?v=20261007-nav2", "/classmates-performance-patch.js?v=20261007-nav2"] },
+    openEmailReplyButton: { pageId: "emailReplyPage", title: "邮件助手", opener: "studybridgeOpenEmailReplyPage", scripts: ["/email-reply-patch.js?v=20261007-nav2"] },
+    openScheduleButton: { pageId: "schedulePage", title: "时间表", opener: "studybridgeOpenSchedulePage", scripts: ["/schedule-patch.js?v=20261007-nav2", "/schedule-dashboard-patch.js?v=20261007-nav2", "/schedule-notification-patch.js?v=20261007-nav2"] }
   };
-  const SELECTOR = Object.keys(ROUTES).map((id) => `#${id}`).join(",");
-  const loaded = new Map();
-  let token = 0;
 
+  const routeSelector = Object.keys(ROUTES).map((id) => `#${id}`).join(",");
+  const scriptPromises = new Map();
+  let openTicket = 0;
   const $ = (selector, root = document) => root.querySelector(selector);
 
-  function workspace() {
+  function getWorkspace() {
     const page = $("#workspacePage") || $(".workspace");
     if (page && !page.id) page.id = "workspacePage";
     return page;
   }
 
-  function appOpen() {
+  function isLoggedIn() {
     const shell = $("#appShell");
-    return Boolean(shell && !shell.hidden);
+    return !!shell && !shell.hidden;
   }
 
-  function setStatus(text) {
+  function status(text) {
     const line = $("#statusLine");
     if (line) line.textContent = text;
   }
@@ -42,236 +41,202 @@
     try {
       localStorage.setItem(PAGE_KEY, pageId);
       localStorage.setItem("studybridgeWorkspaceMode", "student");
-    } catch {
-      // The page can still switch without localStorage.
-    }
+    } catch {}
   }
 
-  function forceStudentMode() {
-    try {
-      localStorage.setItem("studybridgeWorkspaceMode", "student");
-    } catch {
-      // Ignore private browsing/localStorage failures.
-    }
+  function studentMode() {
+    try { localStorage.setItem("studybridgeWorkspaceMode", "student"); } catch {}
     document.body.classList.remove("creator-clean-mode", "admin-boundary-active");
     $("#developerPanel")?.setAttribute("hidden", "");
     $("#studentViewButton")?.classList.add("active");
     $("#creatorViewButton")?.classList.remove("active");
   }
 
-  function setActive(route) {
-    Object.values(ROUTES).forEach((item) => {
-      const control = item.navId ? $(`#${item.navId}`) : $(`#${Object.keys(ROUTES).find((id) => ROUTES[id] === item)}`);
-      if (!control || item.pageId === "profilePage") return;
-      const active = item.pageId === route.pageId;
-      control.classList.toggle("active", active);
-      control.setAttribute("aria-current", active ? "page" : "false");
+  function setActive(pageId) {
+    Object.entries(ROUTES).forEach(([id, route]) => {
+      if (id === "profileCard") return;
+      const button = $("#" + id);
+      if (!button) return;
+      const active = route.pageId === pageId;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-current", active ? "page" : "false");
     });
-    $("#openProfilePageButton")?.classList.toggle("active", route.pageId === "profilePage");
   }
 
-  function hideStudyChrome(hidden) {
-    const root = workspace();
-    if (!root) return;
-    STUDY_CHROME.forEach((selector) => {
-      const item = root.querySelector(`:scope > ${selector}`);
-      if (item) item.hidden = hidden;
+  function showStudyParts(show) {
+    STUDY_SELECTORS.forEach((selector) => {
+      const element = $(selector);
+      if (element) element.hidden = !show;
     });
+  }
+
+  function placePage(page) {
+    const root = getWorkspace();
+    if (root && page && page.parentElement !== root) root.appendChild(page);
   }
 
   function ensureFallback(route) {
-    if (route.pageId === "workspacePage") return workspace();
-    const root = workspace();
-    if (!root) return null;
-    let page = $(`#${route.pageId}`);
-    if (!page) {
-      page = document.createElement("section");
-      page.id = route.pageId;
-      page.className = "studybridge-direct-page";
-      page.hidden = true;
-      page.innerHTML = `
-        <header class="topbar">
-          <div>
-            <p class="eyebrow">${route.eyebrow}</p>
-            <h2>${route.title}</h2>
-            <span>Opening page...</span>
-          </div>
-          <button class="ghost-button studybridge-router-back" type="button">Back to Study Area</button>
-        </header>
-        <div class="studybridge-direct-empty">Loading ${route.title}.</div>
-      `;
+    if (route.pageId === "workspacePage") return getWorkspace();
+    let page = $("#" + route.pageId);
+    if (page) {
+      placePage(page);
+      return page;
     }
-    if (page.parentElement !== root) root.appendChild(page);
+    page = document.createElement("section");
+    page.id = route.pageId;
+    page.className = "studybridge-route-page";
+    page.hidden = true;
+    page.innerHTML = `<header class="topbar"><div><p class="eyebrow">StudyBridge</p><h2>${route.title}</h2><span>页面正在打开。</span></div><button class="ghost-button" id="routeBackToStudyButton" type="button">返回学习区</button></header><div class="studybridge-route-empty">${route.title} 页面正在加载，如果停留在这里请刷新一次。</div>`;
+    placePage(page);
     return page;
   }
 
-  function show(route) {
-    const root = workspace();
+  function showPage(route) {
+    const root = getWorkspace();
     if (!root) return false;
-    forceStudentMode();
+    studentMode();
     root.hidden = false;
     root.removeAttribute("hidden");
     root.style.display = "";
     root.style.visibility = "visible";
+    root.style.opacity = "1";
 
     if (route.pageId === "workspacePage") {
-      PAGES.forEach((id) => {
-        const page = $(`#${id}`);
-        if (page) page.hidden = true;
-      });
-      hideStudyChrome(false);
-      document.body.classList.remove("studybridge-secondary-page", "study-sidebar-hidden", "studybridge-final-secondary");
+      PAGE_IDS.forEach((id) => { const page = $("#" + id); if (page) page.hidden = true; });
+      showStudyParts(true);
+      document.body.classList.remove("studybridge-route-mode", "study-sidebar-hidden", "studybridge-secondary-page", "studybridge-final-secondary");
       document.body.dataset.studybridgeActivePage = "workspacePage";
-      setActive(route);
+      setActive("workspacePage");
       remember("workspacePage");
-      setStatus("Workspace is ready.");
+      status("Workspace is ready.");
       return true;
     }
 
-    const page = ensureFallback(route);
-    if (!page) return false;
-    hideStudyChrome(true);
-    PAGES.forEach((id) => {
-      const item = $(`#${id}`);
-      if (!item) return;
-      const selected = id === route.pageId;
-      item.hidden = !selected;
-      if (selected) {
-        item.removeAttribute("hidden");
-        item.style.display = "";
-        item.style.visibility = "visible";
-        item.style.opacity = "1";
+    const selected = ensureFallback(route);
+    showStudyParts(false);
+    PAGE_IDS.forEach((id) => {
+      const page = $("#" + id);
+      if (!page) return;
+      const active = id === route.pageId;
+      page.hidden = !active;
+      if (active) {
+        placePage(page);
+        page.removeAttribute("hidden");
+        page.style.display = "";
+        page.style.visibility = "visible";
+        page.style.opacity = "1";
       }
     });
-    document.body.classList.add("studybridge-secondary-page", "study-sidebar-hidden", "studybridge-final-secondary");
+    if (selected) selected.hidden = false;
+    document.body.classList.add("studybridge-route-mode", "study-sidebar-hidden", "studybridge-secondary-page");
     document.body.dataset.studybridgeActivePage = route.pageId;
-    setActive(route);
+    setActive(route.pageId);
     remember(route.pageId);
-    setStatus(`${route.title} opened.`);
+    status(route.title + " opened.");
     return true;
   }
 
-  function scriptKey(src) {
-    return new URL(src.split("?")[0], location.href).pathname;
-  }
-
+  function scriptPath(src) { return new URL(src.split("?")[0], location.href).pathname; }
   function hasScript(src) {
-    const key = scriptKey(src);
+    const path = scriptPath(src);
     return Array.from(document.scripts).some((script) => {
-      const current = script.getAttribute("src");
-      return current && new URL(current, location.href).pathname === key;
+      const value = script.getAttribute("src");
+      return value && new URL(value, location.href).pathname === path;
     });
   }
-
   function loadScript(src, opener) {
     if (opener && typeof window[opener] === "function") return Promise.resolve();
-    const key = scriptKey(src);
-    if (loaded.has(key)) return loaded.get(key);
+    const path = scriptPath(src);
+    if (scriptPromises.has(path)) return scriptPromises.get(path);
     if (hasScript(src)) return Promise.resolve();
     const promise = new Promise((resolve) => {
       const script = document.createElement("script");
       script.async = false;
       script.src = src;
-      script.addEventListener("load", resolve, { once: true });
-      script.addEventListener("error", resolve, { once: true });
+      script.onload = resolve;
+      script.onerror = resolve;
       document.body.appendChild(script);
       setTimeout(resolve, 1600);
     });
-    loaded.set(key, promise);
+    scriptPromises.set(path, promise);
     return promise;
   }
 
-  async function openById(id) {
-    const route = ROUTES[id];
-    if (!route || !appOpen()) return;
-    const current = ++token;
-    show(route);
-    if (route.pageId === "workspacePage") return;
-    await Promise.all((route.scripts || []).map((src) => loadScript(src, route.opener)));
-    if (current !== token) return;
-    if (route.opener && typeof window[route.opener] === "function") {
-      try {
-        await window[route.opener]();
-      } catch (error) {
-        console.warn("StudyBridge page opener failed:", error);
-      }
-    }
-    for (const delay of [0, 80, 240, 600, 1200]) {
-      if (current !== token) return;
-      if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
-      show(route);
-    }
-    const refresh = { schoolCommunityPage: "#refreshCommunityButton", classmatesPage: "#refreshClassmatesButton, #refreshClassmateRequestsButton", schedulePage: "#refreshScheduleButton" }[route.pageId];
-    if (refresh) setTimeout(() => $(refresh)?.click(), 180);
+  async function runOpener(route) {
+    if (!route.opener || typeof window[route.opener] !== "function") return;
+    try { await window[route.opener](); } catch (error) { console.warn("StudyBridge route opener failed", route.opener, error); }
   }
 
-  function routeId(event) {
-    const direct = event.target.closest?.(SELECTOR);
-    if (direct) return direct.id;
+  async function openRoute(routeId) {
+    const route = ROUTES[routeId];
+    if (!route || !isLoggedIn()) return;
+    const ticket = ++openTicket;
+    showPage(route);
+    if (route.pageId === "workspacePage") return;
+    await Promise.all((route.scripts || []).map((src) => loadScript(src, route.opener)));
+    if (ticket !== openTicket) return;
+    await runOpener(route);
+    for (const ms of [0, 80, 250, 600, 1200]) {
+      if (ticket !== openTicket) return;
+      if (ms) await new Promise((resolve) => setTimeout(resolve, ms));
+      showPage(route);
+    }
+  }
+
+  function routeIdFromEvent(event) {
+    const target = event.target.closest?.(routeSelector);
+    if (target) return target.id;
     const profile = event.target.closest?.("#profileCard");
-    if (profile && !event.target.closest("input, textarea, select, form, button")) return "profileCard";
+    if (profile && !event.target.closest("input, textarea, select, button, form")) return "profileCard";
     return "";
   }
 
   function intercept(event) {
-    const id = routeId(event);
-    if (!id || !appOpen()) return;
+    const routeId = routeIdFromEvent(event);
+    if (!routeId || !isLoggedIn()) return;
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
-    openById(id);
+    openRoute(routeId);
   }
 
-  function installStyle() {
-    if ($("#studybridge-direct-router-style")) return;
+  function installStyles() {
+    if ($("#studybridge-student-navigation-hotfix-style")) return;
     const style = document.createElement("style");
-    style.id = "studybridge-direct-router-style";
+    style.id = "studybridge-student-navigation-hotfix-style";
     style.textContent = `
-      #openProfilePageButton,#editProfileButton,#openStudyAreaButton,#openSchoolCommunityButton,#openClassmatesButton,#openEmailReplyButton,#openScheduleButton,#profileCard{pointer-events:auto!important;cursor:pointer!important}
-      #openProfilePageButton *,#editProfileButton *,#openStudyAreaButton *,#openSchoolCommunityButton *,#openClassmatesButton *,#openEmailReplyButton *,#openScheduleButton *{pointer-events:none!important}
-      body.studybridge-final-secondary:not(.creator-clean-mode) #workspacePage{display:block!important;visibility:visible!important;height:100vh!important;min-height:100vh!important;overflow:auto!important;background:#f4f6f9!important}
-      body.studybridge-final-secondary:not(.creator-clean-mode) #workspacePage>.topbar,
-      body.studybridge-final-secondary:not(.creator-clean-mode) #workspacePage>#developerPanel,
-      body.studybridge-final-secondary:not(.creator-clean-mode) #workspacePage>#scheduleDashboard,
-      body.studybridge-final-secondary:not(.creator-clean-mode) #workspacePage>#chatArea,
-      body.studybridge-final-secondary:not(.creator-clean-mode) #workspacePage>#quickPrompts,
-      body.studybridge-final-secondary:not(.creator-clean-mode) #workspacePage>#chatForm{display:none!important}
-      body.studybridge-final-secondary:not(.creator-clean-mode) #profilePage:not([hidden]),
-      body.studybridge-final-secondary:not(.creator-clean-mode) #schoolCommunityPage:not([hidden]),
-      body.studybridge-final-secondary:not(.creator-clean-mode) #classmatesPage:not([hidden]),
-      body.studybridge-final-secondary:not(.creator-clean-mode) #emailReplyPage:not([hidden]),
-      body.studybridge-final-secondary:not(.creator-clean-mode) #schedulePage:not([hidden]){display:block!important;visibility:visible!important;opacity:1!important}
-      .studybridge-direct-page{min-height:100vh;background:#f4f6f9}.studybridge-direct-empty{padding:28px;color:var(--muted)}
+      #openProfilePageButton,#openSchoolCommunityButton,#openClassmatesButton,#openEmailReplyButton,#openScheduleButton,#openStudyAreaButton{cursor:pointer!important;pointer-events:auto!important}
+      #openProfilePageButton *,#openSchoolCommunityButton *,#openClassmatesButton *,#openEmailReplyButton *,#openScheduleButton *,#openStudyAreaButton *{pointer-events:none!important}
+      body.studybridge-route-mode #workspacePage{display:block!important;visibility:visible!important;opacity:1!important;height:100vh!important;min-height:100vh!important;overflow-y:auto!important;overflow-x:hidden!important;background:#f4f6f9!important}
+      body.studybridge-route-mode #workspacePage>.topbar,body.studybridge-route-mode #workspacePage>#developerPanel,body.studybridge-route-mode #workspacePage>#chatArea,body.studybridge-route-mode #workspacePage>#quickPrompts,body.studybridge-route-mode #workspacePage>#chatForm{display:none!important}
+      body.studybridge-route-mode #profilePage:not([hidden]),body.studybridge-route-mode #schoolCommunityPage:not([hidden]),body.studybridge-route-mode #classmatesPage:not([hidden]),body.studybridge-route-mode #emailReplyPage:not([hidden]),body.studybridge-route-mode #schedulePage:not([hidden]){display:block!important;visibility:visible!important;opacity:1!important;min-height:100vh!important}
+      .studybridge-route-empty{padding:28px;color:#58647a}.studybridge-route-page{min-height:100vh;background:#f4f6f9}
     `;
     document.head.appendChild(style);
   }
 
   function boot() {
-    workspace();
-    installStyle();
-    Object.keys(ROUTES).forEach((id) => {
-      const control = $(`#${id}`);
-      if (control?.tagName === "BUTTON") control.type = "button";
-    });
+    installStyles();
+    Object.keys(ROUTES).forEach((id) => { const button = $("#" + id); if (button && button.tagName === "BUTTON") button.type = "button"; });
   }
+
+  window.studybridgeNavigationHotfixOpen = openRoute;
+  window.studybridgeDirectOpenPage = openRoute;
+  window.studybridgeFinalOpenPage = openRoute;
+  window.studybridgeOpenStudentPage = (pageId) => {
+    const match = Object.entries(ROUTES).find(([, route]) => route.pageId === pageId);
+    if (match) openRoute(match[0]);
+  };
 
   window.addEventListener("pointerdown", intercept, true);
   window.addEventListener("click", intercept, true);
-  window.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" || event.key === " ") intercept(event);
-  }, true);
+  window.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") intercept(event); }, true);
   document.addEventListener("click", (event) => {
-    if (!event.target.closest?.(".studybridge-router-back")) return;
+    if (!event.target.closest?.("#backToStudyButton,#routeBackToStudyButton")) return;
     event.preventDefault();
-    openById("openStudyAreaButton");
-  });
-
-  window.studybridgeDirectOpenPage = openById;
-  window.studybridgeFinalOpenPage = openById;
-  window.studybridgeOpenStudentPage = (pageId) => {
-    const entry = Object.entries(ROUTES).find(([, route]) => route.pageId === pageId);
-    if (entry) openById(entry[0]);
-  };
+    event.stopImmediatePropagation();
+    openRoute("openStudyAreaButton");
+  }, true);
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
   else boot();

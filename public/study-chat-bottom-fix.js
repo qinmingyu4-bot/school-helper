@@ -1,14 +1,24 @@
 (() => {
+  if (window.__studybridgeStudyViewportShellV2) return;
+  window.__studybridgeStudyViewportShellV2 = true;
+
   const STYLE_ID = "studybridge-study-chat-bottom-fix";
   let stickToBottom = true;
-  let lastScrollTop = 0;
-  let lastScrollHeight = 0;
   let bootFrame = 0;
-  let bottomSpaceFrame = 0;
   let scrollTimer = 0;
 
   function isVisible(element) {
     return Boolean(element && !element.hidden && element.offsetParent !== null);
+  }
+
+  function ensureWorkspacePageId() {
+    const workspace = document.querySelector(".workspace");
+    if (workspace && !workspace.id) workspace.id = "workspacePage";
+  }
+
+  function syncAppLiveState() {
+    const appShell = document.querySelector("#appShell");
+    document.body.classList.toggle("studybridge-app-live", Boolean(appShell && !appShell.hidden));
   }
 
   function installStyle() {
@@ -18,18 +28,38 @@
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    if (style.dataset.ready === "true") return;
+
     style.textContent = `
-      body:not(.creator-clean-mode) .workspace,
-      body:not(.creator-clean-mode) #workspacePage {
-        height: 100vh !important;
+      html,
+      body {
+        height: 100%;
+      }
+
+      body.studybridge-app-live {
+        overflow: hidden !important;
+      }
+
+      body.studybridge-app-live #appShell {
+        height: 100dvh !important;
         min-height: 0 !important;
         overflow: hidden !important;
       }
 
+      body.studybridge-app-live .sidebar {
+        height: 100dvh !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        overscroll-behavior: contain !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+
       body:not(.creator-clean-mode) #workspacePage {
+        height: 100dvh !important;
+        min-height: 0 !important;
         display: grid !important;
         grid-template-rows: auto auto minmax(0, 1fr) auto auto !important;
+        overflow: hidden !important;
       }
 
       body:not(.creator-clean-mode) #workspacePage .topbar,
@@ -41,31 +71,38 @@
         flex: 0 0 auto !important;
       }
 
-      body:not(.creator-clean-mode) #workspacePage #scheduleDashboard {
-        align-self: start !important;
-      }
-
       body:not(.creator-clean-mode) #workspacePage #chatArea {
         position: relative !important;
         z-index: 1 !important;
         display: flex !important;
         flex-direction: column !important;
-        grid-row: auto !important;
+        justify-content: flex-start !important;
+        align-content: flex-start !important;
         min-height: 0 !important;
         height: auto !important;
         max-height: none !important;
-        padding-top: max(34px, var(--study-chat-top-space, 34px)) !important;
-        padding-bottom: max(28px, var(--study-chat-bottom-space, 28px)) !important;
+        padding: 28px 28px 32px !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
-        overscroll-behavior: contain !important;
+        overscroll-behavior-y: contain !important;
         scroll-behavior: auto !important;
         -webkit-overflow-scrolling: touch !important;
+        touch-action: pan-y !important;
         scrollbar-gutter: stable !important;
+        scroll-padding-top: 140px !important;
+        scroll-padding-bottom: 130px !important;
+      }
+
+      body:not(.creator-clean-mode) #workspacePage #chatArea .message {
+        flex: 0 0 auto !important;
       }
 
       body:not(.creator-clean-mode) #workspacePage #chatArea .message:first-child {
         margin-top: 0 !important;
+      }
+
+      body:not(.creator-clean-mode) #workspacePage #chatArea .message:last-child {
+        margin-bottom: 20px !important;
       }
 
       body:not(.creator-clean-mode) #workspacePage #quickPrompts,
@@ -77,59 +114,29 @@
         padding-bottom: 8px !important;
       }
     `;
-    style.dataset.ready = "true";
   }
 
-  function ensureWorkspacePageId() {
-    const workspace = document.querySelector(".workspace");
-    if (workspace && !workspace.id) workspace.id = "workspacePage";
+  function chatArea() {
+    const area = document.querySelector("#chatArea");
+    return isVisible(area) ? area : null;
   }
 
-  function updateBottomSpace() {
-    const quickPrompts = document.querySelector("#quickPrompts");
-    const chatForm = document.querySelector("#chatForm");
-    const scheduleDashboard = document.querySelector("#scheduleDashboard");
-    const quickHeight = isVisible(quickPrompts) ? quickPrompts.getBoundingClientRect().height : 0;
-    const formHeight = isVisible(chatForm) ? chatForm.getBoundingClientRect().height : 0;
-    const dashboardHeight = isVisible(scheduleDashboard) ? scheduleDashboard.getBoundingClientRect().height : 0;
-    const bottomSpace = Math.max(28, Math.ceil((quickHeight + formHeight) * 0.12));
-    const topSpace = Math.max(34, Math.ceil(dashboardHeight * 0.22));
-    document.documentElement.style.setProperty("--study-chat-bottom-space", `${bottomSpace}px`);
-    document.documentElement.style.setProperty("--study-chat-top-space", `${topSpace}px`);
-  }
-
-  function scheduleBottomSpaceUpdate() {
-    if (bottomSpaceFrame) return;
-    bottomSpaceFrame = requestAnimationFrame(() => {
-      bottomSpaceFrame = 0;
-      updateBottomSpace();
-    });
-  }
-
-  function distanceFromBottom(chatArea) {
-    return chatArea.scrollHeight - chatArea.scrollTop - chatArea.clientHeight;
+  function distanceFromBottom(area) {
+    return area.scrollHeight - area.scrollTop - area.clientHeight;
   }
 
   function updateStickiness() {
-    const chatArea = document.querySelector("#chatArea");
-    if (!chatArea || !isVisible(chatArea)) return;
-    const scrollMovedUp = chatArea.scrollTop < lastScrollTop - 4;
-    const heightChanged = chatArea.scrollHeight !== lastScrollHeight;
-    if (scrollMovedUp) stickToBottom = false;
-    if (!heightChanged) stickToBottom = distanceFromBottom(chatArea) < 120;
-    lastScrollTop = chatArea.scrollTop;
-    lastScrollHeight = chatArea.scrollHeight;
+    const area = chatArea();
+    if (!area) return;
+    stickToBottom = distanceFromBottom(area) < 120;
   }
 
   function scrollStudyChatToBottom(force = false) {
-    const chatArea = document.querySelector("#chatArea");
+    const area = chatArea();
     const workspacePage = document.querySelector("#workspacePage");
-    if (!isVisible(chatArea) || !isVisible(workspacePage)) return;
-    updateBottomSpace();
+    if (!area || !isVisible(workspacePage)) return;
     if (!force && !stickToBottom) return;
-    chatArea.scrollTop = chatArea.scrollHeight;
-    lastScrollTop = chatArea.scrollTop;
-    lastScrollHeight = chatArea.scrollHeight;
+    area.scrollTop = area.scrollHeight;
     stickToBottom = true;
   }
 
@@ -138,57 +145,13 @@
     scrollTimer = setTimeout(() => scrollStudyChatToBottom(force), delay);
   }
 
-  function markManualScrollIntent(event) {
-    const workspacePage = document.querySelector("#workspacePage");
-    if (!workspacePage || !isVisible(workspacePage) || !workspacePage.contains(event.target)) return;
-    const developerPanel = document.querySelector("#developerPanel");
-    if (developerPanel && !developerPanel.hidden) return;
-    if (event.deltaY < 0) stickToBottom = false;
-  }
-
-  function routeWheelToStudyChat(event) {
-    const workspacePage = document.querySelector("#workspacePage");
-    const chatArea = document.querySelector("#chatArea");
-    if (!workspacePage || !chatArea || !isVisible(workspacePage) || !isVisible(chatArea)) return;
-    if (!workspacePage.contains(event.target)) return;
-    const developerPanel = document.querySelector("#developerPanel");
-    if (developerPanel && !developerPanel.hidden) return;
-    if (event.target.closest?.("#chatForm, #quickPrompts, textarea, input, select, button")) return;
-    const canScroll = chatArea.scrollHeight > chatArea.clientHeight + 2;
-    if (!canScroll) return;
-
-    const before = chatArea.scrollTop;
-    chatArea.scrollTop += event.deltaY;
-    if (chatArea.scrollTop !== before) {
-      event.preventDefault();
-      event.stopPropagation();
-      stickToBottom = distanceFromBottom(chatArea) < 120;
-      lastScrollTop = chatArea.scrollTop;
-      lastScrollHeight = chatArea.scrollHeight;
-    }
-  }
-
   function attachChatScrollListener() {
-    const chatArea = document.querySelector("#chatArea");
-    if (!chatArea || chatArea.dataset.studyScrollReady === "true") return;
-    chatArea.dataset.studyScrollReady = "true";
-    chatArea.addEventListener("scroll", updateStickiness, { passive: true });
-  }
-
-  function boot() {
-    ensureWorkspacePageId();
-    installStyle();
-    updateBottomSpace();
-    attachChatScrollListener();
-    attachStudentNavigationFallback();
-  }
-
-  function scheduleBoot() {
-    if (bootFrame) return;
-    bootFrame = requestAnimationFrame(() => {
-      bootFrame = 0;
-      boot();
-    });
+    const area = document.querySelector("#chatArea");
+    if (!area || area.dataset.studyNativeScrollReady === "true") return;
+    area.dataset.studyNativeScrollReady = "true";
+    area.tabIndex = area.tabIndex >= 0 ? area.tabIndex : 0;
+    area.addEventListener("scroll", updateStickiness, { passive: true });
+    area.addEventListener("pointerdown", () => area.focus({ preventScroll: true }), { passive: true });
   }
 
   function isCreatorMode() {
@@ -228,87 +191,6 @@
     }, 80);
   }
 
-  function ensureNavigationScripts(buttonId) {
-    const scriptMap = {
-      openSchoolCommunityButton: ["/school-community-patch.js?v=20261007-nav"],
-      openClassmatesButton: [
-        "/classmates-patch.js?v=20261007-nav",
-        "/classmates-request-patch.js?v=20261007-nav",
-        "/classmate-chat-bubble-fix.js?v=20261007-nav",
-        "/classmates-performance-patch.js?v=20261007-nav"
-      ],
-      openEmailReplyButton: ["/email-reply-patch.js?v=20261007-nav"],
-      openScheduleButton: [
-        "/schedule-patch.js?v=20261007-nav",
-        "/schedule-dashboard-patch.js?v=20261007-nav",
-        "/schedule-notification-patch.js?v=20261007-nav"
-      ]
-    };
-    (scriptMap[buttonId] || []).forEach(loadScriptOnce);
-  }
-
-  function callDirectOpener(buttonId) {
-    const openerMap = {
-      openSchoolCommunityButton: "studybridgeOpenCommunityPage",
-      openClassmatesButton: "studybridgeOpenClassmatesPage",
-      openEmailReplyButton: "studybridgeOpenEmailReplyPage",
-      openScheduleButton: "studybridgeOpenSchedulePage"
-    };
-    const openerName = openerMap[buttonId];
-    const opener = openerName ? window[openerName] : null;
-    if (typeof opener === "function") {
-      opener();
-      return true;
-    }
-    return false;
-  }
-
-  function attachStudentNavigationFallback() {
-    if (document.body.dataset.studentNavigationFallback === "true") return;
-    document.body.dataset.studentNavigationFallback = "true";
-    const pageByButton = {
-      openStudyAreaButton: "workspacePage",
-      openSchoolCommunityButton: "schoolCommunityPage",
-      openClassmatesButton: "classmatesPage",
-      openEmailReplyButton: "emailReplyPage",
-      openScheduleButton: "schedulePage"
-    };
-
-    document.addEventListener(
-      "click",
-      (event) => {
-        const button = event.target.closest?.("#openStudyAreaButton, #openSchoolCommunityButton, #openClassmatesButton, #openEmailReplyButton, #openScheduleButton");
-        if (!button || isCreatorMode()) return;
-        const pageId = pageByButton[button.id];
-        if (!pageId) return;
-        ensureNavigationScripts(button.id);
-
-        const ensureOpened = () => {
-          if (button.id !== "openStudyAreaButton" && callDirectOpener(button.id)) return;
-          const targetPage = document.querySelector(`#${pageId}`);
-          if (!targetPage) return false;
-          const workspacePage = document.querySelector("#workspacePage");
-          if (pageId !== "workspacePage" && workspacePage && !workspacePage.hidden && targetPage.hidden) {
-            showStudentPage(pageId);
-          }
-          if (pageId === "workspacePage" && workspacePage?.hidden) {
-            showStudentPage(pageId);
-          }
-          return true;
-        };
-
-        [0, 60, 180, 360, 700, 1300, 2200].forEach((delay) => setTimeout(ensureOpened, delay));
-      },
-      true
-    );
-  }
-
-  function loadCheatsheetPatch() {
-    loadScriptOnce("/cheatsheet-mode-patch.js?v=20261006-2");
-    loadScriptOnce("/classmates-performance-patch.js?v=20261007-1");
-    loadScriptOnce("/no-course-notice-patch.js?v=20261007-1");
-  }
-
   function loadScriptOnce(src) {
     const cleanSrc = src.split("?")[0];
     const registry = (window.__studybridgeLoadedScripts ||= new Set());
@@ -331,23 +213,118 @@
     document.body.appendChild(script);
   }
 
+  function ensureNavigationScripts(buttonId) {
+    const scriptMap = {
+      openSchoolCommunityButton: ["/school-community-patch.js?v=20261007-nav2"],
+      openClassmatesButton: [
+        "/classmates-patch.js?v=20261007-nav2",
+        "/classmates-request-patch.js?v=20261007-nav2",
+        "/classmate-chat-bubble-fix.js?v=20261007-nav2",
+        "/classmates-performance-patch.js?v=20261007-nav2"
+      ],
+      openEmailReplyButton: ["/email-reply-patch.js?v=20261007-nav2"],
+      openScheduleButton: [
+        "/schedule-patch.js?v=20261007-nav2",
+        "/schedule-dashboard-patch.js?v=20261007-nav2",
+        "/schedule-notification-patch.js?v=20261007-nav2"
+      ]
+    };
+    (scriptMap[buttonId] || []).forEach(loadScriptOnce);
+  }
+
+  function callDirectOpener(buttonId) {
+    const openerMap = {
+      openSchoolCommunityButton: "studybridgeOpenCommunityPage",
+      openClassmatesButton: "studybridgeOpenClassmatesPage",
+      openEmailReplyButton: "studybridgeOpenEmailReplyPage",
+      openScheduleButton: "studybridgeOpenSchedulePage"
+    };
+    const openerName = openerMap[buttonId];
+    const opener = openerName ? window[openerName] : null;
+    if (typeof opener === "function") {
+      opener();
+      return true;
+    }
+    return false;
+  }
+
+  function attachStudentNavigationFallback() {
+    if (document.body.dataset.studentNavigationFallback === "native-shell") return;
+    document.body.dataset.studentNavigationFallback = "native-shell";
+    const pageByButton = {
+      openStudyAreaButton: "workspacePage",
+      openSchoolCommunityButton: "schoolCommunityPage",
+      openClassmatesButton: "classmatesPage",
+      openEmailReplyButton: "emailReplyPage",
+      openScheduleButton: "schedulePage"
+    };
+
+    document.addEventListener(
+      "click",
+      (event) => {
+        const button = event.target.closest?.("#openStudyAreaButton, #openSchoolCommunityButton, #openClassmatesButton, #openEmailReplyButton, #openScheduleButton");
+        if (!button || isCreatorMode()) return;
+        const pageId = pageByButton[button.id];
+        if (!pageId) return;
+        ensureNavigationScripts(button.id);
+
+        const ensureOpened = () => {
+          if (button.id !== "openStudyAreaButton" && callDirectOpener(button.id)) return true;
+          const targetPage = document.querySelector(`#${pageId}`);
+          if (!targetPage) return false;
+          if (targetPage.hidden || pageId === "workspacePage") showStudentPage(pageId);
+          return true;
+        };
+
+        [0, 60, 180, 360, 700, 1300].forEach((delay) => setTimeout(ensureOpened, delay));
+      },
+      true
+    );
+  }
+
+  function loadSupportPatches() {
+    loadScriptOnce("/cheatsheet-mode-patch.js?v=20261006-2");
+    loadScriptOnce("/classmates-performance-patch.js?v=20261007-1");
+    loadScriptOnce("/no-course-notice-patch.js?v=20261007-1");
+  }
+
+  function boot() {
+    ensureWorkspacePageId();
+    syncAppLiveState();
+    installStyle();
+    attachChatScrollListener();
+    attachStudentNavigationFallback();
+  }
+
+  function scheduleBoot() {
+    if (bootFrame) return;
+    bootFrame = requestAnimationFrame(() => {
+      bootFrame = 0;
+      boot();
+    });
+  }
+
   boot();
-  loadCheatsheetPatch();
-  window.addEventListener("resize", scheduleBottomSpaceUpdate);
+  loadSupportPatches();
+  window.addEventListener("resize", scheduleBoot);
   window.addEventListener("load", () => scheduleStudyChatScroll(true, 120));
-  window.addEventListener("wheel", markManualScrollIntent, { passive: true, capture: true });
-  window.addEventListener("wheel", routeWheelToStudyChat, { passive: false, capture: true });
+  document.addEventListener("submit", (event) => {
+    if (event.target?.id === "chatForm") {
+      stickToBottom = true;
+      scheduleStudyChatScroll(true, 80);
+    }
+  });
 
   const observer = new MutationObserver(() => {
     scheduleBoot();
-    if (stickToBottom) {
-      scheduleStudyChatScroll(false, 40);
-    }
+    if (stickToBottom) scheduleStudyChatScroll(false, 40);
   });
 
   observer.observe(document.body, {
     childList: true,
     subtree: true,
+    attributes: true,
+    attributeFilter: ["hidden", "class", "style"],
     characterData: true
   });
 })();

@@ -1,4 +1,20 @@
 (() => {
+  function loadScriptOnce(src) {
+    const cleanSrc = src.split("?")[0];
+    if (document.querySelector(`script[src^="${cleanSrc}"]`)) return;
+    const script = document.createElement("script");
+    script.src = src;
+    script.defer = true;
+    document.body.appendChild(script);
+  }
+
+  function loadLatestPatches() {
+    loadScriptOnce("/layout-fix.js?v=20261007-2");
+    loadScriptOnce("/study-chat-bottom-fix.js?v=20261007-2");
+    loadScriptOnce("/classmates-performance-patch.js?v=20261007-1");
+    loadScriptOnce("/no-course-notice-patch.js?v=20261007-1");
+  }
+
   function installCompactStyle() {
     let style = document.querySelector("#studybridge-chat-bubble-compact-live");
     if (!style) {
@@ -90,6 +106,7 @@
   }
 
   function boot() {
+    loadLatestPatches();
     installCompactStyle();
     compactMessages();
   }

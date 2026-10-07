@@ -4,6 +4,8 @@
 
 ### Added
 
+- Bumped StudyBridge Cloud to `1.0.6`.
+- Reworked the Study Area into a native viewport shell so the chat history scrolls through the browser's own scroll container instead of intercepted wheel events.
 - Bumped StudyBridge Cloud to `1.0.5`.
 - Added ChatGPT-style progressive assistant reply typing in the Study Area.
 - Bumped StudyBridge Cloud to `1.0.4`.

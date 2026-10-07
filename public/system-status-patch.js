@@ -11,6 +11,8 @@
     currentVersion: "\u5f53\u524d\u7248\u672c",
     deployTime: "\u6700\u540e\u90e8\u7f72\u65f6\u95f4",
     dbMode: "\u6570\u636e\u5e93\u6a21\u5f0f",
+    dataPersistence: "\u6570\u636e\u4fdd\u5b58",
+    backupStatus: "\u81ea\u52a8\u5907\u4efd",
     aiStatus: "AI \u662f\u5426\u6b63\u5e38",
     googleLogin: "Google \u767b\u5f55",
     emailCode: "\u90ae\u7bb1\u9a8c\u8bc1\u7801",
@@ -160,6 +162,11 @@
     const systemReady = Boolean(system);
     const dbMode = system?.database?.mode || health?.db || TEXT.unknown;
     const dbReady = Boolean(system?.database?.ready ?? health?.ok);
+    const dataSaved = Boolean(system?.database?.dataSavedWithAccount ?? dbReady);
+    const backup = system?.backup || {};
+    const backupReady = Boolean(backup.ready);
+    const backupFresh = Boolean(backup.fresh ?? backupReady);
+    const backupIsRelevant = dbMode === "local" || backup.mode === "local-file";
     const googleEnabled = Boolean(system?.google?.enabled ?? google?.enabled);
     const emailConfigured = Boolean(system?.email?.sendingConfigured);
     const emailRequired = Boolean(system?.email?.verificationRequired);
@@ -174,7 +181,9 @@
       grid.innerHTML = [
         card(TEXT.currentVersion, systemReady ? "ok" : "warn", version, systemReady ? `Node ${system?.version?.node || ""}` : "\u540e\u7aef\u6df1\u5ea6\u8bca\u65ad\u63a5\u53e3\u5f85\u90e8\u7f72\u3002"),
         card(TEXT.deployTime, deployedAt ? "ok" : "warn", formatDate(deployedAt), deployedAt ? "\u6309\u670d\u52a1\u5668\u6587\u4ef6\u65f6\u95f4\u663e\u793a\u3002" : "\u53ef\u786e\u8ba4\u670d\u52a1\u5728\u7ebf\u3002"),
-        card(TEXT.dbMode, dbReady ? "ok" : "bad", dbMode, system?.database?.note || (dbReady ? "Database is readable and writable." : "Database check failed.")),
+        card(TEXT.dbMode, dbReady ? "ok" : "bad", dbMode, system?.database?.note || (dbReady ? "\u6570\u636e\u5e93\u53ef\u8bfb\u5199\u3002" : "\u6570\u636e\u5e93\u68c0\u6d4b\u5f02\u5e38\u3002")),
+        card(TEXT.dataPersistence, dataSaved ? "ok" : "bad", dataSaved ? "\u8ddf\u8d26\u53f7\u4fdd\u5b58" : TEXT.unknown, dataSaved ? "\u7528\u6237\u8d44\u6599\u3001\u8bfe\u7a0b\u3001\u804a\u5929\u548c deadline \u90fd\u4fdd\u5b58\u5728\u540e\u7aef\u8d26\u53f7\u6570\u636e\u4e2d\u3002" : "\u6682\u65f6\u65e0\u6cd5\u786e\u8ba4\u8d26\u53f7\u6570\u636e\u662f\u5426\u6b63\u5e38\u4fdd\u5b58\u3002"),
+        card(TEXT.backupStatus, backupIsRelevant ? (backupReady ? (backupFresh ? "ok" : "warn") : "bad") : "ok", backupIsRelevant ? (backup.latestAt ? formatDate(backup.latestAt) : "\u6682\u65e0\u5907\u4efd") : "\u4e91\u6570\u636e\u5e93", backup?.note || (backupIsRelevant ? "\u672c\u5730\u6587\u4ef6\u6570\u636e\u5e93\u9700\u8981\u81ea\u52a8\u5907\u4efd\u3002" : "\u4e91\u6570\u636e\u5e93\u6a21\u5f0f\u4e0b\u8bf7\u4f7f\u7528 AWS \u5907\u4efd\u7b56\u7565\u3002")),
         card(TEXT.aiStatus, aiOk ? "ok" : "bad", aiOk ? TEXT.ok : aiConfigured ? "\u68c0\u6d4b\u5931\u8d25" : TEXT.notConfigured, system?.ai?.detail || (aiModel ? `\u5f53\u524d\u6a21\u578b ${aiModel} \u8fd8\u6ca1\u6709\u68c0\u6d4b\u901a\u8fc7\u3002` : "\u540e\u7aef\u4f1a\u505a\u4e00\u6b21\u771f\u5b9e AI \u56de\u590d\u68c0\u6d4b\uff0cAI key \u4e0d\u4f1a\u5728\u524d\u7aef\u663e\u793a\u3002")),
         card(TEXT.googleLogin, googleEnabled ? "ok" : "warn", googleEnabled ? TEXT.configured : TEXT.notConfigured, googleEnabled ? "\u7528\u6237\u53ef\u4ee5\u4f7f\u7528 Google \u767b\u5f55\u3002" : "\u666e\u901a\u90ae\u7bb1\u6ce8\u518c\u4ecd\u53ef\u7528\u3002"),
         card(TEXT.emailCode, emailConfigured || !emailRequired ? "ok" : "bad", emailConfigured ? "\u53d1\u4fe1\u5df2\u914d\u7f6e" : emailRequired ? "\u8981\u6c42\u9a8c\u8bc1\u4f46\u672a\u914d\u7f6e\u53d1\u4fe1" : "\u975e\u5fc5\u9700", emailConfigured ? "\u90ae\u7bb1\u9a8c\u8bc1\u7801\u53ef\u4ee5\u771f\u5b9e\u53d1\u9001\u3002" : emailRequired ? "\u6ce8\u518c\u4f1a\u4f9d\u8d56\u90ae\u7bb1\u9a8c\u8bc1\u7801\u3002" : "\u5f53\u524d\u4f7f\u7528\u9080\u8bf7\u7801\u63a7\u5236\u6ce8\u518c\uff0c\u6682\u4e0d\u5f3a\u5236\u90ae\u7bb1\u53d1\u4fe1\u3002"),

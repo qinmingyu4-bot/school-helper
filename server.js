@@ -65,6 +65,9 @@ const allowEmailCodeFallback = process.env.ALLOW_EMAIL_CODE_FALLBACK !== "false"
 const emailCodeTtlMs = Number(process.env.EMAIL_CODE_TTL_MINUTES || 15) * 60 * 1000;
 const maxJsonBytes = 16 * 1024 * 1024;
 const maxPdfBytes = 8 * 1024 * 1024;
+const localBackupDisabled = process.env.LOCAL_DB_BACKUP_DISABLED === "true";
+const localBackupIntervalHours = Math.max(1, Number(process.env.LOCAL_DB_BACKUP_INTERVAL_HOURS || 6));
+const localBackupRetention = Math.max(3, Number(process.env.LOCAL_DB_BACKUP_RETENTION || 72));
 const legacyOpenAiModel = String(process.env.OPENAI_MODEL || "").trim();
 const simpleAiModel =
   String(process.env.OPENAI_SIMPLE_MODEL || process.env.STUDYBRIDGE_SIMPLE_MODEL || "").trim() ||
@@ -1082,6 +1085,139 @@ function fileIsoTime(filePath) {
   }
 }
 
+
+function localDatabaseFilePath() {
+  return db.local?.file || path.resolve(process.env.LOCAL_DB_FILE || ".data/studybridge.json");
+}
+
+function localBackupDirectory() {
+  return path.resolve(process.env.LOCAL_DB_BACKUP_DIR || path.join(path.dirname(localDatabaseFilePath()), "backups"));
+}
+
+function displayPath(filePath) {
+  if (!filePath) return "";
+  const normalized = path.resolve(filePath);
+  const home = os.homedir();
+  if (normalized.startsWith(home)) return `~${normalized.slice(home.length)}`;
+  if (normalized.startsWith(__dirname)) return `.${normalized.slice(__dirname.length)}`;
+  return normalized;
+}
+
+function backupFileName(reason = "auto") {
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const cleanReason = String(reason || "auto").replace(/[^a-z0-9_-]+/gi, "-").slice(0, 24) || "auto";
+  return `studybridge-${stamp}-${cleanReason}.json`;
+}
+
+async function listLocalBackups() {
+  const backupDir = localBackupDirectory();
+  try {
+    const names = await fs.readdir(backupDir);
+    const rows = await Promise.all(
+      names
+        .filter((name) => /^studybridge-.+\.json$/i.test(name))
+        .map(async (name) => {
+const filePath = path.join(backupDir, name);
+const stat = await fs.stat(filePath);
+return { name, filePath, mtimeMs: stat.mtimeMs, mtime: stat.mtime.toISOString(), bytes: stat.size };
+        })
+    );
+    return rows.sort((a, b) => b.mtimeMs - a.mtimeMs);
+  } catch {
+    return [];
+  }
+}
+
+async function purgeOldLocalBackups(backups) {
+  await Promise.all(
+    backups.slice(localBackupRetention).map((backup) =>
+      fs.unlink(backup.filePath).catch(() => {
+        // A stale backup cleanup failure should not block the app.
+      })
+    )
+  );
+}
+
+async function ensureLocalDatabaseBackup(reason = "auto") {
+  if (db.mode !== "local" || localBackupDisabled) return null;
+  const source = localDatabaseFilePath();
+  if (!fsSync.existsSync(source)) return null;
+  const backups = await listLocalBackups();
+  const newest = backups[0];
+  const minAgeMs = Math.max(30, Number(process.env.LOCAL_DB_BACKUP_MINUTES || 30)) * 60 * 1000;
+  if (newest && Date.now() - newest.mtimeMs < minAgeMs) return newest;
+  const backupDir = localBackupDirectory();
+  await fs.mkdir(backupDir, { recursive: true });
+  const target = path.join(backupDir, backupFileName(reason));
+  await fs.copyFile(source, target);
+  const stat = await fs.stat(target);
+  const updated = [{ name: path.basename(target), filePath: target, mtimeMs: stat.mtimeMs, mtime: stat.mtime.toISOString(), bytes: stat.size }, ...backups];
+  await purgeOldLocalBackups(updated);
+  return updated[0];
+}
+
+async function localBackupStatusClean() {
+  if (db.mode !== "local") {
+    return {
+      mode: "cloud",
+      configured: true,
+      ready: true,
+      required: false,
+      note: "Cloud database mode is enabled. Use cloud-provider backups before public launch."
+    };
+  }
+
+  const source = localDatabaseFilePath();
+  const fileExists = fsSync.existsSync(source);
+  if (fileExists) {
+    try {
+      await ensureLocalDatabaseBackup("status");
+    } catch {
+      // The detailed status below will report backup readiness.
+    }
+  }
+  const backups = await listLocalBackups();
+  const latest = backups[0] || null;
+  const maxAgeMs = Math.max(26, localBackupIntervalHours * 3) * 60 * 60 * 1000;
+  const fresh = Boolean(latest && Date.now() - latest.mtimeMs <= maxAgeMs);
+  const ready = !localBackupDisabled && fileExists && Boolean(latest);
+  return {
+    mode: "local-file",
+    configured: !localBackupDisabled,
+    ready,
+    fresh,
+    fileExists,
+    filePath: displayPath(source),
+    backupDir: displayPath(localBackupDirectory()),
+    count: backups.length,
+    latestAt: latest?.mtime || "",
+    latestBytes: latest?.bytes || 0,
+    retention: localBackupRetention,
+    intervalHours: localBackupIntervalHours,
+    note: localBackupDisabled
+      ? "Local database backups are disabled. Turn on backups before inviting more users."
+      : ready
+        ? fresh
+? "Local database backups are active. This reduces browser-close and server restart risk, but a cloud database is still safer for long-term public use."
+: "Backups exist, but the newest backup is older than expected. Check the server auto-backup timer."
+        : fileExists
+? "Local database is present, but no backup was confirmed yet."
+: "Local database file has not been created yet."
+  };
+}
+
+function scheduleLocalDatabaseBackups() {
+  if (db.mode !== "local" || localBackupDisabled) return;
+  const run = (reason) => {
+    ensureLocalDatabaseBackup(reason).catch((error) => {
+      console.error("StudyBridge local database backup failed:", error.message || error);
+    });
+  };
+  setTimeout(() => run("startup"), 3000);
+  setInterval(() => run("scheduled"), localBackupIntervalHours * 60 * 60 * 1000);
+}
+
+
 function autoSyncStatus() {
   const candidates = [path.join(os.homedir(), "studybridge-auto-deploy.sh"), "/home/ubuntu/studybridge-auto-deploy.sh"];
   const scriptPath = candidates.find((item) => fsSync.existsSync(item)) || "";
@@ -1134,60 +1270,32 @@ async function databaseStatusClean() {
   const mode = db.mode || process.env.STUDYBRIDGE_DB || "local";
   try {
     const users = await db.listUsers();
+    const localFile = mode === "local" ? localDatabaseFilePath() : "";
+    const localStat = localFile && fsSync.existsSync(localFile) ? fsSync.statSync(localFile) : null;
     return {
       mode,
       ready: true,
       userCount: Array.isArray(users) ? users.length : 0,
+      dataSavedWithAccount: true,
+      filePath: localFile ? displayPath(localFile) : "",
+      fileExists: localStat ? true : mode !== "local",
+      fileUpdatedAt: localStat ? localStat.mtime.toISOString() : "",
+      fileBytes: localStat ? localStat.size : 0,
       note:
         mode === "local"
-          ? "Local database is readable and writable. Add backups or a cloud database before larger public use."
-          : "Cloud database connection is healthy."
+? "\u7528\u6237\u8d44\u6599\u3001\u8bfe\u7a0b\u3001\u804a\u5929\u548c deadline \u90fd\u6309\u8d26\u53f7\u4fdd\u5b58\u5728\u670d\u52a1\u5668\u672c\u5730\u6570\u636e\u5e93\u3002"
+: "\u4e91\u6570\u636e\u5e93\u8fde\u63a5\u6b63\u5e38\u3002"
     };
   } catch (error) {
     return {
       mode,
       ready: false,
       userCount: 0,
-      note: error?.message || "Database read failed."
+      dataSavedWithAccount: false,
+      note: error?.message || "\u6570\u636e\u5e93\u8bfb\u53d6\u5931\u8d25\u3002"
     };
   }
 }
-
-function requestOpenAiModelsHealth() {
-  return new Promise((resolve) => {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      resolve({ configured: false, ok: false, detail: "OPENAI_API_KEY is not configured." });
-      return;
-    }
-    const req = https.request(
-      {
-        hostname: "api.openai.com",
-        path: "/v1/models",
-        method: "GET",
-        timeout: 4500,
-        headers: { authorization: "Bearer " + apiKey }
-      },
-      (response) => {
-        response.resume();
-        const ok = response.statusCode >= 200 && response.statusCode < 300;
-        resolve({
-          configured: true,
-          ok,
-          statusCode: response.statusCode,
-          detail: ok ? "OpenAI API is reachable." : "OpenAI API returned a non-success status."
-        });
-      }
-    );
-    req.on("timeout", () => {
-      req.destroy();
-      resolve({ configured: true, ok: false, detail: "OpenAI API check timed out." });
-    });
-    req.on("error", (error) => resolve({ configured: true, ok: false, detail: error.message || "OpenAI API connection failed." }));
-    req.end();
-  });
-}
-
 
 function requestOpenAiChatHealth(model) {
   return new Promise((resolve) => {
@@ -1753,6 +1861,7 @@ if (openCommunityLikeMatch && method === "PATCH") {
         lastCodeUpdateAt: fileIsoTime(path.join(__dirname, "server.js"))
       },
       database: await databaseStatusClean(),
+      backup: await localBackupStatusClean(),
       ai,
       google: {
         enabled: googleAuthEnabled(),
@@ -2111,4 +2220,5 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(port, () => {
   console.log(`StudyBridge cloud app running on http://localhost:${port}`);
+  scheduleLocalDatabaseBackups();
 });

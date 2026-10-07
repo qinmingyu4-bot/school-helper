@@ -423,7 +423,7 @@
   syncLayoutState();
   loadScriptOnce("/school-autocomplete.js?v=20261005-1");
   loadScriptOnce("/admin-console-patch.js?v=20261005-1");
-  loadScriptOnce("/system-status-patch.js?v=20261006-4");
+  loadScriptOnce("/system-status-patch.js?v=20261007-1");
   loadScriptOnce("/admin-boundary-patch.js?v=20261006-1");
   loadScriptOnce("/profile-onboarding-patch.js?v=20261005-1");
   loadScriptOnce("/profile-onboarding-fix.js?v=20261005-1");

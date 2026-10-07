@@ -4,6 +4,9 @@
 
 ### Added
 
+- Bumped StudyBridge Cloud to `1.0.14`.
+- Added server-side local database backup checks and automatic JSON backups for the local file database.
+- Added developer system-status cards confirming account-based data persistence and latest backup time.
 - Bumped StudyBridge Cloud to `1.0.13`.
 - Fixed secondary student pages so Community, Classmates, Email Helper, Schedule, and Profile render inside the shared workspace shell instead of being hidden with the Study Area container.
 - Bumped StudyBridge Cloud to `1.0.12`.

@@ -28,6 +28,7 @@
     loadScriptOnce("/study-chat-bottom-fix.js?v=20261007-2");
     loadScriptOnce("/classmates-performance-patch.js?v=20261007-1");
     loadScriptOnce("/no-course-notice-patch.js?v=20261007-1");
+    loadScriptOnce("/math-readable-patch.js?v=20261007-1");
   }
 
   function installCompactStyle() {

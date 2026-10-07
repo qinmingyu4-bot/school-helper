@@ -2,6 +2,13 @@
 
 ## 2026-10-07
 
+### Fixed
+
+- Bumped StudyBridge Cloud to `1.0.2`.
+- Restored vertical scrolling in the developer console without changing the student learning area layout.
+
+## 2026-10-07
+
 ### Changed
 
 - Bumped StudyBridge Cloud to `1.0.1`.

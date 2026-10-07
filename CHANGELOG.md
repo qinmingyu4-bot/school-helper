@@ -106,7 +106,7 @@
 - Repositioned the product for international students in North American schools.
 - Replaced the Chinese classroom teacher persona with an academic coach style.
 - Updated the interface language around syllabus, rubric, assignment, office hours, quiz prep, and academic writing.
--Adjusted the visual style to feel more like a modern campus productivity tool.
+- Adjusted the visual style to feel more like a modern campus productivity tool.
 
 ### Added
 

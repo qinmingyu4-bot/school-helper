@@ -4,6 +4,9 @@
 
 ### Added
 
+- Bumped StudyBridge Cloud to `1.0.18`.
+- Replaced the aggressive student page route lock with a lightweight click-based router to prevent browser out-of-memory crashes.
+- Reduced developer mode observer work so developer/student switching no longer loops over hidden/class changes.
 - Bumped StudyBridge Cloud to `1.0.17`.
 - Moved the student page router to the final browser patch load so Community, Classmates, Email Helper, Schedule, Profile, and Study Area are not overridden by older navigation scripts.
 - Stopped the developer access helper from loading the student router early, preserving the developer/student boundary while avoiding blank student pages.

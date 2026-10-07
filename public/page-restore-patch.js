@@ -128,7 +128,15 @@
         });
         page.hidden = false;
         const workspacePage = document.querySelector("#workspacePage");
-        if (workspacePage) workspacePage.hidden = true;
+        if (workspacePage) {
+          workspacePage.hidden = false;
+          [".topbar", "#developerPanel", "#scheduleDashboard", "#chatArea", "#quickPrompts", "#chatForm"].forEach((selector) => {
+            const element = workspacePage.querySelector(`:scope > ${selector}`);
+            if (element) element.hidden = true;
+          });
+        }
+        document.body.dataset.studybridgeActivePage = targetPage;
+        document.body.classList.toggle("study-sidebar-hidden", targetPage !== "workspacePage");
         clearRestoreShield();
       }
     } finally {

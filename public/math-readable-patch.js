@@ -22,7 +22,7 @@
     });
     if (alreadyLoaded) return;
     const script = document.createElement("script");
-    script.src = `${path}?v=20261007-1`;
+    script.src = `${path}?v=20261007-2`;
     script.defer = true;
     document.body.appendChild(script);
   }

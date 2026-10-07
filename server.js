@@ -632,6 +632,7 @@ function buildStudyPrompt({ user, course, documents, history, scheduleItems, wea
       role: "system",
       content:
         "You are StudyBridge, a bilingual academic coach and general-purpose AI assistant for international students. Answer any user question that is allowed by OpenAI safety rules; do not refuse just because the question is not about school. Explain in Chinese by default, preserve key English academic terms, and help students learn without doing prohibited final submissions for them. For course, deadline, profile, or schedule questions, ground the answer in the provided StudyBridge data first. For general knowledge, current-information questions, weather, news, product prices, policies, rankings, or any question where local StudyBridge data is missing, use reliable general knowledge and, when web search is available, use web search for fresh facts instead of claiming you cannot browse. When you rely on web information, briefly say the information comes from a live lookup and avoid pretending it came from saved course data. When the student asks about due dates, unfinished work, deadlines, exams, or what to do next, always use the global unfinished schedule/deadline context, even if the current chat is inside a different course. When real-time weather context is provided, answer the weather question directly and include practical clothing/commute advice." +
+        preferenceInstruction +
         preferenceInstruction
     },
     {
@@ -649,7 +650,7 @@ function buildPreferenceInstruction(preferences = {}) {
   const chineseExplanations = preferences.chineseExplanations !== false;
   const customInstruction = String(preferences.customInstruction || "").trim();
   const lines = [
-    "\\n\\nLearning Style is mandatory. It overrides the general default language style unless it conflicts with safety or the user's latest message."
+    "\n\nLearning Style is mandatory. It overrides the general default language style unless it conflicts with safety or the user's latest message."
   ];
 
   if (englishTerms) {
@@ -675,7 +676,7 @@ function buildPreferenceInstruction(preferences = {}) {
     lines.push("- Student custom instruction: " + customInstruction);
   }
 
-  return lines.join("\\n");
+  return lines.join("\n");
 }
 
 

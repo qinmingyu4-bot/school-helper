@@ -334,6 +334,12 @@
       });
       const workspacePage = document.querySelector("#workspacePage");
       if (workspacePage) workspacePage.hidden = false;
+      [".topbar", "#developerPanel", "#scheduleDashboard", "#chatArea", "#quickPrompts", "#chatForm"].forEach((selector) => {
+        const element = document.querySelector(`#workspacePage > ${selector}`);
+        if (element) element.hidden = false;
+      });
+      document.body.dataset.studybridgeActivePage = "workspacePage";
+      document.body.classList.remove("study-sidebar-hidden");
       const chatArea = document.querySelector("#chatArea");
       if (chatArea) chatArea.scrollTop = chatArea.scrollHeight;
     });
@@ -427,20 +433,20 @@
   loadScriptOnce("/school-datalist-patch.js?v=20261005-1");
   loadScriptOnce("/us-school-library-patch.js?v=20261005-1");
   loadScriptOnce("/admin-refresh-patch.js?v=20261005-1");
-  loadScriptOnce("/sidebar-direct-router.js?v=20261007-1");
-  loadScriptOnce("/school-community-patch.js?v=20261005-3");
+  loadScriptOnce("/sidebar-direct-router.js?v=20261007-4");
+  loadScriptOnce("/school-community-patch.js?v=20261007-2");
   loadScriptOnce("/classmates-patch.js?v=20261005-2");
-  loadScriptOnce("/classmates-request-patch.js?v=20261006-1");
+  loadScriptOnce("/classmates-request-patch.js?v=20261007-2");
   loadScriptOnce("/classmate-chat-bubble-fix.js?v=20261006-1");
-  loadScriptOnce("/student-nav-hardening-patch.js?v=20261007-4");
-  loadScriptOnce("/chat-bubble-compact-live.js?v=20261007-4");
+  loadScriptOnce("/student-nav-hardening-patch.js?v=20261007-5");
+  loadScriptOnce("/chat-bubble-compact-live.js?v=20261007-5");
   loadScriptOnce("/cheatsheet-mode-patch.js?v=20261006-1");
-  loadScriptOnce("/study-chat-bottom-fix.js?v=20261007-4");
-  loadScriptOnce("/email-reply-patch.js?v=20261005-1");
-  loadScriptOnce("/schedule-patch.js?v=20261005-3");
+  loadScriptOnce("/study-chat-bottom-fix.js?v=20261007-6");
+  loadScriptOnce("/email-reply-patch.js?v=20261007-2");
+  loadScriptOnce("/schedule-patch.js?v=20261007-2");
   loadScriptOnce("/schedule-dashboard-patch.js?v=20261006-2");
   loadScriptOnce("/schedule-notification-patch.js?v=20261005-2");
-  loadScriptOnce("/page-restore-patch.js?v=20261006-2");
+  loadScriptOnce("/page-restore-patch.js?v=20261007-3");
   const observer = new MutationObserver(scheduleLayoutSync);
   observer.observe(document.body, {
     childList: true,

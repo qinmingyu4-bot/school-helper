@@ -100,6 +100,21 @@ const mimeTypes = {
   ".svg": "image/svg+xml"
 };
 
+const staticAssetExtensions = new Set([
+  ".css",
+  ".js",
+  ".json",
+  ".map",
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".svg",
+  ".ico",
+  ".pdf",
+  ".txt",
+  ".webp"
+]);
+
 function sendJson(res, status, payload, headers = {}) {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8", ...headers });
   res.end(JSON.stringify(payload));
@@ -273,14 +288,18 @@ async function serveStatic(req, res) {
   const requested = decodeURIComponent(url.pathname === "/" ? "/index.html" : url.pathname);
   const filePath = path.normalize(path.join(publicDir, requested));
   if (!filePath.startsWith(publicDir)) return sendError(res, 403, "Forbidden");
+  const extension = path.extname(filePath).toLowerCase();
   try {
     const file = await fs.readFile(filePath);
     res.writeHead(200, {
-      "content-type": mimeTypes[path.extname(filePath)] || "application/octet-stream",
+      "content-type": mimeTypes[extension] || "application/octet-stream",
       "cache-control": "no-store"
     });
     res.end(file);
   } catch {
+    if (staticAssetExtensions.has(extension)) {
+      return sendError(res, 404, `Static asset not found: ${requested}`);
+    }
     const fallback = await fs.readFile(path.join(publicDir, "index.html"));
     res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
     res.end(fallback);

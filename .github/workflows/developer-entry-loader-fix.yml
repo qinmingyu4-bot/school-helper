@@ -1,0 +1,70 @@
+name: Apply developer entry loader fix
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/triggers/developer-entry-loader-fix.txt"
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Patch index script loaders
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const file = 'public/index.html';
+          let html = fs.readFileSync(file, 'utf8');
+          const scripts = [
+            '/chat-bubble-compact-live.js?v=20261007-4',
+            '/nav-dashboard-stability.js?v=20261007-1',
+            '/developer-access-fix.js?v=20261007-1',
+            '/sidebar-direct-router.js?v=20261007-4',
+            '/student-nav-hardening-patch.js?v=20261007-5',
+            '/study-chat-bottom-fix.js?v=20261007-6',
+            '/study-scroll-hardening-patch.js?v=20261007-2',
+            '/study-attachment-patch.js?v=20261007-1',
+            '/assistant-typing-patch.js?v=20261007-1',
+            '/admin-scroll-fix.js?v=20261007-1',
+            '/classmates-performance-patch.js?v=20261007-1',
+            '/no-course-notice-patch.js?v=20261007-1',
+            '/math-readable-patch.js?v=20261007-1'
+          ];
+          const missingTags = scripts
+            .filter((src) => !html.includes(src.split('?')[0]))
+            .map((src) => `<script src="${src}"></script>`);
+          if (missingTags.length) {
+            html = html.replace(/\s*<\/body>/, `\n    ${missingTags.join('\n    ')}\n  </body>`);
+            fs.writeFileSync(file, html, 'utf8');
+          }
+          NODE
+      - name: Validate patch scripts
+        run: |
+          node --check public/developer-access-fix.js
+          node --check public/chat-bubble-compact-live.js
+      - name: Commit loader fix
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "qinmingyu4-bot"
+          git config user.email "qinmingyu4-bot@users.noreply.github.com"
+          git add public/index.html
+          git commit -m "Load StudyBridge runtime patches from index"
+          for attempt in 1 2 3; do
+            if git push; then
+              exit 0
+            fi
+            git fetch origin main
+            git rebase origin/main
+            sleep 2
+          done
+          exit 1

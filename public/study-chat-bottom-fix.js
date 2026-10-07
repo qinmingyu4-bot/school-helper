@@ -136,6 +136,68 @@
     installStyle();
     updateBottomSpace();
     attachChatScrollListener();
+    attachStudentNavigationFallback();
+  }
+
+  function isCreatorMode() {
+    const developerPanel = document.querySelector("#developerPanel");
+    return Boolean(developerPanel && !developerPanel.hidden);
+  }
+
+  function showStudentPage(pageId) {
+    if (isCreatorMode()) return false;
+    const targetPage = document.querySelector(`#${pageId}`);
+    if (!targetPage) return false;
+    ["workspacePage", "profilePage", "schoolCommunityPage", "classmatesPage", "emailReplyPage", "schedulePage"].forEach((id) => {
+      const page = document.querySelector(`#${id}`);
+      if (page) page.hidden = id !== pageId;
+    });
+    try {
+      localStorage.setItem("studybridgeLastOpenPage", pageId);
+    } catch {
+      // Ignore private browsing/localStorage errors.
+    }
+    document.body.classList.toggle("study-sidebar-hidden", pageId !== "workspacePage");
+    return true;
+  }
+
+  function attachStudentNavigationFallback() {
+    if (document.body.dataset.studentNavigationFallback === "true") return;
+    document.body.dataset.studentNavigationFallback = "true";
+    const pageByButton = {
+      openStudyAreaButton: "workspacePage",
+      openSchoolCommunityButton: "schoolCommunityPage",
+      openClassmatesButton: "classmatesPage",
+      openEmailReplyButton: "emailReplyPage",
+      openScheduleButton: "schedulePage"
+    };
+
+    document.addEventListener(
+      "click",
+      (event) => {
+        const button = event.target.closest?.("#openStudyAreaButton, #openSchoolCommunityButton, #openClassmatesButton, #openEmailReplyButton, #openScheduleButton");
+        if (!button || isCreatorMode()) return;
+        const pageId = pageByButton[button.id];
+        if (!pageId) return;
+
+        const ensureOpened = () => {
+          const targetPage = document.querySelector(`#${pageId}`);
+          if (!targetPage) return;
+          const workspacePage = document.querySelector("#workspacePage");
+          if (pageId !== "workspacePage" && workspacePage && !workspacePage.hidden && targetPage.hidden) {
+            showStudentPage(pageId);
+          }
+          if (pageId === "workspacePage" && workspacePage?.hidden) {
+            showStudentPage(pageId);
+          }
+        };
+
+        setTimeout(ensureOpened, 60);
+        setTimeout(ensureOpened, 240);
+        setTimeout(ensureOpened, 700);
+      },
+      true
+    );
   }
 
   function loadCheatsheetPatch() {

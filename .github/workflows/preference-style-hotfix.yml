@@ -23,52 +23,53 @@ jobs:
           path = Path('server.js')
           text = path.read_text(encoding='utf-8')
 
-          if 'function buildPreferenceInstruction(' not in text:
+          target_start = 'function buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message }) {\n'
+          if target_start in text and 'const preferenceInstruction = buildPreferenceInstruction(user.preferences || {});' not in text:
               text = text.replace(
-                  'function buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message }) {\n  const docContext = documents',
-                  'function buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message }) {\n  const preferenceInstruction = buildPreferenceInstruction(user.preferences || {});\n  const docContext = documents',
+                  target_start + '  const docContext = documents',
+                  target_start + '  const preferenceInstruction = buildPreferenceInstruction(user.preferences || {});\n  const docContext = documents',
                   1,
               )
 
-              text = text.replace(
-                  'When real-time weather context is provided, answer the weather question directly and include practical clothing/commute advice." +\n        buildCheatSheetInstruction(mode, message)',
-                  'When real-time weather context is provided, answer the weather question directly and include practical clothing/commute advice." +\n        preferenceInstruction +\n        buildCheatSheetInstruction(mode, message)',
-                  1,
-              )
+          text = text.replace(
+              'When real-time weather context is provided, answer the weather question directly and include practical clothing/commute advice." +\n        buildCheatSheetInstruction(mode, message)',
+              'When real-time weather context is provided, answer the weather question directly and include practical clothing/commute advice." +\n        preferenceInstruction +\n        buildCheatSheetInstruction(mode, message)',
+              1,
+          )
 
-              text = text.replace(
-                  'Course: ${course.name}\\nMode: ${mode}\\nPreferences: ${JSON.stringify(\n        user.preferences || {}\n      )}\\nCurrent server time:',
-                  'Course: ${course.name}\\nMode: ${mode}\\nLearning style instructions:\\n${preferenceInstruction || "Use StudyBridge defaults: Chinese explanation with helpful English academic terms."}\\nRaw preferences: ${JSON.stringify(\n        user.preferences || {}\n      )}\\nCurrent server time:',
-                  1,
-              )
+          text = text.replace(
+              'Course: ${course.name}\\nMode: ${mode}\\nPreferences: ${JSON.stringify(\n        user.preferences || {}\n      )}\\nCurrent server time:',
+              'Course: ${course.name}\\nMode: ${mode}\\nLearning style instructions:\\n${preferenceInstruction || "Use StudyBridge defaults: Chinese explanation with helpful English academic terms."}\\nRaw preferences: ${JSON.stringify(\n        user.preferences || {}\n      )}\\nCurrent server time:',
+              1,
+          )
 
-              helper = '''
-function buildPreferenceInstruction(preferences = {}) {
+          helper = '''function buildPreferenceInstruction(preferences = {}) {
   const englishTerms = preferences.englishTerms !== false;
   const englishAnswers = preferences.englishAnswers !== false;
   const chineseExplanations = preferences.chineseExplanations !== false;
   const customInstruction = String(preferences.customInstruction || "").trim();
   const lines = [
-    "\\n\\nFollow the student's Learning Style exactly unless it conflicts with safety or the user's latest message."
+    "\\n\\nLearning Style is mandatory. It overrides the general default language style unless it conflicts with safety or the user's latest message."
   ];
 
   if (englishTerms) {
-    lines.push("- Keep important academic keywords, formulas, course concepts, due-date labels, and technical terms in English. Add concise Chinese explanation after them when helpful.");
+    lines.push("- English terms ON: keep important academic keywords, formulas, course concepts, due-date labels, assignment wording, and technical terms in English. Add concise Chinese explanation after them when helpful.");
   } else {
-    lines.push("- Translate English academic terms into Chinese when natural, but keep proper nouns, formulas, and exact course labels unchanged.");
+    lines.push("- English terms OFF: translate English academic terms into Chinese when natural, but keep proper nouns, formulas, and exact course labels unchanged.");
   }
 
   if (englishAnswers && chineseExplanations) {
-    lines.push("- For problem-solving, assignments, emails, practice questions, or exam prep: give the direct English answer/draft first, then explain the reasoning and steps in Chinese.");
+    lines.push("- English answer ON + Chinese reasoning ON: for problem-solving, assignments, emails, practice questions, exam prep, or study planning, use this order exactly: first provide the direct answer/draft in English, then provide the reasoning, steps, study plan, and warnings in Chinese.");
   } else if (englishAnswers) {
-    lines.push("- For problem-solving, assignments, emails, practice questions, or exam prep: give the direct English answer/draft first, then keep the rest concise.");
+    lines.push("- English answer ON: provide the direct answer/draft in English first, then keep the rest concise.");
   } else if (chineseExplanations) {
-    lines.push("- Explain reasoning, steps, and study strategy in Chinese first. Include English only where it improves academic accuracy.");
+    lines.push("- Chinese reasoning ON: explain reasoning, steps, and study strategy in Chinese first. Include English only where it improves academic accuracy.");
   } else {
     lines.push("- Keep answers concise and match the user's language.");
   }
 
-  lines.push("- These Learning Style options do not conflict: English terms are vocabulary anchors, English answer is the final/draft output, and Chinese reasoning is the explanation layer.");
+  lines.push("- These three default options do not conflict: English terms are vocabulary anchors, English answer is the final/draft output layer, and Chinese reasoning is the explanation layer.");
+  lines.push("- Do not ignore these settings. If the answer is not a question-solving task, still preserve English terms when enabled and use Chinese for explanation when enabled.");
 
   if (customInstruction) {
     lines.push(`- Student custom instruction: ${customInstruction}`);
@@ -78,8 +79,15 @@ function buildPreferenceInstruction(preferences = {}) {
 }
 
 '''
-              text = text.replace('function chooseAiModel({ documents = [], history = [], mode = "", message = "" }) {', helper + 'function chooseAiModel({ documents = [], history = [], mode = "", message = "" }) {', 1)
-              path.write_text(text, encoding='utf-8')
+
+          if 'function buildPreferenceInstruction(preferences = {}) {' in text:
+              start = text.index('function buildPreferenceInstruction(preferences = {}) {')
+              end = text.index('function chooseAiModel(', start)
+              text = text[:start] + helper + text[end:]
+          else:
+              text = text.replace('function chooseAiModel(', helper + 'function chooseAiModel(', 1)
+
+          path.write_text(text, encoding='utf-8')
           PY
 
       - name: Check syntax
@@ -94,5 +102,5 @@ function buildPreferenceInstruction(preferences = {}) {
           git config user.name "StudyBridge bot"
           git config user.email "actions@github.com"
           git add server.js
-          git commit -m "Apply Learning Style backend prompt rules"
+          git commit -m "Tighten Learning Style AI prompt rules"
           git push

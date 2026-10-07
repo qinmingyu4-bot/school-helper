@@ -4,6 +4,9 @@
 
 ### Added
 
+- Bumped StudyBridge Cloud to `1.0.17`.
+- Moved the student page router to the final browser patch load so Community, Classmates, Email Helper, Schedule, Profile, and Study Area are not overridden by older navigation scripts.
+- Stopped the developer access helper from loading the student router early, preserving the developer/student boundary while avoiding blank student pages.
 - Bumped StudyBridge Cloud to `1.0.16`.
 - Added a stable student page shell router so Profile, Community, Classmates, Email Helper, Schedule, and Study Area cannot be hidden by older navigation patches.
 - Kept developer access loading the new student router automatically while preserving the developer/student boundary.

@@ -1,6 +1,6 @@
 (() => {
-  if (window.__studybridgeSidebarDirectRouter === "20261007-3") return;
-  window.__studybridgeSidebarDirectRouter = "20261007-3";
+  if (window.__studybridgeSidebarDirectRouter === "20261007-4") return;
+  window.__studybridgeSidebarDirectRouter = "20261007-4";
 
   const PAGE_KEY = "studybridgeLastOpenPage";
   const PAGE_IDS = ["workspacePage", "profilePage", "schoolCommunityPage", "classmatesPage", "emailReplyPage", "schedulePage"];
@@ -91,6 +91,15 @@
     });
   }
 
+  function setStudyWorkspaceChromeHidden(hidden) {
+    const workspacePage = document.querySelector("#workspacePage");
+    if (!workspacePage) return;
+    [".topbar", "#developerPanel", "#scheduleDashboard", "#chatArea", "#quickPrompts", "#chatForm"].forEach((selector) => {
+      const element = workspacePage.querySelector(`:scope > ${selector}`);
+      if (element) element.hidden = hidden;
+    });
+  }
+
   function removeDuplicateScheduleDashboards() {
     const dashboards = Array.from(document.querySelectorAll("#scheduleDashboard"));
     dashboards.slice(1).forEach((element) => element.remove());
@@ -106,10 +115,18 @@
     if (!targetPage) return false;
     forceStudentMode();
     removeDuplicateScheduleDashboards();
+    const workspacePage = document.querySelector("#workspacePage");
+    if (workspacePage) workspacePage.hidden = false;
     PAGE_IDS.forEach((id) => {
       const page = document.querySelector(`#${id}`);
-      if (page) page.hidden = id !== pageId;
+      if (!page) return;
+      if (id === "workspacePage") {
+        page.hidden = false;
+        return;
+      }
+      page.hidden = id !== pageId;
     });
+    setStudyWorkspaceChromeHidden(pageId !== "workspacePage");
     setSidebarState(pageId);
     remember(pageId);
     if (pageId === "workspacePage") {
@@ -306,8 +323,26 @@
       }
 
       html body[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage,
-      html body:not(.creator-clean-mode) #workspacePage[hidden] {
+      html body[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage:not([hidden]) {
+        display: block !important;
+        visibility: visible !important;
+        height: 100dvh !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        overscroll-behavior: contain !important;
+      }
+
+      html body[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage > .topbar,
+      html body[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage > #developerPanel,
+      html body[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage > #scheduleDashboard,
+      html body[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage > #chatArea,
+      html body[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage > #quickPrompts,
+      html body[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage > #chatForm {
         display: none !important;
+      }
+
+      html body:not(.creator-clean-mode) #workspacePage[hidden] {
         visibility: hidden !important;
       }
 

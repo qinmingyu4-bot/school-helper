@@ -439,7 +439,7 @@
   loadScriptOnce("/classmates-request-patch.js?v=20261007-2");
   loadScriptOnce("/classmate-chat-bubble-fix.js?v=20261006-1");
   loadScriptOnce("/student-nav-hardening-patch.js?v=20261007-5");
-  loadScriptOnce("/chat-bubble-compact-live.js?v=20261007-5");
+  loadScriptOnce("/chat-bubble-compact-live.js?v=20261007-6");
   loadScriptOnce("/cheatsheet-mode-patch.js?v=20261006-1");
   loadScriptOnce("/study-chat-bottom-fix.js?v=20261007-6");
   loadScriptOnce("/email-reply-patch.js?v=20261007-2");

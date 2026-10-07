@@ -1,23 +1,11 @@
 (() => {
-  const VERSION = "20261007-nav-hardening-3";
+  const VERSION = "20261007-router-loader-6";
   if (window.__studybridgeStudentNavHardening === VERSION) return;
   window.__studybridgeStudentNavHardening = VERSION;
+  if (window.studybridgeDirectOpenPage) return;
 
-  function loadStableRouter() {
-    if (window.studybridgeNavigationHotfixOpen) return;
-    const src = "/student-navigation-hotfix.js?v=20261007-3";
-    const path = new URL(src.split("?")[0], location.href).pathname;
-    const exists = Array.from(document.scripts).some((script) => {
-      const value = script.getAttribute("src");
-      return value && new URL(value, location.href).pathname === path;
-    });
-    if (exists) return;
-    const script = document.createElement("script");
-    script.async = false;
-    script.src = src;
-    document.body.appendChild(script);
-  }
-
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", loadStableRouter, { once: true });
-  else loadStableRouter();
+  const script = document.createElement("script");
+  script.async = false;
+  script.src = "/student-navigation-hotfix.js?v=20261007-6";
+  document.body.appendChild(script);
 })();

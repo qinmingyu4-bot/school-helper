@@ -1,0 +1,136 @@
+name: Apply developer access fix v2
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/triggers/developer-access-fix-v2.txt"
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Patch developer access
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const read = (f) => fs.readFileSync(f, 'utf8');
+          const write = (f, c) => fs.writeFileSync(f, c, 'utf8');
+
+          const setWorkspaceModeBlock = [
+            'function setWorkspaceChromeHidden(hidden) {',
+            '  const workspacePage = document.querySelector("#workspacePage");',
+            '  if (!workspacePage) return;',
+            '  [".topbar", "#scheduleDashboard", "#chatArea", "#quickPrompts", "#chatForm"].forEach((selector) => {',
+            '    const element = workspacePage.querySelector(`:scope > ${selector}`);',
+            '    if (element) element.hidden = hidden;',
+            '  });',
+            '}',
+            '',
+            'function closeSecondaryPages() {',
+            '  ["#profilePage", "#schoolCommunityPage", "#classmatesPage", "#emailReplyPage", "#schedulePage"].forEach((selector) => {',
+            '    const element = document.querySelector(selector);',
+            '    if (element) element.hidden = true;',
+            '  });',
+            '}',
+            '',
+            'function syncWorkspaceModeShell() {',
+            '  const creatorMode = state.user?.role === "admin" && state.workspaceMode === "creator";',
+            '  const workspacePage = document.querySelector("#workspacePage");',
+            '  if (workspacePage) workspacePage.hidden = false;',
+            '  closeSecondaryPages();',
+            '  setWorkspaceChromeHidden(creatorMode);',
+            '  developerPanel.hidden = !creatorMode;',
+            '  document.body.classList.toggle("creator-clean-mode", creatorMode);',
+            '  document.body.classList.toggle("admin-boundary-active", creatorMode);',
+            '  document.body.classList.remove("study-sidebar-hidden");',
+            '  document.body.dataset.studybridgeActivePage = creatorMode ? "developerPanel" : "workspacePage";',
+            '}',
+            '',
+            'async function setWorkspaceMode(mode) {',
+            '  state.workspaceMode = mode === "creator" && state.user?.role === "admin" ? "creator" : "student";',
+            '  localStorage.setItem("studybridgeWorkspaceMode", state.workspaceMode);',
+            '  studentViewButton.classList.toggle("active", state.workspaceMode === "student");',
+            '  creatorViewButton.classList.toggle("active", state.workspaceMode === "creator");',
+            '  syncWorkspaceModeShell();',
+            '  if (state.workspaceMode === "creator") await loadAdminOverview();',
+            '}',
+            ''
+          ].join('\n');
+
+          let app = read('public/app.js');
+          if (!app.includes('function syncWorkspaceModeShell()')) {
+            app = app.replace(/async function setWorkspaceMode\(mode\) \{[\s\S]*?\n\}\n\nfunction setAuthMode/, setWorkspaceModeBlock + '\nfunction setAuthMode');
+          }
+          write('public/app.js', app);
+
+          let router = read('public/sidebar-direct-router.js');
+          router = router.replaceAll('html body[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage >', 'html body:not(.creator-clean-mode)[data-studybridge-active-page]:not([data-studybridge-active-page="workspacePage"]) #workspacePage >');
+          write('public/sidebar-direct-router.js', router);
+
+          const guard = `(() => {
+          if (window.__studybridgeDeveloperAccessFix === "20261007-1") return;
+          window.__studybridgeDeveloperAccessFix = "20261007-1";
+          const SECONDARY_PAGES = ["profilePage", "schoolCommunityPage", "classmatesPage", "emailReplyPage", "schedulePage"];
+          const WORKSPACE_CHROME = [".topbar", "#scheduleDashboard", "#chatArea", "#quickPrompts", "#chatForm"];
+          let creatorLockTimer = 0;
+          function isAdminUser() { const roleSwitch = document.querySelector("#roleSwitch"); return Boolean(roleSwitch && !roleSwitch.hidden); }
+          function setWorkspaceChromeHidden(hidden) { const workspacePage = document.querySelector("#workspacePage"); if (!workspacePage) return; WORKSPACE_CHROME.forEach((selector) => { const element = workspacePage.querySelector(":scope > " + selector); if (element) element.hidden = hidden; }); }
+          function hideSecondaryPages() { SECONDARY_PAGES.forEach((id) => { const page = document.querySelector("#" + id); if (page) page.hidden = true; }); }
+          function setButtonState(creatorMode) { const studentButton = document.querySelector("#studentViewButton"); const creatorButton = document.querySelector("#creatorViewButton"); if (studentButton) studentButton.classList.toggle("active", !creatorMode); if (creatorButton) creatorButton.classList.toggle("active", creatorMode); }
+          function openCreatorMode() { if (!isAdminUser()) return; try { localStorage.setItem("studybridgeWorkspaceMode", "creator"); } catch {} const workspacePage = document.querySelector("#workspacePage"); const developerPanel = document.querySelector("#developerPanel"); if (workspacePage) workspacePage.hidden = false; hideSecondaryPages(); setWorkspaceChromeHidden(true); if (developerPanel) developerPanel.hidden = false; document.body.classList.add("creator-clean-mode", "admin-boundary-active"); document.body.classList.remove("study-sidebar-hidden", "studybridge-page-switching", "studybridge-direct-routing"); document.body.dataset.studybridgeActivePage = "developerPanel"; setButtonState(true); }
+          function openStudentMode() { try { localStorage.setItem("studybridgeWorkspaceMode", "student"); } catch {} clearInterval(creatorLockTimer); creatorLockTimer = 0; const developerPanel = document.querySelector("#developerPanel"); if (developerPanel) developerPanel.hidden = true; setWorkspaceChromeHidden(false); document.body.classList.remove("creator-clean-mode", "admin-boundary-active"); document.body.dataset.studybridgeActivePage = "workspacePage"; setButtonState(false); }
+          function lockCreatorMode(duration = 3600) { clearInterval(creatorLockTimer); const started = Date.now(); const tick = () => { if (!isAdminUser()) { clearInterval(creatorLockTimer); creatorLockTimer = 0; return; } openCreatorMode(); if (Date.now() - started > duration) { clearInterval(creatorLockTimer); creatorLockTimer = 0; } }; tick(); creatorLockTimer = setInterval(tick, 80); }
+          function bindButtons() { const creatorButton = document.querySelector("#creatorViewButton"); const studentButton = document.querySelector("#studentViewButton"); if (creatorButton && creatorButton.dataset.developerAccessFix !== "true") { creatorButton.dataset.developerAccessFix = "true"; ["pointerdown", "click", "keydown"].forEach((eventName) => { creatorButton.addEventListener(eventName, (event) => { if (eventName === "keydown" && event.key !== "Enter" && event.key !== " ") return; setTimeout(() => lockCreatorMode(), 0); }, true); }); } if (studentButton && studentButton.dataset.developerAccessFix !== "true") { studentButton.dataset.developerAccessFix = "true"; ["pointerdown", "click", "keydown"].forEach((eventName) => { studentButton.addEventListener(eventName, (event) => { if (eventName === "keydown" && event.key !== "Enter" && event.key !== " ") return; setTimeout(openStudentMode, 0); }, true); }); } }
+          function restoreExpectedMode() { if (!isAdminUser()) return; let mode = ""; try { mode = localStorage.getItem("studybridgeWorkspaceMode") || ""; } catch {} if (mode === "creator") openCreatorMode(); }
+          bindButtons(); restoreExpectedMode(); new MutationObserver(() => { bindButtons(); restoreExpectedMode(); }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden", "class"] });
+          })();
+          `;
+          write('public/developer-access-fix.js', guard.replace(/^ {10}/gm, ''));
+
+          let chat = read('public/chat-bubble-compact-live.js');
+          if (!chat.includes('/developer-access-fix.js')) chat = chat.replace('loadScriptOnce("/layout-fix.js?v=20261007-6");', 'loadScriptOnce("/layout-fix.js?v=20261007-6");\n    loadScriptOnce("/developer-access-fix.js?v=20261007-1");');
+          write('public/chat-bubble-compact-live.js', chat);
+
+          let html = read('public/index.html');
+          if (!html.includes('/developer-access-fix.js')) html = html.replace('<script src="/nav-dashboard-stability.js?v=20261007-1"></script>', '<script src="/nav-dashboard-stability.js?v=20261007-1"></script>\n    <script src="/developer-access-fix.js?v=20261007-1"></script>');
+          write('public/index.html', html);
+
+          const pkg = JSON.parse(read('package.json')); pkg.version = '1.0.15'; write('package.json', JSON.stringify(pkg, null, 2) + '\n');
+
+          let changelog = read('CHANGELOG.md');
+          if (!changelog.includes('`1.0.15`')) changelog = changelog.replace('### Added\n\n', '### Added\n\n- Bumped StudyBridge Cloud to `1.0.15`.\n- Restored the developer console entrance after the student navigation hardening added in the `1.0.13` line.\n- Added a developer access guard so student page restore/navigation loops cannot hide the admin panel.\n');
+          write('CHANGELOG.md', changelog);
+          NODE
+      - name: Validate JavaScript
+        run: |
+          node --check public/app.js
+          node --check public/developer-access-fix.js
+          node --check public/sidebar-direct-router.js
+          node --check public/chat-bubble-compact-live.js
+          node --check server.js
+      - name: Commit fix
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "qinmingyu4-bot"
+          git config user.email "qinmingyu4-bot@users.noreply.github.com"
+          git add public/app.js public/sidebar-direct-router.js public/developer-access-fix.js public/chat-bubble-compact-live.js public/index.html package.json CHANGELOG.md
+          git commit -m "Restore developer console access"
+          for attempt in 1 2 3; do
+            if git push; then
+              exit 0
+            fi
+            git fetch origin main
+            git rebase origin/main
+            sleep 2
+          done
+          exit 1

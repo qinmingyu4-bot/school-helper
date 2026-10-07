@@ -1,6 +1,6 @@
 (() => {
-  if (window.__studybridgeStudyViewportShellV2) return;
-  window.__studybridgeStudyViewportShellV2 = true;
+  if (window.__studybridgeStudyChatBottomFixV6) return;
+  window.__studybridgeStudyChatBottomFixV6 = true;
 
   const STYLE_ID = "studybridge-study-chat-bottom-fix";
   let stickToBottom = true;
@@ -9,11 +9,6 @@
 
   function isVisible(element) {
     return Boolean(element && !element.hidden && element.offsetParent !== null);
-  }
-
-  function ensureWorkspacePageId() {
-    const workspace = document.querySelector(".workspace");
-    if (workspace && !workspace.id) workspace.id = "workspacePage";
   }
 
   function syncAppLiveState() {
@@ -35,7 +30,7 @@
         height: 100%;
       }
 
-      body.studybridge-app-live {
+      body.studybridge-app-live:not(.studybridge-secondary-page):not(.creator-clean-mode) {
         overflow: hidden !important;
       }
 
@@ -54,7 +49,7 @@
         -webkit-overflow-scrolling: touch !important;
       }
 
-      body:not(.creator-clean-mode) #workspacePage:not([hidden]) {
+      body.studybridge-app-live:not(.studybridge-secondary-page):not(.creator-clean-mode) #workspacePage:not([hidden]) {
         height: 100dvh !important;
         min-height: 0 !important;
         display: grid !important;
@@ -62,16 +57,16 @@
         overflow: hidden !important;
       }
 
-      body:not(.creator-clean-mode) #workspacePage .topbar,
-      body:not(.creator-clean-mode) #workspacePage #scheduleDashboard,
-      body:not(.creator-clean-mode) #workspacePage #quickPrompts,
-      body:not(.creator-clean-mode) #workspacePage #chatForm {
+      body.studybridge-app-live:not(.studybridge-secondary-page):not(.creator-clean-mode) #workspacePage .topbar,
+      body.studybridge-app-live:not(.studybridge-secondary-page):not(.creator-clean-mode) #workspacePage #scheduleDashboard,
+      body.studybridge-app-live:not(.studybridge-secondary-page):not(.creator-clean-mode) #workspacePage #quickPrompts,
+      body.studybridge-app-live:not(.studybridge-secondary-page):not(.creator-clean-mode) #workspacePage #chatForm {
         position: relative !important;
         z-index: 3 !important;
         flex: 0 0 auto !important;
       }
 
-      body:not(.creator-clean-mode) #workspacePage #chatArea {
+      body.studybridge-app-live:not(.studybridge-secondary-page):not(.creator-clean-mode) #workspacePage #chatArea {
         position: relative !important;
         z-index: 1 !important;
         display: flex !important;
@@ -81,7 +76,7 @@
         min-height: 0 !important;
         height: auto !important;
         max-height: none !important;
-        padding: 28px 28px 32px !important;
+        padding: 28px 28px 40px !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
         overscroll-behavior-y: contain !important;
@@ -89,29 +84,17 @@
         -webkit-overflow-scrolling: touch !important;
         touch-action: pan-y !important;
         scrollbar-gutter: stable !important;
-        scroll-padding-top: 140px !important;
-        scroll-padding-bottom: 130px !important;
+        scroll-padding-top: 150px !important;
+        scroll-padding-bottom: 150px !important;
       }
 
-      body:not(.creator-clean-mode) #workspacePage #chatArea .message {
+      body.studybridge-app-live:not(.studybridge-secondary-page):not(.creator-clean-mode) #workspacePage #chatArea .message {
         flex: 0 0 auto !important;
       }
 
-      body:not(.creator-clean-mode) #workspacePage #chatArea .message:first-child {
-        margin-top: 0 !important;
-      }
-
-      body:not(.creator-clean-mode) #workspacePage #chatArea .message:last-child {
-        margin-bottom: 20px !important;
-      }
-
-      body:not(.creator-clean-mode) #workspacePage #quickPrompts,
-      body:not(.creator-clean-mode) #workspacePage #chatForm {
+      body.studybridge-app-live:not(.studybridge-secondary-page):not(.creator-clean-mode) #workspacePage #quickPrompts,
+      body.studybridge-app-live:not(.studybridge-secondary-page):not(.creator-clean-mode) #workspacePage #chatForm {
         background: #f4f6f9 !important;
-      }
-
-      body:not(.creator-clean-mode) #workspacePage #quickPrompts {
-        padding-bottom: 8px !important;
       }
     `;
   }
@@ -133,8 +116,7 @@
 
   function scrollStudyChatToBottom(force = false) {
     const area = chatArea();
-    const workspacePage = document.querySelector("#workspacePage");
-    if (!area || !isVisible(workspacePage)) return;
+    if (!area) return;
     if (!force && !stickToBottom) return;
     area.scrollTop = area.scrollHeight;
     stickToBottom = true;
@@ -151,166 +133,16 @@
     area.dataset.studyNativeScrollReady = "true";
     area.tabIndex = area.tabIndex >= 0 ? area.tabIndex : 0;
     area.addEventListener("scroll", updateStickiness, { passive: true });
+    area.addEventListener("wheel", updateStickiness, { passive: true });
     area.addEventListener("pointerdown", () => area.focus({ preventScroll: true }), { passive: true });
   }
 
-  function isCreatorMode() {
-    const developerPanel = document.querySelector("#developerPanel");
-    return Boolean(developerPanel && !developerPanel.hidden);
-  }
-
-  function showStudentPage(pageId) {
-    if (isCreatorMode()) return false;
-    const targetPage = document.querySelector(`#${pageId}`);
-    if (!targetPage) return false;
-    const workspacePage = document.querySelector("#workspacePage");
-    if (workspacePage) workspacePage.hidden = false;
-    ["workspacePage", "profilePage", "schoolCommunityPage", "classmatesPage", "emailReplyPage", "schedulePage"].forEach((id) => {
-      const page = document.querySelector(`#${id}`);
-      if (!page) return;
-      if (id === "workspacePage") {
-        page.hidden = false;
-        return;
-      }
-      page.hidden = id !== pageId;
-    });
-    [".topbar", "#developerPanel", "#scheduleDashboard", "#chatArea", "#quickPrompts", "#chatForm"].forEach((selector) => {
-      const element = document.querySelector(`#workspacePage > ${selector}`);
-      if (element) element.hidden = pageId !== "workspacePage";
-    });
-    try {
-      localStorage.setItem("studybridgeLastOpenPage", pageId);
-    } catch {
-      // Ignore private browsing/localStorage errors.
-    }
-    document.body.dataset.studybridgeActivePage = pageId;
-    document.body.classList.toggle("study-sidebar-hidden", pageId !== "workspacePage");
-    refreshStudentPage(pageId);
-    return true;
-  }
-
-  function refreshStudentPage(pageId) {
-    const refreshButtonByPage = {
-      schoolCommunityPage: "#refreshCommunityButton",
-      classmatesPage: "#refreshClassmatesButton, #refreshClassmateRequestsButton",
-      schedulePage: "#refreshScheduleButton"
-    };
-    const selector = refreshButtonByPage[pageId];
-    if (!selector) return;
-    setTimeout(() => {
-      const button = document.querySelector(selector);
-      if (button && !button.disabled) button.click();
-    }, 80);
-  }
-
-  function loadScriptOnce(src) {
-    const cleanSrc = src.split("?")[0];
-    const registry = (window.__studybridgeLoadedScripts ||= new Set());
-    const key = new URL(cleanSrc, window.location.href).pathname;
-    if (
-      registry.has(key) ||
-      Array.from(document.scripts).some((script) => {
-        const scriptSrc = script.getAttribute("src");
-        return scriptSrc && new URL(scriptSrc, window.location.href).pathname === key;
-      })
-    ) {
-      registry.add(key);
-      return;
-    }
-    registry.add(key);
-    const script = document.createElement("script");
-    script.src = src;
-    script.defer = true;
-    script.addEventListener("error", () => registry.delete(key), { once: true });
-    document.body.appendChild(script);
-  }
-
-  function ensureNavigationScripts(buttonId) {
-    const scriptMap = {
-      openSchoolCommunityButton: ["/school-community-patch.js?v=20261007-2"],
-      openClassmatesButton: [
-        "/classmates-patch.js?v=20261007-nav2",
-        "/classmates-request-patch.js?v=20261007-2",
-        "/classmate-chat-bubble-fix.js?v=20261007-nav2",
-        "/classmates-performance-patch.js?v=20261007-nav2"
-      ],
-      openEmailReplyButton: ["/email-reply-patch.js?v=20261007-2"],
-      openScheduleButton: [
-        "/schedule-patch.js?v=20261007-2",
-        "/schedule-dashboard-patch.js?v=20261007-nav2",
-        "/schedule-notification-patch.js?v=20261007-nav2"
-      ]
-    };
-    (scriptMap[buttonId] || []).forEach(loadScriptOnce);
-  }
-
-  function callDirectOpener(buttonId) {
-    const openerMap = {
-      openSchoolCommunityButton: "studybridgeOpenCommunityPage",
-      openClassmatesButton: "studybridgeOpenClassmatesPage",
-      openEmailReplyButton: "studybridgeOpenEmailReplyPage",
-      openScheduleButton: "studybridgeOpenSchedulePage"
-    };
-    const openerName = openerMap[buttonId];
-    const opener = openerName ? window[openerName] : null;
-    if (typeof opener === "function") {
-      opener();
-      return true;
-    }
-    return false;
-  }
-
-  function attachStudentNavigationFallback() {
-    if (document.body.dataset.studentNavigationFallback === "native-shell") return;
-    document.body.dataset.studentNavigationFallback = "native-shell";
-    const pageByButton = {
-      openStudyAreaButton: "workspacePage",
-      openSchoolCommunityButton: "schoolCommunityPage",
-      openClassmatesButton: "classmatesPage",
-      openEmailReplyButton: "emailReplyPage",
-      openScheduleButton: "schedulePage"
-    };
-
-    document.addEventListener(
-      "click",
-      (event) => {
-        const button = event.target.closest?.("#openStudyAreaButton, #openSchoolCommunityButton, #openClassmatesButton, #openEmailReplyButton, #openScheduleButton");
-        if (!button || isCreatorMode()) return;
-        const pageId = pageByButton[button.id];
-        if (!pageId) return;
-        if (typeof window.studybridgeDirectOpenPage === "function") {
-          event.preventDefault();
-          window.studybridgeDirectOpenPage(button.id);
-          return;
-        }
-        ensureNavigationScripts(button.id);
-
-        const ensureOpened = () => {
-          if (button.id !== "openStudyAreaButton" && callDirectOpener(button.id)) return true;
-          const targetPage = document.querySelector(`#${pageId}`);
-          if (!targetPage) return false;
-          if (targetPage.hidden || pageId === "workspacePage") showStudentPage(pageId);
-          return true;
-        };
-
-        [0, 60, 180, 360, 700, 1300].forEach((delay) => setTimeout(ensureOpened, delay));
-      },
-      true
-    );
-  }
-
-  function loadSupportPatches() {
-    loadScriptOnce("/cheatsheet-mode-patch.js?v=20261006-2");
-    loadScriptOnce("/classmates-performance-patch.js?v=20261007-1");
-    loadScriptOnce("/no-course-notice-patch.js?v=20261007-1");
-  }
-
   function boot() {
-    ensureWorkspacePageId();
+    const workspace = document.querySelector(".workspace");
+    if (workspace && !workspace.id) workspace.id = "workspacePage";
     syncAppLiveState();
     installStyle();
     attachChatScrollListener();
-    attachStudentNavigationFallback();
   }
 
   function scheduleBoot() {
@@ -322,7 +154,6 @@
   }
 
   boot();
-  loadSupportPatches();
   window.addEventListener("resize", scheduleBoot);
   window.addEventListener("load", () => scheduleStudyChatScroll(true, 120));
   document.addEventListener("submit", (event) => {

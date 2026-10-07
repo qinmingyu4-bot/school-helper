@@ -618,6 +618,7 @@ async function getWeatherContextForQuestion(message, user) {
 }
 
 function buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message }) {
+  const preferenceInstruction = buildPreferenceInstruction(user.preferences || {});
   const docContext = documents
     .slice(0, 8)
     .map((doc) => `Source: ${doc.title}\n${doc.text.slice(0, 1800)}`)
@@ -630,16 +631,53 @@ function buildStudyPrompt({ user, course, documents, history, scheduleItems, wea
     {
       role: "system",
       content:
-        "You are StudyBridge, a bilingual academic coach and general-purpose AI assistant for international students. Answer any user question that is allowed by OpenAI safety rules; do not refuse just because the question is not about school. Explain in Chinese by default, preserve key English academic terms, and help students learn without doing prohibited final submissions for them. For course, deadline, profile, or schedule questions, ground the answer in the provided StudyBridge data first. For general knowledge, current-information questions, weather, news, product prices, policies, rankings, or any question where local StudyBridge data is missing, use reliable general knowledge and, when web search is available, use web search for fresh facts instead of claiming you cannot browse. When you rely on web information, briefly say the information comes from a live lookup and avoid pretending it came from saved course data. When the student asks about due dates, unfinished work, deadlines, exams, or what to do next, always use the global unfinished schedule/deadline context, even if the current chat is inside a different course. When real-time weather context is provided, answer the weather question directly and include practical clothing/commute advice."
+        "You are StudyBridge, a bilingual academic coach and general-purpose AI assistant for international students. Answer any user question that is allowed by OpenAI safety rules; do not refuse just because the question is not about school. Explain in Chinese by default, preserve key English academic terms, and help students learn without doing prohibited final submissions for them. For course, deadline, profile, or schedule questions, ground the answer in the provided StudyBridge data first. For general knowledge, current-information questions, weather, news, product prices, policies, rankings, or any question where local StudyBridge data is missing, use reliable general knowledge and, when web search is available, use web search for fresh facts instead of claiming you cannot browse. When you rely on web information, briefly say the information comes from a live lookup and avoid pretending it came from saved course data. When the student asks about due dates, unfinished work, deadlines, exams, or what to do next, always use the global unfinished schedule/deadline context, even if the current chat is inside a different course. When real-time weather context is provided, answer the weather question directly and include practical clothing/commute advice." +
+        preferenceInstruction
     },
     {
       role: "user",
-      content: `Student: ${user.name}\nSchool: ${user.profile?.school || "Not provided"}\nMajor: ${user.profile?.major || "Not provided"}\nCourse: ${course.name}\nMode: ${mode}\nPreferences: ${JSON.stringify(
+      content: `Student: ${user.name}\nSchool: ${user.profile?.school || "Not provided"}\nMajor: ${user.profile?.major || "Not provided"}\nCourse: ${course.name}\nMode: ${mode}\nLearning style instructions:\n${preferenceInstruction || "Use StudyBridge defaults: Chinese explanation with helpful English academic terms."}\nRaw preferences: ${JSON.stringify(
         user.preferences || {}
       )}\nCurrent server time: ${new Date().toISOString()}\n\nReal-time external context:\n${weatherContext || "No external context was needed or available for this question."}\n\nGlobal unfinished schedule/deadline items across this student's account:\n${formatScheduleContext(scheduleItems)}\n\nCourse material for the current chat course:\n${docContext || "No course material saved yet."}\n\nRecent chat in the current course:\n${recent || "No prior messages."}\n\nStudent question:\n${message}`
     }
   ];
 }
+
+function buildPreferenceInstruction(preferences = {}) {
+  const englishTerms = preferences.englishTerms !== false;
+  const englishAnswers = preferences.englishAnswers !== false;
+  const chineseExplanations = preferences.chineseExplanations !== false;
+  const customInstruction = String(preferences.customInstruction || "").trim();
+  const lines = [
+    "\\n\\nLearning Style is mandatory. It overrides the general default language style unless it conflicts with safety or the user's latest message."
+  ];
+
+  if (englishTerms) {
+    lines.push("- English terms ON: keep important academic keywords, formulas, course concepts, due-date labels, assignment wording, and technical terms in English. Add concise Chinese explanation after them when helpful.");
+  } else {
+    lines.push("- English terms OFF: translate English academic terms into Chinese when natural, but keep proper nouns, formulas, and exact course labels unchanged.");
+  }
+
+  if (englishAnswers && chineseExplanations) {
+    lines.push("- English answer ON + Chinese reasoning ON: for problem-solving, assignments, emails, practice questions, exam prep, or study planning, use this order exactly: first provide the direct answer/draft in English, then provide the reasoning, steps, study plan, and warnings in Chinese.");
+  } else if (englishAnswers) {
+    lines.push("- English answer ON: provide the direct answer/draft in English first, then keep the rest concise.");
+  } else if (chineseExplanations) {
+    lines.push("- Chinese reasoning ON: explain reasoning, steps, and study strategy in Chinese first. Include English only where it improves academic accuracy.");
+  } else {
+    lines.push("- Keep answers concise and match the user's language.");
+  }
+
+  lines.push("- These three default options do not conflict: English terms are vocabulary anchors, English answer is the final/draft output layer, and Chinese reasoning is the explanation layer.");
+  lines.push("- Do not ignore these settings. If the answer is not a question-solving task, still preserve English terms when enabled and use Chinese for explanation when enabled.");
+
+  if (customInstruction) {
+    lines.push("- Student custom instruction: " + customInstruction);
+  }
+
+  return lines.join("\\n");
+}
+
 
 function chooseAiModel({ documents = [], history = [], mode = "", message = "" }) {
   const lowerMessage = String(message || "").toLowerCase();

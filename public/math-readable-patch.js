@@ -14,17 +14,24 @@
     document.head.appendChild(style);
   }
 
-  function loadStudentPageShell() {
-    const path = "/student-page-shell-fix.js";
+  function loadScriptOnce(path, version) {
     const alreadyLoaded = Array.from(document.scripts).some((script) => {
       const src = script.getAttribute("src");
       return src && new URL(src, location.href).pathname === path;
     });
     if (alreadyLoaded) return;
     const script = document.createElement("script");
-    script.src = `${path}?v=20261007-2`;
+    script.src = `${path}?v=${version}`;
     script.defer = true;
     document.body.appendChild(script);
+  }
+
+  function loadStudentPageShell() {
+    loadScriptOnce("/student-page-shell-fix.js", "20261007-2");
+  }
+
+  function loadStudentNavigationRescue() {
+    loadScriptOnce("/student-navigation-rescue.js", "20261007-2");
   }
 
   function toReadableMath(value) {
@@ -94,7 +101,9 @@
 
   normalizeMessages();
   loadStudentPageShell();
+  loadStudentNavigationRescue();
   setTimeout(loadStudentPageShell, 250);
+  setTimeout(loadStudentNavigationRescue, 300);
   new MutationObserver(scheduleNormalize).observe(document.body, {
     childList: true,
     subtree: true,

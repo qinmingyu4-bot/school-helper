@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = "20261007.6";
+  const VERSION = "20261007.7";
   if (window.__studybridgeNavigationHotfix === VERSION) return;
   window.__studybridgeNavigationHotfix = VERSION;
 
@@ -11,15 +11,30 @@
 
   const ROUTES = {
     openStudyAreaButton: { pageId: "workspacePage", navId: "openStudyAreaButton", title: "学习区" },
-    openProfilePageButton: { pageId: "profilePage", navId: "openProfilePageButton", title: "Profile" },
-    editProfileButton: { pageId: "profilePage", navId: "openProfilePageButton", title: "Profile" },
-    profileCard: { pageId: "profilePage", navId: "openProfilePageButton", title: "Profile" },
+    openProfilePageButton: {
+      pageId: "profilePage",
+      navId: "openProfilePageButton",
+      title: "Profile",
+      scripts: ["/student-page-shell-fix.js?v=20261007-nav7"]
+    },
+    editProfileButton: {
+      pageId: "profilePage",
+      navId: "openProfilePageButton",
+      title: "Profile",
+      scripts: ["/student-page-shell-fix.js?v=20261007-nav7"]
+    },
+    profileCard: {
+      pageId: "profilePage",
+      navId: "openProfilePageButton",
+      title: "Profile",
+      scripts: ["/student-page-shell-fix.js?v=20261007-nav7"]
+    },
     openSchoolCommunityButton: {
       pageId: "schoolCommunityPage",
       navId: "openSchoolCommunityButton",
       title: "社区",
       opener: "studybridgeOpenCommunityPage",
-      scripts: ["/school-community-patch.js?v=20261007-nav6"]
+      scripts: ["/school-community-patch.js?v=20261007-nav7"]
     },
     openClassmatesButton: {
       pageId: "classmatesPage",
@@ -27,10 +42,10 @@
       title: "同学",
       opener: "studybridgeOpenClassmatesPage",
       scripts: [
-        "/classmates-patch.js?v=20261007-nav6",
-        "/classmates-request-patch.js?v=20261007-nav6",
-        "/classmate-chat-bubble-fix.js?v=20261007-nav6",
-        "/classmates-performance-patch.js?v=20261007-nav6"
+        "/classmates-patch.js?v=20261007-nav7",
+        "/classmates-request-patch.js?v=20261007-nav7",
+        "/classmate-chat-bubble-fix.js?v=20261007-nav7",
+        "/classmates-performance-patch.js?v=20261007-nav7"
       ]
     },
     openEmailReplyButton: {
@@ -38,7 +53,7 @@
       navId: "openEmailReplyButton",
       title: "邮件助手",
       opener: "studybridgeOpenEmailReplyPage",
-      scripts: ["/email-reply-patch.js?v=20261007-nav6"]
+      scripts: ["/email-reply-patch.js?v=20261007-nav7"]
     },
     openScheduleButton: {
       pageId: "schedulePage",
@@ -46,9 +61,9 @@
       title: "时间表",
       opener: "studybridgeOpenSchedulePage",
       scripts: [
-        "/schedule-patch.js?v=20261007-nav6",
-        "/schedule-dashboard-patch.js?v=20261007-nav6",
-        "/schedule-notification-patch.js?v=20261007-nav6"
+        "/schedule-patch.js?v=20261007-nav7",
+        "/schedule-dashboard-patch.js?v=20261007-nav7",
+        "/schedule-notification-patch.js?v=20261007-nav7"
       ]
     }
   };

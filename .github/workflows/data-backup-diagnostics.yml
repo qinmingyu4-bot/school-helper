@@ -1,0 +1,309 @@
+name: Apply StudyBridge data backup diagnostics
+
+on:
+  push:
+    paths:
+      - ".github/workflows/data-backup-diagnostics.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply backup diagnostics patch
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+
+          function read(file) {
+            return fs.readFileSync(file, "utf8");
+          }
+
+          function writeIfChanged(file, content) {
+            const old = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
+            if (old !== content) {
+              fs.writeFileSync(file, content);
+              console.log(`updated ${file}`);
+            }
+          }
+
+          let server = read("server.js");
+          if (!server.includes("const localBackupDisabled")) {
+            server = server.replace(
+              'const maxPdfBytes = 8 * 1024 * 1024;\n',
+              'const maxPdfBytes = 8 * 1024 * 1024;\n' +
+                'const localBackupDisabled = process.env.LOCAL_DB_BACKUP_DISABLED === "true";\n' +
+                'const localBackupIntervalHours = Math.max(1, Number(process.env.LOCAL_DB_BACKUP_INTERVAL_HOURS || 6));\n' +
+                'const localBackupRetention = Math.max(3, Number(process.env.LOCAL_DB_BACKUP_RETENTION || 72));\n'
+            );
+          }
+
+          const fileIsoBlock =
+            'function fileIsoTime(filePath) {\n' +
+            '  try {\n' +
+            '    return fsSync.statSync(filePath).mtime.toISOString();\n' +
+            '  } catch {\n' +
+            '    return "";\n' +
+            '  }\n' +
+            '}\n';
+
+          const backupHelpers = `
+function localDatabaseFilePath() {
+  return db.local?.file || path.resolve(process.env.LOCAL_DB_FILE || ".data/studybridge.json");
+}
+
+function localBackupDirectory() {
+  return path.resolve(process.env.LOCAL_DB_BACKUP_DIR || path.join(path.dirname(localDatabaseFilePath()), "backups"));
+}
+
+function displayPath(filePath) {
+  if (!filePath) return "";
+  const normalized = path.resolve(filePath);
+  const home = os.homedir();
+  if (normalized.startsWith(home)) return \`~\${normalized.slice(home.length)}\`;
+  if (normalized.startsWith(__dirname)) return \`.\${normalized.slice(__dirname.length)}\`;
+  return normalized;
+}
+
+function backupFileName(reason = "auto") {
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const cleanReason = String(reason || "auto").replace(/[^a-z0-9_-]+/gi, "-").slice(0, 24) || "auto";
+  return \`studybridge-\${stamp}-\${cleanReason}.json\`;
+}
+
+async function listLocalBackups() {
+  const backupDir = localBackupDirectory();
+  try {
+    const names = await fs.readdir(backupDir);
+    const rows = await Promise.all(
+      names
+        .filter((name) => /^studybridge-.+\\.json$/i.test(name))
+        .map(async (name) => {
+          const filePath = path.join(backupDir, name);
+          const stat = await fs.stat(filePath);
+          return { name, filePath, mtimeMs: stat.mtimeMs, mtime: stat.mtime.toISOString(), bytes: stat.size };
+        })
+    );
+    return rows.sort((a, b) => b.mtimeMs - a.mtimeMs);
+  } catch {
+    return [];
+  }
+}
+
+async function purgeOldLocalBackups(backups) {
+  await Promise.all(
+    backups.slice(localBackupRetention).map((backup) =>
+      fs.unlink(backup.filePath).catch(() => {
+        // A stale backup cleanup failure should not block the app.
+      })
+    )
+  );
+}
+
+async function ensureLocalDatabaseBackup(reason = "auto") {
+  if (db.mode !== "local" || localBackupDisabled) return null;
+  const source = localDatabaseFilePath();
+  if (!fsSync.existsSync(source)) return null;
+  const backups = await listLocalBackups();
+  const newest = backups[0];
+  const minAgeMs = Math.max(30, Number(process.env.LOCAL_DB_BACKUP_MINUTES || 30)) * 60 * 1000;
+  if (newest && Date.now() - newest.mtimeMs < minAgeMs) return newest;
+  const backupDir = localBackupDirectory();
+  await fs.mkdir(backupDir, { recursive: true });
+  const target = path.join(backupDir, backupFileName(reason));
+  await fs.copyFile(source, target);
+  const stat = await fs.stat(target);
+  const updated = [{ name: path.basename(target), filePath: target, mtimeMs: stat.mtimeMs, mtime: stat.mtime.toISOString(), bytes: stat.size }, ...backups];
+  await purgeOldLocalBackups(updated);
+  return updated[0];
+}
+
+async function localBackupStatusClean() {
+  if (db.mode !== "local") {
+    return {
+      mode: "cloud",
+      configured: true,
+      ready: true,
+      required: false,
+      note: "Cloud database mode is enabled. Use cloud-provider backups before public launch."
+    };
+  }
+
+  const source = localDatabaseFilePath();
+  const fileExists = fsSync.existsSync(source);
+  if (fileExists) {
+    try {
+      await ensureLocalDatabaseBackup("status");
+    } catch {
+      // The detailed status below will report backup readiness.
+    }
+  }
+  const backups = await listLocalBackups();
+  const latest = backups[0] || null;
+  const maxAgeMs = Math.max(26, localBackupIntervalHours * 3) * 60 * 60 * 1000;
+  const fresh = Boolean(latest && Date.now() - latest.mtimeMs <= maxAgeMs);
+  const ready = !localBackupDisabled && fileExists && Boolean(latest);
+  return {
+    mode: "local-file",
+    configured: !localBackupDisabled,
+    ready,
+    fresh,
+    fileExists,
+    filePath: displayPath(source),
+    backupDir: displayPath(localBackupDirectory()),
+    count: backups.length,
+    latestAt: latest?.mtime || "",
+    latestBytes: latest?.bytes || 0,
+    retention: localBackupRetention,
+    intervalHours: localBackupIntervalHours,
+    note: localBackupDisabled
+      ? "Local database backups are disabled. Turn on backups before inviting more users."
+      : ready
+        ? fresh
+          ? "Local database backups are active. This reduces browser-close and server restart risk, but a cloud database is still safer for long-term public use."
+          : "Backups exist, but the newest backup is older than expected. Check the server auto-backup timer."
+        : fileExists
+          ? "Local database is present, but no backup was confirmed yet."
+          : "Local database file has not been created yet."
+  };
+}
+
+function scheduleLocalDatabaseBackups() {
+  if (db.mode !== "local" || localBackupDisabled) return;
+  const run = (reason) => {
+    ensureLocalDatabaseBackup(reason).catch((error) => {
+      console.error("StudyBridge local database backup failed:", error.message || error);
+    });
+  };
+  setTimeout(() => run("startup"), 3000);
+  setInterval(() => run("scheduled"), localBackupIntervalHours * 60 * 60 * 1000);
+}
+`;
+
+          if (!server.includes("function localDatabaseFilePath()")) {
+            if (!server.includes(fileIsoBlock)) throw new Error("fileIsoTime block not found");
+            server = server.replace(fileIsoBlock, `${fileIsoBlock}\n${backupHelpers}\n`);
+          }
+
+          if (!server.includes("dataSavedWithAccount")) {
+            const start = server.indexOf("async function databaseStatusClean() {");
+            const end = server.indexOf("\n\nfunction requestOpenAiChatHealth", start);
+            if (start === -1 || end === -1) throw new Error("databaseStatusClean block not found");
+            const databaseFunction = `async function databaseStatusClean() {
+  const mode = db.mode || process.env.STUDYBRIDGE_DB || "local";
+  try {
+    const users = await db.listUsers();
+    const localFile = mode === "local" ? localDatabaseFilePath() : "";
+    const localStat = localFile && fsSync.existsSync(localFile) ? fsSync.statSync(localFile) : null;
+    return {
+      mode,
+      ready: true,
+      userCount: Array.isArray(users) ? users.length : 0,
+      dataSavedWithAccount: true,
+      filePath: localFile ? displayPath(localFile) : "",
+      fileExists: localStat ? true : mode !== "local",
+      fileUpdatedAt: localStat ? localStat.mtime.toISOString() : "",
+      fileBytes: localStat ? localStat.size : 0,
+      note:
+        mode === "local"
+          ? "\\u7528\\u6237\\u8d44\\u6599\\u3001\\u8bfe\\u7a0b\\u3001\\u804a\\u5929\\u548c deadline \\u90fd\\u6309\\u8d26\\u53f7\\u4fdd\\u5b58\\u5728\\u670d\\u52a1\\u5668\\u672c\\u5730\\u6570\\u636e\\u5e93\\u3002"
+          : "\\u4e91\\u6570\\u636e\\u5e93\\u8fde\\u63a5\\u6b63\\u5e38\\u3002"
+    };
+  } catch (error) {
+    return {
+      mode,
+      ready: false,
+      userCount: 0,
+      dataSavedWithAccount: false,
+      note: error?.message || "\\u6570\\u636e\\u5e93\\u8bfb\\u53d6\\u5931\\u8d25\\u3002"
+    };
+  }
+}`;
+            server = `${server.slice(0, start)}${databaseFunction}${server.slice(end)}`;
+          }
+
+          if (!server.includes("backup: await localBackupStatusClean()")) {
+            server = server.replace(
+              "      database: await databaseStatusClean(),\n      ai,\n",
+              "      database: await databaseStatusClean(),\n      backup: await localBackupStatusClean(),\n      ai,\n"
+            );
+          }
+
+          if (!server.includes("scheduleLocalDatabaseBackups();")) {
+            server = server.replace(
+              'server.listen(port, () => {\n  console.log(`StudyBridge cloud app running on http://localhost:${port}`);\n});',
+              'server.listen(port, () => {\n  console.log(`StudyBridge cloud app running on http://localhost:${port}`);\n  scheduleLocalDatabaseBackups();\n});'
+            );
+          }
+          writeIfChanged("server.js", server);
+
+          let status = read("public/system-status-patch.js");
+          if (!status.includes("dataPersistence")) {
+            status = status.replace(
+              '    dbMode: "\\u6570\\u636e\\u5e93\\u6a21\\u5f0f",\n    aiStatus:',
+              '    dbMode: "\\u6570\\u636e\\u5e93\\u6a21\\u5f0f",\n    dataPersistence: "\\u6570\\u636e\\u4fdd\\u5b58",\n    backupStatus: "\\u81ea\\u52a8\\u5907\\u4efd",\n    aiStatus:'
+            );
+          }
+          if (!status.includes("const dataSaved")) {
+            status = status.replace(
+              '    const dbReady = Boolean(system?.database?.ready ?? health?.ok);\n    const googleEnabled',
+              '    const dbReady = Boolean(system?.database?.ready ?? health?.ok);\n    const dataSaved = Boolean(system?.database?.dataSavedWithAccount ?? dbReady);\n    const backup = system?.backup || {};\n    const backupReady = Boolean(backup.ready);\n    const backupFresh = Boolean(backup.fresh ?? backupReady);\n    const backupIsRelevant = dbMode === "local" || backup.mode === "local-file";\n    const googleEnabled'
+            );
+          }
+          if (!status.includes("card(TEXT.dataPersistence")) {
+            status = status.replace(
+              '        card(TEXT.dbMode, dbReady ? "ok" : "bad", dbMode, system?.database?.note || (dbReady ? "Database is readable and writable." : "Database check failed.")),\n        card(TEXT.aiStatus',
+              '        card(TEXT.dbMode, dbReady ? "ok" : "bad", dbMode, system?.database?.note || (dbReady ? "\\u6570\\u636e\\u5e93\\u53ef\\u8bfb\\u5199\\u3002" : "\\u6570\\u636e\\u5e93\\u68c0\\u6d4b\\u5f02\\u5e38\\u3002")),\n        card(TEXT.dataPersistence, dataSaved ? "ok" : "bad", dataSaved ? "\\u8ddf\\u8d26\\u53f7\\u4fdd\\u5b58" : TEXT.unknown, dataSaved ? "\\u7528\\u6237\\u8d44\\u6599\\u3001\\u8bfe\\u7a0b\\u3001\\u804a\\u5929\\u548c deadline \\u90fd\\u4fdd\\u5b58\\u5728\\u540e\\u7aef\\u8d26\\u53f7\\u6570\\u636e\\u4e2d\\u3002" : "\\u6682\\u65f6\\u65e0\\u6cd5\\u786e\\u8ba4\\u8d26\\u53f7\\u6570\\u636e\\u662f\\u5426\\u6b63\\u5e38\\u4fdd\\u5b58\\u3002"),\n        card(TEXT.backupStatus, backupIsRelevant ? (backupReady ? (backupFresh ? "ok" : "warn") : "bad") : "ok", backupIsRelevant ? (backup.latestAt ? formatDate(backup.latestAt) : "\\u6682\\u65e0\\u5907\\u4efd") : "\\u4e91\\u6570\\u636e\\u5e93", backup?.note || (backupIsRelevant ? "\\u672c\\u5730\\u6587\\u4ef6\\u6570\\u636e\\u5e93\\u9700\\u8981\\u81ea\\u52a8\\u5907\\u4efd\\u3002" : "\\u4e91\\u6570\\u636e\\u5e93\\u6a21\\u5f0f\\u4e0b\\u8bf7\\u4f7f\\u7528 AWS \\u5907\\u4efd\\u7b56\\u7565\\u3002")),\n        card(TEXT.aiStatus'
+            );
+          }
+          writeIfChanged("public/system-status-patch.js", status);
+
+          let layout = read("public/layout-fix.js");
+          layout = layout.replace(/\/system-status-patch\.js\?v=\d{8}-\d+/g, "/system-status-patch.js?v=20261007-1");
+          writeIfChanged("public/layout-fix.js", layout);
+
+          const pkg = JSON.parse(read("package.json"));
+          pkg.version = "1.0.14";
+          writeIfChanged("package.json", `${JSON.stringify(pkg, null, 2)}\n`);
+
+          let env = read(".env.example");
+          if (!env.includes("LOCAL_DB_BACKUP_DIR")) {
+            env = env.replace(
+              "LOCAL_DB_FILE=.data/studybridge.json\n",
+              "LOCAL_DB_FILE=.data/studybridge.json\nLOCAL_DB_BACKUP_DIR=.data/backups\nLOCAL_DB_BACKUP_INTERVAL_HOURS=6\nLOCAL_DB_BACKUP_RETENTION=72\nLOCAL_DB_BACKUP_DISABLED=false\n"
+            );
+          }
+          writeIfChanged(".env.example", env);
+
+          let changelog = read("CHANGELOG.md");
+          if (!changelog.includes("Added server-side local database backup checks")) {
+            changelog = changelog.replace(
+              "### Added\n\n",
+              "### Added\n\n- Bumped StudyBridge Cloud to `1.0.14`.\n- Added server-side local database backup checks and automatic JSON backups for the local file database.\n- Added developer system-status cards confirming account-based data persistence and latest backup time.\n"
+            );
+          }
+          writeIfChanged("CHANGELOG.md", changelog);
+          NODE
+      - name: Validate patched app
+        run: |
+          node --check server.js
+          node --check public/system-status-patch.js
+          node --check public/layout-fix.js
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "No changes to commit."
+          else
+            git add server.js public/system-status-patch.js public/layout-fix.js package.json .env.example CHANGELOG.md
+            git commit -m "Add data persistence backup diagnostics"
+            git push
+          fi

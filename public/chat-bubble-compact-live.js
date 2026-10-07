@@ -1,10 +1,25 @@
 (() => {
+  let bootFrame = 0;
+
   function loadScriptOnce(src) {
     const cleanSrc = src.split("?")[0];
-    if (document.querySelector(`script[src^="${cleanSrc}"]`)) return;
+    const registry = (window.__studybridgeLoadedScripts ||= new Set());
+    const key = new URL(cleanSrc, window.location.href).pathname;
+    if (
+      registry.has(key) ||
+      Array.from(document.scripts).some((script) => {
+        const scriptSrc = script.getAttribute("src");
+        return scriptSrc && new URL(scriptSrc, window.location.href).pathname === key;
+      })
+    ) {
+      registry.add(key);
+      return;
+    }
+    registry.add(key);
     const script = document.createElement("script");
     script.src = src;
     script.defer = true;
+    script.addEventListener("error", () => registry.delete(key), { once: true });
     document.body.appendChild(script);
   }
 
@@ -22,6 +37,7 @@
       style.id = "studybridge-chat-bubble-compact-live";
       document.head.appendChild(style);
     }
+    if (style.dataset.ready === "true") return;
     style.textContent = `
       #classmatesPage .direct-message-list {
         align-content: end !important;
@@ -61,6 +77,7 @@
         text-align: right !important;
       }
     `;
+    style.dataset.ready = "true";
   }
 
   function escapeHtml(value) {
@@ -111,7 +128,15 @@
     compactMessages();
   }
 
+  function scheduleBoot() {
+    if (bootFrame) return;
+    bootFrame = requestAnimationFrame(() => {
+      bootFrame = 0;
+      boot();
+    });
+  }
+
   boot();
-  new MutationObserver(boot).observe(document.body, { childList: true, subtree: true });
-  setInterval(boot, 1200);
+  new MutationObserver(scheduleBoot).observe(document.body, { childList: true, subtree: true });
+  setInterval(scheduleBoot, 5000);
 })();

@@ -134,6 +134,7 @@
   function loadCheatsheetPatch() {
     loadScriptOnce("/cheatsheet-mode-patch.js?v=20261006-2");
     loadScriptOnce("/classmates-performance-patch.js?v=20261007-1");
+    loadScriptOnce("/no-course-notice-patch.js?v=20261007-1");
   }
 
   function loadScriptOnce(src) {

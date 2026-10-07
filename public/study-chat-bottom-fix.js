@@ -50,7 +50,7 @@
         min-height: 0 !important;
         height: auto !important;
         max-height: none !important;
-        padding-top: 26px !important;
+        padding-top: max(34px, var(--study-chat-top-space, 34px)) !important;
         padding-bottom: max(28px, var(--study-chat-bottom-space, 28px)) !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
@@ -83,10 +83,14 @@
   function updateBottomSpace() {
     const quickPrompts = document.querySelector("#quickPrompts");
     const chatForm = document.querySelector("#chatForm");
+    const scheduleDashboard = document.querySelector("#scheduleDashboard");
     const quickHeight = isVisible(quickPrompts) ? quickPrompts.getBoundingClientRect().height : 0;
     const formHeight = isVisible(chatForm) ? chatForm.getBoundingClientRect().height : 0;
+    const dashboardHeight = isVisible(scheduleDashboard) ? scheduleDashboard.getBoundingClientRect().height : 0;
     const bottomSpace = Math.max(28, Math.ceil((quickHeight + formHeight) * 0.12));
+    const topSpace = Math.max(34, Math.ceil(dashboardHeight * 0.22));
     document.documentElement.style.setProperty("--study-chat-bottom-space", `${bottomSpace}px`);
+    document.documentElement.style.setProperty("--study-chat-top-space", `${topSpace}px`);
   }
 
   function distanceFromBottom(chatArea) {
@@ -122,6 +126,28 @@
     const developerPanel = document.querySelector("#developerPanel");
     if (developerPanel && !developerPanel.hidden) return;
     if (event.deltaY < 0) stickToBottom = false;
+  }
+
+  function routeWheelToStudyChat(event) {
+    const workspacePage = document.querySelector("#workspacePage");
+    const chatArea = document.querySelector("#chatArea");
+    if (!workspacePage || !chatArea || !isVisible(workspacePage) || !isVisible(chatArea)) return;
+    if (!workspacePage.contains(event.target)) return;
+    const developerPanel = document.querySelector("#developerPanel");
+    if (developerPanel && !developerPanel.hidden) return;
+    if (event.target.closest?.("#chatForm, #quickPrompts, textarea, input, select, button")) return;
+    const canScroll = chatArea.scrollHeight > chatArea.clientHeight + 2;
+    if (!canScroll) return;
+
+    const before = chatArea.scrollTop;
+    chatArea.scrollTop += event.deltaY;
+    if (chatArea.scrollTop !== before) {
+      event.preventDefault();
+      event.stopPropagation();
+      stickToBottom = distanceFromBottom(chatArea) < 120;
+      lastScrollTop = chatArea.scrollTop;
+      lastScrollHeight = chatArea.scrollHeight;
+    }
   }
 
   function attachChatScrollListener() {
@@ -220,6 +246,7 @@
   window.addEventListener("resize", updateBottomSpace);
   window.addEventListener("load", () => setTimeout(() => scrollStudyChatToBottom(true), 120));
   window.addEventListener("wheel", markManualScrollIntent, { passive: true, capture: true });
+  window.addEventListener("wheel", routeWheelToStudyChat, { passive: false, capture: true });
 
   const observer = new MutationObserver(() => {
     boot();

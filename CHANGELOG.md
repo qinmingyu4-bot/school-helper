@@ -2,6 +2,13 @@
 
 ## 2026-10-07
 
+### Added
+
+- Bumped StudyBridge Cloud to `1.0.4`.
+- Added Study Area attachments: upload button, screenshot paste, drag-and-drop, image vision input, PDF/text extraction, and file metadata support.
+
+## 2026-10-07
+
 ### Fixed
 
 - Bumped StudyBridge Cloud to `1.0.3`.

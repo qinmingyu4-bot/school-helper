@@ -1,24 +1,40 @@
 (() => {
-  const VERSION = "20261008-student-nav-delegator-1.0.61";
-  if (window.__studybridgeStudentNavDelegator === VERSION) return;
-  window.__studybridgeStudentNavDelegator = VERSION;
+  const VERSION = "20261007-nav-hardening-delegated-1.0.55";
+  if (window.__studybridgeStudentNavHardening === VERSION) return;
+  window.__studybridgeStudentNavHardening = VERSION;
 
-  function open(route) {
-    if (typeof window.studybridgeOpenDirectPage === "function") {
-      window.studybridgeOpenDirectPage(route);
-      return true;
-    }
-    if (typeof window.studybridgeDirectOpen === "function") {
-      window.studybridgeDirectOpen(route);
-      return true;
-    }
-    const script = document.createElement("script");
-    script.async = false;
-    script.src = `/studybridge-direct-pages.js?v=${VERSION}`;
-    script.addEventListener("load", () => window.studybridgeOpenDirectPage?.(route), { once: true });
-    (document.head || document.documentElement).appendChild(script);
-    return true;
+  const ROUTER_PATH = "/sidebar-direct-router.js";
+  const ROUTER_SRC = `${ROUTER_PATH}?v=20261007-clean-router-1.0.55`;
+
+  function hasRouterScript() {
+    return Array.from(document.scripts).some((script) => {
+      const src = script.getAttribute("src") || "";
+      try {
+        return new URL(src, window.location.href).pathname === ROUTER_PATH;
+      } catch {
+        return src.includes(ROUTER_PATH);
+      }
+    });
   }
 
-  window.studybridgeOpenStudentPage = open;
+  function loadRouter() {
+    if (window.studybridgeDirectOpen || hasRouterScript()) return;
+    const script = document.createElement("script");
+    script.async = false;
+    script.src = ROUTER_SRC;
+    document.body.appendChild(script);
+  }
+
+  window.studybridgeOpenStudentPage = (route) => {
+    if (typeof window.studybridgeDirectOpen === "function") return window.studybridgeDirectOpen(route);
+    loadRouter();
+    window.setTimeout(() => window.studybridgeDirectOpen?.(route), 50);
+    return true;
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", loadRouter, { once: true });
+  } else {
+    loadRouter();
+  }
 })();

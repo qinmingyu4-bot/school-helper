@@ -1,6 +1,6 @@
 {
   "name": "studybridge-cloud",
-  "version": "1.0.71",
+  "version": "1.0.72",
   "private": true,
   "description": "StudyBridge cloud app with login, database-backed student data, and AI backend.",
   "type": "commonjs",

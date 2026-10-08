@@ -276,23 +276,6 @@
   function ensureFeatureEntries() {
     const nav = sidebar();
     if (!nav) return;
-    nav.querySelectorAll("#sbDirectNav, .sb-direct-nav").forEach((node) => node.remove());
-    const seen = new Set();
-    featureEntries.forEach((entry) => {
-      nav.querySelectorAll(`.${entry.className}, #${entry.id}`).forEach((node) => {
-        const key = entry.id;
-        if (node.id === entry.id && !seen.has(key)) {
-          seen.add(key);
-          return;
-        }
-        if (!seen.has(key)) {
-          node.id = entry.id;
-          seen.add(key);
-          return;
-        }
-        node.remove();
-      });
-    });
     const anchor = roleSwitch();
     featureEntries.forEach((entry) => {
       let button = document.getElementById(entry.id);

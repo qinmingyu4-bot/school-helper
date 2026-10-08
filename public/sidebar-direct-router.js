@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = "20261007-clean-router-1.0.55";
+  const VERSION = "20261007-clean-router-1.0.56";
   if (window.__studybridgeSidebarDirectRouter === VERSION) return;
   window.__studybridgeSidebarDirectRouter = VERSION;
 
@@ -166,7 +166,7 @@
     page.style.visibility = "visible";
     page.style.opacity = "1";
     document.body.classList.add("studybridge-secondary-page");
-    document.body.classList.remove("creator-clean-mode", "admin-boundary-active");
+    document.body.classList.remove("creator-clean-mode", "admin-boundary-active", "study-sidebar-hidden");
     document.body.dataset.studybridgeActivePage = route.id;
     return true;
   }
@@ -179,7 +179,7 @@
     setStudyVisible(true);
     const developer = $("#developerPanel");
     if (developer) { developer.hidden = true; developer.style.display = "none"; }
-    document.body.classList.remove("studybridge-secondary-page", "creator-clean-mode", "admin-boundary-active");
+    document.body.classList.remove("studybridge-secondary-page", "creator-clean-mode", "admin-boundary-active", "study-sidebar-hidden");
     document.body.dataset.studybridgeActivePage = "workspacePage";
     setActiveButton("study");
     setStatus("Workspace is ready.");
@@ -246,13 +246,13 @@
   function routeFromText(text) {
     const value = String(text || "").replace(/\s+/g, "").toLowerCase();
     if (!value) return "";
-    if (value.includes("社区") || value.includes("community")) return "community";
-    if (value.includes("同学") || value.includes("classmates")) return "classmates";
-    if (value.includes("邮件助手") || value.includes("email")) return "email";
-    if (value.includes("时间表") || value.includes("schedule") || value.includes("deadline")) return "schedule";
-    if (value.includes("学习区") || value.includes("study")) return "study";
-    if (value.includes("开发者端")) return "developer";
-    if (value.includes("普通用户端")) return "study";
+    if (value.includes("\u793e\u533a") || value.includes("community")) return "community";
+    if (value.includes("\u540c\u5b66") || value.includes("classmates")) return "classmates";
+    if (value.includes("\u90ae\u4ef6\u52a9\u624b") || value.includes("email")) return "email";
+    if (value.includes("\u65f6\u95f4\u8868") || value.includes("schedule") || value.includes("deadline")) return "schedule";
+    if (value.includes("\u5b66\u4e60\u533a") || value.includes("study")) return "study";
+    if (value.includes("\u5f00\u53d1\u8005\u7aef")) return "developer";
+    if (value.includes("\u666e\u901a\u7528\u6237\u7aef")) return "study";
     return "";
   }
 

@@ -143,17 +143,24 @@
 })();
 
 (() => {
-  const VERSION = "20261008-google-auth-loader-1.0.84";
+  const VERSION = "20261008-google-auth-loader-1.0.85";
   if (window.__studybridgeGoogleAuthLoaderVersion === VERSION) return;
   window.__studybridgeGoogleAuthLoaderVersion = VERSION;
-  function loadProfileOverview() {
-    if (document.querySelector('script[data-profile-school-overview]')) return;
+
+  function loadOnce(src, flagName) {
+    if (document.querySelector(`script[data-${flagName}]`)) return;
     const script = document.createElement("script");
-    script.src = "/profile-school-overview-hotfix.js?v=20261008-1.0.84";
+    script.src = src;
     script.defer = true;
-    script.dataset.profileSchoolOverview = "true";
+    script.dataset[flagName.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = "true";
     document.body.appendChild(script);
   }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", loadProfileOverview, { once:true });
-  else loadProfileOverview();
+
+  function loadHotfixes() {
+    loadOnce("/profile-school-overview-hotfix.js?v=20261008-1.0.84", "profile-school-overview");
+    loadOnce("/sidebar-role-boundary-hotfix.js?v=20261008-1.0.85", "sidebar-role-boundary");
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", loadHotfixes, { once:true });
+  else loadHotfixes();
 })();

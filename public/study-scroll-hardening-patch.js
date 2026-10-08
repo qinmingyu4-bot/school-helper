@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = "20261008-shell-rescue-1.0.63";
+  const VERSION = "20261008-shell-rescue-1.0.64";
   if (window.__studybridgeStudyScrollHardeningV2 === VERSION) return;
   window.__studybridgeStudyScrollHardeningV2 = VERSION;
 
@@ -165,6 +165,18 @@
     if (workspacePage) workspacePage.scrollTop = 0;
   }
 
+  function waitForDirectPage(callback, attempt = 0) {
+    if (typeof window.studybridgeOpenDirectPage === "function") {
+      callback();
+      return;
+    }
+    if (attempt < 25) {
+      window.setTimeout(() => waitForDirectPage(callback, attempt + 1), 80);
+      return;
+    }
+    renderFallbackPage("profile", "页面还在连接中，请再点一次左侧功能。");
+  }
+
   function ensureDirectScript(callback) {
     if (typeof window.studybridgeOpenDirectPage === "function") {
       callback();
@@ -178,14 +190,30 @@
       }
     });
     if (existing) {
-      window.setTimeout(callback, 80);
+      waitForDirectPage(callback);
       return;
     }
     const script = document.createElement("script");
     script.async = false;
     script.src = `${DIRECT_SCRIPT}?v=${VERSION}`;
-    script.addEventListener("load", callback, { once: true });
+    script.addEventListener("load", () => waitForDirectPage(callback), { once: true });
     (document.head || document.documentElement).appendChild(script);
+  }
+
+  function renderFallbackPage(route, message) {
+    const workspacePage = document.querySelector("#workspacePage") || document.querySelector(".workspace");
+    if (!workspacePage) return;
+    let page = document.querySelector("#sbDirectPage");
+    if (!page) {
+      page = document.createElement("section");
+      page.id = "sbDirectPage";
+      workspacePage.appendChild(page);
+    }
+    document.body.classList.add("sb-direct-page");
+    document.body.classList.remove("sb-direct-study");
+    page.hidden = false;
+    page.innerHTML = `<section style="max-width:960px;margin:28px auto;padding:18px;border:1px solid #d7e0ec;border-radius:8px;background:white;color:#0b2344"><strong>StudyBridge</strong><p>${message}</p></section>`;
+    resetScroll();
   }
 
   function openShellRoute(route) {
@@ -196,6 +224,8 @@
         window.studybridgeOpenDirectPage(route);
         resetScroll();
         window.setTimeout(resetScroll, 80);
+      } else {
+        renderFallbackPage(route, "页面暂时没有成功打开，请刷新后再试。");
       }
     });
     return true;

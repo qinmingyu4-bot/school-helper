@@ -2,7 +2,6 @@
   const authForm = document.querySelector("#authForm");
   const authMessage = document.querySelector("#authMessage");
   const inviteInput = document.querySelector("#inviteInput");
-
   if (!authForm || document.querySelector("#googleAuthButton")) return;
 
   const style = document.createElement("style");
@@ -14,8 +13,8 @@
       color: #64748b;
       font-size: 12px;
       font-weight: 800;
+      margin: 2px 0;
     }
-
     .google-auth-divider::before,
     .google-auth-divider::after {
       content: "";
@@ -23,7 +22,6 @@
       flex: 1;
       background: #d8dee8;
     }
-
     .google-auth-button {
       min-height: 42px;
       border: 1px solid #d8dee8;
@@ -38,7 +36,6 @@
       gap: 10px;
       width: 100%;
     }
-
     .google-auth-button::before {
       content: "G";
       width: 24px;
@@ -51,14 +48,12 @@
       font-weight: 900;
       font-family: Arial, sans-serif;
     }
-
     .google-auth-button:disabled {
       cursor: not-allowed;
       opacity: 0.62;
     }
-
     .google-auth-note {
-      margin: -6px 0 0;
+      margin: -4px 0 0;
       color: #64748b;
       font-size: 12px;
       line-height: 1.5;
@@ -82,6 +77,7 @@
   note.textContent = "第一次用 Google 注册时，也需要输入创作者给的邀请码。";
 
   const submitButton = document.querySelector("#authSubmit");
+  if (!submitButton) return;
   authForm.insertBefore(divider, submitButton);
   authForm.insertBefore(button, submitButton);
   authForm.insertBefore(note, submitButton);
@@ -104,11 +100,13 @@
         button.disabled = true;
         button.textContent = "Google 登录待配置";
         note.hidden = false;
-        note.textContent = "管理员配置 Google Client ID 和 Secret 后，这里会自动启用。";
+        note.textContent = "配置 Google Client ID 和 Secret 后，这里会自动启用。普通邮箱注册仍可使用。";
       }
     } catch {
       button.disabled = true;
       button.textContent = "Google 登录暂不可用";
+      note.hidden = false;
+      note.textContent = "普通邮箱注册仍可使用。";
     }
   }
 
@@ -116,7 +114,7 @@
     const mode = activeMode();
     const inviteCode = String(inviteInput?.value || "").trim();
     if (mode === "register" && !inviteCode) {
-      authMessage.textContent = "第一次使用 Google 注册也需要邀请码。";
+      if (authMessage) authMessage.textContent = "第一次使用 Google 注册也需要邀请码。";
       inviteInput?.focus();
       return;
     }
@@ -126,12 +124,14 @@
     window.location.href = target.toString();
   });
 
-  document.querySelectorAll("[data-auth-mode]").forEach((tab) => tab.addEventListener("click", syncButtonText));
+  document.querySelectorAll("[data-auth-mode]").forEach((tab) => {
+    tab.addEventListener("click", () => setTimeout(syncButtonText, 0));
+  });
 
   const params = new URLSearchParams(window.location.search);
   const authError = params.get("authError");
   if (authError) {
-    authMessage.textContent = authError;
+    if (authMessage) authMessage.textContent = authError;
     window.history.replaceState({}, "", window.location.pathname);
   } else if (params.get("googleAuth") === "ok") {
     window.history.replaceState({}, "", window.location.pathname);

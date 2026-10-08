@@ -1,0 +1,242 @@
+name: Apply StudyBridge SB ID registration policy
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/sbid-policy-patch.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch SB ID policy
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+
+          const serverPath = 'server.js';
+          let server = fs.readFileSync(serverPath, 'utf8');
+          const originalServer = server;
+
+          const oldProfileHelpers = `function cleanProfile(body = {}) {
+  const sbId = String(body.sbId || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^@+/, "")
+    .slice(0, 24);
+  return {
+    avatarUrl: String(body.avatarUrl || "").trim().slice(0, 2200000),
+    backgroundUrl: String(body.backgroundUrl || "").trim().slice(0, 2200000),
+    school: String(body.school || "").trim().slice(0, 120),
+    major: String(body.major || "").trim().slice(0, 120),
+    sbId
+  };
+}
+
+function isValidSbId(value) {
+  const sbId = String(value || "").trim();
+  return !sbId || /^[a-z0-9][a-z0-9._-]{2,23}$/.test(sbId);
+}`;
+
+          const newProfileHelpers = `function normalizeSbId(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^@+/, "")
+    .replace(/[^a-z0-9._-]+/g, "")
+    .slice(0, 24);
+}
+
+function cleanProfile(body = {}) {
+  return {
+    avatarUrl: String(body.avatarUrl || "").trim().slice(0, 2200000),
+    backgroundUrl: String(body.backgroundUrl || "").trim().slice(0, 2200000),
+    school: String(body.school || "").trim().slice(0, 120),
+    major: String(body.major || "").trim().slice(0, 120),
+    sbId: normalizeSbId(body.sbId)
+  };
+}
+
+function isValidSbId(value) {
+  const sbId = normalizeSbId(value);
+  return /^[a-z0-9][a-z0-9._-]{2,23}$/.test(sbId);
+}
+
+function sbIdBaseFromUser(name, email) {
+  const raw = String(email || "").split("@")[0] || String(name || "student");
+  let base = raw
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\\u0300-\\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "")
+    .slice(0, 14);
+  if (!base) base = "student";
+  if (!/^[a-z]/.test(base)) base = `sb${base}`;
+  if (base.length < 3) base = `${base}user`.slice(0, 8);
+  return base.slice(0, 16);
+}
+
+async function generateUniqueSbId(name, email) {
+  const base = sbIdBaseFromUser(name, email);
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const suffix = crypto.randomBytes(attempt < 6 ? 2 : 3).toString("hex");
+    const candidate = normalizeSbId(`${base}${suffix}`);
+    if (isValidSbId(candidate) && !(await db.findUserBySbId(candidate))) return candidate;
+  }
+  return `sb${crypto.randomBytes(8).toString("hex")}`.slice(0, 24);
+}
+
+async function ensureUserHasValidSbId(user) {
+  if (!user) return user;
+  const current = normalizeSbId(user.profile?.sbId || "");
+  if (current && isValidSbId(current)) return user;
+  const profile = {
+    ...(user.profile || {}),
+    sbId: await generateUniqueSbId(user.name, user.email),
+    sbIdCustomUsed: false
+  };
+  return db.updateUser(user.id, { profile });
+}`;
+
+          if (server.includes(oldProfileHelpers) && !server.includes('async function generateUniqueSbId')) {
+            server = server.replace(oldProfileHelpers, newProfileHelpers);
+          }
+
+          const oldCurrentUser = `async function currentUser(req) {
+  const token = parseCookies(req.headers.cookie || "")[SESSION_COOKIE];
+  if (!token) return null;
+  const tokenHash = hashToken(token);
+  const session = await db.getSession(tokenHash);
+  if (!session || Number(session.expiresAt) < Date.now()) {
+    if (session) await db.deleteSession(tokenHash);
+    return null;
+  }
+  const user = await db.getUser(session.userId);
+  return user ? { user: withEffectiveRole(user), tokenHash } : null;
+}`;
+
+          const newCurrentUser = `async function currentUser(req) {
+  const token = parseCookies(req.headers.cookie || "")[SESSION_COOKIE];
+  if (!token) return null;
+  const tokenHash = hashToken(token);
+  const session = await db.getSession(tokenHash);
+  if (!session || Number(session.expiresAt) < Date.now()) {
+    if (session) await db.deleteSession(tokenHash);
+    return null;
+  }
+  let user = await db.getUser(session.userId);
+  if (user) user = await ensureUserHasValidSbId(user);
+  return user ? { user: withEffectiveRole(user), tokenHash } : null;
+}`;
+
+          if (server.includes(oldCurrentUser)) {
+            server = server.replace(oldCurrentUser, newCurrentUser);
+          }
+
+          const oldProfileRoute = `  if (url.pathname === "/api/me/profile" && method === "PUT") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const body = await readJson(req);
+    const name = String(body.name || "").trim().slice(0, 80);
+    if (!name) return sendError(res, 400, "Name is required.");
+    const profile = cleanProfile(body);
+    const updated = await db.updateUser(user.id, { name, profile });
+    return sendJson(res, 200, { user: publicUser(withEffectiveRole(updated)) });
+  }`;
+
+          const newProfileRoute = `  if (url.pathname === "/api/me/profile" && method === "PUT") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const body = await readJson(req);
+    const name = String(body.name || "").trim().slice(0, 80);
+    if (!name) return sendError(res, 400, "Name is required.");
+    const incomingProfile = cleanProfile(body);
+    const currentProfile = user.profile || {};
+    let currentSbId = normalizeSbId(currentProfile.sbId || "");
+    let sbIdCustomUsed = currentProfile.sbIdCustomUsed === true;
+
+    if (!currentSbId || !isValidSbId(currentSbId)) {
+      currentSbId = await generateUniqueSbId(name, user.email);
+      sbIdCustomUsed = false;
+    }
+
+    const requestedSbId = incomingProfile.sbId || currentSbId;
+    if (requestedSbId !== currentSbId) {
+      if (sbIdCustomUsed) return sendError(res, 400, "SB ID can only be customized once after registration.");
+      if (!isValidSbId(requestedSbId)) return sendError(res, 400, "SB ID must be 3-24 characters and use letters, numbers, dot, underscore, or dash.");
+      const existing = await db.findUserBySbId(requestedSbId);
+      if (existing && existing.id !== user.id) return sendError(res, 409, "This SB ID is already taken.");
+      sbIdCustomUsed = true;
+    }
+
+    const profile = {
+      ...currentProfile,
+      ...incomingProfile,
+      sbId: requestedSbId,
+      sbIdCustomUsed,
+      sbIdCustomizedAt: requestedSbId !== currentSbId ? new Date().toISOString() : currentProfile.sbIdCustomizedAt || ""
+    };
+    const updated = await db.updateUser(user.id, { name, profile });
+    return sendJson(res, 200, { user: publicUser(withEffectiveRole(updated)) });
+  }`;
+
+          if (server.includes(oldProfileRoute)) {
+            server = server.replace(oldProfileRoute, newProfileRoute);
+          }
+
+          server = server.replace(
+            /profile:\s*{\s*avatarUrl:\s*"",\s*backgroundUrl:\s*"",\s*school:\s*"",\s*major:\s*"",\s*sbId:\s*""\s*}/g,
+            `profile: {
+        avatarUrl: "",
+        backgroundUrl: "",
+        school: "",
+        major: "",
+        sbId: await generateUniqueSbId(name, email),
+        sbIdCustomUsed: false
+      }`
+          );
+
+          server = server.replace(
+            /profile:\s*{\s*avatarUrl:\s*googleProfile\.picture \|\| "",\s*backgroundUrl:\s*"",\s*school:\s*"",\s*major:\s*"",\s*sbId:\s*""\s*}/g,
+            `profile: {
+        avatarUrl: googleProfile.picture || "",
+        backgroundUrl: "",
+        school: "",
+        major: "",
+        sbId: await generateUniqueSbId(name, email),
+        sbIdCustomUsed: false
+      }`
+          );
+
+          if (server === originalServer) {
+            console.log('No server.js changes needed.');
+          } else {
+            fs.writeFileSync(serverPath, server);
+          }
+
+          const pkgPath = 'package.json';
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+          if (pkg.version !== '1.0.89') {
+            pkg.version = '1.0.89';
+            fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
+          }
+          NODE
+          node --check server.js
+      - name: Commit patch
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No repository changes to commit."
+            exit 0
+          fi
+          git config user.name "qinmingyu4-bot"
+          git config user.email "qinmingyu4-bot@users.noreply.github.com"
+          git add server.js package.json
+          git commit -m "Apply SB ID registration policy"
+          git push

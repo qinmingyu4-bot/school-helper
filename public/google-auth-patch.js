@@ -143,7 +143,7 @@
 })();
 
 (() => {
-  const VERSION = "20261008-google-auth-loader-1.0.88";
+  const VERSION = "20261008-google-auth-loader-1.0.89";
   if (window.__studybridgeGoogleAuthLoaderVersion === VERSION) return;
   window.__studybridgeGoogleAuthLoaderVersion = VERSION;
 
@@ -161,6 +161,7 @@
     loadOnce("/sidebar-role-boundary-hotfix.js?v=20261008-1.0.85", "sidebar-role-boundary");
     loadOnce("/studybridge-tools-hotfix.js?v=20261008-1.0.88", "studybridge-tools");
     loadOnce("/admin-invite-user-map-hotfix.js?v=20261008-1.0.87", "admin-invite-user-map");
+    loadOnce("/sbid-policy-hotfix.js?v=20261008-1.0.89", "sbid-policy");
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", loadHotfixes, { once:true });

@@ -1,0 +1,49 @@
+name: Rollback frontend navigation to stable build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/frontend-rollback-ce027.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore stable frontend files
+        run: |
+          set -euo pipefail
+          BASE="ce027147c3ebda429e287355aadbf349d39ba5f1"
+          git checkout "$BASE" -- \
+            public/index.html \
+            public/developer-access-fix.js \
+            public/layout-fix.js \
+            public/sidebar-direct-router.js \
+            public/student-nav-hardening-patch.js \
+            public/student-stable-router.js \
+            public/study-scroll-hardening-patch.js
+
+          rm -f public/navigation-emergency-restore.js public/route-layout-repair.js public/login-safe-submit.js
+
+          node - <<'NODE'
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          pkg.version = '1.0.72';
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          NODE
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json public/index.html public/developer-access-fix.js public/layout-fix.js public/sidebar-direct-router.js public/student-nav-hardening-patch.js public/student-stable-router.js public/study-scroll-hardening-patch.js
+          git add -u public/navigation-emergency-restore.js public/route-layout-repair.js public/login-safe-submit.js || true
+          git commit -m "Rollback frontend navigation to stable version 1.0.72" || echo "No rollback changes to commit"
+          git push

@@ -1,0 +1,64 @@
+name: Repair StudyBridge Navigation
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/navigation-repair.trigger"
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Repair frontend navigation scripts
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          VERSION="1.0.77"
+
+          node <<'EOF'
+          const fs = require('fs');
+          const p = 'public/index.html';
+          let html = fs.readFileSync(p, 'utf8');
+          const scripts = [
+            '    <script src="/app.js?v=20261008-1.0.77"></script>',
+            '    <script src="/studybridge-direct-pages.js?v=20261008-1.0.77"></script>',
+            '    <script src="/google-auth-patch.js?v=20261008-1.0.77"></script>'
+          ];
+          html = html.replace(/\n\s*<script\s+src="\/[^"]+\.js[^"]*"\s*><\/script>/g, '');
+          html = html.replace(/\s*<\/body>\s*<\/html>\s*$/i, `\n${scripts.join('\n')}\n  </body>\n</html>`);
+          if (!html.includes('studybridge-direct-pages.js')) throw new Error('Navigation repair did not inject direct pages router.');
+          fs.writeFileSync(p, html);
+          EOF
+
+          node <<'EOF'
+          const fs = require('fs');
+          for (const p of ['package.json', 'package-lock.json']) {
+            if (!fs.existsSync(p)) continue;
+            const pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
+            pkg.version = '1.0.77';
+            if (pkg.packages && pkg.packages['']) pkg.packages[''].version = '1.0.77';
+            fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
+          }
+          EOF
+
+          node --check public/app.js
+          node --check public/studybridge-direct-pages.js
+          node --check public/google-auth-patch.js
+          git add public/index.html package.json package-lock.json 2>/dev/null || git add public/index.html package.json
+          git commit -m "Repair StudyBridge navigation version 1.0.77 [skip ci]" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push; then
+              exit 0
+            fi
+            sleep 3
+          done
+          exit 1

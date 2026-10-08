@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = "20261008-tools-1.0.86";
+  const VERSION = "20261008-tools-1.0.88";
   if (window.__studybridgeToolsHubVersion === VERSION) return;
   window.__studybridgeToolsHubVersion = VERSION;
 
@@ -13,322 +13,606 @@
     "'": "&#39;"
   }[char]));
 
-  const tools = {
-    docs: {
-      icon: "D",
-      title: "SB Docs",
-      subtitle: "写 essay、report 和 reading response",
-      placeholder: "例如：我要写一篇 ECO364 essay，主题是 monetary policy，要求 1200 words，需要 thesis 和结构。",
-      button: "生成 Essay 草稿",
-      make(input) {
-        const text = input.trim() || "这次作业的要求还没有填写。";
-        return [
-          "SB Docs - Essay Builder",
-          "",
-          "1. 题目理解",
-          `- 你提供的要求：${text}`,
-          "- 先确认 course、word count、citation style、deadline 和 rubric。",
-          "",
-          "2. 可用 thesis 模板",
-          "- This essay argues that [main claim] because [reason 1], [reason 2], and [reason 3].",
-          "",
-          "3. 推荐结构",
-          "- Introduction: 背景 + research question + thesis。",
-          "- Body 1: 定义关键概念，并解释为什么重要。",
-          "- Body 2: 放最强证据，连接 lecture notes / readings。",
-          "- Body 3: 处理 counterargument，再回到你的主论点。",
-          "- Conclusion: 总结贡献，不要加入全新论点。",
-          "",
-          "4. 考前/交稿前检查",
-          "- 每段第一句是否清楚？",
-          "- 每个 claim 是否有 evidence？",
-          "- citation 是否统一？",
-          "- 是否直接回答了题目？"
-        ].join("\n");
-      }
-    },
+  const storageId = () => {
+    const userLine = $("#userLine")?.textContent || "guest";
+    return userLine.replace(/[^a-z0-9@._-]+/gi, "_").slice(0, 80) || "guest";
+  };
+  const storageKey = () => `studybridge.tools.workspace.v2.${storageId()}`;
+  const defaultState = () => ({
+    active: "docs",
+    docs: { title: "Untitled essay", body: "" },
     sheets: {
-      icon: "S",
-      title: "SB Sheets",
-      subtitle: "做表格、对比表、计划表",
-      placeholder: "例如：帮我做一个 final 复习计划表，包含课程、任务、due、优先级、预计耗时。",
-      button: "生成表格模板",
-      make(input) {
-        const text = input.trim() || "StudyBridge 学习计划";
-        return [
-          "SB Sheets - Table Builder",
-          "",
-          `用途：${text}`,
-          "",
-          "| Category | Item | Due / Time | Priority | Status | Notes |",
-          "|---|---|---|---|---|---|",
-          "| Course | Course name | Date/time | High/Med/Low | Not started | What to prepare |",
-          "| Assignment | Task name | Date/time | High | In progress | Rubric / submission place |",
-          "| Exam | Topic | Date/time | High | Not started | Weak chapters |",
-          "| Reading | Reading name | Date/time | Medium | Not started | Key pages |",
-          "",
-          "建议：先按 due date 排序，再用 priority 标出最容易影响成绩的任务。"
-        ].join("\n");
-      }
+      rows: [
+        ["Task", "Course", "Due", "Priority", "Status"],
+        ["", "", "", "", ""],
+        ["", "", "", "", ""],
+        ["", "", "", "", ""]
+      ]
     },
     slides: {
-      icon: "P",
-      title: "SB Slides",
-      subtitle: "做 PPT 大纲和 presentation 讲稿",
-      placeholder: "例如：我要做一个 8 分钟 presentation，主题是 AI in education，需要 6 页 PPT。",
-      button: "生成 PPT 大纲",
-      make(input) {
-        const text = input.trim() || "presentation 主题待填写";
-        return [
-          "SB Slides - Presentation Planner",
-          "",
-          `主题/要求：${text}`,
-          "",
-          "Slide 1 - Title",
-          "- 标题、姓名、课程、日期。",
-          "",
-          "Slide 2 - Why it matters",
-          "- 用一个真实问题或数据开场。",
-          "",
-          "Slide 3 - Key concept",
-          "- 解释核心概念，避免堆太多字。",
-          "",
-          "Slide 4 - Evidence / example",
-          "- 放最有说服力的案例、图表或引用。",
-          "",
-          "Slide 5 - Analysis",
-          "- 说明这个例子如何支持你的观点。",
-          "",
-          "Slide 6 - Takeaway",
-          "- 3 个 bullet 总结，最后放 Q&A。",
-          "",
-          "讲稿提示：每页控制 45-75 秒，PPT 上只放关键词，细节放口头讲。"
-        ].join("\n");
-      }
+      activeIndex: 0,
+      items: [
+        { title: "Title slide", bullets: "Main idea\nKey evidence\nTakeaway", notes: "" }
+      ]
+    },
+    aiOutput: "选择一个工具，然后输入要求。AI 的建议会出现在这里，你可以复制到左边继续修改。"
+  });
+  let state = loadState();
+  let saveTimer = null;
+
+  function loadState() {
+    try {
+      return { ...defaultState(), ...JSON.parse(localStorage.getItem(storageKey()) || "{}") };
+    } catch {
+      return defaultState();
     }
-  };
+  }
 
-  let activeTool = "docs";
+  function saveState() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      localStorage.setItem(storageKey(), JSON.stringify(state));
+      const label = $("#sbToolsSaveStatus");
+      if (label) label.textContent = "Saved";
+    }, 120);
+  }
 
-  function installStyle() {
-    if ($("#studybridgeToolsHubStyle")) return;
+  function injectStyles() {
+    if ($("#studybridgeToolsStyles")) return;
     const style = document.createElement("style");
-    style.id = "studybridgeToolsHubStyle";
+    style.id = "studybridgeToolsStyles";
     style.textContent = `
-      .sb-tools-nav { display:grid; gap:10px; margin:10px 0 14px; }
-      .sb-tools-card { width:100%; min-height:54px; display:grid; grid-template-columns:36px minmax(0,1fr); align-items:center; gap:10px; padding:9px 12px; border:1px solid #d7e0ec; border-radius:8px; background:#fff; color:#0b2344; text-align:left; font:inherit; cursor:pointer; }
-      .sb-tools-card:hover,.sb-tools-card.is-active { border-color:#2f7d62; background:#fbfffd; }
-      .sb-tools-card strong { display:block; line-height:1.15; }
-      .sb-tools-card small { display:block; margin-top:2px; color:#52617a; line-height:1.25; }
-      .sb-tools-icon { width:36px; height:36px; display:grid; place-items:center; border-radius:8px; color:#fff; background:linear-gradient(135deg,#1f3a5f,#2f7d62); font-weight:900; }
-      body.sb-creator-sidebar #sbToolsHubNav { display:none !important; }
-      .sb-tool-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
-      .sb-tool-card { display:grid; grid-template-columns:44px minmax(0,1fr); gap:12px; align-items:center; padding:14px; border:1px solid #d7e0ec; border-radius:8px; background:#fff; color:#0b2344; text-align:left; cursor:pointer; }
-      .sb-tool-card:hover,.sb-tool-card.active { border-color:#2f7d62; box-shadow:inset 3px 0 0 #2f7d62; }
-      .sb-tool-card-icon { width:44px; height:44px; display:grid; place-items:center; border-radius:8px; color:#fff; font-weight:900; background:linear-gradient(135deg,#1f3a5f,#2f7d62); }
-      .sb-tool-card h3 { margin:0 0 4px; font-size:17px; }
-      .sb-tool-card p { margin:0; color:#52617a; font-size:13px; line-height:1.35; }
-      .sb-tool-workspace { display:grid; grid-template-columns:minmax(280px,.9fr) minmax(320px,1.1fr); gap:14px; }
-      .sb-tool-textarea { width:100%; min-height:260px; border:1px solid #d7e0ec; border-radius:8px; padding:12px; font:inherit; line-height:1.55; color:#0b2344; background:#fff; resize:vertical; }
-      .sb-tool-output { min-height:360px; white-space:pre-wrap; line-height:1.6; }
-      @media (max-width:900px) { .sb-tool-workspace { grid-template-columns:1fr; } }
+      #studybridgeToolsNav {
+        width: 100%;
+        border: 1px solid #cfd9e8;
+        border-radius: 8px;
+        background: #fff;
+        color: #0b2a55;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+        margin: 10px 0;
+        cursor: pointer;
+        text-align: left;
+        font: inherit;
+      }
+      #studybridgeToolsNav:hover,
+      #studybridgeToolsNav.active {
+        border-color: #2f8a6c;
+        background: #f7fbf9;
+      }
+      .sb-tool-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        display: inline-grid;
+        place-items: center;
+        flex: 0 0 auto;
+        background: linear-gradient(135deg, #214568, #2f8a6c);
+        color: #fff;
+        font-weight: 900;
+      }
+      .sb-tool-nav-text strong,
+      .sb-tools-tab strong { display: block; line-height: 1.2; }
+      .sb-tool-nav-text span,
+      .sb-tools-tab span { display: block; color: #4c5f7d; font-size: 13px; line-height: 1.35; margin-top: 2px; }
+      #studybridgeToolsPage { display: none; min-height: 100vh; padding: 28px 32px 44px; }
+      body.sb-tools-mode #studybridgeToolsPage { display: block; }
+      body.sb-tools-mode #workspacePage > .topbar,
+      body.sb-tools-mode #workspacePage > #developerPanel,
+      body.sb-tools-mode #workspacePage > #chatArea,
+      body.sb-tools-mode #workspacePage > #quickPrompts,
+      body.sb-tools-mode #workspacePage > #chatForm,
+      body.sb-tools-mode #workspacePage > #scheduleDashboard { display: none !important; }
+      body.sb-tools-mode #workspacePage { display: block !important; overflow: auto !important; min-height: 100vh; }
+      .sb-tools-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        padding-bottom: 18px;
+        border-bottom: 1px solid #d8e1ec;
+      }
+      .sb-tools-header .eyebrow { color: #08734f; font-weight: 900; text-transform: uppercase; font-size: 12px; margin: 0 0 3px; }
+      .sb-tools-header h2 { margin: 0; font-size: 30px; color: #061b3b; }
+      .sb-tools-header p { margin: 4px 0 0; color: #4c5f7d; }
+      .sb-tools-card {
+        border: 1px solid #d6e0ed;
+        border-radius: 8px;
+        background: rgba(255,255,255,0.92);
+        box-shadow: 0 12px 28px rgba(15, 35, 60, 0.06);
+      }
+      .sb-tools-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 16px; margin: 18px 0 16px; }
+      .sb-tools-tab {
+        min-height: 74px;
+        border: 1px solid #d6e0ed;
+        border-radius: 8px;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        cursor: pointer;
+        text-align: left;
+        font: inherit;
+      }
+      .sb-tools-tab.active { border-color: #2f8a6c; box-shadow: inset 3px 0 0 #2f8a6c; }
+      .sb-tools-workspace { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr); gap: 16px; }
+      .sb-tools-panel { padding: 18px; min-height: 520px; }
+      .sb-tools-panel h3 { margin: 0 0 8px; font-size: 22px; color: #061b3b; }
+      .sb-tools-panel label { display: block; font-weight: 900; color: #17345f; margin: 14px 0 8px; }
+      .sb-tools-input,
+      .sb-tools-textarea,
+      .sb-tools-ai-input {
+        width: 100%;
+        border: 1px solid #cfd9e8;
+        border-radius: 8px;
+        background: #fff;
+        color: #061b3b;
+        font: inherit;
+        padding: 12px 14px;
+        box-sizing: border-box;
+      }
+      .sb-tools-textarea { min-height: 360px; resize: vertical; line-height: 1.65; }
+      .sb-tools-ai-input { min-height: 170px; resize: vertical; line-height: 1.55; }
+      .sb-tools-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+      .sb-tools-button {
+        border: 1px solid #cfd9e8;
+        border-radius: 8px;
+        background: #fff;
+        color: #0b2a55;
+        min-height: 40px;
+        padding: 0 14px;
+        font-weight: 900;
+        cursor: pointer;
+      }
+      .sb-tools-button.primary { background: linear-gradient(135deg, #214568, #2f8a6c); color: #fff; border-color: transparent; }
+      .sb-tools-button:hover { transform: translateY(-1px); }
+      .sb-tools-status { color: #60708a; font-size: 13px; margin-left: auto; }
+      .sb-sheet-wrap { overflow: auto; border: 1px solid #d6e0ed; border-radius: 8px; background: #fff; }
+      .sb-sheet-table { width: 100%; border-collapse: collapse; min-width: 620px; }
+      .sb-sheet-table th,
+      .sb-sheet-table td { border: 1px solid #d6e0ed; min-width: 120px; height: 42px; padding: 8px; vertical-align: top; }
+      .sb-sheet-table th { background: #f2f6fb; color: #17345f; font-size: 12px; }
+      .sb-sheet-cell { min-height: 24px; outline: none; white-space: pre-wrap; }
+      .sb-slide-layout { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 14px; }
+      .sb-slide-list { display: grid; gap: 8px; align-content: start; }
+      .sb-slide-thumb {
+        border: 1px solid #d6e0ed;
+        border-radius: 8px;
+        background: #fff;
+        padding: 10px;
+        min-height: 70px;
+        cursor: pointer;
+        text-align: left;
+      }
+      .sb-slide-thumb.active { border-color: #2f8a6c; box-shadow: inset 3px 0 0 #2f8a6c; }
+      .sb-tools-ai-output {
+        min-height: 265px;
+        border: 1px solid #d6e0ed;
+        border-radius: 8px;
+        background: #f8fbff;
+        padding: 14px;
+        margin-top: 14px;
+        white-space: pre-wrap;
+        line-height: 1.65;
+        color: #10284d;
+        overflow: auto;
+      }
+      @media (max-width: 980px) {
+        #studybridgeToolsPage { padding: 18px 14px 34px; }
+        .sb-tools-tabs,
+        .sb-tools-workspace { grid-template-columns: 1fr; }
+        .sb-slide-layout { grid-template-columns: 1fr; }
+      }
     `;
     document.head.appendChild(style);
   }
 
-  function clearActiveNav() {
-    $$('[data-sb-route], #sbToolsHubNav .sb-tools-card').forEach((node) => node.classList.remove("is-active"));
-  }
+  const toolMeta = {
+    docs: { icon: "D", title: "SB Docs", subtitle: "像文档一样自己写 essay、report、reading response", button: "让 AI 帮我改进文档" },
+    sheets: { icon: "S", title: "SB Sheets", subtitle: "自己做表格、计划表、对比表", button: "让 AI 帮我优化表格" },
+    slides: { icon: "P", title: "SB Slides", subtitle: "自己做 PPT 大纲、页面和讲稿", button: "让 AI 帮我优化 Slides" }
+  };
 
-  function ensureNav() {
+  function ensureToolsNav() {
+    if ($("#studybridgeToolsNav")) return;
+    const roleSwitch = $("#roleSwitch");
     const sidebar = $(".sidebar");
     if (!sidebar) return;
-    $$("#sbToolsHubNav", sidebar).forEach((nav, index) => { if (index > 0) nav.remove(); });
-    let nav = $("#sbToolsHubNav", sidebar);
-    if (!nav) {
-      nav = document.createElement("nav");
-      nav.id = "sbToolsHubNav";
-      nav.className = "sb-tools-nav";
-      nav.innerHTML = `<button class="sb-tools-card" type="button" data-sb-tools-hub="true"><span class="sb-tools-icon">工</span><span><strong>工具</strong><small>SB Docs、Sheets、Slides</small></span></button>`;
-    }
-    const directNav = $("#sbDirectNav", sidebar);
-    const roleSwitch = $("#roleSwitch", sidebar);
-    if (directNav && directNav.nextSibling !== nav) directNav.insertAdjacentElement("afterend", nav);
-    else if (!directNav && roleSwitch && roleSwitch.previousSibling !== nav) sidebar.insertBefore(nav, roleSwitch);
-    else if (!directNav && !roleSwitch && !nav.parentElement) sidebar.appendChild(nav);
+    const nav = document.createElement("button");
+    nav.id = "studybridgeToolsNav";
+    nav.type = "button";
+    nav.innerHTML = `
+      <span class="sb-tool-icon">工</span>
+      <span class="sb-tool-nav-text"><strong>工具</strong><span>SB Docs、Sheets、Slides</span></span>
+    `;
+    if (roleSwitch?.parentNode) roleSwitch.parentNode.insertBefore(nav, roleSwitch);
+    else sidebar.appendChild(nav);
   }
 
-  function ensureDirectPage() {
-    const root = $("#workspacePage");
-    if (!root) return null;
-    let page = $("#sbDirectPage", root);
+  function ensureToolsPage() {
+    const workspace = $("#workspacePage");
+    if (!workspace) return null;
+    let page = $("#studybridgeToolsPage", workspace);
     if (!page) {
       page = document.createElement("section");
-      page.id = "sbDirectPage";
-      root.appendChild(page);
+      page.id = "studybridgeToolsPage";
+      workspace.appendChild(page);
     }
     return page;
   }
 
-  function showDirectPage(html) {
-    const root = $("#workspacePage");
-    const page = ensureDirectPage();
-    if (!root || !page) return null;
-    Array.from(root.children).forEach((child) => {
-      if (child.id !== "sbDirectPage") child.style.display = "none";
-    });
-    document.body.classList.add("sb-direct-mode");
-    document.body.classList.remove("sb-study-mode", "sb-creator-sidebar");
-    page.hidden = false;
-    page.innerHTML = html;
-    root.scrollTop = 0;
-    clearActiveNav();
-    $("#sbToolsHubNav .sb-tools-card")?.classList.add("is-active");
-    localStorage.setItem("studybridgeLastRoute", "tools");
-    const status = $("#statusLine");
-    if (status) status.textContent = "Tools opened.";
-    return page;
+  function openTools(tool = state.active || "docs") {
+    state.active = toolMeta[tool] ? tool : "docs";
+    saveState();
+    injectStyles();
+    ensureToolsNav();
+    const page = ensureToolsPage();
+    if (!page) return;
+    document.body.classList.add("sb-tools-mode");
+    document.body.classList.add("studybridge-secondary-page");
+    document.body.dataset.studybridgeActivePage = "tools";
+    $$("#studybridgeToolsNav").forEach((node) => node.classList.add("active"));
+    renderToolsPage();
+    setTimeout(() => page.scrollIntoView({ block: "start" }), 0);
   }
 
-  function toolCards() {
-    return Object.entries(tools).map(([key, tool]) => `
-      <button class="sb-tool-card ${key === activeTool ? "active" : ""}" type="button" data-tool-key="${esc(key)}">
-        <span class="sb-tool-card-icon">${esc(tool.icon)}</span>
-        <span><h3>${esc(tool.title)}</h3><p>${esc(tool.subtitle)}</p></span>
-      </button>
-    `).join("");
-  }
-
-  function renderEditor(page) {
-    const tool = tools[activeTool] || tools.docs;
-    const mount = $("#sbToolEditor", page);
-    if (!mount) return;
-    mount.innerHTML = `
-      <article class="sb-card">
-        <h3 style="margin-top:0">${esc(tool.title)}</h3>
-        <p class="sb-muted">把要求、资料或你想完成的任务写在下面。</p>
-        <textarea class="sb-tool-textarea" id="sbToolInput" placeholder="${esc(tool.placeholder)}"></textarea>
-        <div class="sb-row" style="margin-top:10px">
-          <button class="sb-btn primary" type="button" id="sbToolGenerate">${esc(tool.button)}</button>
-          <button class="sb-btn" type="button" id="sbToolClear">清空</button>
-        </div>
-      </article>
-      <article class="sb-card">
-        <div class="sb-row" style="justify-content:space-between;margin-bottom:10px">
-          <div><p class="sb-muted" style="margin:0;font-weight:900">OUTPUT</p><h3 style="margin:0">生成结果</h3></div>
-          <button class="sb-btn" type="button" id="sbToolCopy">复制</button>
-        </div>
-        <pre class="sb-tool-output" id="sbToolOutput">选择一个工具，然后输入要求。这里会生成可以继续修改的初稿。</pre>
-      </article>
-    `;
+  function closeTools() {
+    document.body.classList.remove("sb-tools-mode");
+    if (document.body.dataset.studybridgeActivePage === "tools") {
+      document.body.dataset.studybridgeActivePage = "workspacePage";
+    }
+    $$("#studybridgeToolsNav").forEach((node) => node.classList.remove("active"));
+    const studyNav = $("[data-study-page='study'], #studybridgeStudyNav, [data-direct-page='study']");
+    if (studyNav && typeof studyNav.click === "function") studyNav.click();
   }
 
   function renderToolsPage() {
-    const page = showDirectPage(`
-      <header class="sb-page-head">
-        <div>
-          <p>STUDY TOOLS</p>
-          <h2>工具</h2>
-          <span class="sb-muted">写 essay、做表格、做 PPT 的工具都放这里。</span>
-        </div>
-        <button class="sb-btn" type="button" data-sb-tools-return>返回学习区</button>
-      </header>
-      <div class="sb-body">
-        <section class="sb-card">
-          <div class="sb-tool-cards" id="sbToolCards">${toolCards()}</div>
-        </section>
-        <section class="sb-tool-workspace" id="sbToolEditor"></section>
-      </div>
-    `);
+    const page = ensureToolsPage();
     if (!page) return;
-    renderEditor(page);
+    const active = state.active || "docs";
+    page.innerHTML = `
+      <header class="sb-tools-header">
+        <div>
+          <p class="eyebrow">Study Tools</p>
+          <h2>工具</h2>
+          <p>左边可以自己写、自己做；右边的 AI 只是辅助，不会替代你的手动编辑。</p>
+        </div>
+        <button class="sb-tools-button" type="button" data-tools-close>返回学习区</button>
+      </header>
+      <section class="sb-tools-card sb-tools-tabs" aria-label="StudyBridge tools">
+        ${Object.entries(toolMeta).map(([key, meta]) => `
+          <button class="sb-tools-tab ${active === key ? "active" : ""}" type="button" data-tool-tab="${key}">
+            <span class="sb-tool-icon">${esc(meta.icon)}</span>
+            <span><strong>${esc(meta.title)}</strong><span>${esc(meta.subtitle)}</span></span>
+          </button>
+        `).join("")}
+      </section>
+      <section class="sb-tools-workspace">
+        <div class="sb-tools-card sb-tools-panel" id="sbToolsEditor"></div>
+        <aside class="sb-tools-card sb-tools-panel" id="sbToolsAiPanel"></aside>
+      </section>
+    `;
+    renderEditor();
+    renderAiPanel();
   }
 
-  function openStudy() {
-    if (typeof window.studybridgeDirectOpen === "function") {
-      window.studybridgeDirectOpen("study");
+  function renderEditor() {
+    const editor = $("#sbToolsEditor");
+    if (!editor) return;
+    if (state.active === "sheets") return renderSheets(editor);
+    if (state.active === "slides") return renderSlides(editor);
+    return renderDocs(editor);
+  }
+
+  function renderDocs(editor) {
+    editor.innerHTML = `
+      <h3>SB Docs</h3>
+      <p>这里可以像文档一样先自己写。需要 AI 的时候，再用右边的辅助栏。</p>
+      <label for="sbDocTitle">文档标题</label>
+      <input class="sb-tools-input" id="sbDocTitle" value="${esc(state.docs.title)}" placeholder="例如 ECO364 Essay Draft" />
+      <label for="sbDocBody">正文</label>
+      <textarea class="sb-tools-textarea" id="sbDocBody" placeholder="在这里直接写 essay、outline、reading response 或草稿...">${esc(state.docs.body)}</textarea>
+      <div class="sb-tools-actions">
+        <button class="sb-tools-button primary" type="button" data-tools-save>保存草稿</button>
+        <button class="sb-tools-button" type="button" data-tools-copy-doc>复制正文</button>
+        <button class="sb-tools-button" type="button" data-tools-clear-doc>清空</button>
+        <span class="sb-tools-status" id="sbToolsSaveStatus">Saved</span>
+      </div>
+    `;
+  }
+
+  function renderSheets(editor) {
+    const rows = Array.isArray(state.sheets.rows) && state.sheets.rows.length ? state.sheets.rows : defaultState().sheets.rows;
+    state.sheets.rows = rows;
+    const colCount = Math.max(...rows.map((row) => row.length), 5);
+    rows.forEach((row) => { while (row.length < colCount) row.push(""); });
+    editor.innerHTML = `
+      <h3>SB Sheets</h3>
+      <p>这里可以手动做表格。第一行建议当作表头，用来做 deadline、复习计划、对比表。</p>
+      <div class="sb-sheet-wrap">
+        <table class="sb-sheet-table">
+          <thead><tr>${Array.from({ length: colCount }, (_, i) => `<th>${String.fromCharCode(65 + i)}</th>`).join("")}</tr></thead>
+          <tbody>
+            ${rows.map((row, r) => `<tr>${row.map((cell, c) => `<td><div class="sb-sheet-cell" contenteditable="true" data-sheet-row="${r}" data-sheet-col="${c}">${esc(cell)}</div></td>`).join("")}</tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+      <div class="sb-tools-actions">
+        <button class="sb-tools-button primary" type="button" data-tools-save>保存表格</button>
+        <button class="sb-tools-button" type="button" data-sheet-row-add>加一行</button>
+        <button class="sb-tools-button" type="button" data-sheet-col-add>加一列</button>
+        <button class="sb-tools-button" type="button" data-sheet-copy>复制 CSV</button>
+        <button class="sb-tools-button" type="button" data-sheet-clear>清空</button>
+        <span class="sb-tools-status" id="sbToolsSaveStatus">Saved</span>
+      </div>
+    `;
+  }
+
+  function currentSlide() {
+    if (!state.slides.items?.length) state.slides.items = defaultState().slides.items;
+    state.slides.activeIndex = Math.min(Math.max(Number(state.slides.activeIndex) || 0, 0), state.slides.items.length - 1);
+    return state.slides.items[state.slides.activeIndex];
+  }
+
+  function renderSlides(editor) {
+    const slide = currentSlide();
+    editor.innerHTML = `
+      <h3>SB Slides</h3>
+      <p>左边选择页面，右边手动写标题、要点和讲稿。AI 可以帮你整理结构。</p>
+      <div class="sb-slide-layout">
+        <div class="sb-slide-list">
+          ${state.slides.items.map((item, index) => `
+            <button class="sb-slide-thumb ${index === state.slides.activeIndex ? "active" : ""}" type="button" data-slide-index="${index}">
+              <strong>Slide ${index + 1}</strong><br />${esc(item.title || "Untitled")}
+            </button>
+          `).join("")}
+          <button class="sb-tools-button" type="button" data-slide-add>+ 新增 Slide</button>
+        </div>
+        <div>
+          <label for="sbSlideTitle">Slide 标题</label>
+          <input class="sb-tools-input" id="sbSlideTitle" value="${esc(slide.title)}" />
+          <label for="sbSlideBullets">页面要点</label>
+          <textarea class="sb-tools-textarea" id="sbSlideBullets" style="min-height:180px" placeholder="每行一个 bullet point">${esc(slide.bullets)}</textarea>
+          <label for="sbSlideNotes">演讲稿 / Speaker notes</label>
+          <textarea class="sb-tools-textarea" id="sbSlideNotes" style="min-height:130px" placeholder="这里写你演讲时要说的话">${esc(slide.notes)}</textarea>
+        </div>
+      </div>
+      <div class="sb-tools-actions">
+        <button class="sb-tools-button primary" type="button" data-tools-save>保存 Slides</button>
+        <button class="sb-tools-button" type="button" data-slide-copy>复制大纲</button>
+        <button class="sb-tools-button" type="button" data-slide-delete>删除当前页</button>
+        <span class="sb-tools-status" id="sbToolsSaveStatus">Saved</span>
+      </div>
+    `;
+  }
+
+  function renderAiPanel() {
+    const panel = $("#sbToolsAiPanel");
+    if (!panel) return;
+    const meta = toolMeta[state.active] || toolMeta.docs;
+    panel.innerHTML = `
+      <p class="eyebrow">AI Assistant</p>
+      <h3>${esc(meta.title)} AI 辅助</h3>
+      <p>你可以先在左边自己写，再让 AI 帮你改结构、补思路、检查逻辑或整理格式。</p>
+      <label for="sbToolsAiRequest">你想让 AI 帮什么？</label>
+      <textarea class="sb-tools-ai-input" id="sbToolsAiRequest" placeholder="例如：帮我把左边草稿改成更清楚的 thesis + outline，保留英文关键词，用中文解释逻辑。"></textarea>
+      <div class="sb-tools-actions">
+        <button class="sb-tools-button primary" type="button" data-tools-ai-run>${esc(meta.button)}</button>
+        <button class="sb-tools-button" type="button" data-tools-copy-ai>复制 AI 建议</button>
+      </div>
+      <div class="sb-tools-ai-output" id="sbToolsAiOutput">${esc(state.aiOutput)}</div>
+    `;
+  }
+
+  function captureCurrentEditor() {
+    if (state.active === "docs") {
+      state.docs.title = $("#sbDocTitle")?.value || state.docs.title || "Untitled essay";
+      state.docs.body = $("#sbDocBody")?.value || "";
+    } else if (state.active === "sheets") {
+      $$("[data-sheet-row]").forEach((cell) => {
+        const r = Number(cell.dataset.sheetRow);
+        const c = Number(cell.dataset.sheetCol);
+        if (!state.sheets.rows[r]) state.sheets.rows[r] = [];
+        state.sheets.rows[r][c] = cell.textContent.trim();
+      });
+    } else if (state.active === "slides") {
+      const slide = currentSlide();
+      slide.title = $("#sbSlideTitle")?.value || "";
+      slide.bullets = $("#sbSlideBullets")?.value || "";
+      slide.notes = $("#sbSlideNotes")?.value || "";
+    }
+    const label = $("#sbToolsSaveStatus");
+    if (label) label.textContent = "Saving...";
+    saveState();
+  }
+
+  function csvFromRows(rows) {
+    return rows.map((row) => row.map((cell) => `"${String(cell || "").replace(/"/g, '""')}"`).join(",")).join("\n");
+  }
+
+  function slidesOutline() {
+    return state.slides.items.map((slide, index) => [
+      `Slide ${index + 1}: ${slide.title || "Untitled"}`,
+      slide.bullets ? slide.bullets.split("\n").map((line) => `- ${line}`).join("\n") : "- ",
+      slide.notes ? `Notes: ${slide.notes}` : ""
+    ].filter(Boolean).join("\n")).join("\n\n");
+  }
+
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text || "");
+      state.aiOutput = "已复制。";
+    } catch {
+      state.aiOutput = "复制失败，可以手动选中文字复制。";
+    }
+    renderAiPanel();
+  }
+
+  function buildContext() {
+    captureCurrentEditor();
+    if (state.active === "docs") return `Tool: SB Docs\nTitle: ${state.docs.title}\nDocument:\n${state.docs.body || "(empty)"}`;
+    if (state.active === "sheets") return `Tool: SB Sheets\nTable CSV:\n${csvFromRows(state.sheets.rows)}`;
+    return `Tool: SB Slides\nOutline:\n${slidesOutline()}`;
+  }
+
+  async function api(path, options = {}) {
+    const response = await fetch(path, {
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+      ...options
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `Request failed: ${response.status}`);
+    return data;
+  }
+
+  async function ensureToolsCourse() {
+    const coursesData = await api("/api/courses");
+    const courses = Array.isArray(coursesData.courses) ? coursesData.courses : Array.isArray(coursesData) ? coursesData : [];
+    let course = courses.find((item) => /studybridge tools/i.test(item.name || item.title || ""));
+    if (course) return course;
+    const created = await api("/api/courses", {
+      method: "POST",
+      body: JSON.stringify({ name: "StudyBridge Tools", term: "Tools workspace" })
+    });
+    return created.course || created;
+  }
+
+  async function runAi() {
+    const output = $("#sbToolsAiOutput");
+    const request = $("#sbToolsAiRequest")?.value.trim() || "请根据左边内容给我改进建议，并保留我可以继续手动修改的结构。";
+    if (output) output.textContent = "AI 正在看你的内容...";
+    try {
+      const course = await ensureToolsCourse();
+      const prompt = [
+        "你是 StudyBridge 的学习工具助手。学生正在使用 Docs/Sheets/Slides 手动制作内容。",
+        "你的任务是辅助，而不是替学生完全覆盖内容。请给出可直接复制、可继续修改的建议。",
+        "如果是 Docs，重点帮助 thesis、结构、段落逻辑、引用提醒。",
+        "如果是 Sheets，重点帮助表头、分类、公式、优先级、计划结构。",
+        "如果是 Slides，重点帮助页面顺序、bullet points、speaker notes 和 presentation flow。",
+        "请用中文解释，关键 academic terms 可以保留英文。",
+        "",
+        `学生要求：${request}`,
+        "",
+        buildContext()
+      ].join("\n");
+      const data = await api(`/api/courses/${encodeURIComponent(course.id)}/chat`, {
+        method: "POST",
+        body: JSON.stringify({ mode: "assignment", message: prompt })
+      });
+      const messages = Array.isArray(data.messages) ? data.messages : [];
+      const assistant = [...messages].reverse().find((item) => item.role === "assistant");
+      state.aiOutput = assistant?.content || data.reply || data.message || "AI 已完成，但没有返回可显示内容。";
+    } catch (error) {
+      state.aiOutput = `AI 暂时没有成功调用：${error.message}\n\n你仍然可以继续使用左边的手动编辑功能。`;
+    }
+    saveState();
+    renderAiPanel();
+  }
+
+  function handleToolsClick(event) {
+    const nav = event.target.closest("#studybridgeToolsNav");
+    if (nav) {
+      event.preventDefault();
+      openTools();
       return;
     }
-    const page = $("#sbDirectPage");
-    const root = $("#workspacePage");
-    if (page) { page.hidden = true; page.innerHTML = ""; }
-    if (root) Array.from(root.children).forEach((child) => { if (child.id !== "sbDirectPage") child.style.display = ""; });
-    document.body.classList.remove("sb-direct-mode");
-    document.body.classList.add("sb-study-mode");
-    localStorage.setItem("studybridgeLastRoute", "study");
+    const close = event.target.closest("[data-tools-close]");
+    if (close) {
+      event.preventDefault();
+      closeTools();
+      return;
+    }
+    const tab = event.target.closest("[data-tool-tab]");
+    if (tab) {
+      event.preventDefault();
+      captureCurrentEditor();
+      state.active = tab.dataset.toolTab;
+      saveState();
+      renderToolsPage();
+      return;
+    }
+    if (event.target.closest("[data-tools-save]")) {
+      event.preventDefault();
+      captureCurrentEditor();
+      return;
+    }
+    if (event.target.closest("[data-tools-copy-doc]")) return copyText($("#sbDocBody")?.value || "");
+    if (event.target.closest("[data-tools-clear-doc]")) {
+      state.docs.body = "";
+      saveState();
+      renderToolsPage();
+      return;
+    }
+    if (event.target.closest("[data-sheet-row-add]")) {
+      const cols = Math.max(...state.sheets.rows.map((row) => row.length), 5);
+      state.sheets.rows.push(Array.from({ length: cols }, () => ""));
+      saveState();
+      renderToolsPage();
+      return;
+    }
+    if (event.target.closest("[data-sheet-col-add]")) {
+      state.sheets.rows.forEach((row) => row.push(""));
+      saveState();
+      renderToolsPage();
+      return;
+    }
+    if (event.target.closest("[data-sheet-copy]")) return copyText(csvFromRows(state.sheets.rows));
+    if (event.target.closest("[data-sheet-clear]")) {
+      state.sheets.rows = defaultState().sheets.rows;
+      saveState();
+      renderToolsPage();
+      return;
+    }
+    const slideButton = event.target.closest("[data-slide-index]");
+    if (slideButton) {
+      captureCurrentEditor();
+      state.slides.activeIndex = Number(slideButton.dataset.slideIndex) || 0;
+      saveState();
+      renderToolsPage();
+      return;
+    }
+    if (event.target.closest("[data-slide-add]")) {
+      captureCurrentEditor();
+      state.slides.items.push({ title: `Slide ${state.slides.items.length + 1}`, bullets: "", notes: "" });
+      state.slides.activeIndex = state.slides.items.length - 1;
+      saveState();
+      renderToolsPage();
+      return;
+    }
+    if (event.target.closest("[data-slide-delete]")) {
+      if (state.slides.items.length > 1) state.slides.items.splice(state.slides.activeIndex, 1);
+      state.slides.activeIndex = Math.max(0, state.slides.activeIndex - 1);
+      saveState();
+      renderToolsPage();
+      return;
+    }
+    if (event.target.closest("[data-slide-copy]")) return copyText(slidesOutline());
+    if (event.target.closest("[data-tools-copy-ai]")) return copyText(state.aiOutput || "");
+    if (event.target.closest("[data-tools-ai-run]")) {
+      event.preventDefault();
+      runAi();
+    }
   }
 
-  function installEvents() {
-    document.addEventListener("click", async (event) => {
-      const toolsButton = event.target.closest?.("[data-sb-tools-hub]");
-      if (toolsButton) {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation?.();
-        renderToolsPage();
-        return;
-      }
-
-      const back = event.target.closest?.("[data-sb-tools-return]");
-      if (back) {
-        event.preventDefault();
-        openStudy();
-        return;
-      }
-
-      const toolButton = event.target.closest?.("[data-tool-key]");
-      if (toolButton) {
-        activeTool = toolButton.dataset.toolKey || "docs";
-        const page = $("#sbDirectPage");
-        if (page) {
-          $("#sbToolCards", page).innerHTML = toolCards();
-          renderEditor(page);
-        }
-        return;
-      }
-
-      const generate = event.target.closest?.("#sbToolGenerate");
-      if (generate) {
-        const tool = tools[activeTool] || tools.docs;
-        const input = $("#sbToolInput")?.value || "";
-        const output = $("#sbToolOutput");
-        if (output) output.textContent = tool.make(input);
-        return;
-      }
-
-      const clear = event.target.closest?.("#sbToolClear");
-      if (clear) {
-        const input = $("#sbToolInput");
-        const output = $("#sbToolOutput");
-        if (input) input.value = "";
-        if (output) output.textContent = "选择一个工具，然后输入要求。这里会生成可以继续修改的初稿。";
-        return;
-      }
-
-      const copy = event.target.closest?.("#sbToolCopy");
-      if (copy) {
-        const text = $("#sbToolOutput")?.textContent || "";
-        try {
-          await navigator.clipboard?.writeText(text);
-          copy.textContent = "已复制";
-          setTimeout(() => { copy.textContent = "复制"; }, 1200);
-        } catch {
-          copy.textContent = "复制失败";
-          setTimeout(() => { copy.textContent = "复制"; }, 1200);
-        }
-      }
-    }, true);
+  function handleInput(event) {
+    if (!event.target.closest("#studybridgeToolsPage")) return;
+    captureCurrentEditor();
   }
 
-  function init() {
-    installStyle();
-    ensureNav();
-    installEvents();
-    new MutationObserver(() => ensureNav()).observe(document.body, { childList: true, subtree: true });
-    window.studybridgeOpenTools = renderToolsPage;
-    window.studybridgeToolsHubSelfTest = () => ({ version: VERSION, navReady: Boolean($("#sbToolsHubNav")), tools: Object.keys(tools) });
+  function boot() {
+    injectStyles();
+    ensureToolsNav();
+    document.addEventListener("click", handleToolsClick, true);
+    document.addEventListener("input", handleInput, true);
+    const observer = new MutationObserver(() => ensureToolsNav());
+    observer.observe(document.body, { childList: true, subtree: true });
+    window.studybridgeOpenTools = openTools;
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init, { once: true });
-  else init();
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
+  else boot();
 })();

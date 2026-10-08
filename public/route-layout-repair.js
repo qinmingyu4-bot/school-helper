@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = "20261008-route-layout-repair-1.0.70";
+  const VERSION = "20261008-route-layout-repair-1.0.71";
   if (window.__studybridgeRouteLayoutRepair === VERSION) return;
   window.__studybridgeRouteLayoutRepair = VERSION;
 
@@ -181,6 +181,58 @@
     openRoute(route);
   }
 
+  async function postJson(path, body) {
+    const response = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(body)
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "Request failed.");
+    return payload;
+  }
+
+  function fieldValue(selector) {
+    return $(selector)?.value?.trim() || "";
+  }
+
+  function setMessage(text) {
+    const message = $("#authMessage");
+    if (message) message.textContent = text;
+  }
+
+  async function handleAuthSubmit(event) {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement) || form.id !== "authForm") return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+
+    const submit = $("#authSubmit");
+    const mode = $("[data-auth-mode].active")?.dataset.authMode || "login";
+    const payload = {
+      name: fieldValue("#nameInput"),
+      email: fieldValue("#emailInput"),
+      password: fieldValue("#passwordInput"),
+      inviteCode: fieldValue("#inviteInput")
+    };
+
+    setMessage("");
+    if (submit) submit.disabled = true;
+
+    try {
+      await postJson(`/api/auth/${mode}`, payload);
+      setMessage(mode === "register" ? "Register success. Entering StudyBridge..." : "Login success. Entering StudyBridge...");
+      window.location.reload();
+    } catch (error) {
+      setMessage(error.message || "Login failed. Please try again.");
+    } finally {
+      if (submit) submit.disabled = false;
+    }
+  }
+
   function repair() {
     installStyle();
     dedupeFeatureCards();
@@ -189,6 +241,7 @@
 
   document.addEventListener("click", handleNavigation, true);
   document.addEventListener("pointerup", handleNavigation, true);
+  document.addEventListener("submit", handleAuthSubmit, true);
   document.addEventListener("DOMContentLoaded", repair, { once: true });
   window.setInterval(repair, 2500);
   repair();

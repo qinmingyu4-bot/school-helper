@@ -31,5 +31,12 @@ jobs:
           node --check public/app.js
           for f in public/*.js; do node --check "$f"; done
           git add public package.json package-lock.json 2>/dev/null || git add public package.json
-          git commit -m "Restore functional StudyBridge frontend version 1.0.74" || exit 0
-          git push
+          git commit -m "Restore functional StudyBridge frontend version 1.0.74 [skip ci]" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push; then
+              exit 0
+            fi
+            sleep 3
+          done
+          exit 1

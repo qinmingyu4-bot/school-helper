@@ -1,37 +1,27 @@
 (() => {
-  const VERSION = "20261007-developer-access-lite-1.0.55";
-  if (window.__studybridgeDeveloperAccessFix === VERSION) return;
-  window.__studybridgeDeveloperAccessFix = VERSION;
+  const VERSION = "20261008-developer-delegator-1.0.61";
+  if (window.__studybridgeDeveloperDelegator === VERSION) return;
+  window.__studybridgeDeveloperDelegator = VERSION;
 
-  function openRoute(route) {
-    if (typeof window.studybridgeDirectOpen === "function") return window.studybridgeDirectOpen(route);
+  function open(route) {
+    if (typeof window.studybridgeOpenDirectPage === "function") {
+      window.studybridgeOpenDirectPage(route);
+      return true;
+    }
+    if (typeof window.studybridgeDirectOpen === "function") {
+      window.studybridgeDirectOpen(route);
+      return true;
+    }
     return false;
   }
 
-  function bind() {
-    const creatorButton = document.querySelector("#creatorViewButton");
-    const studentButton = document.querySelector("#studentViewButton");
-
-    if (creatorButton && creatorButton.dataset.developerAccessLite !== "true") {
-      creatorButton.dataset.developerAccessLite = "true";
-      creatorButton.addEventListener("click", (event) => {
-        event.preventDefault();
-        openRoute("developer");
-      }, true);
-    }
-
-    if (studentButton && studentButton.dataset.developerAccessLite !== "true") {
-      studentButton.dataset.developerAccessLite = "true";
-      studentButton.addEventListener("click", (event) => {
-        event.preventDefault();
-        openRoute("study");
-      }, true);
-    }
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", bind, { once: true });
-  } else {
-    bind();
-  }
+  document.addEventListener("click", (event) => {
+    const creator = event.target.closest?.("#creatorViewButton");
+    const student = event.target.closest?.("#studentViewButton");
+    if (!creator && !student) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+    open(creator ? "developer" : "study");
+  }, true);
 })();

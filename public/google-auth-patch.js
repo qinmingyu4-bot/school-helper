@@ -143,7 +143,7 @@
 })();
 
 (() => {
-  const VERSION = "20261008-google-auth-loader-1.0.85";
+  const VERSION = "20261008-google-auth-loader-1.0.86";
   if (window.__studybridgeGoogleAuthLoaderVersion === VERSION) return;
   window.__studybridgeGoogleAuthLoaderVersion = VERSION;
 
@@ -159,6 +159,7 @@
   function loadHotfixes() {
     loadOnce("/profile-school-overview-hotfix.js?v=20261008-1.0.84", "profile-school-overview");
     loadOnce("/sidebar-role-boundary-hotfix.js?v=20261008-1.0.85", "sidebar-role-boundary");
+    loadOnce("/studybridge-tools-hotfix.js?v=20261008-1.0.86", "studybridge-tools");
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", loadHotfixes, { once:true });

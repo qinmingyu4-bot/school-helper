@@ -10,6 +10,26 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.0.97 - 2026-10-08
+
+Purpose:
+- Stop the login page from loading workspace-only hotfix scripts before the user is logged in.
+- Update the homepage script versions from the stale `1.0.83` entry to `1.0.97` so browsers stop using old navigation code.
+- Move `studybridge-direct-pages.js` behind the logged-in workspace gate so it starts only after `#appShell` is visible.
+- Reduce the chance of login-page browser freezes and stale cached navigation behavior.
+
+GitHub commits:
+- `7bcfeaf824c5216c25abaf91352990efa699c3b4` - guard workspace hotfix loading until login.
+- `f5329d29dfac5713405fa2b5bf32b04b29a150d3` - load stable StudyBridge entry scripts.
+- `af387ea033eb9185349c3bef28753f675ce5d9ef` - bump package version to 1.0.97.
+
+Rollback target:
+- If `1.0.97` fails, restore to `1.0.96` and then re-apply only the entry-script version bump after confirming the login page is stable.
+
+Live checks to use:
+- `http://3.98.63.195:3000/` should load `/app.js?v=20261008-1.0.97` and `/google-auth-patch.js?v=20261008-1.0.97` only.
+- `http://3.98.63.195:3000/google-auth-patch.js` should show `20261008-google-auth-loader-1.0.97`.
+
 ### 1.0.96 - 2026-10-08
 
 Purpose:

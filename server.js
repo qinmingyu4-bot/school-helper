@@ -916,6 +916,7 @@ function buildStudyPrompt({ user, course, documents, history, scheduleItems, wea
         preferenceInstruction +
         preferenceInstruction +
         preferenceInstruction +
+        preferenceInstruction +
         preferenceInstruction
     },
     {

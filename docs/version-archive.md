@@ -10,6 +10,25 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.0.96 - 2026-10-08
+
+Purpose:
+- Stop the browser freeze caused by two sidebar navigation scripts repeatedly removing and recreating each other.
+- Make `public/main-nav-stabilizer.js` the stable visible owner of the six student navigation entries.
+- Preserve existing feature-page routing while hiding duplicate legacy navigation blocks.
+- Keep sidebar scrolling responsive by removing the aggressive sidebar mutation watcher.
+
+GitHub commits:
+- `dd3c0d2e458689bdbdec68deabf83b3d439fc47f` - replace the sidebar navigation stabilizer with a non-looping version.
+- `b50cb7f1e332ae3efe7adac9cf069f1daca947ee` - bump package version to 1.0.96.
+
+Rollback target:
+- If `1.0.96` fails, restore the repository to `1.0.95` or the last commit before `dd3c0d2e458689bdbdec68deabf83b3d439fc47f`, then let the AWS auto-sync pull it.
+
+Live checks to use:
+- `http://3.98.63.195:3000/main-nav-stabilizer.js` should show `20261008-main-nav-stabilizer-1.0.96`.
+- `http://3.98.63.195:3000/google-auth-patch.js` should load `main-nav-stabilizer.js?v=20261008-1.0.96`.
+
 ### 1.0.95 - 2026-10-08
 
 Purpose:

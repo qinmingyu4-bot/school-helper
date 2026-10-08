@@ -22,11 +22,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           BASE="b176e1916f928b42df5b54e56051ed80a9f92784"
-          git checkout "$BASE" -- public package.json package-lock.json
+          git checkout "$BASE" -- public package.json
+          if git cat-file -e "$BASE:package-lock.json" 2>/dev/null; then
+            git checkout "$BASE" -- package-lock.json
+          fi
           node -e "const fs=require('fs'); const p='package.json'; const pkg=JSON.parse(fs.readFileSync(p,'utf8')); pkg.version='1.0.74'; fs.writeFileSync(p, JSON.stringify(pkg,null,2)+'\n');"
           node -e "const fs=require('fs'); const p='package-lock.json'; if(fs.existsSync(p)){ const pkg=JSON.parse(fs.readFileSync(p,'utf8')); pkg.version='1.0.74'; if(pkg.packages&&pkg.packages['']) pkg.packages[''].version='1.0.74'; fs.writeFileSync(p, JSON.stringify(pkg,null,2)+'\n'); }"
           node --check public/app.js
           for f in public/*.js; do node --check "$f"; done
-          git add public package.json package-lock.json
+          git add public package.json package-lock.json 2>/dev/null || git add public package.json
           git commit -m "Restore functional StudyBridge frontend version 1.0.74" || exit 0
           git push

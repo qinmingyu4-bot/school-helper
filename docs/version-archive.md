@@ -10,6 +10,30 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.0.99 - 2026-10-08
+
+Purpose:
+- Stop legacy layout, bottom-chat, dashboard, and sidebar stabilizer scripts from fighting the current page router.
+- Make Google/login loader wait until the workspace is visible before loading the direct page router.
+- Keep the login page lighter so it does not load workspace-only scripts before a user is signed in.
+- Restore a clear rollback marker after the blank-page and unresponsive-page failures.
+
+GitHub commits:
+- `ffee6001df2316644f62b938491708167fef7f45` - disable the legacy main navigation stabilizer.
+- `328b635c314212ef90ea879bf0ff5a63b3c96245` - disable the legacy layout fix script.
+- `62ed42e8ad98210cbf45c9cc82df78232cfe38c1` - disable the legacy dashboard stability script.
+- `c8c8b0202166a1ebad1dbae8bd502e875967d3f5` - disable the legacy study bottom patch.
+- `e8ee33624620d5141e1d0f3ef66b4f6510e455f3` - install the safe workspace script loader.
+- `57ecaf59f6e7808aaec29ead6e9c006950a353fe` - bump package version to 1.0.99.
+
+Rollback target:
+- If `1.0.99` fails, roll back to `1.0.97`, then re-enable only one navigation owner at a time.
+
+Live checks to use:
+- `http://3.98.63.195:3000/google-auth-patch.js` should show `20261008-safe-auth-loader-1.0.99`.
+- `http://3.98.63.195:3000/main-nav-stabilizer.js` should only contain the disabled marker.
+- `http://3.98.63.195:3000/layout-fix.js`, `nav-dashboard-stability.js`, and `study-chat-bottom-fix.js` should only contain disabled markers.
+
 ### 1.0.97 - 2026-10-08
 
 Purpose:

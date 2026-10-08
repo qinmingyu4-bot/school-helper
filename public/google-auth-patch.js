@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = "20261008-safe-auth-loader-1.0.99";
+  const VERSION = "20261008-safe-auth-loader-1.1.4";
   if (window.__studybridgeGoogleAuthLoaderVersion === VERSION) return;
   window.__studybridgeGoogleAuthLoaderVersion = VERSION;
 
@@ -156,19 +156,18 @@
 
   function loadWorkspaceScripts() {
     if (!workspaceReady()) return false;
-    loadOnce("/studybridge-direct-pages.js?v=20261008-1.0.99", "direct-pages");
-    loadOnce("/study-scroll-bridge.js?v=20261008-1.0.99", "study-scroll");
-    loadOnce("/role-boundary-strict.js?v=20261008-1.0.99", "role-boundary");
+    loadOnce("/stable-pages-router.js?v=20261008-1.1.4", "stable-pages-router");
     return true;
   }
 
   function waitForWorkspace() {
-    if (loadWorkspaceScripts()) return;
+    if (loadWorkspaceScripts()) return true;
     let attempts = 0;
     const timer = window.setInterval(() => {
       attempts += 1;
       if (loadWorkspaceScripts() || attempts > 60) window.clearInterval(timer);
     }, 500);
+    return false;
   }
 
   function handleAuthCallback() {
@@ -188,9 +187,16 @@
   function boot() {
     insertGoogleButton();
     handleAuthCallback();
-    waitForWorkspace();
-    const observer = new MutationObserver(waitForWorkspace);
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden", "class"] });
+    if (waitForWorkspace()) return;
+    const observer = new MutationObserver(() => {
+      if (loadWorkspaceScripts()) observer.disconnect();
+    });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["hidden", "class"]
+    });
   }
 
   if (document.readyState === "loading") {

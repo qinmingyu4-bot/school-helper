@@ -1,0 +1,29 @@
+name: Restore Public Frontend Before Rollback
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restore public frontend from pre-rollback commit
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          BASE="f4c20d3f7683826fc67e8bb8efa8e3516af743c1"
+          git checkout "$BASE" -- public package.json package-lock.json
+          node -e "const fs=require('fs'); const p='package.json'; const pkg=JSON.parse(fs.readFileSync(p,'utf8')); pkg.version='1.0.73'; fs.writeFileSync(p, JSON.stringify(pkg,null,2)+'\n');"
+          node -e "const fs=require('fs'); const p='package-lock.json'; if(fs.existsSync(p)){ const pkg=JSON.parse(fs.readFileSync(p,'utf8')); pkg.version='1.0.73'; if(pkg.packages&&pkg.packages['']) pkg.packages[''].version='1.0.73'; fs.writeFileSync(p, JSON.stringify(pkg,null,2)+'\n'); }"
+          node --check public/app.js
+          for f in public/*.js; do node --check "$f"; done
+          git add public package.json package-lock.json
+          git commit -m "Restore full StudyBridge frontend version 1.0.73" || exit 0
+          git push

@@ -143,20 +143,30 @@
 })();
 
 (() => {
-  const VERSION = "20261008-google-auth-loader-1.0.96";
+  const VERSION = "20261008-google-auth-loader-1.0.97";
   if (window.__studybridgeGoogleAuthLoaderVersion === VERSION) return;
   window.__studybridgeGoogleAuthLoaderVersion = VERSION;
 
   function loadOnce(src, flagName) {
-    if (document.querySelector(`script[data-${flagName}]`)) return;
+    const dataName = flagName.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+    if (document.querySelector(`script[data-${flagName}]`) || document.querySelector(`script[data-${dataName}]`)) return;
     const script = document.createElement("script");
     script.src = src;
     script.defer = true;
-    script.dataset[flagName.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = "true";
+    script.dataset[dataName] = "true";
     document.body.appendChild(script);
   }
 
+  function workspaceReady() {
+    const shell = document.querySelector("#appShell");
+    return Boolean(shell && !shell.hidden);
+  }
+
+  let hotfixesLoaded = false;
   function loadHotfixes() {
+    if (hotfixesLoaded || !workspaceReady()) return false;
+    hotfixesLoaded = true;
+    loadOnce("/studybridge-direct-pages.js?v=20261008-1.0.97", "studybridge-direct-pages");
     loadOnce("/profile-school-overview-hotfix.js?v=20261008-1.0.84", "profile-school-overview");
     loadOnce("/sidebar-role-boundary-hotfix.js?v=20261008-1.0.85", "sidebar-role-boundary");
     loadOnce("/studybridge-tools-hotfix.js?v=20261008-1.0.88", "studybridge-tools");
@@ -167,8 +177,26 @@
     loadOnce("/role-boundary-strict.js?v=20261008-1.0.92", "role-boundary-strict");
     loadOnce("/invite-role-submit-guard.js?v=20261008-1.0.92", "invite-role-submit-guard");
     loadOnce("/main-nav-stabilizer.js?v=20261008-1.0.96", "main-nav-stabilizer");
+    return true;
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", loadHotfixes, { once:true });
-  else loadHotfixes();
+  function waitForWorkspace() {
+    if (loadHotfixes()) return;
+    let tries = 0;
+    const timer = window.setInterval(() => {
+      tries += 1;
+      if (loadHotfixes() || tries > 600) window.clearInterval(timer);
+    }, 500);
+
+    const shell = document.querySelector("#appShell");
+    if (shell && typeof MutationObserver !== "undefined") {
+      const observer = new MutationObserver(() => {
+        if (loadHotfixes()) observer.disconnect();
+      });
+      observer.observe(shell, { attributes: true, attributeFilter: ["hidden"] });
+    }
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", waitForWorkspace, { once: true });
+  else waitForWorkspace();
 })();

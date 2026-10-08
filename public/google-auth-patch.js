@@ -165,6 +165,7 @@
     loadOnce("/classmates-add-feedback-hotfix.js?v=20261008-1.0.90", "classmates-add-feedback");
     loadOnce("/study-scroll-bridge.js?v=20261008-1.0.91", "study-scroll-bridge");
     loadOnce("/role-boundary-strict.js?v=20261008-1.0.92", "role-boundary-strict");
+    loadOnce("/invite-role-submit-guard.js?v=20261008-1.0.92", "invite-role-submit-guard");
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", loadHotfixes, { once:true });

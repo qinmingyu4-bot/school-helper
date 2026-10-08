@@ -1,20 +1,17 @@
 (() => {
-  const VERSION = "20261008-shell-rescue-1.0.64";
+  const VERSION = "20261008-scroll-only-1.0.66";
   if (window.__studybridgeStudyScrollHardeningV2 === VERSION) return;
   window.__studybridgeStudyScrollHardeningV2 = VERSION;
 
   const STYLE_ID = "studybridge-study-scroll-hardening";
-  const DIRECT_SCRIPT = "/studybridge-direct-pages.js";
   let frame = 0;
 
   function isVisible(element) {
     return Boolean(element && !element.hidden && element.offsetParent !== null);
   }
 
-  function isStudyViewActive() {
-    const workspacePage = document.querySelector("#workspacePage") || document.querySelector(".workspace");
-    const developerPanel = document.querySelector("#developerPanel");
-    return isVisible(workspacePage) && !(developerPanel && !developerPanel.hidden);
+  function getWorkspace() {
+    return document.querySelector("#workspacePage") || document.querySelector(".workspace");
   }
 
   function getChatArea() {
@@ -57,43 +54,27 @@
 
       #workspacePage,
       .workspace {
-        height: 100dvh !important;
-        max-height: 100dvh !important;
-        min-height: 0 !important;
-        overflow: hidden !important;
-      }
-
-      body:not(.creator-clean-mode) #workspacePage,
-      body:not(.creator-clean-mode) .workspace {
         min-height: 0 !important;
       }
 
-      body.sb-direct-page #workspacePage,
-      body.sb-direct-page .workspace {
-        display: block !important;
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
-      }
-
-      body.sb-direct-page #sbDirectPage {
-        display: block !important;
-        min-height: 100dvh !important;
-      }
-
-      body.sb-direct-page #workspacePage > .topbar,
-      body.sb-direct-page #workspacePage > #scheduleDashboard,
-      body.sb-direct-page #workspacePage > #chatArea,
-      body.sb-direct-page #workspacePage > #quickPrompts,
-      body.sb-direct-page #workspacePage > #chatForm,
-      body.sb-direct-page #workspacePage > #developerPanel {
-        display: none !important;
-      }
-
-      body.sb-direct-study #workspacePage,
-      body.sb-direct-study .workspace {
+      body:not(.studybridge-secondary-page):not(.creator-clean-mode) #workspacePage,
+      body:not(.studybridge-secondary-page):not(.creator-clean-mode) .workspace {
         display: grid !important;
         grid-template-rows: auto auto minmax(0, 1fr) auto !important;
+        height: 100dvh !important;
+        max-height: 100dvh !important;
         overflow: hidden !important;
+      }
+
+      body.studybridge-secondary-page #workspacePage,
+      body.studybridge-secondary-page .workspace,
+      body.creator-clean-mode #workspacePage,
+      body.creator-clean-mode .workspace {
+        display: block !important;
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
       }
 
       body:not(.creator-clean-mode) #workspacePage #chatArea {
@@ -111,182 +92,87 @@
       body:not(.creator-clean-mode) #workspacePage #chatArea .message {
         flex: 0 0 auto !important;
       }
+
+      #sbDirectNav,
+      .sb-direct-nav {
+        display: none !important;
+      }
     `;
+  }
+
+  function removeInjectedNav() {
+    document.querySelectorAll("#sbDirectNav, .sb-direct-nav").forEach((node) => node.remove());
   }
 
   function markScrollable() {
     const chatArea = getChatArea();
-    if (!chatArea || !isStudyViewActive()) return;
+    if (!chatArea) return;
     chatArea.dataset.studyScrollHardening = "native";
-    chatArea.tabIndex = chatArea.tabIndex >= 0 ? chatArea.tabIndex : 0;
+    if (!chatArea.hasAttribute("tabindex")) chatArea.tabIndex = 0;
   }
 
-  function routeFromTarget(target) {
-    const node = target?.closest?.(
-      [
-        "[data-sb-direct-route]",
-        "[data-sb-route]",
-        "#profileCard",
-        "#openProfilePageButton",
-        "#editProfileButton",
-        "#openSchoolCommunityButton",
-        "#openClassmatesButton",
-        "#openEmailReplyButton",
-        "#openScheduleButton",
-        "#openStudyAreaButton",
-        "#studentViewButton",
-        "#creatorViewButton",
-        ".profile-card",
-        ".community-entry",
-        ".classmates-entry",
-        ".email-helper-entry",
-        ".schedule-entry",
-        ".study-entry"
-      ].join(",")
-    );
-    if (!node) return "";
-    if (node.dataset.sbDirectRoute) return node.dataset.sbDirectRoute;
-    if (node.dataset.sbRoute) return node.dataset.sbRoute;
-    if (node.id === "profileCard" || node.id === "openProfilePageButton" || node.id === "editProfileButton") return "profile";
-    if (node.id === "openSchoolCommunityButton" || node.classList.contains("community-entry")) return "community";
-    if (node.id === "openClassmatesButton" || node.classList.contains("classmates-entry")) return "classmates";
-    if (node.id === "openEmailReplyButton" || node.classList.contains("email-helper-entry")) return "email";
-    if (node.id === "openScheduleButton" || node.classList.contains("schedule-entry")) return "schedule";
-    if (node.id === "openStudyAreaButton" || node.id === "studentViewButton" || node.classList.contains("study-entry")) return "study";
-    if (node.id === "creatorViewButton") return "developer";
-    return "";
-  }
-
-  function resetScroll() {
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-    const workspacePage = document.querySelector("#workspacePage") || document.querySelector(".workspace");
-    if (workspacePage) workspacePage.scrollTop = 0;
-  }
-
-  function waitForDirectPage(callback, attempt = 0) {
-    if (typeof window.studybridgeOpenDirectPage === "function") {
-      callback();
+  function repairBlankWorkspace() {
+    const workspace = getWorkspace();
+    if (!workspace) return;
+    const activePage = document.body.dataset.studybridgeActivePage || "";
+    const secondaryPages = ["profilePage", "schoolCommunityPage", "classmatesPage", "emailReplyPage", "schedulePage"];
+    if (
+      document.body.classList.contains("studybridge-secondary-page") ||
+      document.body.classList.contains("creator-clean-mode") ||
+      activePage === "developerPanel" ||
+      secondaryPages.includes(activePage)
+    ) {
       return;
     }
-    if (attempt < 25) {
-      window.setTimeout(() => waitForDirectPage(callback, attempt + 1), 80);
-      return;
-    }
-    renderFallbackPage("profile", "页面还在连接中，请再点一次左侧功能。");
-  }
-
-  function ensureDirectScript(callback) {
-    if (typeof window.studybridgeOpenDirectPage === "function") {
-      callback();
-      return;
-    }
-    const existing = Array.from(document.scripts).find((script) => {
-      try {
-        return new URL(script.src, window.location.href).pathname === DIRECT_SCRIPT;
-      } catch {
-        return (script.src || "").includes(DIRECT_SCRIPT);
-      }
+    const hasStudyChrome = ["#chatArea", "#chatForm", "#quickPrompts"].some((selector) => {
+      const node = workspace.querySelector(`:scope > ${selector}`);
+      return node && !node.hidden;
     });
-    if (existing) {
-      waitForDirectPage(callback);
-      return;
-    }
-    const script = document.createElement("script");
-    script.async = false;
-    script.src = `${DIRECT_SCRIPT}?v=${VERSION}`;
-    script.addEventListener("load", () => waitForDirectPage(callback), { once: true });
-    (document.head || document.documentElement).appendChild(script);
-  }
-
-  function renderFallbackPage(route, message) {
-    const workspacePage = document.querySelector("#workspacePage") || document.querySelector(".workspace");
-    if (!workspacePage) return;
-    let page = document.querySelector("#sbDirectPage");
-    if (!page) {
-      page = document.createElement("section");
-      page.id = "sbDirectPage";
-      workspacePage.appendChild(page);
-    }
-    document.body.classList.add("sb-direct-page");
-    document.body.classList.remove("sb-direct-study");
-    page.hidden = false;
-    page.innerHTML = `<section style="max-width:960px;margin:28px auto;padding:18px;border:1px solid #d7e0ec;border-radius:8px;background:white;color:#0b2344"><strong>StudyBridge</strong><p>${message}</p></section>`;
-    resetScroll();
-  }
-
-  function openShellRoute(route) {
-    if (!route) return false;
-    resetScroll();
-    ensureDirectScript(() => {
-      if (typeof window.studybridgeOpenDirectPage === "function") {
-        window.studybridgeOpenDirectPage(route);
-        resetScroll();
-        window.setTimeout(resetScroll, 80);
-      } else {
-        renderFallbackPage(route, "页面暂时没有成功打开，请刷新后再试。");
-      }
+    const hasPage = ["#profilePage", "#schoolCommunityPage", "#classmatesPage", "#emailReplyPage", "#schedulePage"].some((selector) => {
+      const node = document.querySelector(selector);
+      return node && !node.hidden;
     });
-    return true;
+    const developerPanel = document.querySelector("#developerPanel");
+    const hasDeveloper = developerPanel && !developerPanel.hidden;
+    if (hasStudyChrome || hasPage || hasDeveloper) return;
+    document.body.classList.remove("studybridge-secondary-page", "creator-clean-mode", "admin-boundary-active");
+    ["#workspacePage > .topbar", "#workspacePage > #scheduleDashboard", "#workspacePage > #chatArea", "#workspacePage > #quickPrompts", "#workspacePage > #chatForm"].forEach((selector) => {
+      const node = document.querySelector(selector);
+      if (!node) return;
+      node.hidden = false;
+      node.removeAttribute("hidden");
+      node.style.display = "";
+      node.style.visibility = "visible";
+    });
   }
 
-  function scheduleMark() {
+  function scheduleWork() {
     if (frame) return;
     frame = requestAnimationFrame(() => {
       frame = 0;
       installStyle();
+      removeInjectedNav();
       markScrollable();
+      repairBlankWorkspace();
     });
   }
 
   installStyle();
-  scheduleMark();
-  window.addEventListener("resize", scheduleMark);
-  document.addEventListener("visibilitychange", scheduleMark);
+  scheduleWork();
+  window.addEventListener("resize", scheduleWork);
+  document.addEventListener("visibilitychange", scheduleWork);
   document.addEventListener(
     "pointerdown",
     (event) => {
-      const route = routeFromTarget(event.target);
-      if (route) {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation?.();
-        openShellRoute(route);
-        return;
-      }
       const chatArea = getChatArea();
-      if (chatArea && chatArea.contains(event.target) && event.target === chatArea) chatArea.focus({ preventScroll: true });
+      if (chatArea && chatArea.contains(event.target) && event.target === chatArea) {
+        chatArea.focus({ preventScroll: true });
+      }
     },
     true
   );
-  document.addEventListener(
-    "click",
-    (event) => {
-      const route = routeFromTarget(event.target);
-      if (!route) return;
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation?.();
-      openShellRoute(route);
-    },
-    true
-  );
-  document.addEventListener(
-    "keydown",
-    (event) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      const route = routeFromTarget(event.target);
-      if (!route) return;
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation?.();
-      openShellRoute(route);
-    },
-    true
-  );
-  window.studybridgeShellOpen = openShellRoute;
-  new MutationObserver(scheduleMark).observe(document.documentElement, {
+
+  new MutationObserver(scheduleWork).observe(document.documentElement, {
     childList: true,
     subtree: true,
     attributes: true,

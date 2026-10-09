@@ -1,101 +1,10 @@
-name: Apply StudyBridge general AI web hotfix
+name: Disabled legacy AI web hotfix
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/ai-general-web-hotfix.yml"
-
-permissions:
-  contents: write
 
 jobs:
-  hotfix:
-    runs-on: ubuntu-latest
+  disabled:
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - name: Patch AI behavior
-        run: |
-          node <<'NODE'
-          const fs = require('fs');
-          const path = 'server.js';
-          let text = fs.readFileSync(path, 'utf8');
-
-          text = text.replace(
-            /const webSearchModel =\n  String\(process\.env\.OPENAI_WEB_MODEL \|\| process\.env\.STUDYBRIDGE_WEB_MODEL \|\| ""\)\.trim\(\) \|\|\n  simpleAiModel;/,
-            'const webSearchModel =\n  String(process.env.OPENAI_WEB_MODEL || process.env.STUDYBRIDGE_WEB_MODEL || "").trim() ||\n  complexAiModel ||\n  simpleAiModel;'
-          );
-
-          text = text.replace(
-            'return "Weather lookup failed: " + ((error && error.message) || "unknown error") + ". Tell the student the live weather service is temporarily unavailable.";',
-            'return "Weather lookup failed: " + ((error && error.message) || "unknown error") + ". If web search is available, use it to answer the weather question instead of stopping. If no live lookup is available, tell the student the weather service is temporarily unavailable.";'
-          );
-
-          text = text.replace(
-            'Answer any user question that is allowed by OpenAI safety rules. Explain in Chinese by default, preserve key English academic terms, and help students learn without doing prohibited final submissions for them.',
-            'Answer any user question that is allowed by OpenAI safety rules; do not refuse just because the question is not about school. Explain in Chinese by default, preserve key English academic terms, and help students learn without doing prohibited final submissions for them.'
-          );
-
-          text = text.replace(
-            'For general knowledge or current-information questions where the local StudyBridge data is missing, use reliable general knowledge and, when web search is available, use web search for fresh facts.',
-            'For general knowledge, current-information questions, weather, news, product prices, policies, rankings, or any question where local StudyBridge data is missing, use reliable general knowledge and, when web search is available, use web search for fresh facts instead of claiming you cannot browse.'
-          );
-
-          text = text.replace(
-            'async function callAiWithResponses(messages, model) {',
-            'async function callAiWithResponses(messages, model, toolType = "web_search") {'
-          );
-
-          text = text.replace(
-            'type: "web_search",\n          search_context_size: "medium"',
-            'type: toolType,\n          search_context_size: "medium"'
-          );
-
-          const oldCatch = `    } catch (error) {
-      console.warn("StudyBridge web AI route failed, falling back to chat completions: " + (error?.message || error));
-    }`;
-          const newCatch = `    } catch (error) {
-      const message = String((error && error.message) || error);
-      if (message.includes("web_search")) {
-        try {
-          return await callAiWithResponses(messages, webSearchModel || model, "web_search_preview");
-        } catch (previewError) {
-          console.warn("StudyBridge preview web route failed, falling back to chat completions: " + ((previewError && previewError.message) || previewError));
-        }
-      } else {
-        console.warn("StudyBridge web AI route failed, falling back to chat completions: " + message);
-      }
-    }`;
-          if (!text.includes('web_search_preview')) text = text.replace(oldCatch, newCatch);
-
-          fs.writeFileSync(path, text);
-          NODE
-          node --check server.js
-      - name: Patch environment example
-        run: |
-          node <<'NODE'
-          const fs = require('fs');
-          const path = '.env.example';
-          let text = fs.readFileSync(path, 'utf8');
-          if (!text.includes('OPENAI_WEB_SEARCH=')) {
-            text = text.replace(
-              /(OPENAI_SOL_ROUTE_PERCENT=15\n)/,
-              '$1\n# Allow StudyBridge AI to use live web lookup for current facts.\nOPENAI_WEB_SEARCH=true\n# Optional: leave blank to use the complex model for web lookup.\nOPENAI_WEB_MODEL=\n'
-            );
-          }
-          fs.writeFileSync(path, text);
-          NODE
-      - name: Commit patch
-        run: |
-          if git diff --quiet; then
-            echo "No changes needed."
-            exit 0
-          fi
-          git config user.name "qinmingyu4-bot"
-          git config user.email "qinmingyu4-bot@users.noreply.github.com"
-          git add server.js .env.example
-          git commit -m "Improve StudyBridge AI web answers"
-          git push
-
-# trigger: 2026-10-06T20:51:00Z
+      - run: echo "This legacy one-time workflow is disabled so it cannot overwrite the restored StudyBridge app."

@@ -1,0 +1,77 @@
+name: Restore clean StudyBridge frontend 1.1.26
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/restore-clean-frontend-1126.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore verified frontend bundle
+        run: |
+          set -euo pipefail
+          base64 -d docs/rollback/appjs-1.1.26.gz.b64 | gzip -d > public/app.js
+          node --check public/app.js
+          node --check server.js
+          cat > public/index.html <<'HTML'
+          <!doctype html>
+          <html lang="zh-CN">
+            <head>
+              <meta charset="UTF-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <title>StudyBridge Cloud</title>
+              <link rel="stylesheet" href="/style.css?v=1.1.26" />
+            </head>
+            <body>
+              <div id="root">
+                <div class="boot-screen">
+                  <div class="brand-mark">SB</div>
+                  <strong>StudyBridge</strong>
+                  <span>Opening StudyBridge...</span>
+                </div>
+              </div>
+              <script src="/app.js?v=1.1.26"></script>
+            </body>
+          </html>
+          HTML
+          node - <<'NODE'
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          pkg.version = '1.1.26';
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          NODE
+
+      - name: Commit restored frontend
+        run: |
+          set -euo pipefail
+          git config user.name "StudyBridge Restore Bot"
+          git config user.email "actions@github.com"
+          git add public/app.js public/index.html package.json docs/rollback/appjs-1.1.26.gz.b64
+          git commit -m "Restore clean StudyBridge frontend 1.1.26" || echo "No changes to commit"
+          git push
+
+      - name: Deploy to Lightsail
+        env:
+          LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}
+          LIGHTSAIL_USER: ${{ secrets.LIGHTSAIL_USER }}
+          LIGHTSAIL_SSH_KEY_B64: ${{ secrets.LIGHTSAIL_SSH_KEY_B64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${LIGHTSAIL_HOST:-}" ] || [ -z "${LIGHTSAIL_USER:-}" ] || [ -z "${LIGHTSAIL_SSH_KEY_B64:-}" ]; then
+            echo "Lightsail secrets missing; GitHub restore complete, deploy skipped."
+            exit 0
+          fi
+          mkdir -p ~/.ssh
+          echo "$LIGHTSAIL_SSH_KEY_B64" | base64 -d > ~/.ssh/studybridge_deploy_key
+          chmod 600 ~/.ssh/studybridge_deploy_key
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/studybridge_deploy_key "$LIGHTSAIL_USER@$LIGHTSAIL_HOST" 'set -euo pipefail; cd ~/school-helper; git pull --ff-only origin main; npm install --omit=dev; pm2 restart studybridge --update-env; pm2 save'

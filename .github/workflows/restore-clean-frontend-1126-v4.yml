@@ -1,0 +1,66 @@
+name: Restore Clean Frontend 1.1.26 v4
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - docs/restore-trigger-1126-v4.txt
+      - .github/workflows/restore-clean-frontend-1126-v4.yml
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore verified frontend bundle
+        run: |
+          set -euxo pipefail
+          test -f docs/rollback/appjs-1.1.26.gz.b64
+          base64 -d docs/rollback/appjs-1.1.26.gz.b64 | gzip -d > public/app.js
+          node --check public/app.js
+          grep -q 'const VERSION = "1.1.26"' public/app.js
+          grep -q 'app.js?v=1.1.26' public/index.html
+          grep -q 'style.css?v=1.1.26' public/index.html
+
+      - name: Commit restored files
+        run: |
+          set -euxo pipefail
+          git config user.name "studybridge-restore-bot"
+          git config user.email "actions@github.com"
+          if ! git diff --quiet -- public/app.js public/index.html package.json; then
+            git add public/app.js public/index.html package.json
+            git commit -m "Restore clean StudyBridge frontend 1.1.26"
+            git push
+          else
+            echo "Frontend already matches verified restore bundle."
+          fi
+
+      - name: Deploy to Lightsail
+        env:
+          LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}
+          LIGHTSAIL_USER: ${{ secrets.LIGHTSAIL_USER }}
+          LIGHTSAIL_SSH_KEY: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          LIGHTSAIL_SSH_KEY_B64: ${{ secrets.LIGHTSAIL_SSH_KEY_B64 }}
+        run: |
+          set -euxo pipefail
+          mkdir -p ~/.ssh
+          if [ -n "${LIGHTSAIL_SSH_KEY_B64:-}" ]; then
+            printf '%s' "$LIGHTSAIL_SSH_KEY_B64" | base64 -d > ~/.ssh/studybridge_deploy_key
+          else
+            printf '%s\n' "$LIGHTSAIL_SSH_KEY" > ~/.ssh/studybridge_deploy_key
+          fi
+          chmod 600 ~/.ssh/studybridge_deploy_key
+          ssh-keyscan -H "$LIGHTSAIL_HOST" >> ~/.ssh/known_hosts
+          ssh -i ~/.ssh/studybridge_deploy_key -o StrictHostKeyChecking=yes "$LIGHTSAIL_USER@$LIGHTSAIL_HOST" '
+            set -eux
+            cd ~/school-helper
+            git pull --ff-only origin main
+            npm install --omit=dev
+            pm2 restart studybridge --update-env
+            pm2 save
+          '

@@ -1,48 +1,1042 @@
 (function () {
   "use strict";
 
-  const WRAPPED_VERSION = "1.1.29";
-  const SOURCE_VERSION = "1.1.29";
-  const SOURCE_LENGTH = 57949;
-  const SOURCE_SHA256 = "2dfc292ae8f7ff44bd86b3aa759520d64a49ec3737d9fe89d003141b0a345129";
-  const SOURCE_GZIP_B64 = "H4sIAAAAAAAEAO19WXvbSJLg+/wKFMdbTXZLFO/DZUkjy6oqzfhqy57js70tEEhKbJMEBwBtazX87xtH3gBIynbNzsO+SCCQZ2RkXBkRWZ+ul1E+S5ZBvRHc/0MQ1NaZCLI8nUV57Zd/gBdRsszy4F8v3lxdvnoZHAe1drPd7Izho/p29fbds4uXb//2+uy3iyso8b4WJYvFejnL72oHQS2ah1m2CHOR4S+xCGdzfMiiWxGv54Ke83VMZfMkmVOxVZpMZ/Dxo+nm7NmLy5dWJ2G8mC3tAlfnv188e/f84m/nr969ubrAsV7JToKfg2cijOezJYyipMbrNxe/Xv471niv312+vXjx0YZBmiQ5FImTaL0Qy7x5I/KLucDHp3eXcb2G32sN03qWw6ShAoI1CD6LNAM4P1agPKC3AO30cbBcz+f8e5HE4jEDBNqt8ctVeKNe3slXUbJOM5E9Dt5/5BchrOJncU6vL2MoLQvCaK1SC5Fl0Jhdbz5/5hRR63KZi4X1Wi/p+W24XIo59ABVa95Heypm3e23cpzqmzPUWSqi/EVxiLjQdhsI2LXT6k2S3MzFxTKczAW0OA3nmeAveRJmueljss7unO/r1TwJ418B16hHeLexlvwRLF99FjeC45PKdYfPZs1FFmGVz+F8LbAW9XEF22l5wy+D01MYTIPeB0EzFat5GIn60c9HN4D2P4eL1S8lX5/w13le9vGEP96Ufqzxx/9cJ6Wf/8Sf/7E7/sVG3Rks5gyAhHNZhguaipoG/g7+679gcz2tNZrwblFvNLP5DJprHQRteJW8W61Eeh5mAogKlbT23Cw7w/XElqlVtZGRUiSHclM3Z8toDlsgq8tOaS81cbecNtNkzgPA7pPnyRfVlzUBST90L3Z99Q2auN8UqlxNLmOshmXhv6low8Bp6LSZYR01IgKIafY2zF7LlqNbIG96SE/hhwiXaoayMYQll3Paa1hIieTgeTgRtDz3/gZ8X/uwHo67RFf56cO63+2G/LvfHow+rMctAX+7rVYb3kwGgw/rwaiDz71R9GHdE+0u/Q2h5GjcxvL9bu1jcVtjX/1uNJFt91oRt4e/r54Gl88CGAF0/mE9mkyHqv1Rqwct98fARGSbxBS4ud5UtLm5cSsUOIwpDK/fCccwyE5PdjXsteDtaCy6XjkxHGCX7SmWbregTGcKExj0R9j9IEZgjFtxzSN23PegPx1w+/gELfenPWhhNBjhW8VAAj2PyRSaG4atCVToxtDZuD3u6KaRWksQSZAoYPfEoGUvit3QKO71sP/xmBfo7BL7m0zHWCyOVd84CdXQaBLi2nXaum9io7LvWPRl3/CECDAcyuVBus+dXN0Kkavn+Qz2nWpJYqVcGzGRI+6JTsi/7RHLfsZd+N1vRdMyFOM3NorhhALClppL8AmTYW6y2WmLgBa3EYNafQSYmCpUGbUUjg1HLd3NsN8ZISJ0Ne4NoykAeShiGNywM8FhQcmaT/d5C/4KzMrssRpsMGLi+V2QTAHGabLMk9pj+TkIkDACp3nnFHsrix3IQmm4/ASF/noVdFqdwePgH2EXqG9Ek+GjrHMQvFrmYTqDh/NwGcahKZjMlrla4E7YwjlOp7SnhrhncRP0ozZuhVG7h5CiN8PRRJXRuzRvBr+JJL0htBatDq0totk06uq1FWME/VTh67iF5WC7j5DA4IJwN3K1+72Beo9vzq/McuC+7PeGsfrOmDGc9HB39ydj/Nrm5YAF4enWIuC0YrkEfgSrM5+LG1EE+rkpcy7LeBD3X38bsFs9nIEY9xRyye0YddsanyfTSM6jsLv7oot1uoi+/V5nQosFsx4OhDC7ZSw0jWBCM+pFqnXY7Ag9EXWLazEe4hYZjUdI8Tq0JVrTWC38KBY49ukIxz7AvxL6sCoexF1Mn6QgDGS3CPz1YjILd6H8U1n+XJWvwv23ySrotwor8q/hEsRbaDA4Cv5FzJMvy/AgeHq+dWEcPCcA9jvjiY20ksMNROyhNS/gAAE1HvT6NlgQKTv4t8tEq4vlJ1G01zYgcsvLXr4x4Lkb4pKMRt0t6O8uxhfgvOk82Ul3/k2V2wb8dqcIfVVxnw1xnhxCKy7K9qb9rqKz42FfaKSXK2HIQRFCg/6wpeAv16XTnijUH0T4DCtFK41IDktUQpLG7QjXeBwNyjaTvVWrtoHmBmF2t4wCrSOHq1l9Fea3B0GywhfEHDYNLYQp0RlfB1EqUIdDMRqVN1ikwySd3ZCo22w2VQskgQbBbAqKBlRtTpL4Lvj55yC/WwlYR/Pup+Nj1AFRWKxhgZ+s8jPoGXYNVvg1SRfPwjxsNDSCULlbEF8APWhoIGkjucwPsZMaqnKrFQjwIY7o6O9ZIodYdyqSuNxQ4w2skR0H/3z16mWTxzab3pmBNX7RANVatMhW8ICiefglBFhNRR7dSrBiRVmHS8cwE11SVW3iEEFQhgFDTZam6zC2hgHlT7ps8qkR5Ldp8iVYii/BRZomaR1bbQp8xFnRL6kZ4+9rJUoMol6H5BkUOeJOP6g/utftshK6aVzLXlORr9MlNYYvNog+GnEykb9FRbQuu1Frw9oF6agwS2sMtZqZi67zZbaMky9NbGy2EMk6l3PX6wyFnRaPdZsGGfxOVU88hyUsdb2h3mwkIQo6ICU1Sqf1Ghqvr6wecBD4m3qXul3DGeJPUgUErSbgksq2ofrlEaItBL75jQWn+smylEhEC0ArEro3px2vqByLY7wyaifNqHx4G2vl5Hf8Z21jM715EoXzKxAVoQCuGxpV6twacNX4hgcHu82MVAJ/d03sFGrSSLnO7SyDCndKu7/CNutkJEH7R3D96B5bxZVr4nZDvrE5xfrHj+4F8NxYvHtzeZ4sAMEBTgyDzc+f4au0WW2uS5BgCgQnzJ9hX9LsYRDhJ/lGbg6Fa3pvI/BwW1q1DRxfgvQg0uYsexm+xC0r0PKCmA+QLTRptp8gowBAT0jNuvZ/bg/PXwIA7oMF0L1bwJrleiHSGfLxOLxzft8m6xRedA5jINU5vICVXOfCehVsSoAQr8Vb8TV3IfAHTFM2OZtO0RLpFA4Oqf3mMvlSt5qnsk+Og5ZpC1nvFClbBwWawRAYn906ggD5xAvAkeYURIGUGzkKukAGWpISmOndeYW5/lHQ6TkFgXLmv8umucj/giLWQLGhE2ucgK/4bsO2AiK93AC+iVpTVtOvnfWHOjSSRfi13j4wfTaKdcqwmNYwhz9qCecClMFwigsosog+ScMMdyu/4T9jVPvw5w9/rjf/ctrABzKwPQHemCxvTh61nxzJx+0tvOf6Hz/U67d5vspOH384+nD0/n83PmQf/9L40MBW//QkDG5TMT2uPerUApDVABWOa3+bzEHSq8HU58e1ZQLfgdGJtEZ9hyd/2tat29eH7An05fXUfnBPcmW8CS4ZLpNUAsJdjXCd3/6eL+Z1RbvnyY3FRxRC3QDBIysdF0MeoV66ZOFakvwni3C2ZBPWcQ07OcxuxXxeO9Es8EkmeAh2oShMY6sMlIpnn1WJCUjW8SEIGE6JsjKLMP1UO7l6+uQIPhULnzzJVuHyBDnSfzx9c/nst4vg/Pmrd88AZfC9wqEr5AFPiQdoZCq0WHxhjSYTN2i9FrE/4sk6zxOWYQ5DAoMEQB5Oavwano7laqjmcGfKlUDbNnJltvLXNrUTFLKHpIj1+0+OuINv7FUvbXnHsk/snjseRGjl7LdHUVnHBQg5rV0/maOF9QRpT9wlzSJ+Mluu1iDgxzy8l8A+a6w23SZzkJuOyXyJmobUK3poo+tP+sMaLBC3d83Ds8fBHy7QBOr1QO9qpAkcy4Mz3BlJBCwaCJN56QziLln/k/gaYpEmlDR9FzslbXbANjOv79cA4S8JoL3sfqV/uyNw1wCY3KEpCVON1kASQNHQLzcFkI3a0y6Zq9rBKEAI9uLSMbvr46KQms5wNBBkI+ntMbXzZDmdpYtdM3Tn5A0esAt1zem4S7b1PmqWaIQZTMjaoIdQOiNr4L4F0xvy5fLzLC9iG1oLtI487UfaMhp3OmQrHRRbrhqJRR9mS7RzH05nYh5nHo2AkiVIeo5SrD86NswPJxM8QQjZYh61lYV2Om2RKYyMUu3eiCCH+2U0mNDXcbHnMkqRgc5ySPvgECVY3PhsJB6TScHvuIIG+cSgZJ9aAErSQ4RQTVLsJFUkukB15YhlvZvbBPjWlxkCy5kEn18eSrr66J7VAedUU9PWeJbRi9rm5DcqENg0dntdsv/10UTSQyvidAA0upQ4uuNepTPgXXdlI3f3vyHRjxXPBlLsllEI2xdTOj3ooJmmOx3KAZqplA+tyG2uvdHC0nw65FfeYEHIu0ksYoS4Mo1HiB+Tlr1dEQHbU9399cYZgK1AI6tYqZ6XST6LBE4YhUWrWAOmsioQf8AaFjbU/J4coXzCv0pk1AzAPwlTEoxcUWiFSqg6QLSF7mX4+VUak4z03W4ZH+2G8QT0ZfgZFRvZBcjcq7o0BRyf4OunBD2pSzf/noBOrAVnqTyIz1dfZnl0C+1otVkCAyFr7TkU8Q4zKlzbgqpqdYxEqNT+oozgIgd3IAuj+DBAXjJukaHQOkjCY6c99kxxIJb5YtcwuOhJ1alXsXumPIorPvbVYi3/hohDWg5kfLKlXzb22QUO8dUO4bdSsJVi7RbBleimvV8QsZrkc7AJ/isofCFExe20neA6IAVClKxpTYEntNhsXAZCnrx5sxWXrreRS9qJpDboRowZS/k2VWECWWR0qWo2HSWfkdJm+d2cBLFVcxJGn27SZL2M36VzHKN5cQgU/EY8Xqfz+p8YqF7xxuZPjWslPHuMF9sOP8PYUtnuk9niJsjSCLvltvTnBkwjnIN6WCN6B8RZLq/yKSmsM67mxKWxJRxZIpMvEtx2q7AH1rNbKL6Spd+vpJvFQbACwvX3JP3YBHADV6lLvwxFsIC7tlqTYVBjVxbkEnSM0DdHB+XOEzUm+v4I1GbAA+/HEr8t15O66mYw7NBx30RIRk1Iz5V3Qoo2BxIsPItBGiL3i6P/lJAwINrO3offyM0ksYcBwAtTwednj+41Pd/st4mIw1w5bO0xH//jy99ny7zeUE09OSLiVckdPYbj8Mf3M/h/EOSzfC4Ogmw9+SittuxH8x4fHfbG+1L7/+jNSw/evi2ntC5JgMEpcsBV3c0OGwz+bxw7hCGMOHhN8kwJtbFoVryJrOqLcD6XBQzp0dwdD5CW4mv+bI2Ww1O0m+mfTWpwoxAf1RuUkQbD1hiXWFo6TXEAUZpnZyDkIEIAcGms1L9eOhvXyiSbIh7cl0LVs84Qksp3NvAcYwd9PaRJgcQ+ObGP5BFo5QaIOD5kJ0uSBfokH47GQk/F23YuYcZ6oCJkec0VXRmbpPNmcy6WN/ktbQP7NclR/IMkKU/XdRFL9gXa4QLa51/NWUzLzc26nqG7xI9MzAFgaur8DVU9xiTdfqPIJDQ+ykKKCgOAbWSUX4HSLojSnbOFIMAXtQLmONvBHWksUD/fa6SIyfGwSAPLqeC1kVWJgWnxfrEmm5neEBH6XeG2cJ08unwWTZptT+AZt0Efzx2k1xJaxhtHpMXHbDMaFVzBOqRC2NqDhYBFVeJH7xR7PLyoTKAYydDNWOJzhWz2BG3nYSpCshxAeaQiBZvBMBrTzLu9ILubz8PJWrqlIVauUxGAiiXkq3Q9SWcRP8fGOW/QaRNPJqev7nCovf+kIU6NoxwI1bYPy+6BoycgFWxZ1pINRi1yxhqPSvUVd9eFn8UhtIrIZVCgSsz/roH/SqInm7xYDA2jSKxAYGuu4ulBM/+aHzQX8QEuKf35etBcLW8Omn9f0R9xUwsW63k+W83Fznmxd7WemWih1+C001Jrgl6bO2dZgmOaZtI7IpjwxNTSURpB6GTTvKZOUK5pcUyHNtE3gAwRppeAaRZBkhrWN9CGnkAfWtTbtrp6uvv7j9nQz0WYLmfLm+AKlQazja8A/+LyfQuiSSqmT5Ov9RqAHnja7Vug1Jn0AyVcHfb74+CCPxIdz2qNzZYGzpbZF5HKJvqtPvsZj5QdcChi01xIZSvai24xoENcfIVtuKSDbdko6+vsyciYJn2F21EIMkWYJQgFu1WXPEXrLE8WlyAJpmuGcNHQz86Uow7ZikJ78PSXnJ7RP3Y6JbdoMhQXxzXooM1pMEHT8ThEuzWXH5Avn2QQnfaQ1H9qM0aGMkAtY9xvY1+tiUSgWlEVWtGpnFhGIjttFmYljzI3pUSxkk5hm5lLqbRn5HgY+/vZw+QS6U+t5ydxdxCQbdqV3kFojT6J2PHGd2f2Hqp+JA8pCu1AIUdWKhPR2equJSgsCLvDUMlH99DcRhFJ+j5JvqJdVja6kYDmsW704U7JQaary3hS7fY9XUJcys1BJGyE9m5EMyo5JJJrODvX7eMkLd+UOklrBzrLSsqudqieGhJm1rtM0MfjVpLwpQtalaBvkbFwtSoc0wJPsLUFax/bJ7xfkvQT0LQImByuq/npSuVyKLZoZeywDjsqQ15Qrn4nw1H90wyQI7XVTPmEhhbAXth2omq+ruENGz3kVx5tdyxm3KGxht22fZUQ3mibhxoP2yUKZJ4GCWqhpfH+dKx9n8jqY5MEVlz5I7M9tIdwhIUX5WDs6I7BwDW4lYA2TQDvHXWQfIrskBwJRu0vYDm+lJtfdRWDifSB/NgajnEaZ2jc/3VEB/3D4sof1gq+0Y/OdytixjzbJWT8C/2z35vwFPVkf5VRHvTPfq9jNuQDfqNPG9chQwOADATZe7PwH5Ex6Hk2JFxKVHaGmkusSfHStFoptdPZMq7XUU0lKQ0ftqmpjVKjCptJ5G6rnZ2fPbt4cXkenL86O/8dGD/3ddrUEWqK3I1bLQofEo6mJt3zvYCbD2XRNpq5IZGluCg6FhhNo6Fi0kyIbZZILPmAOZKmUI/u1yvAEpA+nmIcZWrZtzxmEN2G+SHy5ArpTsVyMm3Tv8oMDuqjLz3r9yhByx+IEZ6QW+w0CGckT55dkgyJlITOvDsEE6EIwWCIYo3Uh/mM19ZvK2RhFoCG7e5AwXbcx/AIUOyQ5YzQ8MrERa6XFQtl64I62IhOxmX4BAdHkGOvVBTDDoVLILOzRSxmZ0RxWfLfV/NGfrJYJUCebN5UQt58RHC9BtfsNCiNbJZnc2w5VBYkCDX3wwk1WjuxeAaKjSiuDvqipTsPVA3FQ1DrH8QoAHBkkQ09hqcjiBIMyyPh1OrxegKDGJPAEKk9NBhgbOJw3A2VuAtl2m7wHa/C5ESthCNa7DQP+tBwOJcyhZbyV3dEjDWoqRgoSY1xLRxtcmW9l5RQytj6MMvyl8VS2npqFcH3ylXXyOgFnq29ClUlMsx6jUoFlxcD0cootO5pwm453cXrCkFmmiS5EWRUlQoa9p9rkGBAoYBSuWe0kMvQnwpCKrLjdFtkMxC9oinv0T2GAdnEoSdaE+WOM+qMOnY0Vr+D/g/99pC0qA6Z5aJYxTa2QlWOCQ/ZcOBbu4WxLh0MPR33xlO7u2KoV09EJERzs1bwKBAfnEurq8JmO0jocJsF5yAQ5RkGY9Y+slVDM8zrUn3Mhp/CbvqhzKBUf6MUQ/5lxDFD5yuIm2/XpsUs+Dp6Jukwz8Po1rMrr3CgxNL4VPMvpedPRgfDomyqkq3ezuJYLF3LlbJDaRPWn4/+7I7M1eqhzUvsoQai5Rdos1P0WaIFlwq96GiuMxh1UYLoknsZU7K+0DzM5l5sz2C0wzDZACSfcB58qArZLbVIFmCKXk4FS/0yJoi6Lk97m9OszAdGLiizaLGzuC1DIXzKmiGUxaUhlCViBz/kKa/ENeYitTKPmCdHTDwqCZAloviRNMw1F7jFdNALZwog4R+1Bd8KUCLWPLqnFk5lBXJlneGBOBF89Y3dPOnr2WVto0WgR/eWF7kag9JzN44wUWYE0cL6bueerXLx64s3V69enj0PXr959evl84tvCdketZBPDwaDBwdxB4gqHHWKdgWb7bM1gmP3STiulH3zL8lhlDh+2cDQZtFc+64oH4tVKj7PxJdgq4s2eUoEc/Rb/2/wl/hv95YoesHcdrZ4RXScoj/AI6Jo8mYnzn6bCOKDfCR+tH8EkCma1eVymhDdUNN0WJ5Ermp0K6IXgBE7JvF3Om67x2MejLf6ksvJsTs5BQcpPCks3i5fbgXoYuuce6QW4Jk0yb7w6xVHoHqdrtz8IxV9IifCtqgPt7kTBXL5ot4oiDIc++r2qySVJ0f81ZFOAMNlh6UzNwhVnPkLRGU1ccLrqnnTxwdM22nsBAXQX4HVLyPynbwA2g0KVkQHEk/XGR5U0DPG161RQr6KZkIVXt7Ad0GhvfDzJegN8hGDmQSwFNkQhvRB9/LX6+wOAD1PbshJ8+mMH4uSow9u/PRNkKZNWYJcsC99aNo7tlF0+jfHJ0EYhwsMSd+B3BaL6g9IzO6gHD3u4fOgG0plNJiEmRj0ioM8I5JbWHRDqLcuvBqGzRfLh1Hs+Zz99LyOXd6ztfO9nbHl8Yx0HKzyJiiTED0CuFsX9KiqpKmO3PJJYGi4SuDkJjWy0zZZKZNMEP00QROiScPCJzxQXbV0GtzLzAeKbckMB5xDCDWswVT5u49GA8p908NcOCrTAYooGADJB2hlBXWiA8t1NdDmi84o9Lgb87v2oB/ItD3GDi7PvkknxZM/KXiRmWw46fdUq/BXH4SiG4QyQTiBRQVRzDGlTQSFUYy65sTGjINzhKABTCdtwpqC6lguK/BmqN4boCCKS8NOXCUGeqPRBrfax2ATcNI225yFS10VzVt2GsSrfYjVHMflrhacponyH4aO6YB2NI5Grjuo3eIU8OvwBhZXxXOQDWwYURzCcDQJjgJ73ih+WV0h1pkTGFPf4JZXgdCvyoP5yRp9EbgcYZ/0qsdnSc3nM+XWRy/x9HHmkfC15Xm37ezK49OuRee9bKIqodHutC/AvqLfZvN5YAoWq5lEJVj8RUiRHW6FfxP4cum9/etaiOWfsq2Nn80nIs3D4ofzcH4DRBQ//EeSfvIakXMMXgiQJ1fJfJaHfu9lCYeAP4uliMLgdTK/y0V0u6SQ8ppMsPQ0Tb4sndK3wPLj0HlXGOYMdEroJngq0k9iLniS58/PioVfzKLb2U1IqfRegkpUMrGnSYacxH35MklByAgLMKb1/1hqBjSHXL7ZmvN1qLMfWXAPpfX81YsX715evv2P8rx1g06vZfxpJqFSMjnB0XBI3nRWbjtTX9mfe6I/dUlcv4PmRA6CryKvbN8uz4i3S4n1dAab5OThxD+pec/5NANJ4PCJBEwlz0Wcd9M1BnqxJn6STrJ9yIq7HD913UNZQX6Xv7AT+UjmxMjqgUYuQ7tK1wB7dCrIOco6FrzdOjUX9NbHbzdi7uUnt4J98jZZwfYtCK6iO1HuShKxjCh7cf6q3WoTv2BzGXJC+mlOUWpFubLaEwXHcbZMlgVfFDL5daeKI3ky41bXS2zznI1SJeGs47G2nNOWGLSmXesAbqAM4D0RTvSGaY8obdZkXOFfWSrAVuIfDtDYNPui1d3hUlTcep7r9aN7Svlz2sSmKZPR+48NY/SkBED0SXHbLC94XpdZBAIeqmP94UOkiebRWQ7SLmCScjc03hv0TW4LikMwRz3lwU3SWmMZGbkJY2H0wk3cKAAsi44SSfpSiUdkxykcS3GrsIS5iPkMqcwpu/RAwqzifPap6JVNLSuf7FHcR4srvcPS56AMUXaNVnlMatFKU+mNKRarXLmljJXt06bcJSYrjcS7vTHLzsYcxw7fJ0J/NLxRvzq1nhk13awp/7kWWV5eUX/E3FygNPGRLmVODpJ1fpPIX8rzw4ttMU3t7Z5h8jaTHc608L5F2hlK90a4lz39/LPsE5v8aVuTFR8wA5hqYB9Z4vnZ1dWLs7cXV2WJaW3nDW2ytkPG2c8D89q62WuZ3Bc9P2yZwuS23dPEbYHwcB7eUZziQ62Q9nG9mWvR0lviTkjxYXwYanFhPt8xJkgb54wiX5qxWBlmjQW4xMa7Z64B+zhQjYBtTb7bvc6/wAtawpqNlWk3EaPYH9Whn1DAYMReWUWexCIPZ/NMzVdu2UNi4h6xXi+QL554OZPZ+Xc0GCEbUzu+qTZ7gZldc6iM8oBIcuTJxE/kaQX8kh15pxZ7NF4owQwTXpdEKnnuSkVXfKjWnKbJwvHYsjar46HvHAiYmlbqbeOqX7ao03SGB6Z8UlxgTNig4ktmh5tgry0tzm4w99HWFvtT0lL6g35V+BhxlW+ILaiiVSXxQv4iKwZRgkG3XX3sax8sk42lUN9DgT3WPE/2WnGVGJgtc+yVx1lS7RWqiM7YlGTwOJJ7sUhBzRDsDedTUNB6DMfU4LLeESTwcXfcnkQezEv56B6r7GC3+8btabLl46PsY1vgHhVZCUxtv215/Ool+9NqqWyDei1IAMDQ1e0Pmo7ZI7O+N92jeOZYDJjGpqKKFJM9IbuIJj8uKLCcL1cE8+11BBmQBw2MW8wrD7v9qB/j1Pbs8s3F+dvg/Pezt9pjXB0UM26dFpe/6EErfVumJDW4yAHNSTeHMoKZimkqsluDpBRF0qfIAwyRrCaOKmoalhwHeA6gkCOmATe2ZuuJFzIUVweSOReNFELK3K+8p7ObInWLMeIWvmhkxP86/5ivqmFBR1NzlDNL+6KCJcrXjgA0rfLYS+XQtb2dMXlLgUAbKQ3fF2sZe7cmmXOcxewQxIV0waoyPVDQAMnS5IHNAVUWnp3s6RoVLyoco3zryMMPvzQOMvLtjGDBYn4Swa2ZPGgTPsw7BapscVDZYhDjE1DcHdztdtcV7KbKe8XxWzGEpNHwMcWc1uziNs6ZjXFVYc6i3FXo154uK54yIsMfHWeTMrZleZtuP1LRMRxVDrKuqnrx4uzyuQ5g8G890feVfCjegKIDpb06lhkD93rZySU7NkqTN5nOB+0IZT26PWUUo6/tqEuilzWC7/XYqlJe++TnT1Z4JjZmOgUV1jFkEqhfUUr10E+CqI5nR6zRi5a87+btWem9Nx26MaA9INTDIExp6rTJJxESjmjwx+kuh+/4Vuniqd1XLEvroNWiRvH810C/ZOK/JSWTLkalSvdVahuoO9L+iC5CsVVMmgLmASZbtUmiGCyEyFFFyGcLtmObMFrVtGIf7PUa9pzZlvrQVCr/T1iINXN8m1CSPemm4h4GyIPvNgY+YqyI9mYxxQd8VYA168FkwAlxpiXFh5MRbQg88h5SVfLn0AWPeHjFYb5a58jRnIH6kccA6UnwF4Rg6YVEJcPhmE4+P99VSQ9tRwLCctN7nIbTnHMoUsJW6/oku7OdXiNVe35P6fTN2a+2XPpBZQichMIdyHYpM0pWd4eJXBJDPrsDTwCgUeEaYgCdXEKd4JF+HsqTFgcgJEUVZaapDAszJEHGxqro7LZ3Pwslpx20MSW1PEUhhwFWcNWRJR1TdiPtUD7s9HTSTP7am9LJTL87NuZIy1jF0lsp9rghTt/iAKQjEj1zN1qPjcHauVCwaOBegayGJOaYqykGbmzRP5ExWuVjRZnYySCYkMd3Rd2KqltZsroAsvomMDuThU5TYjKPAI8mfj16SCBV0Y/HDqT6o3ivNTzTXYHrGuFdrWV59pPiSegFKFF3QbvqmFU1dy5z+PhmXQsaFWetu1rG1Pjq8BTT5SMjO6S7FXbVfC7jr4qCBQEKWZ1Sgjn+vTDCv65FGq0xE/6bJFkEhdE6PF11i1lHsiIkLA8sO4TRpMHR6Adbe8jkZc/QknKegDZwEyJXjSrfzBSKNjjLdaAaGVFLIYJh1Hb1wnV7tckOuSjSl53aswmR1CcZlO+Pqb+/JwsmVjkVNp3qisVJINmyDqDxl++1W2JHpYKWMZXIW1UyG8ukQOXsmMDvzmnjz7BwkdlOA9f+HMZdwd3atqpHSdGqUuohRD7NlqzjPXv2vKDm+Sf5W2Et+cyueE9/HXQZ+lCM+LRXyZpGWdRnyRJ7sRBV5/XEG81el14/NBfbN19O7xItyFwmTiKnAPy+VAcehQ3gO3Bs06F1RoP9dGi6MCF4++rVc3Xe69x06cpLNndGk5N1C+YHit0L7Msw1Su6E5NJPHv2kmw+GNDlcH3MLT6aTsZa3uIDC9LYzVh2cnGc9aHnGYZ+YZjjihzDaGD0JO/oZJqRk+d1qVuYzkEtT2epqQadM+TsRL31UAHLHNINRfIaBviNzeL/DSb8Dfj5feuje+vvht/La4Hb22NOd3rzfIN8w/1fxLM84XDlUkB8QwjQfroMIMnZ1dXllavP2HhhdIofps848gTO9LWMCy6IVeFYOqhbhqBBHKLxpzPsuNd1MnXnhFaD4UjfbzjoD3sqmA8FY4qRjbQUgtvm9eu3FPfaIU/yiRvrupcUciOWIoWFI8wjThShyIwpiwLKPSEBsKcqR5NWzgLTsEyPK0YtKrmOs9lY7qOU0cssh9atYkHx3OHQpTZ2rNh3aV4eZudW4AU63RCOs5clEwxz+5oOfQWMg83LlI7xL8eLAjRiUwg6cJizNA3v6KS9fh+wuPI4GAUbGdL1t4MglZQnT6uK901xKK+S9OVxIE9DBEwFO4fVS9eUPD+l4beAOiFv4QASavX8Nkzxqon6oB/8BZpqKI+GPPY84GE43gvsQqWN2JQBi2lqNbDoOwOLtQUFLPwgaYC71ahKoKiD3p5OPbwl0av2dD3Ha6fY/x+0h2wlwk8i5dSX7h6yiRE1J8NhayevU5EBcFmgiMLl5zCzQo8VCLw5Ii/kGdrHXEl0KAjdahVLhiOcz8k3VS3iFUoiwRcMCQDd/g5EhwAP1O7wSq5VkuYHQZJiIj5S/fWVkLciFc1mszJG2srU5Bgc8PiEooD18TkW3MdT7M3F2dtXb4LzVy+vXimVf9tN03YI8x+dUM335yjJJcTp5egmSjcR2g8zERQupqk2DszokhryZC2e7mmtVJnKLEX5XwBnl4Do0mjwQd7UNhRRr/KU2zcd+8N4EX5Vev+SLtjTAXjtGqYJwP+OJZervUnmxuKsauy8FMK33qqK8hqH84QvdCix1z6ICfIQfYtkcYWqT9HraqecNrkx7QzN2ie9K+qf/N7z5OGXTbx0p0wj4q+YgcH3NJaf5rbLsykhv64zEVsOwUf6wyL8+i7jcbc3eA1JXOr2hVKT1k7skVbJUGWiV57c4LU8Eu6+R41sdmY0IpalKcSWv2mvhRrtXJKyiUBSDEWhEMlNEWOWuq+nhzoGvdh4K1sR+fDNsewWOvvmCgtvMBzdxRrOxOfjDL71MMZJQ+Dhi325h4su9IXxiG8ikKiLggAeUZs89f5OsBswdbRrmMYbaRegcsg/0CWb09Yx8snEcpkT5OeWBya5xjv1VI2YOGllcZV4TbV/G+aZ4/W/39ru1JykzsJGqZ1shtbdWWwUIvI3lpe54yioyrnFHu4PqO908XACv/E1yzt8O6l/65K2La6YNuXsiW5PWfit2+Iqd9n+1rE9Obpyo9kl8RfYvCP9WEctVMQ+HkEEoO+wXCqg8z3JOMbzmw+VBsMOBitmTQr/S5anzXC1wiWXd/8eBNcvccc9ureKLPENkfDN9ccDq307fbGMBpsOO/ZxCkozxjKWNWOxmid3p+Syh9v03Qrt9Wd5g49huuTUNJSuECg7DUjn1GnE3aMaW6Uj2ckdHd0zz9mc+gLVQc4CiAfDBANEIEwkcMr5Q3GGfGjgfkw+MdUutseKIh76Ks8mGgXTdOccEDRanBhfE+A34w+dFFg2OwFjGOgDbdEd0dDCmTUo80ld/UZ5GO2yODvy81G3MPALXONwxl+ZWrq+uHLQcW9SHGLJnXTUHV9Id9oU5ko6ZSe0bqPjvtjwbr1mHLBkL/tuQXPPJ2Vd04HszNCKq7/tXkIaKtGjU8Ty2XTGNlkkbrPUHbbFmtW69uk6h6jPa2w3lvEhBd05ebM2LfH9h/aFhdYRsoUz9oaVFyVOyV5Blgd7StwY50AoQf3CFmIXCmkRJYcXzEbOKLLOk6u7ZQT8TeRAo9z521iA/jvO4hknEjcj+4gmF4ngt1n++3oSuP0POtH4g7y4kr03+OqM4jxsRYyzfwAouxJR7E3h2X/llqQeiopaUaVjFW2rWvaRhvURZv+eRmYpe4oMTKYcQ6kUTHcTSQhxGoo21rZB64x4iNyrPxkLV5HkcXzcKykm+REzpyh4Eu+0brKkWKrOsuFA8W9kONcejlinRSbCyGIC+or0RqOhyE6JV7WBm3dEUhHMA7zzULoekwqn6+9zl48EFKeHeHRP/JQlnPcyuTfpegdBDJP5aESeEycM59E9lWJLk0OJ+dZMSlPvFfFwBJmQU6JAJLGpJA2XN0xGb1Ihluz76eYsdQ6x7LMkbl5GcfE5KPVR2OjW8ZLJeAp/irlKvdRClWlzy+7z0tdTOWdA9UqvEnVx5B4uJBiS6JyY8X1YEv3cs7TmjcjRjQAGcnJMBUDs+QK/DgNA+1ZLd5slaV6vhwfBhC/AVM2Fpi2oo19PrOM6L3rSzzAPyseVnO+zhK4pUcmuncTo8B5b+UmaTM1VJyrtDnf4b7P8tq68XP72+s3Fr5f/TtGcdjV1C4qfrMe7R6yhU7eYyE80Xso8EPcy8DRP74J79fKfr169bNKkuCtYZ+rqflNr/BKANhTihaD3VhuutVIZaOm88TH+A+neJGPnU8rHgb4BSudLR1A85mhvDZYqUKmb6j04HTBEKGERFVXrQuhUU13hybLsyTlkdkcpS5hzY+vmLJ0CXuKILKvxFUrjmHWggCqvDpFlefdMWRUiS7IsQc/uZ2uj6CGarUNF2YascTXMQEowGIsZQcnxuDQ3fPaMFzb8Es7yIFzN6rUj+Hskv6obYp388RitbCrb6rnyJrOuBvBuPMMt4SajzxLYznU+ioi2pqFvWNn/S5r2stzDNj7F5ghE/lFDafu6eXlPIdoNcIYHKocp/fqooYVHejNAEWB6daXPBQTDaxuGRyrUxe1uc6TtFNeNg2+orgZ1rYjeR7lYgXUfEwxWTcO1i6ilCrz08yZjK1eyrSOqziYQeLHLfVlvW9rV1ekvw5Cw02YfdTarb8Vmp7yUJs41bto3e+BauwX8VX7QNnjwRthYGw7Q5JkLIxC3grpzU0MydXvwRxv7w/RRRRNaB72aRMbrddpk9ftAf+KEBA09PTnG5mqd3UI5bu3ALh+XYBK0YE9XoquernyyKYkrMegizek8zF+gQAeNp3ecuRifTI/uBWPl7JirSKbc8MNQKnFLLDNQBq8cP8iy207cKyP/XyAUcvUH3O1BIT1IVjUDPX/17s3VhZ36zRVhKvHNncUBSAYLkd8mwGBrr19dvYU3eIj6WOcD9Ho8oCvJHgdOEj+8MIxuBNhoRArM9Cy2XAqz5nqZ3c6mubqls+RI1dSuIil0jmlfVZuJ3LyzMXeyzu4kkVEa3hKPLxuWcCWHiXC1rnul23kaNt1jrvxLaXFzP3zDz+BVSgDkt1OVIgoUgSUesrx7c4lZTpMlbIq615DMTAX6XdUgTHCowYygkPykDEOsmr/oioxU01kKf4s5VJzUFsC+Tb2iPGEFY4O2QC1uy1hCBXTCEtVkZeoTM1W9ERZlUNfj9Zm0aczm079YzZbFtyK2L0o5rkFp899DL60FVHLWikVWdzH560vvS5aW3h+p8wZ7eW3Dd2XF7C6D0RxyqZrLmuwGdLsbKXOwKlIXaZqkligICmESZjm/V8BTVIAT/s/vPFlFbmISNVQ37j7eVBALdJOg/PqUTT9zRWrKRnwcWJ43VEhqxI5ByJYdsZqXrh8VU1kEj2+yZP5ZoLvG3wFbqIBLplO+sOyY6uHw3rBPRcNMDn83kyViBZRjcMuGgdGrpNePA31JwAE9vgXdU75ENZRfInN6rNqERtbz3KLcui9aEaszHHxdfuVV9KrgvzNife/ePGdgyNVoVHNtoGHxXJzRjzrbkNxVYeMTjIM/0pEBYE2T31sskF8oJbqcnqvGaOOs81v0EXX2TpokQGiQn/3+9sVz3AXqOjSve6hobR27T3eL2z3Okxtvq25l09j1EdfZxqnljWeP6jSjCwo9a5w2jQUK0+/K8zxd7LU64HNLOjxcbTc8bVWcHJ/973wvnLmM3nw3pIy4sWKiD4VbKm5mmFLzgaDT1Q4cjuDB0foiIWq9CaQcJKFGieU92Dql91gLp/y+61Jei05AUB7zKsv3W9swh/i6+iX7Zuycn1PpQr3x6lnVzKn7H4lbKlf3g7GLMhzQxA4jmseDkIxq28db371X910Zf68qThpber+0QPtHc/rYbdzSjsfsUW8Db+nwoH3ByYeTh0Vap+xnTcDS2c3SBiLXOSKL3MMXEPTwm8TyWSguIIEdVnAL3D1plf0ogvwWQ4WQLV8gx6vrJC6cVdy+m8M+N/RhWUGeOH3ZIlyuw/khOV7sRp6qVTdHiVZM3T7OEzKLCT2PWpg9nc+k+p32REVasuvmj8IQQA3MzWcvUxXrw3JFkKAXtC13WnnQFaLNr/IkpXuLxAJkXZSgJfuZkNZKd3PWvEqEnalAmvLwWSGlOlRkqiiOVxMyZ7iwnsWxUtjIgalbwKzv5rA0+CpNQg2dv3/LwGXL1cMuFNhv2JRdkANei5uezSYBX+JW92JgOev+cDxtVcfDNjyaQO523sh+kKVFG1aU8wj+LJfGCmZzy8LiqMg/CDVUNrQimCvG4wnKf8CQYkFxdiVDkrYwEn9wydl1oj8Zk1tEB118B4Ne2b1zCi3aRBLbU3McV0bGfbttYc6ba2fJn108v3h7UXOWs+ogg+ZYaLBRBe7aj5e36e6TOImKoC0/eNnBJe0sWjKunzxR+qOxcMFfzTcfeiSzbcPJw0sQBqA8h987sgC3Ryd7NdyYX3NdGJ4L8lpOOnYNo839HfuD1oPvBfwfsSLKBDi3zIbGqMJQorsmAUpsYjF1rfMS/ISnJdIK84euM1k/lIXkIGg26ccfs1Ly1iAxzfZXIxbiCGuIFK+w8lnFO0cAXN7MZ9ntW+ANGaGk/QIhTnFDIj5QJc+W2ReROmXlK6d0dItXaomLr2jKJymIq5S8d+utszxZXMLc0nXEJ+VYy3/7nTYGW8K1Lg9nabdwSfgPkE+9+1XthSSgyNtUERJzKPrwDpyrZot4wvE3x6ozzvHnMQ4q0+CiErgFpsEd+OrNA5RiuhH1v5viFK8s5+hQmS+ir5IiFKkSeb/4YKtQ8qRtka7X5aPQIjUrXMrqC4TYoXJg+fnn4CerOX26WAkXk2jbvhtZQcdkxXEds/2Ze5fPy4NfDPF4LC9ePVCRho8D7R5kEmKTz+dw3PqgUpBZ/XIEfqH3YIMkSnaBujyMYZnb/Ri/UYoAti/87QmM2cUgQO9uK+va30GrHXNGH6DVrsxU3NJ7HqyX8xHEk60sRAKWQXdALt1E44g9vChYvW7Ws1jgJdU2YpWSO4NUjtNFiduFt8KcBqB1EBx2GpgEFbRWx+LjHld8Dxl0bsB7GDfjOls4mbaq2jd2+oIVJ6W0i8mrN/2ClK/SLscXVRbam1zGTmuY/94vpBNy2iXlhYd+WSdHqF2eryn8YWzPuRN7J9v7YYbR4jVGJafIhWuSfC6kLitCIODlRtUDtc7Mv32odI3MNtOSLnpE19RsVc3l2B9XTBZkf7yOhldeX3PkLPtf0cTHVmFNHmVpdXFQAQOXyfJukawzXZKuLTKC1w7R9YeAka6cKQfjdRkYS3XgI2zlG10a3GU5e3v+e+2PmnVJLu3izK2eSn0jHmCw0nnl9yaqVpfb0FUTOPeKjwccG6jDf0YGWAoMVKnZkSpDEdlBf+EHJ7MrC29Vt7j0xMiLxKm4csG/L0FLhTsvMdhNDr9n+byLLwCeJV/lJRZbN48aw6G6AmIPGxJvArPaoVS5tgyQchLxIzSgbtfYQT6+Az6FmxMqzYWOe88DLIbfNzpOZb5do7EdiR6g1JRn8t/DpPUwJ6St3MpiMCo1/Na9/yOBaye+LdI1qYoeYxyTSpTcEUrpsI8h2TLbj8ri9z4svQTd3fFUKSgcBYV2DieVtTv/DbZgp3EuTxHtt0b5oUta4uuBB1G759egbMtlNayESd6IOdWSV+faV3Q4BRNruVaGJmu5uASFgkgJIzj2NTITuY0alt+H55paDAHQXNv21PeVY+WRuusIlQZkX6vMN43a5gHeW0VrvWQKHHpI2cSNXKyujZ6O1e0H5UaDPV2yH6IrMrIrbZGX1996cpVsTyPrgotSja4Jmt5hG8VA5/aVbxFBLG9Df6fqxWeIlDtV+0BchXfSM822rrsZbh3MfibCGJPOAPg4vodDenQwj1VbJrQtKHM6mMfpyVMjTRhkM08ur17JEKXGgRXcY9XXiWr93mSUj1WUk8v65ZxwH6S3+5xllDr972HYvn5074VUbSgnE60Fh2ChCCHPJ9Qa6iMNih3UYLNrW8G25yJipQEoAgSeBS5UifJKVbEwny3poR6qHQgu/81U2UNfpXfk+9pTH0ldxHqey3pBx03uwYxElGRWBPvqgfedP7MtLDwk0JtzzxT5nVV1vc0rYCFIqo7s/XvYMyKxuVZtHU48gOHMW1AgNm3I8vzfExXn6JFleG/NfiF98pS+js22M6A7RivTU+d/n8Fc4bQQF2AAAA";
+  const VERSION = "1.1.24";
+  const STUDENT_PAGES = ["community", "classmates", "email", "schedule", "study", "tools", "profile"];
+  const ADMIN_PAGES = ["admin"];
+  const SCHEDULE_COURSE = "Schedule & Deadlines";
+  const SCHEDULE_PREFIX = "[SCHEDULE_ITEM]";
 
   const root = document.getElementById("root");
-  const clean = (value) => String(value || "").replace(/[<>&]/g, "");
-  const fail = (message) => {
-    console.error(message);
-    if (root) {
-      root.innerHTML = '<div class="boot-screen"><div class="brand-mark">SB</div><strong>StudyBridge failed to open</strong><span>' + clean(message) + '</span></div>';
+  const state = {
+    version: VERSION,
+    user: null,
+    mode: "student",
+    page: "study",
+    courses: [],
+    activeCourseId: "",
+    docs: [],
+    messages: [],
+    allDocs: [],
+    scheduleItems: [],
+    communityChannel: "all",
+    community: null,
+    classmates: null,
+    activeClassmateId: "",
+    directMessages: [],
+    admin: null,
+    status: null,
+    googleEnabled: false,
+    toast: "",
+    busy: false,
+    uploadFiles: []
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (value) =>
+    String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  const initials = (name) => String(name || "SB").trim().slice(0, 1).toUpperCase() || "S";
+  const isAdmin = () => ["admin", "co-admin"].includes(String(state.user?.role || "").toLowerCase());
+  const profile = () => state.user?.profile || {};
+  const profileSbId = (user = state.user) => String(user?.profile?.sbId || "").trim();
+  const hasProfileSchool = () => Boolean(String(profile().school || "").trim());
+
+  const pageLabels = {
+    community: ["社", "社区", "全部、学校和专业频道"],
+    classmates: ["友", "同学", "SB ID 申请和聊天"],
+    email: ["信", "邮件助手", "理解邮件并生成英文回复"],
+    schedule: ["时", "时间表", "Deadline 和课程提醒"],
+    study: ["学", "学习区", "课程资料、AI 对话和复习计划"],
+    tools: ["工", "工具", "SB Docs、Sheets、Slides"],
+    profile: ["人", "个人资料", "头像、学校、专业和 SB ID"],
+    admin: ["管", "开发者端", "邀请码、用户和系统状态"]
+  };
+
+  const schoolFacts = {
+    "university of toronto": {
+      name: "University of Toronto",
+      rank: "QS 2026: #29",
+      place: "Toronto, Ontario, Canada",
+      points: ["加拿大顶尖研究型大学", "St. George 市中心资源强", "适合科研、商科、CS、生命科学等方向"]
+    },
+    "centennial college": {
+      name: "Centennial College",
+      rank: "College",
+      place: "Toronto, Ontario, Canada",
+      points: ["偏应用和就业导向", "课程常包含项目、实习和行业训练", "适合需要技能型路径的学生"]
+    },
+    "university of british columbia": {
+      name: "University of British Columbia",
+      rank: "QS 2026: Top 50",
+      place: "Vancouver / Kelowna, BC, Canada",
+      points: ["研究实力强", "校园资源和国际学生支持丰富", "适合科研、工程、商科、环境方向"]
+    },
+    "university of waterloo": {
+      name: "University of Waterloo",
+      rank: "QS 2026: Top 120",
+      place: "Waterloo, Ontario, Canada",
+      points: ["Co-op 实习体系非常强", "CS、工程、数学和创业氛围突出", "适合重视实习和就业的学生"]
     }
   };
 
-  const bytesToText = (bytes) => new TextDecoder("utf-8").decode(bytes);
-  const b64ToBytes = (value) => {
-    const binary = atob(value);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-    return bytes;
-  };
-  const sha256 = async (text) => {
-    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-    return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
-  };
+  async function api(path, options = {}) {
+    const init = { credentials: "same-origin", ...options };
+    if (init.body && typeof init.body !== "string" && !(init.body instanceof FormData)) {
+      init.headers = { "content-type": "application/json", ...(init.headers || {}) };
+      init.body = JSON.stringify(init.body);
+    }
+    const response = await fetch(path, init);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || data.message || `请求失败 (${response.status})`);
+    return data;
+  }
 
-  (async () => {
+  function setToast(message) {
+    state.toast = message || "";
+    if (message) window.setTimeout(() => {
+      if (state.toast === message) {
+        state.toast = "";
+        render();
+      }
+    }, 2600);
+  }
+
+  function setPage(page) {
+    if (page === "admin") {
+      if (!isAdmin()) page = "study";
+      state.mode = page === "admin" ? "admin" : "student";
+    } else {
+      state.mode = "student";
+      if (!STUDENT_PAGES.includes(page)) page = "study";
+    }
+    state.page = page;
+    if (isAdmin()) localStorage.setItem("studybridge.mode", state.mode);
+    localStorage.setItem("studybridge.page", page);
+    history.replaceState(null, "", `${location.pathname}?page=${encodeURIComponent(page)}&v=${VERSION}`);
+  }
+
+  function formatDate(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  }
+
+  function dueText(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const diff = date.getTime() - Date.now();
+    if (diff <= 0) return "已到期";
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(hours / 24);
+    const restHours = hours % 24;
+    if (days > 0) return `${days}天${restHours}小时`;
+    return `${Math.max(1, restHours)}小时`;
+  }
+
+  function formatText(text) {
+    let safe = esc(text || "");
+    safe = safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    safe = safe.replace(/\[(.+?)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
+    safe = safe.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noreferrer">$1</a>');
+    return safe.replace(/\n/g, "<br>");
+  }
+
+  function authHtml(mode = "login") {
+    const register = mode === "register";
+    return `
+      <main class="auth-shell">
+        <section class="auth-card">
+          <div class="brand-row">
+            <div class="brand-mark">SB</div>
+            <div><span>STUDYBRIDGE CLOUD</span><strong>StudyBridge</strong></div>
+          </div>
+          <div class="segmented">
+            <button data-action="auth-tab" data-tab="login" class="${register ? "" : "active"}">登录</button>
+            <button data-action="auth-tab" data-tab="register" class="${register ? "active" : ""}">注册</button>
+          </div>
+          ${register ? `<label>姓名<input id="authName" placeholder="你的名字"></label>` : ""}
+          <label>Email<input id="authEmail" type="email" autocomplete="email" placeholder="you@example.com"></label>
+          <label>密码<input id="authPassword" type="password" autocomplete="${register ? "new-password" : "current-password"}" placeholder="至少 8 位"></label>
+          ${register ? `
+            <label>确认密码<input id="authPasswordConfirm" type="password" autocomplete="new-password" placeholder="再输入一次密码"></label>
+            <label>邀请码<input id="authInvite" placeholder="向创作者索取邀请码"></label>
+            <div class="inline-fields">
+              <input id="authEmailCode" placeholder="邮箱验证码（可先不填）">
+              <button data-action="send-email-code">发送验证码</button>
+            </div>
+          ` : ""}
+          <div class="or-line"><span>or</span></div>
+          <button class="ghost wide" data-action="google-login" ${state.googleEnabled ? "" : "disabled"}>Google 登录${state.googleEnabled ? "" : "待配置"}</button>
+          <button class="primary wide" data-action="${register ? "register" : "login"}">${register ? "创建账号" : "登录"}</button>
+          ${register ? "" : `<button class="link-button" data-action="forgot-password">忘记密码？</button>`}
+          ${state.toast ? `<p class="notice">${esc(state.toast)}</p>` : ""}
+        </section>
+      </main>
+    `;
+  }
+
+  function sidebarHtml() {
+    const p = profile();
+    const navOrder = ["community", "classmates", "email", "schedule", "study", "tools"];
+    const userNav = navOrder.map((page) => navButton(page)).join("");
+    const devSwitch = isAdmin()
+      ? `<div class="mode-switch">
+          <button class="${state.mode === "student" ? "active" : ""}" data-action="mode-student">普通用户端</button>
+          <button class="${state.mode === "admin" ? "active" : ""}" data-action="mode-admin">开发者端</button>
+        </div>`
+      : "";
+    return `
+      <aside class="sidebar">
+        <header class="side-head">
+          <div class="brand-mark">SB</div>
+          <div><strong>StudyBridge</strong><span>${esc(state.user.name)} | ${esc(state.user.email)}</span></div>
+          <button data-action="logout">退出</button>
+        </header>
+        ${state.mode === "student" ? `
+          <button class="profile-card ${state.page === "profile" ? "active" : ""}" data-page="profile">
+            <div class="cover" style="${p.backgroundUrl ? `background-image:url('${esc(p.backgroundUrl)}')` : ""}">
+              ${p.avatarUrl ? `<img src="${esc(p.avatarUrl)}" alt="">` : `<b>${esc(initials(state.user.name))}</b>`}
+            </div>
+            <div>
+              <h3>${esc(state.user.name)}</h3>
+              <p>${esc([p.school, p.major].filter(Boolean).join(" · ") || "完善学校和专业")}</p>
+              <strong>SB ID: ${esc(profileSbId() || "未设置")}</strong>
+            </div>
+            <span>打开</span>
+          </button>
+          <nav class="side-nav">${userNav}</nav>
+        ` : ""}
+        ${devSwitch}
+        ${state.mode === "student" ? studySidebarHtml() : adminSideHint()}
+      </aside>
+    `;
+  }
+
+  function navButton(page) {
+    const [icon, title, sub] = pageLabels[page];
+    const active = state.page === page ? "active" : "";
+    return `
+      <button class="nav-card ${active}" data-page="${page}">
+        <span>${esc(icon)}</span>
+        <b>${esc(title)}</b>
+        <small>${esc(page === "schedule" && nextDue() ? `${nextDue().title} · 还有 ${dueText(nextDue().startsAt)}` : sub)}</small>
+      </button>
+    `;
+  }
+
+  function studySidebarHtml() {
+    return `
+      <section class="side-section">
+        <div class="section-title"><b>课程</b><button data-action="add-course">新增</button></div>
+        <div class="course-list">
+          ${state.courses.length ? state.courses.map((course) => `
+            <button class="course-item ${course.id === state.activeCourseId ? "active" : ""}" data-action="select-course" data-id="${esc(course.id)}">
+              <b>${esc(course.name)}</b><small>${esc(course.term || "Current term")}</small>
+              <span data-action="delete-course" data-id="${esc(course.id)}">×</span>
+            </button>
+          `).join("") : `<p class="muted">还没有课程。可以新增课程后开始保存资料。</p>`}
+        </div>
+      </section>
+      <section class="side-section">
+        <div class="section-title"><b>课程资料</b><span>${state.docs.length}</span></div>
+        <textarea id="docText" placeholder="粘贴 syllabus、lecture notes、rubric、deadline 或样卷文字"></textarea>
+        <div class="inline-fields">
+          <input id="docTitle" placeholder="资料标题">
+          <button data-action="save-doc">保存</button>
+        </div>
+        <div class="inline-fields">
+          <input id="docFile" type="file" accept=".pdf,.txt,.md,.doc,.docx,.png,.jpg,.jpeg" multiple>
+          <button data-action="upload-doc">上传文件</button>
+        </div>
+        ${state.docs.length ? state.docs.map((doc) => `<div class="mini-row"><b>${esc(doc.title)}</b><small>${esc(doc.type || "Note")}</small></div>`).join("") : `<p class="muted">还没有云端课程资料。</p>`}
+      </section>
+      <section class="side-section">
+        <div class="section-title"><b>Learning Style</b><span>Saved</span></div>
+        ${prefBox("englishTerms", "保留 English terms")}
+        ${prefBox("englishAnswers", "做题先给 English answer")}
+        ${prefBox("chineseExplanations", "用中文解释 reasoning")}
+        <textarea id="customInstruction" placeholder="例如：先给结论，再用中文拆步骤，最后列考试易错点。">${esc(state.user.preferences?.customInstruction || "")}</textarea>
+        <button data-action="save-prefs">保存偏好</button>
+      </section>
+    `;
+  }
+
+  function prefBox(key, label) {
+    const checked = state.user.preferences?.[key] !== false ? "checked" : "";
+    return `<label class="check"><input id="${key}" type="checkbox" ${checked}>${esc(label)}</label>`;
+  }
+
+  function adminSideHint() {
+    return `<section class="side-section"><p class="muted">开发者端只保留监管、邀请码、用户、系统状态和密码重置。</p></section>`;
+  }
+
+  function shellHtml(content) {
+    return `
+      <div class="app-shell">
+        ${sidebarHtml()}
+        <main class="workspace" id="workspace">
+          ${content}
+        </main>
+      </div>
+    `;
+  }
+
+  function pageHeader(kicker, title, subtitle, back = true) {
+    return `
+      <header class="page-header">
+        <div><span>${esc(kicker)}</span><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></div>
+        ${back && state.page !== "study" ? `<button data-page="study">返回学习区</button>` : ""}
+      </header>
+    `;
+  }
+
+  function routeHtml() {
+    if (!state.user) return authHtml();
+    if (state.mode === "admin") return shellHtml(adminPage());
+    const pages = {
+      study: studyPage,
+      community: communityPage,
+      classmates: classmatesPage,
+      email: emailPage,
+      schedule: schedulePage,
+      tools: toolsPage,
+      profile: profilePage
+    };
+    return shellHtml((pages[state.page] || studyPage)());
+  }
+
+  function studyPage() {
+    const course = state.courses.find((item) => item.id === state.activeCourseId);
+    return `
+      ${pageHeader("ACADEMIC COACH", course?.name || "请选择课程", "资料、对话和偏好会通过后端保存。", false)}
+      ${upcomingBanner()}
+      <section class="chat-area">
+        <div class="messages" id="messages">
+          ${state.messages.length ? state.messages.map(messageHtml).join("") : `<div class="message ai"><b>AI</b><div>欢迎回来。先保存课程资料，然后问我预习、复习、deadline、作业要求或模拟考试。</div></div>`}
+        </div>
+      </section>
+      ${composerHtml()}
+    `;
+  }
+
+  function upcomingBanner() {
+    const due = nextDue();
+    if (!due) return `<section class="deadline-banner"><div><span>暂无 upcoming deadline</span><b>添加作业、考试或课程提醒后，这里会显示最近时间。</b></div></section>`;
+    return `
+      <section class="deadline-banner" data-page="schedule">
+        <div><span>最近要做</span><b>${esc(due.title)}</b><p>${esc(due.course || "")} | ${esc(formatDate(due.startsAt))} | ${esc(due.location || "")}</p></div>
+        <strong>${esc(dueText(due.startsAt))}<small>后 due</small></strong>
+      </section>
+    `;
+  }
+
+  function composerHtml() {
+    return `
+      <footer class="composer">
+        <div class="quick-prompts">
+          <span>快捷指令</span>
+          ${["预习下一节", "课前关键词", "上课问题", "10 分钟预习", "课程介绍", "Deadline 汇总", "制作 Cheatsheet"].map((item) => `<button data-action="quick-prompt" data-prompt="${esc(item)}">${esc(item)}</button>`).join("")}
+        </div>
+        <div class="compose-row">
+          <button class="attach" data-action="pick-chat-file">+</button>
+          <input id="chatFile" class="hidden" type="file" multiple accept="*/*">
+          <textarea id="chatInput" rows="2" placeholder="问：帮我根据这门课资料做一个 final 复习计划"></textarea>
+          <button class="send" data-action="send-chat">发送</button>
+        </div>
+        ${state.uploadFiles.length ? `<p class="muted">已选择：${state.uploadFiles.map((file) => esc(file.name)).join("、")}</p>` : ""}
+      </footer>
+    `;
+  }
+
+  function messageHtml(message) {
+    const mine = message.role === "user";
+    return `<div class="message ${mine ? "user" : "ai"}"><b>${mine ? "你" : "AI"}</b><div>${formatText(message.content)}</div></div>`;
+  }
+
+  function profilePage() {
+    const p = profile();
+    return `
+      ${pageHeader("PERSONAL PROFILE", "个人资料", "头像、背景、学校、专业和 SB ID 都在这里管理。")}
+      <section class="two-col">
+        <article class="profile-preview card">
+          <div class="cover large" style="${p.backgroundUrl ? `background-image:url('${esc(p.backgroundUrl)}')` : ""}">
+            ${p.avatarUrl ? `<img src="${esc(p.avatarUrl)}" alt="">` : `<b>${esc(initials(state.user.name))}</b>`}
+          </div>
+          <h2>${esc(state.user.name)}</h2>
+          <p>${esc([p.school, p.major].filter(Boolean).join(" · ") || "还没有填写学校和专业")}</p>
+          <strong>SB ID: ${esc(profileSbId() || "未设置")}</strong>
+          ${schoolInfoHtml(p.school)}
+        </article>
+        <article class="card">
+          <h2>编辑资料</h2>
+          <label>姓名<input id="profileName" value="${esc(state.user.name)}"></label>
+          <label>学校<input id="profileSchool" list="schoolOptions" value="${esc(p.school || "")}"></label>
+          <datalist id="schoolOptions">${schoolOptions().map((item) => `<option value="${esc(item)}"></option>`).join("")}</datalist>
+          <label>专业<input id="profileMajor" list="majorOptions" value="${esc(p.major || "")}"></label>
+          <datalist id="majorOptions">${["Finance", "Economics", "Business", "Computer Science", "Engineering", "Nursing", "Mathematics", "Statistics", "Psychology", "Biology"].map((item) => `<option value="${item}"></option>`).join("")}</datalist>
+          <label>SB ID<input id="profileSbId" value="${esc(profileSbId())}" placeholder="例如 adam2026"></label>
+          <label>头像图片链接或 base64<input id="profileAvatar" value="${esc(p.avatarUrl || "")}"></label>
+          <label>背景图片链接<input id="profileCover" value="${esc(p.backgroundUrl || "")}"></label>
+          <button class="primary wide" data-action="save-profile">保存资料</button>
+        </article>
+      </section>
+    `;
+  }
+
+  function schoolInfoHtml(school) {
+    const key = String(school || "").toLowerCase().trim();
+    const info = schoolFacts[key] || (school ? { name: school, rank: "信息待补充", place: "地点待补充", points: ["StudyBridge 会把学校写入 AI 学习上下文", "回答会优先贴近你的学校、课程语境和学习需求", "后续可以继续补充排名、专业和课程要求"] } : null);
+    if (!info) return "";
+    return `
+      <div class="school-info">
+        <h3>${esc(info.name)} 概览</h3>
+        <div class="fact-grid"><span><b>类型 / 排名</b>${esc(info.rank)}</span><span><b>地点</b>${esc(info.place)}</span></div>
+        <ul>${info.points.map((point) => `<li>${esc(point)}</li>`).join("")}</ul>
+      </div>
+    `;
+  }
+
+  function schoolOptions() {
+    return [
+      "University of Toronto", "University of British Columbia", "McGill University", "University of Waterloo", "McMaster University", "Western University", "Queen's University", "University of Alberta", "University of Calgary", "York University", "Toronto Metropolitan University", "Centennial College", "Seneca Polytechnic", "George Brown College", "Sheridan College", "University of California Berkeley", "UCLA", "University of Michigan", "New York University", "Boston University", "Northeastern University"
+    ];
+  }
+
+  function communityPage() {
+    const data = state.community;
+    return `
+      ${pageHeader("COMMUNITY", "社区", "所有人都能看全部社区，也可以切到你的学校或专业频道。")}
+      <section class="card">
+        <div class="tabs">
+          ${["all", "school", "major"].map((channel) => `<button class="${state.communityChannel === channel ? "active" : ""}" data-action="community-channel" data-channel="${channel}">${channel === "all" ? "全部社区" : channel === "school" ? "学校社区" : "专业社区"}</button>`).join("")}
+        </div>
+        <div class="inline-fields">
+          <input id="postTopic" placeholder="主题，例如 ECO101 / 选课 / 作业">
+          <label class="check"><input id="postAnon" type="checkbox">匿名</label>
+        </div>
+        <textarea id="postContent" placeholder="写下你想问或分享的内容"></textarea>
+        <button class="primary" data-action="community-post">发布</button>
+      </section>
+      <section class="list">
+        ${(data?.posts || []).length ? data.posts.map((post) => `
+          <article class="card post">
+            <div><b>${esc(post.topic)}</b><span>${esc(post.channelLabel || "")}</span></div>
+            <p>${formatText(post.content)}</p>
+            <small>${esc(post.authorName)} · ${esc(formatDate(post.createdAt))}</small>
+            <button data-action="community-like" data-id="${esc(post.id)}">赞 ${post.likeCount || 0}</button>
+          </article>
+        `).join("") : `<p class="empty">这个频道还没有内容。</p>`}
+      </section>
+    `;
+  }
+
+  function classmatesPage() {
+    const classmates = state.classmates?.classmates || [];
+    const requests = state.classmates?.requests || { incoming: [], outgoing: [] };
+    const active = classmates.find((item) => item.id === state.activeClassmateId) || classmates[0] || null;
+    if (active && active.id !== state.activeClassmateId) state.activeClassmateId = active.id;
+    return `
+      ${pageHeader("CLASSMATES", "同学", "通过 SB ID 发送好友申请，通过后可以聊天。")}
+      <section class="two-col classmates-layout">
+        <article class="card">
+          <h2>添加同学</h2>
+          <p class="muted">当前学校：${esc(state.classmates?.school || profile().school || "未填写")}</p>
+          <div class="inline-fields">
+            <input id="classmateSbId" placeholder="输入 SB ID，例如 adam2026">
+            <button data-action="add-classmate">发送申请</button>
+          </div>
+          <details class="request-box">
+            <summary>申请列表 ${(requests.incoming || []).length ? `<span class="dot"></span>` : ""}</summary>
+            ${(requests.incoming || []).length ? requests.incoming.map((req) => `
+              <div class="mini-row"><b>${esc(req.from?.name || "同学")}</b><small>SB ID: ${esc(req.from?.sbId || "")}</small><button data-action="friend-accept" data-id="${esc(req.id)}">通过</button><button data-action="friend-ignore" data-id="${esc(req.id)}">忽略</button></div>
+            `).join("") : `<p class="muted">还没有好友申请。</p>`}
+            ${(requests.outgoing || []).length ? `<h3>已发送</h3>${requests.outgoing.map((req) => `<div class="mini-row"><b>${esc(req.to?.name || "同学")}</b><small>等待对方通过</small></div>`).join("")}` : ""}
+          </details>
+          <h2>同学列表</h2>
+          ${classmates.length ? classmates.map((mate) => `
+            <button class="friend-row ${mate.id === state.activeClassmateId ? "active" : ""}" data-action="select-classmate" data-id="${esc(mate.id)}">
+              <b>${esc(mate.peer?.name || "同学")}</b>
+              <small>SB ID: ${esc(mate.peer?.sbId || "")}</small>
+              ${mate.lastMessage ? `<span>${esc(mate.lastMessage.mine ? "你：" : "")}${esc(mate.lastMessage.content || "")}</span>` : ""}
+            </button>
+          `).join("") : `<p class="muted">还没有添加同学。</p>`}
+        </article>
+        <article class="card chat-panel">
+          <div class="section-title"><div><span>DIRECT CHAT</span><h2>${esc(active?.peer?.name || "请选择一位同学")}</h2></div><button data-action="refresh-classmates">刷新</button></div>
+          ${active ? peerCard(active.peer) : ""}
+          <div class="dm-list">${state.directMessages.length ? state.directMessages.map((msg) => `<div class="dm ${msg.mine ? "mine" : ""}"><p>${formatText(msg.content)}</p><small>${esc(formatDate(msg.createdAt))}</small></div>`).join("") : `<p class="empty">选择同学后，这里会显示你们的聊天。</p>`}</div>
+          <div class="compose-row"><input id="dmInput" placeholder="写一句话给同学"><button class="send" data-action="send-dm">发送</button></div>
+        </article>
+      </section>
+    `;
+  }
+
+  function peerCard(peer) {
+    return `
+      <div class="peer-card">
+        <div class="cover" style="${peer?.backgroundUrl ? `background-image:url('${esc(peer.backgroundUrl)}')` : ""}"></div>
+        <div class="avatar">${peer?.avatarUrl ? `<img src="${esc(peer.avatarUrl)}" alt="">` : esc(initials(peer?.name))}</div>
+        <h3>${esc(peer?.name || "同学")}</h3>
+        <p>${esc([peer?.school, peer?.major].filter(Boolean).join(" · "))}</p>
+        <span>SB ID: ${esc(peer?.sbId || "")}</span>
+      </div>
+    `;
+  }
+
+  function emailPage() {
+    return `
+      ${pageHeader("EMAIL COACH", "邮件回复助手", "粘贴邮件内容，StudyBridge 会帮你看懂并起草回复。")}
+      <section class="two-col">
+        <article class="card">
+          <h2>收到的邮件</h2>
+          <textarea id="emailOriginal" placeholder="把老师、TA、学校办公室或同学发来的邮件粘贴在这里"></textarea>
+          <label>你想怎么回复<textarea id="emailGoal" placeholder="例如：我想礼貌申请延期 / 确认 meeting time / 解释我会晚交"></textarea></label>
+          <div class="inline-fields"><select id="emailTone"><option>专业、自然</option><option>更礼貌正式</option><option>简短直接</option></select><select id="emailOutput"><option>中文解读 + 英文回复</option><option>只要英文回复</option></select></div>
+          <button class="primary" data-action="draft-email">生成回复</button>
+        </article>
+        <article class="card"><div class="section-title"><div><span>DRAFT</span><h2>建议回复</h2></div><button data-action="copy-output">复制</button></div><div id="toolOutput" class="output-box">生成后会显示：邮件重点、需要注意的地方，以及一版可以修改后发送的英文回复。</div></article>
+      </section>
+    `;
+  }
+
+  function schedulePage() {
+    const items = state.scheduleItems || [];
+    const pending = items.filter((item) => !item.completedAt);
+    const done = items.filter((item) => item.completedAt);
+    return `
+      ${pageHeader("SCHEDULE", "时间表", "上传 syllabus 或手动添加作业、考试、课程提醒。")}
+      <section class="two-col">
+        <article class="card">
+          <h2>添加提醒</h2>
+          <input id="scheduleTitle" placeholder="例如 ECO101 Essay 1">
+          <input id="scheduleCourse" placeholder="课程，例如 ECO101">
+          <input id="scheduleTime" type="datetime-local">
+          <input id="scheduleLocation" placeholder="提交位置，例如 Quercus / Room 101">
+          <textarea id="scheduleNotes" placeholder="补充要求、rubric 或备注"></textarea>
+          <button class="primary" data-action="add-schedule">添加提醒</button>
+        </article>
+        <article class="card">
+          <h2>全部提醒</h2>
+          ${pending.length ? pending.map((item) => scheduleItemHtml(item)).join("") : `<p class="empty">暂无未完成提醒。</p>`}
+          <h2>已完成</h2>
+          ${done.length ? done.map((item) => `<div class="mini-row done"><b>${esc(item.title)}</b><small>${esc(formatDate(item.startsAt))}</small></div>`).join("") : `<p class="muted">还没有已完成项目。</p>`}
+        </article>
+      </section>
+    `;
+  }
+
+  function scheduleItemHtml(item) {
+    return `
+      <div class="schedule-item">
+        <span>${esc(item.kind || "DDL")}</span>
+        <div><b>${esc(item.title)}</b><small>${esc(item.course || "")} | ${esc(formatDate(item.startsAt))} | ${esc(item.location || "")}</small></div>
+        <strong>${esc(dueText(item.startsAt))}</strong>
+        <button data-action="complete-schedule" data-course="${esc(item.courseId)}" data-doc="${esc(item.docId)}">已完成</button>
+      </div>
+    `;
+  }
+
+  function toolsPage() {
+    return `
+      ${pageHeader("STUDY TOOLS", "工具", "可以手动写 Docs、做 Sheets、做 Slides，AI 只是旁边的辅助工具。")}
+      <section class="tools-tabs">
+        ${["docs", "sheets", "slides"].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" data-action="tool-mode" data-tool="${tool}">SB ${tool[0].toUpperCase()}${tool.slice(1)}</button>`).join("")}
+      </section>
+      <section class="two-col">
+        <article class="card">
+          ${toolEditorHtml(state.tool || "docs")}
+        </article>
+        <article class="card"><div class="section-title"><div><span>AI ASSIST</span><h2>辅助生成</h2></div><button data-action="copy-output">复制</button></div><textarea id="toolPrompt" placeholder="让 AI 帮你润色、生成结构、整理表格或做 PPT 大纲"></textarea><button class="primary" data-action="generate-tool">调用 AI</button><div id="toolOutput" class="output-box">AI 输出会显示在这里，你可以再复制回左侧手动编辑。</div></article>
+      </section>
+    `;
+  }
+
+  function toolEditorHtml(tool) {
+    if (tool === "sheets") {
+      return `<h2>SB Sheets</h2><table class="sheet">${Array.from({ length: 8 }).map((_, r) => `<tr>${Array.from({ length: 5 }).map((__, c) => `<td contenteditable="true">${r === 0 ? esc(String.fromCharCode(65 + c)) : ""}</td>`).join("")}</tr>`).join("")}</table>`;
+    }
+    if (tool === "slides") {
+      return `<h2>SB Slides</h2><input class="slide-title" placeholder="Slide title"><textarea class="slide-body" placeholder="Bullet points / speaker notes"></textarea><div class="slide-preview">Presentation canvas</div>`;
+    }
+    return `<h2>SB Docs</h2><div class="doc-editor" contenteditable="true" spellcheck="true">Start writing your essay, report, or reading response here...</div>`;
+  }
+
+  function adminPage() {
+    const overview = state.admin;
+    return `
+      ${pageHeader("CREATOR CONSOLE", "开发者端", "管理邀请码、用户、系统状态和密码重置申请。", false)}
+      ${adminStatusHtml()}
+      <section class="two-col">
+        <article class="card">
+          <h2>邀请码</h2>
+          <input id="inviteLabel" placeholder="备注：例如 Kevin / ECO101 小组">
+          <div class="inline-fields"><input id="inviteMax" type="number" value="1" min="1"><select id="inviteRole"><option value="student">普通用户</option><option value="admin">Co-admin</option></select><button class="primary" data-action="generate-invite">生成邀请码</button></div>
+          ${(overview?.invites || []).map((invite) => `<div class="invite-row"><b>${esc(invite.code)}</b><small>${esc(invite.role)} · ${esc(invite.label || "")} · ${invite.usedCount || 0}/${invite.maxUses || 1} used</small><button data-copy="${esc(invite.code)}">复制</button><button data-action="toggle-invite" data-id="${esc(invite.id)}" data-active="${invite.active ? "false" : "true"}">${invite.active ? "停用" : "启用"}</button></div>`).join("")}
+        </article>
+        <article class="card">
+          <h2>用户</h2>
+          ${(overview?.users || []).map((user) => `<div class="user-row"><b>${esc(user.name)}</b><small>${esc(user.email)} · ${esc(user.role)}${user.inviteCode ? ` · 邀请码 ${esc(user.inviteCode)}` : ""}</small><span>${user.stats?.courses || 0} courses</span><span>${user.stats?.documents || 0} docs</span><span>${user.stats?.messages || 0} chats</span></div>`).join("")}
+        </article>
+      </section>
+      <section class="card"><h2>密码重置申请</h2>${(overview?.resetRequests || []).length ? overview.resetRequests.map((req) => `<div class="mini-row"><b>${esc(req.email)}</b><small>${esc(req.status)}</small><button data-action="reset-password" data-id="${esc(req.id)}">生成临时密码</button></div>`).join("") : `<p class="muted">还没有密码重置申请。</p>`}</section>
+    `;
+  }
+
+  function adminStatusHtml() {
+    const s = state.status;
+    const cards = s ? [
+      ["当前版本", s.version?.app || VERSION, `Node ${s.version?.node || ""}`],
+      ["最后部署时间", formatDate(s.deploy?.lastCodeUpdateAt), "按服务器文件时间显示。"],
+      ["数据库模式", s.database?.mode || "local", s.database?.ok ? "数据库可读写。" : "需要检查数据库。"],
+      ["AI 是否正常", s.ai?.ok ? "正常" : "异常", s.ai?.model ? `Current model ${s.ai.model}` : "等待检测。"],
+      ["Google 登录", s.google?.enabled ? "已配置" : "未配置", "普通邮箱注册仍可用。"],
+      ["邮箱验证码", s.email?.verificationRequired ? "已启用" : "非必需", s.email?.sendingConfigured ? "可发送邮件。" : "当前不强制邮箱发信。"],
+      ["服务器自动同步", s.autoSync?.detected ? "已检测到" : "未确认", "用于从 GitHub 自动拉取更新。"],
+      ["管理接口", "正常", "可以读取用户、邀请码和重置申请。"]
+    ] : [["系统可访问", "待检测", "点击检测读取真实状态。"]];
+    return `
+      <section class="card status-panel">
+        <div class="section-title"><div><h2>系统状态</h2><small>${s ? `检测完成：${esc(formatDate(new Date()))}` : "还没有检测"}</small></div><button data-action="admin-refresh">检测</button></div>
+        <div class="status-grid">${cards.map(([title, value, desc]) => `<div><span class="${value === "异常" ? "red" : value === "待检测" || value === "未配置" ? "orange" : "green"}"></span><b>${esc(title)}</b><strong>${esc(value || "暂未检测到")}</strong><p>${esc(desc || "")}</p></div>`).join("")}</div>
+      </section>
+    `;
+  }
+
+  function nextDue() {
+    return (state.scheduleItems || [])
+      .filter((item) => !item.completedAt && item.startsAt && new Date(item.startsAt).getTime() >= Date.now() - 60000)
+      .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt))[0] || null;
+  }
+
+  function parseScheduleDoc(doc, course) {
+    if (!doc || !(String(doc.title || "").startsWith(SCHEDULE_PREFIX) || String(doc.type || "").toLowerCase() === "schedule")) return null;
+    let data = {};
+    try { data = JSON.parse(doc.text || "{}"); } catch { data = {}; }
+    return {
+      docId: doc.id,
+      courseId: course.id,
+      title: data.title || String(doc.title || "").replace(SCHEDULE_PREFIX, "").trim() || "Schedule item",
+      kind: data.kind || "DDL",
+      course: data.course || course.name,
+      startsAt: data.startsAt || doc.createdAt,
+      location: data.location || "",
+      notes: data.notes || "",
+      completedAt: data.completedAt || ""
+    };
+  }
+
+  async function loadStudy() {
+    const coursesData = await api("/api/courses");
+    state.courses = coursesData.courses || [];
+    if (!state.activeCourseId || !state.courses.some((c) => c.id === state.activeCourseId)) {
+      state.activeCourseId = state.courses[0]?.id || "";
+    }
+    if (state.activeCourseId) {
+      const [docsData, messagesData] = await Promise.all([
+        api(`/api/courses/${state.activeCourseId}/documents`),
+        api(`/api/courses/${state.activeCourseId}/messages`)
+      ]);
+      state.docs = docsData.documents || [];
+      state.messages = messagesData.messages || [];
+    } else {
+      state.docs = [];
+      state.messages = [];
+    }
+    await loadScheduleItems(false);
+  }
+
+  async function loadScheduleItems(refreshCourses = true) {
+    if (refreshCourses) {
+      const coursesData = await api("/api/courses");
+      state.courses = coursesData.courses || [];
+    }
+    const allDocs = [];
+    for (const course of state.courses) {
+      const data = await api(`/api/courses/${course.id}/documents`).catch(() => ({ documents: [] }));
+      allDocs.push({ course, documents: data.documents || [] });
+    }
+    state.allDocs = allDocs;
+    state.scheduleItems = allDocs.flatMap((entry) => entry.documents.map((doc) => parseScheduleDoc(doc, entry.course)).filter(Boolean));
+  }
+
+  async function ensureScheduleCourse() {
+    if (!state.courses.length) {
+      const coursesData = await api("/api/courses");
+      state.courses = coursesData.courses || [];
+    }
+    let course = state.courses.find((item) => item.name === SCHEDULE_COURSE);
+    if (!course) {
+      const data = await api("/api/courses", { method: "POST", body: { name: SCHEDULE_COURSE, term: "StudyBridge planner" } });
+      course = data.course;
+      state.courses.unshift(course);
+    }
+    return course;
+  }
+
+  async function loadPage(page) {
+    setPage(page);
+    state.busy = true;
+    render();
     try {
-      if (!window.DecompressionStream) throw new Error("Browser does not support DecompressionStream");
-      const stream = new Blob([b64ToBytes(SOURCE_GZIP_B64)]).stream().pipeThrough(new DecompressionStream("gzip"));
-      const source = bytesToText(new Uint8Array(await new Response(stream).arrayBuffer()));
-      if (source.length !== SOURCE_LENGTH) throw new Error("StudyBridge app length mismatch: expected " + SOURCE_LENGTH + ", got " + source.length);
-      const actualHash = await sha256(source);
-      if (actualHash !== SOURCE_SHA256) throw new Error("StudyBridge app hash mismatch: expected " + SOURCE_SHA256 + ", got " + actualHash);
-      window.STUDYBRIDGE_WRAPPER_VERSION = WRAPPED_VERSION;
-      window.STUDYBRIDGE_SOURCE_VERSION = SOURCE_VERSION;
-      const script = document.createElement("script");
-      script.text = source + "\n//# sourceURL=studybridge-app-" + SOURCE_VERSION + ".js";
-      document.head.appendChild(script);
+      if (page === "study") await loadStudy();
+      if (page === "community") state.community = await api(`/api/community?channel=${encodeURIComponent(state.communityChannel)}`);
+      if (page === "classmates") {
+        state.classmates = await api("/api/classmates");
+        const first = state.classmates.classmates?.[0];
+        if (!state.activeClassmateId && first) state.activeClassmateId = first.id;
+        if (state.activeClassmateId) {
+          const dm = await api(`/api/classmates/${state.activeClassmateId}/messages`);
+          state.directMessages = dm.messages || [];
+        }
+      }
+      if (page === "schedule") await loadScheduleItems();
+      if (page === "admin") {
+        state.admin = await api("/api/admin/overview");
+        state.status = await api("/api/admin/system-status").catch(() => state.status);
+      }
     } catch (error) {
-      fail(error && error.message ? error.message : error);
+      setToast(error.message);
+    } finally {
+      state.busy = false;
+      render();
     }
-  })();
+  }
+
+  async function readFiles(files) {
+    const list = Array.from(files || []);
+    return Promise.all(list.map((file) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve({ fileName: file.name, fileType: file.type, fileData: reader.result });
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    })));
+  }
+
+  async function handleAction(button) {
+    const action = button.dataset.action;
+    if (!action) return;
+    try {
+      if (action === "auth-tab") {
+        root.innerHTML = authHtml(button.dataset.tab);
+        return;
+      }
+      if (action === "login") {
+        const data = await api("/api/auth/login", { method: "POST", body: { email: $("authEmail")?.value || "", password: $("authPassword")?.value || "" } });
+        state.user = data.user;
+        state.mode = "student";
+        await loadPage("study");
+        return;
+      }
+      if (action === "register") {
+        const data = await api("/api/auth/register", {
+          method: "POST",
+          body: {
+            name: $("authName")?.value || "",
+            email: $("authEmail")?.value || "",
+            password: $("authPassword")?.value || "",
+            passwordConfirm: $("authPasswordConfirm")?.value || "",
+            inviteCode: $("authInvite")?.value || "",
+            emailCode: $("authEmailCode")?.value || ""
+          }
+        });
+        state.user = data.user;
+        state.mode = "student";
+        await loadPage("profile");
+        return;
+      }
+      if (action === "send-email-code") {
+        const data = await api("/api/auth/send-verification", { method: "POST", body: { email: $("authEmail")?.value || "", inviteCode: $("authInvite")?.value || "" } });
+        setToast(data.message || "验证码已处理。");
+        render();
+        return;
+      }
+      if (action === "google-login") {
+        location.assign("/api/auth/google/start");
+        return;
+      }
+      if (action === "forgot-password") {
+        const email = $("authEmail")?.value || "";
+        if (!email) throw new Error("请先填写邮箱。");
+        await api("/api/auth/request-manual-reset", { method: "POST", body: { email } });
+        setToast("已提交密码重置申请，请联系创作者。");
+        render();
+        return;
+      }
+      if (action === "logout") {
+        await api("/api/auth/logout", { method: "POST" }).catch(() => null);
+        localStorage.removeItem("studybridge.page");
+        location.reload();
+        return;
+      }
+      if (action === "mode-student") {
+        state.mode = "student";
+        localStorage.setItem("studybridge.mode", "student");
+        await loadPage("study");
+        return;
+      }
+      if (action === "mode-admin") {
+        state.mode = "admin";
+        localStorage.setItem("studybridge.mode", "admin");
+        await loadPage("admin");
+        return;
+      }
+      if (action === "add-course") {
+        const name = prompt("课程名称，例如 ECO101");
+        if (!name) return;
+        const data = await api("/api/courses", { method: "POST", body: { name, term: "Current term" } });
+        state.activeCourseId = data.course.id;
+        await loadPage("study");
+        return;
+      }
+      if (action === "select-course") {
+        state.activeCourseId = button.dataset.id;
+        await loadPage("study");
+        return;
+      }
+      if (action === "delete-course") {
+        if (!confirm("确定删除这门课程吗？")) return;
+        await api(`/api/courses/${button.dataset.id}`, { method: "DELETE" });
+        if (state.activeCourseId === button.dataset.id) state.activeCourseId = "";
+        await loadPage("study");
+        return;
+      }
+      if (action === "save-doc") {
+        if (!state.activeCourseId) throw new Error("请先选择或新增课程。");
+        await api(`/api/courses/${state.activeCourseId}/documents`, { method: "POST", body: { title: $("docTitle")?.value || "Course note", text: $("docText")?.value || "", type: "Note" } });
+        await loadPage("study");
+        return;
+      }
+      if (action === "upload-doc") {
+        if (!state.activeCourseId) throw new Error("请先选择或新增课程。");
+        const files = await readFiles($("docFile")?.files);
+        for (const file of files) await api(`/api/courses/${state.activeCourseId}/documents`, { method: "POST", body: { title: file.fileName, ...file } });
+        await loadPage("study");
+        return;
+      }
+      if (action === "save-prefs") {
+        const data = await api("/api/me/preferences", { method: "PUT", body: { englishTerms: $("englishTerms")?.checked, englishAnswers: $("englishAnswers")?.checked, chineseExplanations: $("chineseExplanations")?.checked, customInstruction: $("customInstruction")?.value || "" } });
+        state.user = data.user;
+        setToast("偏好已保存。");
+        render();
+        return;
+      }
+      if (action === "pick-chat-file") {
+        $("chatFile")?.click();
+        return;
+      }
+      if (action === "quick-prompt") {
+        const input = $("chatInput");
+        if (input) input.value = button.dataset.prompt || "";
+        return;
+      }
+      if (action === "send-chat") {
+        if (!state.activeCourseId) throw new Error("请先选择或新增课程，然后再提问。");
+        const text = $("chatInput")?.value || "";
+        const attachments = await readFiles(state.uploadFiles);
+        if (!text.trim() && !attachments.length) throw new Error("请输入问题或上传文件。");
+        state.messages.push({ role: "user", content: text || "请分析我上传的文件。" }, { role: "assistant", content: "正在根据云端课程资料思考..." });
+        render();
+        const data = await api(`/api/courses/${state.activeCourseId}/chat`, { method: "POST", body: { message: text, mode: $("studyMode")?.value || "guided", attachments } });
+        state.uploadFiles = [];
+        state.messages = state.messages.slice(0, -2).concat(data.messages || []);
+        render();
+        return;
+      }
+      if (action === "save-profile") {
+        const data = await api("/api/me/profile", { method: "PUT", body: { name: $("profileName")?.value || "", school: $("profileSchool")?.value || "", major: $("profileMajor")?.value || "", sbId: $("profileSbId")?.value || "", avatarUrl: $("profileAvatar")?.value || "", backgroundUrl: $("profileCover")?.value || "" } });
+        state.user = data.user;
+        setToast("资料已保存。");
+        await loadPage("profile");
+        return;
+      }
+      if (action === "community-channel") {
+        state.communityChannel = button.dataset.channel || "all";
+        await loadPage("community");
+        return;
+      }
+      if (action === "community-post") {
+        await api("/api/community/posts", { method: "POST", body: { channel: state.communityChannel, topic: $("postTopic")?.value || "Question", content: $("postContent")?.value || "", anonymous: $("postAnon")?.checked } });
+        await loadPage("community");
+        return;
+      }
+      if (action === "community-like") {
+        await api(`/api/community/posts/${button.dataset.id}/like?channel=${encodeURIComponent(state.communityChannel)}`, { method: "PATCH" });
+        await loadPage("community");
+        return;
+      }
+      if (action === "refresh-classmates") {
+        await loadPage("classmates");
+        return;
+      }
+      if (action === "add-classmate") {
+        const data = await api("/api/classmates", { method: "POST", body: { sbId: $("classmateSbId")?.value || "" } });
+        setToast(data.status === "connected" ? "已经成为同学，可以聊天了。" : "好友申请已发送，等待对方通过。");
+        await loadPage("classmates");
+        return;
+      }
+      if (action === "friend-accept" || action === "friend-ignore") {
+        await api(`/api/classmate-requests/${button.dataset.id}`, { method: "PATCH", body: { action: action === "friend-accept" ? "accept" : "ignore" } });
+        await loadPage("classmates");
+        return;
+      }
+      if (action === "select-classmate") {
+        state.activeClassmateId = button.dataset.id;
+        await loadPage("classmates");
+        return;
+      }
+      if (action === "send-dm") {
+        if (!state.activeClassmateId) throw new Error("请先选择一位同学。");
+        await api(`/api/classmates/${state.activeClassmateId}/messages`, { method: "POST", body: { content: $("dmInput")?.value || "" } });
+        await loadPage("classmates");
+        return;
+      }
+      if (action === "draft-email") {
+        const prompt = `请帮我处理这封邮件。\n邮件原文：${$("emailOriginal")?.value || ""}\n我想怎么回复：${$("emailGoal")?.value || ""}\n语气：${$("emailTone")?.value || ""}\n输出：${$("emailOutput")?.value || ""}`;
+        const output = $("toolOutput");
+        output.textContent = "正在生成...";
+        const course = state.activeCourseId || (state.courses[0]?.id);
+        if (!course) throw new Error("请先在学习区新增一门课程，用来保存 AI 对话。");
+        const data = await api(`/api/courses/${course}/chat`, { method: "POST", body: { message: prompt, mode: "email" } });
+        output.innerHTML = formatText((data.messages || []).at(-1)?.content || "");
+        return;
+      }
+      if (action === "add-schedule") {
+        const course = await ensureScheduleCourse();
+        const payload = { title: $("scheduleTitle")?.value || "Deadline", kind: "DDL", course: $("scheduleCourse")?.value || "", startsAt: $("scheduleTime")?.value || new Date().toISOString(), location: $("scheduleLocation")?.value || "", notes: $("scheduleNotes")?.value || "", completedAt: "" };
+        await api(`/api/courses/${course.id}/documents`, { method: "POST", body: { title: `${SCHEDULE_PREFIX} ${payload.title}`, type: "Schedule", text: JSON.stringify(payload) } });
+        await loadPage("schedule");
+        return;
+      }
+      if (action === "complete-schedule") {
+        const item = state.scheduleItems.find((entry) => entry.docId === button.dataset.doc && entry.courseId === button.dataset.course);
+        if (!item) throw new Error("找不到这个提醒。");
+        const updated = { ...item, completedAt: new Date().toISOString() };
+        await api(`/api/courses/${item.courseId}/documents/${item.docId}`, { method: "PATCH", body: { title: `${SCHEDULE_PREFIX} ${item.title}`, type: "Schedule", text: JSON.stringify(updated) } });
+        await loadPage("schedule");
+        return;
+      }
+      if (action === "tool-mode") {
+        state.tool = button.dataset.tool || "docs";
+        render();
+        return;
+      }
+      if (action === "generate-tool") {
+        const output = $("toolOutput");
+        output.textContent = "正在生成...";
+        const course = state.activeCourseId || state.courses[0]?.id;
+        if (!course) throw new Error("请先在学习区新增一门课程，用来保存 AI 对话。");
+        const data = await api(`/api/courses/${course}/chat`, { method: "POST", body: { message: $("toolPrompt")?.value || "请帮我生成学习文档。", mode: `tool-${state.tool || "docs"}` } });
+        output.innerHTML = formatText((data.messages || []).at(-1)?.content || "");
+        return;
+      }
+      if (action === "copy-output") {
+        await navigator.clipboard.writeText($("toolOutput")?.innerText || "");
+        setToast("已复制。");
+        render();
+        return;
+      }
+      if (action === "admin-refresh") {
+        state.status = await api("/api/admin/system-status");
+        await loadPage("admin");
+        return;
+      }
+      if (action === "generate-invite") {
+        await api("/api/admin/invites", { method: "POST", body: { label: $("inviteLabel")?.value || "", maxUses: $("inviteMax")?.value || 1, role: $("inviteRole")?.value || "student" } });
+        await loadPage("admin");
+        return;
+      }
+      if (action === "toggle-invite") {
+        await api(`/api/admin/invites/${button.dataset.id}`, { method: "PATCH", body: { active: button.dataset.active === "true" } });
+        await loadPage("admin");
+        return;
+      }
+      if (action === "reset-password") {
+        const data = await api(`/api/admin/password-resets/${button.dataset.id}`, { method: "POST" });
+        alert(`临时密码：${data.temporaryPassword || data.password || "请查看返回结果"}`);
+        await loadPage("admin");
+        return;
+      }
+    } catch (error) {
+      setToast(error.message);
+      render();
+    }
+  }
+
+  function render() {
+    try {
+      root.innerHTML = routeHtml();
+    } catch (error) {
+      const message = esc(error.message || "页面渲染时出现问题。");
+      root.innerHTML = state.user
+        ? shellHtml(`
+          <section class="page-header">
+            <div>
+              <span>StudyBridge</span>
+              <h1>页面暂时打不开</h1>
+              <p>${message}</p>
+            </div>
+          </section>
+        `)
+        : `<main class="auth-shell"><section class="auth-card"><h1>StudyBridge</h1><p class="notice">${message}</p><button onclick="location.reload()">刷新</button></section></main>`;
+    }
+    if (state.busy) root.insertAdjacentHTML("beforeend", `<div class="busy">Loading...</div>`);
+    if (state.toast && state.user) root.insertAdjacentHTML("beforeend", `<div class="toast">${esc(state.toast)}</div>`);
+  }
+
+  async function boot() {
+    try {
+      const google = await api("/api/auth/google/config").catch(() => ({ enabled: false }));
+      state.googleEnabled = Boolean(google.enabled);
+      const data = await api("/api/me").catch(() => null);
+      if (!data?.user) {
+        render();
+        return;
+      }
+      state.user = data.user;
+      state.mode = isAdmin() && localStorage.getItem("studybridge.mode") === "admin" ? "admin" : "student";
+      const urlPage = new URL(location.href).searchParams.get("page");
+      const savedPage = localStorage.getItem("studybridge.page");
+      const page = urlPage || savedPage || "study";
+      await loadPage(page);
+    } catch (error) {
+      root.innerHTML = `<main class="auth-shell"><section class="auth-card"><h1>StudyBridge</h1><p class="notice">${esc(error.message)}</p><button onclick="location.reload()">刷新</button></section></main>`;
+    }
+  }
+
+  document.addEventListener("click", async (event) => {
+    const pageTarget = event.target.closest("[data-page]");
+    if (pageTarget) {
+      event.preventDefault();
+      await loadPage(pageTarget.dataset.page);
+      return;
+    }
+    const copyTarget = event.target.closest("[data-copy]");
+    if (copyTarget) {
+      event.preventDefault();
+      await navigator.clipboard.writeText(copyTarget.dataset.copy || "");
+      setToast("已复制。");
+      render();
+      return;
+    }
+    const actionTarget = event.target.closest("[data-action]");
+    if (actionTarget) {
+      event.preventDefault();
+      await handleAction(actionTarget);
+    }
+  });
+
+  document.addEventListener("change", (event) => {
+    if (event.target?.id === "chatFile") {
+      state.uploadFiles = Array.from(event.target.files || []);
+      render();
+    }
+  });
+
+  boot();
 })();

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const BOOT_VERSION = "1.1.32";
+  const BOOT_VERSION = "1.1.33";
   const BUNDLE_URL = `/app.bundle.gz.b64?v=${encodeURIComponent(BOOT_VERSION)}`;
   const root = document.getElementById("root");
 

@@ -1,11 +1,8 @@
 (function () {
   "use strict";
 
-  const BOOT_VERSION = "1.1.31";
-  const BUNDLE_PARTS = Array.from(
-    { length: 5 },
-    (_, index) => `/app.bundle.gz.b64.${index}?v=${encodeURIComponent(BOOT_VERSION)}`,
-  );
+  const BOOT_VERSION = "1.1.32";
+  const BUNDLE_URL = `/app.bundle.gz.b64?v=${encodeURIComponent(BOOT_VERSION)}`;
   const root = document.getElementById("root");
 
   function escapeHtml(value) {
@@ -48,13 +45,12 @@
   }
 
   async function boot() {
-    const responses = await Promise.all(BUNDLE_PARTS.map((url) => fetch(url, { cache: "no-store" })));
-    const failed = responses.find((response) => !response.ok);
-    if (failed) {
-      throw new Error(`Cannot load StudyBridge bundle: HTTP ${failed.status}`);
+    const response = await fetch(BUNDLE_URL, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Cannot load StudyBridge bundle: HTTP ${response.status}`);
     }
 
-    const source = await inflateGzip(base64ToBytes((await Promise.all(responses.map((response) => response.text()))).join("")));
+    const source = await inflateGzip(base64ToBytes(await response.text()));
     (0, eval)(`${source}\n//# sourceURL=/app.bundle.source.js`);
   }
 

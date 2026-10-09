@@ -1,0 +1,103 @@
+name: Apply StudyBridge document upload fallback
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/upload-document-hotfix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Patch document upload fallback
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+
+          const serverPath = "server.js";
+          let server = fs.readFileSync(serverPath, "utf8");
+
+          const helperMarker = "function hasUploadedFile(body = {})";
+          if (!server.includes(helperMarker)) {
+            const insertBefore = "function cleanAttachmentName(name) {";
+            const helpers = [
+              'function hasUploadedFile(body = {}) {',
+              '  return Boolean(String(body.fileName || "").trim() || String(body.fileData || "").trim());',
+              '}',
+              '',
+              'function uploadedFilePlaceholder(body = {}, reason = "") {',
+              '  const fileName = cleanAttachmentName(body.fileName || body.title || "Uploaded file");',
+              '  const fileType = String(body.fileType || body.type || "unknown file type").trim() || "unknown file type";',
+              '  const note = reason ? `\\nText extraction note: ${String(reason).slice(0, 220)}` : "";',
+              '  return compactDocumentText(',
+              '    `Uploaded file: ${fileName}\\nFile type: ${fileType}${note}\\n\\nNo readable document text was extracted yet. The file is saved as a course material entry, and the student can paste text from it later if needed.`',
+              '  );',
+              '}',
+              ''
+            ].join("\n");
+            if (!server.includes(insertBefore)) {
+              throw new Error("Could not locate attachment helper insertion point.");
+            }
+            server = server.replace(insertBefore, helpers + insertBefore);
+          }
+
+          const oldBlock = [
+            '      let text;',
+            '      try {',
+            '        text = body.fileData ? await extractUploadedText(body) : compactDocumentText(body.text);',
+            '      } catch (error) {',
+            '        return sendError(res, 400, error.message);',
+            '      }',
+            '      if (!text) return sendError(res, 400, "Document text is required.");'
+          ].join("\n");
+
+          const newBlock = [
+            '      let text;',
+            '      const uploadedFile = hasUploadedFile(body);',
+            '      try {',
+            '        text = body.fileData ? await extractUploadedText(body) : compactDocumentText(body.text);',
+            '      } catch (error) {',
+            '        if (uploadedFile && !/too large|empty|support is still installing/i.test(error.message || "")) {',
+            '          text = uploadedFilePlaceholder(body, error.message);',
+            '        } else {',
+            '          return sendError(res, 400, error.message);',
+            '        }',
+            '      }',
+            '      if (!text && uploadedFile) {',
+            '        text = uploadedFilePlaceholder(body);',
+            '      }',
+            '      if (!text) {',
+            '        return sendError(res, 400, "Document text is required.");',
+            '      }'
+          ].join("\n");
+
+          if (server.includes(oldBlock)) {
+            server = server.replace(oldBlock, newBlock);
+          } else if (!server.includes('const uploadedFile = hasUploadedFile(body);')) {
+            throw new Error("Could not locate document upload validation block.");
+          }
+
+          fs.writeFileSync(serverPath, server, "utf8");
+          NODE
+      - name: Validate
+        run: |
+          node --check server.js
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then
+            echo "No document upload changes needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.js
+          git commit -m "Allow StudyBridge file-only course material uploads"
+          git push

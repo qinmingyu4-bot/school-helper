@@ -394,6 +394,18 @@ async function extractUploadedText(body = {}) {
   return compactDocumentText(body.text || body.fileText || "");
 }
 
+function hasUploadedFile(body = {}) {
+  return Boolean(String(body.fileName || "").trim() || String(body.fileData || "").trim());
+}
+
+function uploadedFilePlaceholder(body = {}, reason = "") {
+  const fileName = cleanAttachmentName(body.fileName || body.title || "Uploaded file");
+  const fileType = String(body.fileType || body.type || "unknown file type").trim() || "unknown file type";
+  const note = reason ? `\nText extraction note: ${String(reason).slice(0, 220)}` : "";
+  return compactDocumentText(
+    `Uploaded file: ${fileName}\nFile type: ${fileType}${note}\n\nNo readable document text was extracted yet. The file is saved as a course material entry, and the student can paste text from it later if needed.`
+  );
+}
 function cleanAttachmentName(name) {
   return String(name || "Uploaded attachment").replace(/[^\w .()[\]\-@#&,+]/g, "").trim().slice(0, 180) || "Uploaded attachment";
 }
@@ -2368,12 +2380,22 @@ if (directMessageMatch && method === "POST") {
       const body = await readJson(req);
       const title = String(body.title || body.fileName || "Course note").trim().slice(0, 160);
       let text;
+      const uploadedFile = hasUploadedFile(body);
       try {
         text = body.fileData ? await extractUploadedText(body) : compactDocumentText(body.text);
       } catch (error) {
-        return sendError(res, 400, error.message);
+        if (uploadedFile && !/too large|empty|support is still installing/i.test(error.message || "")) {
+          text = uploadedFilePlaceholder(body, error.message);
+        } else {
+          return sendError(res, 400, error.message);
+        }
       }
-      if (!text) return sendError(res, 400, "Document text is required.");
+      if (!text && uploadedFile) {
+        text = uploadedFilePlaceholder(body);
+      }
+      if (!text) {
+        return sendError(res, 400, "Document text is required.");
+      }
       const document = await db.createDocument({
         id: createId("doc"),
         userId: user.id,

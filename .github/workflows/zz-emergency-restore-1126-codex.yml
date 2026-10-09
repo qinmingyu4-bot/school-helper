@@ -7,7 +7,7 @@ on:
       - main
     paths:
       - .github/workflows/zz-emergency-restore-1126-codex.yml
-      - docs/restore/appjs-local-1126-codex.b64
+      - docs/rollback/appjs-1.1.26.gz.b64
 
 permissions:
   contents: write
@@ -25,7 +25,7 @@ jobs:
           fetch-depth: 0
           token: ${{ github.token }}
 
-      - name: Restore verified frontend
+      - name: Restore stable frontend bundle
         run: |
           set -euo pipefail
           git fetch origin main
@@ -33,10 +33,19 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          BACKUP_TAG="rollback-before-emergency-1126-$(date -u +%Y%m%d%H%M%S)"
+          BACKUP_TAG="rollback-before-restore-1126-$(date -u +%Y%m%d%H%M%S)"
           git tag "$BACKUP_TAG" || true
 
-          cat docs/restore/appjs-local-1126-codex.b64 | tr -d '\r\n' | base64 -d | gzip -d > public/app.js
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64, gzip
+          payload = Path('docs/rollback/appjs-1.1.26.gz.b64').read_text(encoding='ascii').strip()
+          data = gzip.decompress(base64.b64decode(payload))
+          text = data.decode('utf-8')
+          if 'const VERSION = "1.1.26"' not in text:
+              raise SystemExit('rollback bundle is not StudyBridge 1.1.26')
+          Path('public/app.js').write_text(text, encoding='utf-8')
+          PY
 
           cat > public/index.html <<'HTML'
           <!doctype html>
@@ -60,76 +69,26 @@ jobs:
           </html>
           HTML
 
-          node -e "const fs=require('fs'); const p=require('./package.json'); p.version='1.1.26'; fs.writeFileSync('package.json', JSON.stringify(p,null,2)+'\\n');"
-
-          for f in .github/workflows/*.yml .github/workflows/*.yaml; do
-            [ -e "$f" ] || continue
-            b="$(basename "$f")"
-            case "$b" in
-              deploy.yml|data-backup-diagnostics.yml|data-backup-runner.yml|zz-emergency-restore-1126-codex.yml)
-                continue
-                ;;
-            esac
-            cat > "$f" <<'YAML'
-          name: Disabled legacy workflow
-          on:
-            workflow_dispatch:
-          jobs:
-            disabled:
-              if: false
-              runs-on: ubuntu-24.04
-              steps:
-                - run: echo disabled
-          YAML
-          done
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          p = json.loads(Path('package.json').read_text(encoding='utf-8'))
+          p['version'] = '1.1.26'
+          Path('package.json').write_text(json.dumps(p, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+          PY
 
           node --check public/app.js
           node --check server.js
           grep 'VERSION = "1.1.26"' public/app.js
+          grep 'app.js?v=1.1.26' public/index.html
 
-          git add public/index.html public/app.js package.json .github/workflows docs/restore/appjs-local-1126-codex.b64
+          git add public/index.html public/app.js package.json docs/rollback/appjs-1.1.26.gz.b64
           if git diff --cached --quiet; then
-            echo "No changes needed."
+            echo "No changes needed. Stable frontend is already restored."
           else
-            git commit -m "Emergency restore stable StudyBridge frontend 1.1.26"
+            git commit -m "Restore stable StudyBridge frontend 1.1.26"
             git tag -f rollback-studybridge-1.1.26-codex
             git push origin HEAD:main
             git push origin "$BACKUP_TAG" || true
             git push origin rollback-studybridge-1.1.26-codex --force || true
           fi
-
-      - name: Deploy to Lightsail
-        env:
-          LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}
-          LIGHTSAIL_USER: ${{ secrets.LIGHTSAIL_USER }}
-          LIGHTSAIL_SSH_KEY: ${{ secrets.LIGHTSAIL_SSH_KEY }}
-          LIGHTSAIL_SSH_KEY_B64: ${{ secrets.LIGHTSAIL_SSH_KEY_B64 }}
-        run: |
-          set -euo pipefail
-          if [ -z "${LIGHTSAIL_HOST:-}" ]; then
-            echo "Lightsail host not configured; server cron will deploy from GitHub."
-            exit 0
-          fi
-          mkdir -p ~/.ssh
-          if [ -n "${LIGHTSAIL_SSH_KEY_B64:-}" ]; then
-            printf '%s' "$LIGHTSAIL_SSH_KEY_B64" | base64 -d > ~/.ssh/studybridge_deploy_key
-          elif [ -n "${LIGHTSAIL_SSH_KEY:-}" ]; then
-            printf '%s\n' "$LIGHTSAIL_SSH_KEY" > ~/.ssh/studybridge_deploy_key
-          else
-            echo "Lightsail SSH key not configured; server cron will deploy from GitHub."
-            exit 0
-          fi
-          chmod 600 ~/.ssh/studybridge_deploy_key
-          ssh-keyscan -H "$LIGHTSAIL_HOST" >> ~/.ssh/known_hosts
-          USER_NAME="${LIGHTSAIL_USER:-ubuntu}"
-          ssh -i ~/.ssh/studybridge_deploy_key "$USER_NAME@$LIGHTSAIL_HOST" <<'EOSSH' || true
-          set -euo pipefail
-          cd ~/school-helper
-          git fetch origin main
-          git reset --hard origin/main
-          npm install --omit=dev
-          pm2 restart studybridge --update-env
-          pm2 save
-          node --check public/app.js
-          grep 'VERSION = "1.1.26"' public/app.js
-          EOSSH

@@ -1,2 +1,2 @@
-Trigger final restore lock at 2026-10-08T18:05:00Z
-This workflow restores public/app.js to 1.1.26, disables old patch workflows, and deploys the verified state to Lightsail.
+Trigger final restore lock at 2026-10-09T06:00:00Z
+This workflow restores public/app.js to 1.1.26 from docs/restore chunks, disables old patch workflows, and deploys the verified state to Lightsail.

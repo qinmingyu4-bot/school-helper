@@ -1,0 +1,2 @@
+restore stable frontend 1.1.27
+triggered at 2026-10-09T09:45:00-04:00

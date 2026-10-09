@@ -23,14 +23,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ github.token }}
 
       - name: Wait for older patch workflows
-        run: sleep 75
+        run: sleep 150
 
       - name: Restore stable frontend and disable legacy patch workflows
         run: |
           set -euo pipefail
 
+          git fetch origin main
+          git reset --hard origin/main
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
@@ -38,7 +41,7 @@ jobs:
           git tag "$BACKUP_TAG" || true
 
           mkdir -p public .github/workflows
-          base64 -d docs/rollback/appjs-1.1.26.gz.b64 | gzip -d > public/app.js
+          cat docs/restore/appjs-1126.part*.b64 | tr -d '\r\n' | base64 -d | gzip -d > public/app.js
 
           cat > public/index.html <<'HTML'
           <!doctype html>
@@ -62,37 +65,43 @@ jobs:
           </html>
           HTML
 
-          for f in .github/workflows/*.yml; do
+          node -e "const fs=require('fs'); const p=require('./package.json'); p.version='1.1.26'; fs.writeFileSync('package.json', JSON.stringify(p,null,2)+'\n');"
+
+          for f in .github/workflows/*.yml .github/workflows/*.yaml; do
+            [ -e "$f" ] || continue
             b="$(basename "$f")"
             case "$b" in
-              deploy.yml|data-backup-runner.yml|zz-final-restore-lock-1126.yml)
+              deploy.yml|data-backup-diagnostics.yml|data-backup-runner.yml|zz-final-restore-lock-1126.yml)
                 continue
                 ;;
             esac
-            cat > "$f" <<YAML
-          name: Disabled legacy patch - $b
-
+            cat > "$f" <<'YAML'
+          name: Disabled legacy workflow
           on:
             workflow_dispatch:
-
           jobs:
             disabled:
+              if: false
               runs-on: ubuntu-24.04
               steps:
-                - run: echo "Disabled because it was an old one-time patch workflow that could overwrite the restored frontend."
+                - run: echo disabled
           YAML
           done
 
           node --check public/app.js
           node --check server.js
+          grep 'VERSION = "1.1.26"' public/app.js
 
-          git add public/index.html public/app.js .github/workflows
+          git add public/index.html public/app.js package.json .github/workflows
+          git status --short
           if git diff --cached --quiet; then
             echo "No repository changes needed."
           else
             git commit -m "Restore stable StudyBridge frontend 1.1.26 and disable legacy patch workflows"
+            git tag -f rollback-studybridge-1.1.26
             git push origin HEAD:main
             git push origin "$BACKUP_TAG" || true
+            git push origin rollback-studybridge-1.1.26 --force || true
           fi
 
       - name: Deploy to Lightsail
@@ -103,16 +112,23 @@ jobs:
           LIGHTSAIL_SSH_KEY_B64: ${{ secrets.LIGHTSAIL_SSH_KEY_B64 }}
         run: |
           set -euo pipefail
+          if [ -z "${LIGHTSAIL_HOST:-}" ]; then
+            echo "Lightsail host is not configured; server cron will deploy from GitHub."
+            exit 0
+          fi
           mkdir -p ~/.ssh
           if [ -n "${LIGHTSAIL_SSH_KEY_B64:-}" ]; then
             printf '%s' "$LIGHTSAIL_SSH_KEY_B64" | base64 -d > ~/.ssh/studybridge_deploy_key
-          else
+          elif [ -n "${LIGHTSAIL_SSH_KEY:-}" ]; then
             printf '%s\n' "$LIGHTSAIL_SSH_KEY" > ~/.ssh/studybridge_deploy_key
+          else
+            echo "Lightsail SSH key is not configured; server cron will deploy from GitHub."
+            exit 0
           fi
           chmod 600 ~/.ssh/studybridge_deploy_key
           ssh-keyscan -H "$LIGHTSAIL_HOST" >> ~/.ssh/known_hosts
           USER_NAME="${LIGHTSAIL_USER:-ubuntu}"
-          ssh -i ~/.ssh/studybridge_deploy_key "$USER_NAME@$LIGHTSAIL_HOST" <<'EOSSH'
+          ssh -i ~/.ssh/studybridge_deploy_key "$USER_NAME@$LIGHTSAIL_HOST" <<'EOSSH' || true
           set -euo pipefail
           cd ~/school-helper
           git fetch origin main

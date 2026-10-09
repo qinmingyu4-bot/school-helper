@@ -1,0 +1,59 @@
+name: Restore stable frontend 1.1.27
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - docs/restore-stable-trigger.txt
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore stable frontend files
+        run: |
+          set -euo pipefail
+          cat > /tmp/app.js.gz.b64 <<'B64'
+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
+B64
+          base64 -d /tmp/app.js.gz.b64 | gzip -dc > public/app.js
+          cat > public/index.html <<'HTML'
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StudyBridge Cloud</title>
+    <link rel="stylesheet" href="/style.css?v=1.1.27" />
+  </head>
+  <body>
+    <div id="root">
+      <div class="boot-screen">
+        <div class="brand-mark">SB</div>
+        <strong>StudyBridge</strong>
+        <span>Opening StudyBridge...</span>
+      </div>
+    </div>
+    <script src="/app.js?v=1.1.27"></script>
+  </body>
+</html>
+HTML
+          node --check public/app.js
+      - name: Commit restored frontend
+        run: |
+          set -euo pipefail
+          git config user.name "StudyBridge Restore Bot"
+          git config user.email "actions@github.com"
+          git add public/app.js public/index.html
+          if git diff --cached --quiet; then
+            echo "No frontend changes to commit."
+          else
+            git commit -m "Restore stable frontend 1.1.27"
+            git push
+          fi

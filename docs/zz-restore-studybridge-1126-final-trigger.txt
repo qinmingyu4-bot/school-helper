@@ -1,0 +1,3 @@
+Trigger verified StudyBridge restore 1.1.26 final
+Time: 2026-10-09
+Purpose: restore clean frontend controller and deploy to Lightsail.

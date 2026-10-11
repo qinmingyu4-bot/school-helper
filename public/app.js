@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.64";
+  const VERSION = "1.1.65";
   const studyModes = window.StudyBridgeStudyModes;
   const scheduleImport = window.StudyBridgeScheduleImport;
   const STUDENT_PAGES = ["community", "classmates", "schedule", "study", "tools", "profile"];
@@ -516,7 +516,7 @@
   }
 
   function replyBodyHtml(message) {
-    const content = message.content || message.pending ? `<div class="reply-content">${formatText(message.content)}</div>` : "";
+    const content = message.content || message.pending ? `<div class="reply-content">${window.StudyBridgeMarkdown.render(message.content)}</div>` : "";
     const status = message.pending
       ? `<div class="reply-status" role="status"><span class="reply-spinner" aria-hidden="true"></span><span>${esc(replyPhases[message.phase] || replyPhases.thinking)}</span></div>`
       : message.interrupted ? '<div class="reply-notice" role="status">回复已中断，可重新提问。</div>' : "";
@@ -537,7 +537,7 @@
       body.insertAdjacentHTML("afterbegin", '<div class="reply-content"></div>');
       content = body.querySelector(".reply-content");
     }
-    content.innerHTML = formatText(reply.assistant.content);
+    content.innerHTML = window.StudyBridgeMarkdown.render(reply.assistant.content);
     if (reply.assistant.content) reply.hasDisplayedText = true;
     const status = body.querySelector(".reply-status");
     if (reply.assistant.pending && status) status.lastElementChild.textContent = replyPhases[reply.assistant.phase] || replyPhases.thinking;

@@ -2,6 +2,11 @@
 
 ## 2026-10-11
 
+- Updated to `1.1.65`: render Study Area AI replies with semantic Markdown headings, lists, quotes, code blocks, and source links. Fixed double-converted links that exposed HTML attributes; historical and streamed replies use the same formatter.
+- Increased paragraph and section spacing and responsive reply padding, with 16px desktop and 15px mobile text. Retained visible AI reply boundaries, compact user bubbles, pinned bars, and existing composer dimensions; wide tables and code scroll within the reply.
+- Bundled pinned `markdown-it` 15.0.2 locally with its dependency licenses and a reproducible vendor script. Raw HTML, unsafe link protocols, and remote tracking images are not rendered.
+- All 42 automated tests and JavaScript/asset checks passed, including incomplete streamed Markdown, safe links, and browser/server renderer parity. Verified screenshots at 1440px, 1100px, 390px, and 320px, plus streaming, stop-generation, course isolation, sidebar positions, learning modes, and latest-message scrolling. Dependency audit reported zero vulnerabilities.
+
 - Updated to `1.1.64`: stream Study Area AI answers through authenticated SSE rather than waiting for a complete response. Added a shared UTF-8/event reader, animated stage indicators, and a stop-generation control; forward answer text only, with actual preparation/search/integration/generation/save states instead of internal reasoning.
 - Retained JSON compatibility for Tools and older clients, existing prompts and attachments, final conversation persistence, and isolated in-flight replies per account/course. Canceled, failed, and truncated replies retain their received text with an interrupted marker; disconnects cancel upstream work, partial output is never retried into a second answer, and requests have a timeout and bounded reply buffers.
 - Preserved drafts, sidebar positions, pinned reminders, and compact reply formatting during updates. New requests/first answer text scroll to the latest message; subsequent chunks follow the bottom unless the student scrolls up. Added reduced-motion support and ordinary HTTP compatibility.

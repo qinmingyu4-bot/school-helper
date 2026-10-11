@@ -64,6 +64,12 @@ the bottom unless the student scrolls up to read history, and leaves drafts and
 sidebar scroll positions untouched. Reduced-motion settings disable the spinner.
 Other clients (including Tools) can omit `stream` and retain the existing JSON API.
 
+AI replies render Markdown headings, lists, quotations, code, and source links with
+responsive reading spacing. Historical and live streamed answers use the same
+self-hosted, pinned markdown-it renderer; tables and code scroll locally. Raw HTML,
+unsafe link schemes, and remote tracking images are not rendered. The browser
+bundle and dependency licenses are regenerated with `npm run vendor:markdown`.
+
 Streaming requests time out after three minutes. If placing a reverse proxy in
 front of the app, disable response buffering for the chat endpoint and allow an
 idle timeout longer than the server's ten-second SSE heartbeat. Keep API keys on

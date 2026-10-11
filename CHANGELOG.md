@@ -2,6 +2,10 @@
 
 ## 2026-10-11
 
+- Updated to `1.1.60`: compacted Study Area questions into content-sized right-aligned bubbles, presented AI responses as unframed text, constrained reading width, and tightened paragraph spacing with smaller role markers and neutral text on a white conversation surface.
+- Replaced descendant-wide message box styling with direct-child rules so nested answer tables no longer acquire extra cards; added scoped table typography and horizontal scrolling, and kept mobile question alignment consistent with desktop.
+- Verified compact 48px short questions, paragraph spacing, long questions/URLs, escaped markup, wide tables, no overlap or page overflow at 1440px, 1100px, 390px, and 320px; rechecked pinned reminders, draft/attachment preservation, mode selection, and newest-message scrolling. All 26 automated tests and JavaScript/asset checks passed.
+
 - Updated to `1.1.59`: display the Courses, Course Materials, and Learning Style sidebar sections only inside the Study Area. Other student pages keep the profile and primary navigation without study-specific controls; returning to the Study Area reveals the existing course data and saved preferences. Developer-side hints remain unchanged.
 - Verified direct entry, navigation, refresh, Study Area re-entry, and developer/student switching at 1440px and 390px; all 26 automated tests and JavaScript/asset checks passed.
 

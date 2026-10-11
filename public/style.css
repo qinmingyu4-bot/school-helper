@@ -531,7 +531,15 @@ section.page-header { height: auto; min-height: 54px; }
   line-height: 1.75;
   overflow-wrap: anywhere;
 }
-.message.ai > div { flex: 1; }
+.message.ai > b { margin-top: 8px; }
+.message.ai > div {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid #c9d4df;
+  border-left: 3px solid #78a68f;
+  border-radius: 8px;
+  background: #f5f7fa;
+}
 .message.user {
   flex-direction: row-reverse;
 }

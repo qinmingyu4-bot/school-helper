@@ -2,6 +2,11 @@
 
 ## 2026-10-11
 
+- Updated to `1.1.64`: stream Study Area AI answers through authenticated SSE rather than waiting for a complete response. Added a shared UTF-8/event reader, animated stage indicators, and a stop-generation control; forward answer text only, with actual preparation/search/integration/generation/save states instead of internal reasoning.
+- Retained JSON compatibility for Tools and older clients, existing prompts and attachments, final conversation persistence, and isolated in-flight replies per account/course. Canceled, failed, and truncated replies retain their received text with an interrupted marker; disconnects cancel upstream work, partial output is never retried into a second answer, and requests have a timeout and bounded reply buffers.
+- Preserved drafts, sidebar positions, pinned reminders, and compact reply formatting during updates. New requests/first answer text scroll to the latest message; subsequent chunks follow the bottom unless the student scrolls up. Added reduced-motion support and ordinary HTTP compatibility.
+- All 36 automated tests passed, including split UTF-8/CRLF, both AI streaming protocols, incremental delivery before persistence, authentication/isolation, early fallback, interruption, and cancellation. Verified chunked HTTP browser behavior and screenshots at 1440px, 390px, and 320px, plus existing mode/sidebar/layout regressions. A live local AI check delivered 39 text chunks, with the first text at about 2.5 seconds and completion at about 3.3 seconds; its temporary course was removed afterward.
+
 - Updated to `1.1.63`: preserve sidebar scroll position through course-switch loading and completed renders, scoped to the same account, mode, and page. Preserve the shared page scroll on mobile without carrying study positions into other pages.
 - Verified switching both directions and reselecting the current course at 1440x900, 1100x600, and 390x844, plus mode changes and page navigation. New courses still show the latest conversation; pinned reminders, drafts, attachments, and automatic scrolling for new requests/replies passed desktop/mobile regression checks. All 26 automated tests and JavaScript/asset checks passed.
 

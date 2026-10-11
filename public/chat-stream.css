@@ -1,0 +1,28 @@
+.reply-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 20px;
+  color: #506579;
+  font-size: 13px;
+  line-height: 20px;
+}
+.reply-content:not(:empty) + .reply-status { margin-top: 10px; }
+.message .reply-content > p { margin: 0 0 10px; }
+.message .reply-content > p:last-child { margin-bottom: 0; }
+.reply-spinner {
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border: 2px solid #cfddd8;
+  border-top-color: #287668;
+  border-radius: 50%;
+  animation: reply-spin .85s linear infinite;
+}
+.reply-notice { margin-top: 8px; color: #70614c; font-size: 13px; line-height: 20px; }
+.compose-row .send svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; }
+.compose-row .send { display: grid; place-items: center; }
+.compose-row .send:disabled { opacity: .55; cursor: wait; }
+@keyframes reply-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .reply-spinner { animation: none; } }

@@ -22,6 +22,7 @@ const {
 const { StudyBridgeDatabase } = require("./lib/database");
 const studyModes = require("./public/study-modes");
 const scheduleImport = require("./public/schedule-import");
+const { readEvents } = require("./public/chat-stream");
 
 let nodemailer = null;
 try {
@@ -1275,13 +1276,60 @@ function toChatContent(content) {
   });
 }
 
-async function callAiWithResponses(messages, model, toolType = "web_search") {
+async function readAiEvents(response, kind, stream) {
+  let content = "";
+  let completed = false;
+  try {
+    await readEvents(response, async ({ data }) => {
+      if (data === "[DONE]") return false;
+      const payload = JSON.parse(data);
+      if (payload.error || ["error", "response.failed", "response.incomplete"].includes(payload.type)) {
+        throw new Error(`AI stream failed: ${JSON.stringify(payload.error || payload.response?.error || payload.response?.incomplete_details || payload.type)}`);
+      }
+      let delta;
+      if (kind === "responses") {
+        if (["response.output_text.delta", "response.refusal.delta"].includes(payload.type)) delta = payload.delta;
+        if (["response.web_search_call.in_progress", "response.web_search_call.searching"].includes(payload.type)) stream.onStatus("searching");
+        if (payload.type === "response.web_search_call.completed") stream.onStatus("integrating");
+        if (payload.type === "response.completed") {
+          completed = true;
+          const finalText = extractResponsesText(payload.response);
+          if (!content && finalText) delta = finalText;
+        }
+      } else {
+        const choice = payload.choices?.[0];
+        delta = choice?.delta?.content;
+        if (choice?.finish_reason) {
+          if (choice.finish_reason !== "stop") throw new Error(`AI stream interrupted: ${choice.finish_reason}`);
+          completed = true;
+        }
+      }
+      if (typeof delta === "string" && delta) {
+        content += delta;
+        await stream.onDelta(delta);
+      }
+      if (completed) return false;
+    });
+    if (!completed) throw new Error("AI stream ended before completion.");
+    if (!content) {
+      content = "AI 没有返回内容，请稍后再试。";
+      await stream.onDelta(content);
+    }
+    return content;
+  } catch (error) {
+    error.delivered = Boolean(content);
+    throw error;
+  }
+}
+
+async function callAiWithResponses(messages, model, toolType = "web_search", stream = null) {
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
       authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       "content-type": "application/json"
     },
+    ...(stream ? { signal: stream.signal } : {}),
     body: JSON.stringify({
       model,
       input: messages.map((item) => ({
@@ -1294,50 +1342,57 @@ async function callAiWithResponses(messages, model, toolType = "web_search") {
             search_context_size: "medium"
           }
       ],
-      store: false
+      store: false,
+      ...(stream ? { stream: true } : {})
     })
   });
+  if (response.ok && stream) return readAiEvents(response, "responses", stream);
   const text = await response.text();
   if (!response.ok) throw new Error(`AI web request failed: ${text}`);
   const payload = JSON.parse(text);
   return extractResponsesText(payload) || "AI \u6ca1\u6709\u8fd4\u56de\u5185\u5bb9\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5\u3002";
 }
 
-async function callAiWithChatCompletions(messages, model) {
+async function callAiWithChatCompletions(messages, model, stream = null) {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       "content-type": "application/json"
     },
+    ...(stream ? { signal: stream.signal } : {}),
     body: JSON.stringify({
       model,
+      ...(stream ? { stream: true } : {}),
       messages: messages.map((item) => ({
         role: item.role,
         content: toChatContent(item.content)
       }))
     })
   });
+  if (response.ok && stream) return readAiEvents(response, "chat", stream);
   const text = await response.text();
   if (!response.ok) throw new Error(`AI request failed: ${text}`);
   const payload = JSON.parse(text);
   return payload.choices?.[0]?.message?.content || "AI \u6ca1\u6709\u8fd4\u56de\u5185\u5bb9\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5\u3002";
 }
 
-async function callAi(messages, model = simpleAiModel) {
+async function callAi(messages, model = simpleAiModel, stream = null) {
   if (!process.env.OPENAI_API_KEY) {
     return "\u6211\u5df2\u7ecf\u628a\u4f60\u7684\u95ee\u9898\u4fdd\u5b58\u5230\u4e91\u7aef\u4e86\u3002\u73b0\u5728\u670d\u52a1\u5668\u8fd8\u6ca1\u6709\u914d\u7f6e OPENAI_API_KEY\uff0c\u6240\u4ee5\u5148\u7528\u5185\u7f6e\u5b66\u4e60\u52a9\u624b\u56de\u590d\uff1a\u8bf7\u5148\u4e0a\u4f20 syllabus \u6216 lecture notes\uff0c\u6211\u53ef\u4ee5\u6839\u636e\u8bfe\u7a0b\u8d44\u6599\u5e2e\u4f60\u505a\u9884\u4e60\u3001\u590d\u4e60\u3001deadline \u6c47\u603b\u548c\u6a21\u62df\u51fa\u9898\u3002";
   }
 
   if (webSearchEnabled) {
     try {
-      return await callAiWithResponses(messages, webSearchModel || model);
+      return await callAiWithResponses(messages, webSearchModel || model, "web_search", stream);
     } catch (error) {
+      if (stream?.signal.aborted || error.delivered) throw error;
       const message = String(error?.message || error);
       if (message.includes("web_search")) {
         try {
-          return await callAiWithResponses(messages, webSearchModel || model, "web_search_preview");
+          return await callAiWithResponses(messages, webSearchModel || model, "web_search_preview", stream);
         } catch (previewError) {
+          if (stream?.signal.aborted || previewError.delivered) throw previewError;
           console.warn(`StudyBridge preview web route failed, falling back to chat completions: ${previewError?.message || previewError}`);
         }
       } else {
@@ -1346,7 +1401,85 @@ async function callAi(messages, model = simpleAiModel) {
     }
   }
 
-  return callAiWithChatCompletions(messages, model);
+  return callAiWithChatCompletions(messages, model, stream);
+}
+
+async function studyAnswerContext({ user, course, message, mode, attachments }) {
+  const [documents, history, scheduleItems, weatherContext] = await Promise.all([
+    db.listDocuments(user.id, course.id),
+    db.listMessages(user.id, course.id),
+    listUserScheduleItems(user.id),
+    getWeatherContextForQuestion(message, user)
+  ]);
+  const model = chooseAiModel({ documents, history, mode, message: `${message} ${chatAttachmentLabel(attachments)}` });
+  console.log(`StudyBridge AI route: ${model} | mode=${mode} | docs=${documents.length} | schedule=${scheduleItems.length} | attachments=${attachments.length}`);
+  return { model, prompt: buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message, attachments }) };
+}
+
+async function streamCourseChat(req, res, context) {
+  const { user, course, message, mode, attachments } = context;
+  const controller = new AbortController();
+  let partial = "";
+  let userMessage;
+  let assistantMessage;
+  const send = (event, data) => {
+    if (!res.destroyed && !res.writableEnded) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+  const close = () => controller.abort();
+  res.on("close", close);
+  res.on("error", close);
+  res.writeHead(200, {
+    "content-type": "text/event-stream; charset=utf-8",
+    "cache-control": "no-cache, no-transform",
+    "connection": "keep-alive",
+    "x-accel-buffering": "no"
+  });
+  send("status", { phase: "preparing" });
+  const heartbeat = setInterval(() => {
+    if (!res.destroyed && !res.writableEnded) res.write(": heartbeat\n\n");
+  }, 10000);
+  const timeout = setTimeout(() => controller.abort(new Error("AI reply timed out.")), 180000);
+  try {
+    userMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId: course.id, role: "user", content: `${message}${chatAttachmentLabel(attachments)}`, mode });
+    send("start", { message: userMessage });
+    controller.signal.throwIfAborted();
+    const { prompt, model } = await studyAnswerContext(context);
+    controller.signal.throwIfAborted();
+    send("status", { phase: "thinking" });
+    const content = await callAi(prompt, model, {
+      signal: controller.signal,
+      onStatus: (phase) => send("status", { phase }),
+      onDelta: async (text) => {
+        controller.signal.throwIfAborted();
+        if (partial.length + text.length > 1024 * 1024 || res.writableLength > 1024 * 1024) throw new Error("AI stream exceeded the reply buffer limit.");
+        partial += text;
+        send("delta", { text });
+      }
+    });
+    controller.signal.throwIfAborted();
+    // Unconfigured AI uses the existing local fallback, still as stream events.
+    if (!partial) send("delta", { text: content });
+    send("status", { phase: "saving" });
+    if (!(await db.getCourse(user.id, course.id))) throw new Error("Course was deleted during the reply.");
+    assistantMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId: course.id, role: "assistant", content, mode });
+    send("done", { messages: [userMessage, assistantMessage], model });
+  } catch (error) {
+    if (!controller.signal.aborted) console.error("StudyBridge streaming reply failed:", error);
+    if (userMessage && !assistantMessage && await db.getCourse(user.id, course.id)) {
+      try {
+        assistantMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId: course.id, role: "assistant", content: partial, mode, interrupted: true });
+      } catch (saveError) {
+        console.error("StudyBridge interrupted reply could not be saved:", saveError);
+      }
+    }
+    send("error", { error: "回复已中断，请重新提问。", messages: [userMessage, assistantMessage].filter(Boolean) });
+  } finally {
+    clearInterval(heartbeat);
+    clearTimeout(timeout);
+    res.off("close", close);
+    res.off("error", close);
+    res.end();
+  }
 }
 
 async function validateInviteForRegistration(inviteCode, email) {
@@ -2577,16 +2710,11 @@ if (directMessageMatch && method === "POST") {
       const attachments = await normalizeChatAttachments(body.attachments);
       const message = rawMessage || (attachments.length ? "Please analyze the attached file(s)." : "");
       if (!message) return sendError(res, 400, "Message is required.");
+      const context = { user, course, message, mode, attachments };
+      if (body.stream === true) return streamCourseChat(req, res, context);
       const userMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId, role: "user", content: `${message}${chatAttachmentLabel(attachments)}`, mode });
-      const [documents, history, scheduleItems, weatherContext] = await Promise.all([
-        db.listDocuments(user.id, courseId),
-        db.listMessages(user.id, courseId),
-        listUserScheduleItems(user.id),
-        getWeatherContextForQuestion(message, user)
-      ]);
-      const selectedModel = chooseAiModel({ documents, history, mode, message: `${message} ${chatAttachmentLabel(attachments)}` });
-      console.log(`StudyBridge AI route: ${selectedModel} | mode=${mode} | docs=${documents.length} | schedule=${scheduleItems.length} | attachments=${attachments.length}`);
-      const aiContent = await callAi(buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message, attachments }), selectedModel);
+      const { prompt, model: selectedModel } = await studyAnswerContext(context);
+      const aiContent = await callAi(prompt, selectedModel);
       const assistantMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId, role: "assistant", content: aiContent, mode });
       return sendJson(res, 201, { messages: [userMessage, assistantMessage], model: selectedModel });
     }
@@ -2602,6 +2730,7 @@ const server = http.createServer(async (req, res) => {
   } catch (error) {
     const status = error.statusCode || 500;
     if (status === 500) console.error(error);
+    if (res.headersSent) return res.end();
     return sendError(res, status, error.message || "Server error.");
   }
 });

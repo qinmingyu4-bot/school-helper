@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.63";
+  const VERSION = "1.1.64";
   const studyModes = window.StudyBridgeStudyModes;
   const scheduleImport = window.StudyBridgeScheduleImport;
   const STUDENT_PAGES = ["community", "classmates", "schedule", "study", "tools", "profile"];
@@ -17,6 +17,14 @@
 
   const root = document.getElementById("root");
   const emailDraft = {};
+  const studyReplies = new Map();
+  let nextStudyReplyId = 0;
+  const replyPhases = {
+    reading: "读取附件中", preparing: "整合课程资料中", thinking: "思考中",
+    searching: "检索中", integrating: "整合中", writing: "正在回答", saving: "保存中"
+  };
+  const studyReplyKey = (userId = state.user?.id, courseId = state.activeCourseId) => `${userId}:${courseId}`;
+  const activeStudyReply = () => studyReplies.get(studyReplyKey());
   let classmatesEvents = null;
   let classmatesPoll = null;
   let classmatesSyncing = false;
@@ -478,7 +486,7 @@
           <button class="attach" data-action="pick-chat-file" aria-label="上传附件" title="上传附件，也可将 PDF、Word、PPT、Excel 或图片拖到输入区">+</button>
           <input id="chatFile" class="hidden" type="file" multiple accept="${SUPPORTED_UPLOAD_ACCEPT},*/*">
           <textarea id="chatInput" rows="1" placeholder="输入问题..." aria-label="问题"></textarea>
-          <button class="send" data-action="send-chat">发送</button>
+          <button class="send" data-action="${activeStudyReply() ? "stop-chat" : "send-chat"}" ${state.busy ? "disabled" : ""} ${activeStudyReply() ? 'title="停止生成" aria-label="停止生成"' : 'aria-label="发送"'}>${activeStudyReply() ? '<svg aria-hidden="true"><use href="/classmates-icons.svg#stop"></use></svg>' : "发送"}</button>
         </div>
         ${selectedUploadFilesHtml()}
       </footer>
@@ -504,7 +512,150 @@
 
   function messageHtml(message) {
     const mine = message.role === "user";
-    return `<div class="message ${mine ? "user" : "ai"}"><b>${mine ? "你" : "AI"}</b><div>${formatText(message.content)}</div></div>`;
+    return `<div class="message ${mine ? "user" : "ai"}" ${message.clientReplyId ? `data-reply-id="${esc(message.clientReplyId)}" aria-busy="${Boolean(message.pending)}"` : ""}><b>${mine ? "你" : "AI"}</b><div>${mine ? formatText(message.content) : replyBodyHtml(message)}</div></div>`;
+  }
+
+  function replyBodyHtml(message) {
+    const content = message.content || message.pending ? `<div class="reply-content">${formatText(message.content)}</div>` : "";
+    const status = message.pending
+      ? `<div class="reply-status" role="status"><span class="reply-spinner" aria-hidden="true"></span><span>${esc(replyPhases[message.phase] || replyPhases.thinking)}</span></div>`
+      : message.interrupted ? '<div class="reply-notice" role="status">回复已中断，可重新提问。</div>' : "";
+    return content + status;
+  }
+
+  function updateStudyReply(reply) {
+    if (state.page !== "study" || state.mode !== "student" || studyReplyKey() !== reply.key) return;
+    const message = root.querySelector(`[data-reply-id="${reply.assistant.clientReplyId}"]`);
+    const chat = root.querySelector(".study-workspace .chat-area");
+    if (!message || !chat) return;
+    const followLatest = chat.scrollHeight - chat.clientHeight - chat.scrollTop < 48
+      || (!reply.hasDisplayedText && Boolean(reply.assistant.content));
+    message.setAttribute("aria-busy", String(Boolean(reply.assistant.pending)));
+    const body = message.querySelector(":scope > div");
+    let content = body.querySelector(".reply-content");
+    if (!content) {
+      body.insertAdjacentHTML("afterbegin", '<div class="reply-content"></div>');
+      content = body.querySelector(".reply-content");
+    }
+    content.innerHTML = formatText(reply.assistant.content);
+    if (reply.assistant.content) reply.hasDisplayedText = true;
+    const status = body.querySelector(".reply-status");
+    if (reply.assistant.pending && status) status.lastElementChild.textContent = replyPhases[reply.assistant.phase] || replyPhases.thinking;
+    if (!reply.assistant.pending) {
+      status?.remove();
+      if (reply.assistant.interrupted && !body.querySelector(".reply-notice")) body.insertAdjacentHTML("beforeend", '<div class="reply-notice" role="status">回复已中断，可重新提问。</div>');
+    }
+    if (followLatest) chat.scrollTop = chat.scrollHeight;
+    const send = root.querySelector(".compose-row .send");
+    const pending = Boolean(activeStudyReply());
+    send.dataset.action = pending ? "stop-chat" : "send-chat";
+    send.title = pending ? "停止生成" : "发送";
+    send.setAttribute("aria-label", send.title);
+    send.disabled = state.busy;
+    send.innerHTML = pending ? '<svg aria-hidden="true"><use href="/classmates-icons.svg#stop"></use></svg>' : "发送";
+  }
+
+  function scheduleStudyReply(reply) {
+    if (reply.frame) return;
+    reply.frame = requestAnimationFrame(() => {
+      reply.frame = 0;
+      updateStudyReply(reply);
+    });
+  }
+
+  function mergeStudyReply(messages, reply) {
+    if (!reply || (!reply.started && !reply.assistant.pending)) return messages;
+    const ids = new Set([reply.user.id, reply.assistant.id].filter(Boolean));
+    return messages.filter((message) => !ids.has(message.id)).concat(reply.user, reply.assistant);
+  }
+
+  async function sendStudyChat() {
+    if (state.busy || activeStudyReply()) return;
+    if (!state.activeCourseId) throw new Error("请先选择或新增课程，然后再提问。");
+    const input = $("chatInput");
+    const text = input?.value || "";
+    const files = [...state.uploadFiles];
+    if (!text.trim() && !files.length) throw new Error("请输入问题或上传文件。");
+    const reply = {
+      key: studyReplyKey(), courseId: state.activeCourseId, mode: state.studyMode,
+      controller: new AbortController(), frame: 0, started: false,
+      user: { role: "user", content: text || "请分析我上传的文件。" },
+      assistant: { role: "assistant", content: "", clientReplyId: `reply-${++nextStudyReplyId}`, pending: true, phase: files.length ? "reading" : "preparing" }
+    };
+    studyReplies.set(reply.key, reply);
+    state.messages.push(reply.user, reply.assistant);
+    state.uploadFiles = [];
+    if (input) input.value = "";
+    render();
+    try {
+      const attachments = await readFiles(files);
+      reply.controller.signal.throwIfAborted();
+      reply.assistant.phase = "preparing";
+      scheduleStudyReply(reply);
+      const response = await fetch(`/api/courses/${reply.courseId}/chat`, {
+        method: "POST", credentials: "same-origin", signal: reply.controller.signal,
+        headers: { "content-type": "application/json", accept: "text/event-stream" },
+        body: JSON.stringify({ message: text, mode: reply.mode, attachments, stream: true })
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || `请求失败 (${response.status})`);
+      }
+      let completed = false;
+      if (!(response.headers.get("content-type") || "").includes("text/event-stream")) {
+        // Keep compatibility with a server that has not yet received the update.
+        const data = await response.json();
+        if (data.messages?.length !== 2) throw new Error("没有收到完整回复，请重试。");
+        Object.assign(reply.user, data.messages[0]);
+        Object.assign(reply.assistant, data.messages[1]);
+        reply.started = true;
+        completed = true;
+      } else {
+        await window.StudyBridgeChatStream.readEvents(response, ({ event, data }) => {
+          const packet = JSON.parse(data);
+          if (event === "start") {
+            Object.assign(reply.user, packet.message);
+            reply.started = true;
+          }
+          if (event === "status" && replyPhases[packet.phase]) reply.assistant.phase = packet.phase;
+          if (event === "delta" && typeof packet.text === "string") {
+            reply.assistant.content += packet.text;
+            reply.assistant.phase = "writing";
+          }
+          if (event === "done" || event === "error") {
+            if (packet.messages?.[0]) { Object.assign(reply.user, packet.messages[0]); reply.started = true; }
+            if (packet.messages?.[1]) Object.assign(reply.assistant, packet.messages[1]);
+            if (event === "error") throw new Error(packet.error || "回复已中断，请重试。");
+            completed = true;
+            return false;
+          }
+          scheduleStudyReply(reply);
+        });
+      }
+      if (!completed) throw new Error("连接已中断，请重新提问。");
+    } catch (error) {
+      if (reply.started) {
+        reply.assistant.interrupted = true;
+      } else if (studyReplyKey() === reply.key) {
+        state.messages = state.messages.filter((message) => message !== reply.user && message !== reply.assistant);
+        state.uploadFiles.unshift(...files);
+        render();
+        if ($("chatInput") && !$("chatInput").value) $("chatInput").value = text;
+      }
+      if (!reply.controller.signal.aborted && studyReplyKey() === reply.key) {
+        setToast(error.message);
+        root.querySelector(".toast")?.remove();
+        root.insertAdjacentHTML("beforeend", `<div class="toast">${esc(error.message)}</div>`);
+      }
+    } finally {
+      reply.assistant.pending = false;
+      studyReplies.delete(reply.key);
+      cancelAnimationFrame(reply.frame);
+      reply.frame = 0;
+      updateStudyReply(reply);
+      // Before the server accepts a request there may be no reply bubble to patch.
+      if (!reply.started && studyReplyKey() === reply.key) render();
+    }
   }
 
   function profilePage() {
@@ -948,12 +1099,15 @@
     }
     loadStudyMode();
     if (state.activeCourseId) {
+      const courseId = state.activeCourseId;
+      const replyAtLoad = activeStudyReply();
       const [docsData, messagesData] = await Promise.all([
-        api(`/api/courses/${state.activeCourseId}/documents`),
-        api(`/api/courses/${state.activeCourseId}/messages`)
+        api(`/api/courses/${courseId}/documents`),
+        api(`/api/courses/${courseId}/messages`)
       ]);
+      if (courseId !== state.activeCourseId) return;
       state.docs = docsData.documents || [];
-      state.messages = messagesData.messages || [];
+      state.messages = mergeStudyReply(messagesData.messages || [], activeStudyReply() || replyAtLoad);
     } else {
       state.docs = [];
       state.messages = [];
@@ -1265,6 +1419,7 @@
         return;
       }
       if (action === "logout") {
+        for (const reply of studyReplies.values()) reply.controller.abort();
         await api("/api/auth/logout", { method: "POST" }).catch(() => null);
         localStorage.removeItem("studybridge.page");
         location.reload();
@@ -1297,6 +1452,7 @@
       }
       if (action === "delete-course") {
         if (!confirm("确定删除这门课程吗？")) return;
+        studyReplies.get(studyReplyKey(state.user.id, button.dataset.id))?.controller.abort();
         await api(`/api/courses/${button.dataset.id}`, { method: "DELETE" });
         if (state.activeCourseId === button.dataset.id) state.activeCourseId = "";
         await loadPage("study");
@@ -1345,17 +1501,11 @@
         return;
       }
       if (action === "send-chat") {
-        if (!state.activeCourseId) throw new Error("请先选择或新增课程，然后再提问。");
-        const text = $("chatInput")?.value || "";
-        const mode = state.studyMode;
-        const attachments = await readFiles(state.uploadFiles);
-        if (!text.trim() && !attachments.length) throw new Error("请输入问题或上传文件。");
-        state.messages.push({ role: "user", content: text || "请分析我上传的文件。" }, { role: "assistant", content: "正在根据云端课程资料思考..." });
-        render();
-        const data = await api(`/api/courses/${state.activeCourseId}/chat`, { method: "POST", body: { message: text, mode, attachments } });
-        state.uploadFiles = [];
-        state.messages = state.messages.slice(0, -2).concat(data.messages || []);
-        render();
+        await sendStudyChat();
+        return;
+      }
+      if (action === "stop-chat") {
+        activeStudyReply()?.controller.abort();
         return;
       }
       if (action === "save-profile") {
@@ -1600,6 +1750,7 @@
     const previousCourseId = previousChat?.parentElement.dataset.courseId;
     const previousMessages = previousChat?.querySelector(".messages")?.innerHTML;
     const previousScrollTop = previousChat?.scrollTop || 0;
+    const previousChatDraft = $("chatInput")?.value || "";
     try {
       root.innerHTML = routeHtml();
     } catch (error) {
@@ -1630,6 +1781,7 @@
     }
     const chat = root.querySelector(".study-workspace .chat-area");
     if (chat) {
+      if (previousCourseId === state.activeCourseId) $("chatInput").value = previousChatDraft;
       const showLatest = !previousChat || previousCourseId !== state.activeCourseId
         || previousMessages !== chat.querySelector(".messages")?.innerHTML;
       chat.scrollTop = showLatest ? chat.scrollHeight : previousScrollTop;

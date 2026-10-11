@@ -6,6 +6,7 @@ const { spawn } = require("node:child_process");
 const { once } = require("node:events");
 const { test } = require("node:test");
 const AdmZip = require("adm-zip");
+const { readEvents } = require("../public/chat-stream");
 
 const root = path.resolve(__dirname, "..");
 test("account, course, upload, and persistence health check", { timeout: 40000 }, async (t) => {
@@ -399,5 +400,115 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
     const pdfChat = await request(`/api/courses/${id}/chat`, { method: "POST", cookie, body: { message: "Read this schedule PDF", attachments: [{ name: "schedule-full.pdf", mime: "application/pdf", dataUrl: `data:application/pdf;base64,${fullPdf.toString("base64")}` }] } });
     assert.equal(pdfChat.status, 201);
     assert.ok(pdfChat.data.messages[1].content.includes("Essay due November 12, 2026 at 23:59"), "chat PDF extraction must retain document text too");
+  });
+
+  const streamingCookie = (await request("/api/auth/login", { method: "POST", body: { email: "alice@example.test", password: "HealthCheck-Password-123!" } })).cookie;
+  async function streamCourse(name) {
+    return (await request("/api/courses", { method: "POST", cookie: streamingCookie, body: { name } })).data.course.id;
+  }
+  async function streamReply(id, message, { onPacket = () => {}, signal } = {}) {
+    const response = await fetch(`${base}/api/courses/${id}/chat`, {
+      method: "POST", headers: { cookie: streamingCookie, "content-type": "application/json" }, signal,
+      body: JSON.stringify({ message, mode: "cheatsheet", stream: true })
+    });
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type"), /text\/event-stream/);
+    assert.equal(response.headers.get("x-accel-buffering"), "no");
+    const packets = [];
+    await readEvents(response, async ({ event, data }) => {
+      const packet = { event, ...JSON.parse(data) };
+      packets.push(packet);
+      await onPacket(packet, packets);
+    });
+    return packets;
+  }
+
+  await t.test("streaming retains authentication, course isolation and input validation", async () => {
+    const id = await streamCourse("Stream guards");
+    const body = { message: "Stream this", stream: true };
+    assert.equal((await request(`/api/courses/${id}/chat`, { method: "POST", body })).status, 401);
+    assert.equal((await request(`/api/courses/${id}/chat`, { method: "POST", cookie: bob.cookie, body })).status, 404);
+    assert.equal((await request(`/api/courses/${id}/chat`, { method: "POST", cookie: streamingCookie, body: { stream: true } })).status, 400);
+    assert.deepEqual((await request(`/api/courses/${id}/messages`, { cookie: streamingCookie })).data.messages, []);
+  });
+
+  await t.test("both AI APIs deliver incremental text before completion and persist one final reply", async () => {
+    for (const webSearch of [false, true]) {
+      await stop();
+      await start({ fakeAi: true, webSearch });
+      const id = await streamCourse(`Incremental ${webSearch}`);
+      let checkedPartial = false;
+      const packets = await streamReply(id, "STREAM_SLOW: explain this course", { onPacket: async (packet) => {
+        if (packet.event !== "delta" || checkedPartial) return;
+        checkedPartial = true;
+        const during = (await request(`/api/courses/${id}/messages`, { cookie: streamingCookie })).data.messages;
+        assert.equal(during.length, 1, "First text must arrive before final assistant persistence");
+        assert.equal(during[0].role, "user");
+      } });
+      assert.equal(checkedPartial, true);
+      assert.ok(packets.filter((packet) => packet.event === "delta").length > 1);
+      const text = packets.filter((packet) => packet.event === "delta").map((packet) => packet.text).join("");
+      assert.ok(text.startsWith("逐步输出中文😀。"));
+      assert.ok(!text.includes("PRIVATE_REASONING_MUST_NOT_APPEAR"));
+      const prompt = JSON.parse(text.split("\n\n")[1]);
+      assert.equal(prompt.stream, true);
+      assert.ok((prompt.messages || prompt.input)[0].content.includes("Cheatsheet mode requirements"));
+      if (webSearch) assert.ok(packets.some((packet) => packet.phase === "searching") && packets.some((packet) => packet.phase === "integrating"));
+      const done = packets.at(-1);
+      assert.equal(done.event, "done");
+      assert.equal(done.messages[1].content, text);
+      const history = (await request(`/api/courses/${id}/messages`, { cookie: streamingCookie })).data.messages;
+      assert.deepEqual(history, done.messages);
+    }
+  });
+
+  await t.test("stream failures retain partial text without duplicate fallback output or private errors", async () => {
+    for (const webSearch of [false, true]) {
+      await stop();
+      await start({ fakeAi: true, webSearch });
+      for (const marker of ["STREAM_FAIL_AFTER", "STREAM_TRUNCATED"]) {
+        const id = await streamCourse(`${marker} ${webSearch}`);
+        const packets = await streamReply(id, marker);
+        assert.equal(packets.filter((packet) => packet.event === "delta").length, 1);
+        assert.equal(packets.at(-1).event, "error");
+        assert.ok(!JSON.stringify(packets).includes("INTERNAL_PROVIDER_DETAIL"));
+        const history = (await request(`/api/courses/${id}/messages`, { cookie: streamingCookie })).data.messages;
+        assert.equal(history.length, 2);
+        assert.equal(history[1].content, packets.find((packet) => packet.event === "delta").text);
+        assert.equal(history[1].interrupted, true);
+      }
+    }
+    const id = await streamCourse("Early web failure");
+    const packets = await streamReply(id, "STREAM_EARLY_FAIL");
+    assert.equal(packets.at(-1).event, "done");
+    assert.ok(packets.at(-1).messages[1].content.includes('"messages":'));
+  });
+
+  await t.test("disconnect cancels upstream generation and saves an interrupted reply", async () => {
+    const id = await streamCourse("Canceled reply");
+    const controller = new AbortController();
+    let partial = "";
+    await assert.rejects(streamReply(id, "STREAM_ABORT", { signal: controller.signal, onPacket: (packet) => {
+      if (packet.event === "delta") { partial += packet.text; controller.abort(); }
+    } }), { name: "AbortError" });
+    let history = [];
+    const deadline = Date.now() + 2500;
+    while (history.length < 2 && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      history = (await request(`/api/courses/${id}/messages`, { cookie: streamingCookie })).data.messages;
+    }
+    assert.equal(history.length, 2);
+    assert.equal(history[1].content, partial);
+    assert.equal(history[1].interrupted, true);
+  });
+
+  await t.test("unconfigured AI keeps the existing fallback in the streaming protocol", async () => {
+    await stop();
+    await start();
+    const id = await streamCourse("Local fallback stream");
+    const packets = await streamReply(id, "Help with review");
+    assert.equal(packets.at(-1).event, "done");
+    assert.ok(packets.find((packet) => packet.event === "delta").text.includes("OPENAI_API_KEY"));
+    assert.equal((await request(`/api/courses/${id}/messages`, { cookie: streamingCookie })).data.messages.length, 2);
   });
 });

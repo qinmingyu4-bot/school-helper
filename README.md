@@ -12,6 +12,7 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, in
 - HttpOnly session cookie
 - Per-student courses, course documents, preferences, and chat history
 - Backend AI calls using `OPENAI_API_KEY`
+- Incremental Study Area replies with animated activity states and a stop-generation control
 - Self-hosted Inter Variable and Noto Sans SC interface fonts, with bundled licenses and source notes in `public/fonts/SOURCES.md`
 - Seven Study Area modes with mode-specific question shortcuts and AI workflows: preview, guided learning, review, assignment help, mock exams, cheatsheets, and exam cramming
 - Local JSON database for development or small private deployments
@@ -50,6 +51,23 @@ sending it. The selected mode is remembered in this browser per account and cour
 switching modes leaves drafts, attachments, and the current reading position intact.
 Course materials, account learning preferences, and the latest explicit request
 continue to guide the AI response.
+
+Study replies use an authenticated POST to `/api/courses/:id/chat` with
+`stream: true`. The server forwards only answer text, not internal reasoning,
+through SSE `status`, `start`, `delta`, `done`, and `error` events. Activity states
+reflect course-context preparation, AI processing, optional web search/integration,
+answer generation, and persistence. A stopped or interrupted reply retains its
+received text and is marked incomplete in history. Generation can continue while
+viewing another course; replies and controls remain isolated per account/course.
+New requests and the first answer appear at the bottom. Subsequent output follows
+the bottom unless the student scrolls up to read history, and leaves drafts and
+sidebar scroll positions untouched. Reduced-motion settings disable the spinner.
+Other clients (including Tools) can omit `stream` and retain the existing JSON API.
+
+Streaming requests time out after three minutes. If placing a reverse proxy in
+front of the app, disable response buffering for the chat endpoint and allow an
+idle timeout longer than the server's ten-second SSE heartbeat. Keep API keys on
+the server; no additional browser credentials or environment settings are needed.
 
 ## Schedule imports
 

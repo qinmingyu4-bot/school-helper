@@ -60,6 +60,10 @@ selected rows. Missing dates/times remain blank for review; original evidence
 and ambiguity notes appear beside each draft. Weekly meetings expand only when
 the source specifies semester boundaries and meeting times.
 
+File import and the reminder list use the full available page width. The manual
+form expands on demand, and completed reminders stay in a collapsible section.
+Review cards adapt to the width of the content area, including narrow side panels.
+
 Confirmation saves reminders in the existing per-user planner, skips duplicates,
 and preserves remaining drafts if saving fails. Countdown labels refresh every
 15 seconds while the page is open, without replacing the student's draft inputs.

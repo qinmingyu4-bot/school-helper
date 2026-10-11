@@ -2,6 +2,9 @@
 
 ## 2026-10-11
 
+- Released `1.1.55` with a full-width Schedule layout, compact file selection and import steps, a collapsible manual form, and a primary reminder list with a clear empty state and completed-items disclosure.
+- Added responsive review cards and form spacing based on available content width; preserved manual drafts and disclosure state through page updates and verified desktop, narrow-panel, and mobile layouts alongside the existing import workflow.
+
 - Added Schedule file imports for PDF, Word, PowerPoint, Excel, and text formats, with an authenticated AI extraction endpoint scoped to the selected file.
 - Added editable DDL / LEC / TUT review drafts with source evidence, ambiguity warnings, selection, and cancellation. Reminders are created only after confirmation; incomplete dates/times require correction, duplicates are skipped, and remaining drafts survive partial save failures.
 - Added manual reminder types and continuously refreshed countdowns, UTC persistence, browser timezone guidance, complete document extraction with an explicit long-document limit, and Excel cell/shared-string reconstruction.

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.54";
+  const VERSION = "1.1.55";
   const studyModes = window.StudyBridgeStudyModes;
   const scheduleImport = window.StudyBridgeScheduleImport;
   const STUDENT_PAGES = ["community", "classmates", "email", "schedule", "study", "tools", "profile"];
@@ -43,6 +43,8 @@
     scheduleSource: "",
     scheduleImportBusy: false,
     scheduleImportStatus: "",
+    scheduleManualOpen: false,
+    scheduleManualDraft: {},
     communityChannel: "all",
     community: null,
     classmates: null,
@@ -688,36 +690,45 @@
     const pending = items.filter((item) => !item.completedAt).sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
     const done = items.filter((item) => item.completedAt);
     return `
-      ${pageHeader("SCHEDULE", "时间表", "上传 syllabus 或手动添加作业、考试、课程提醒。")}
-      <section class="two-col schedule-layout">
-        <div class="schedule-inputs">
+      ${pageHeader("SCHEDULE", "时间表", "你的 DDL、Lecture 和 Tutorial，一处掌握。")}
+      <section class="schedule-layout">
         <article class="card schedule-upload">
-          <h2>上传文件，AI 提取时间</h2>
-          <p class="muted">支持 PDF、Word、PPT、Excel、TXT、MD、CSV、JSON。PDF 最大 8 MB，其他文件最大 12 MB。</p>
-          <p class="muted">1. 上传文件 → 2. 核对 DDL / LEC / TUT → 3. 确认后生成倒计时</p>
-          <label>课程表 / Syllabus<input id="scheduleFile" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md,.csv,.json" ${state.scheduleImportBusy || state.scheduleDrafts.length ? "disabled" : ""}></label>
-          <button class="primary" data-action="extract-schedule" ${state.scheduleImportBusy || state.scheduleDrafts.length ? "disabled" : ""}>${state.scheduleImportBusy ? "处理中…" : "上传并提取"}</button>
-          <p role="status" aria-live="polite">${esc(state.scheduleImportStatus)}</p>
-          <small>所有时间按 ${esc(Intl.DateTimeFormat().resolvedOptions().timeZone)} 显示。缺失或不确定的时间需要补全；每周课程仅在学期日期明确时展开。</small>
+          <div class="schedule-upload-intro">
+            <span class="schedule-kicker">AI IMPORT</span>
+            <h2>把课程文件变成时间表</h2>
+            <p>上传 syllabus 或课程表，AI 提取时间，你确认后再加入提醒。</p>
+            <div class="schedule-steps" aria-label="导入步骤"><span><b>1</b> 上传文件</span><span><b>2</b> 核对时间</span><span><b>3</b> 开始倒计时</span></div>
+          </div>
+          <div class="schedule-upload-controls">
+            <label class="schedule-file-picker ${state.scheduleImportBusy || state.scheduleDrafts.length ? "is-disabled" : ""}">
+              <input id="scheduleFile" aria-label="选择课程文件" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md,.csv,.json" ${state.scheduleImportBusy || state.scheduleDrafts.length ? "disabled" : ""}>
+              <span class="schedule-file-symbol" aria-hidden="true">↑</span>
+              <span><strong id="scheduleFileName">选择课程文件</strong><small>PDF、Word、PPT、Excel 或文字文件</small></span>
+            </label>
+            <div class="schedule-upload-bottom"><small>PDF ≤ 8 MB · 其他文件 ≤ 12 MB</small><button class="primary" data-action="extract-schedule" ${state.scheduleImportBusy || state.scheduleDrafts.length ? "disabled" : ""}>${state.scheduleImportBusy ? "处理中…" : "AI 提取时间"}</button></div>
+          </div>
+          ${state.scheduleImportStatus ? `<p class="schedule-import-status" role="status" aria-live="polite">${esc(state.scheduleImportStatus)}</p>` : ""}
         </article>
         ${scheduleReviewHtml()}
-        <article class="card">
-          <h2>添加提醒</h2>
-          <label>类型<select id="scheduleKind"><option>DDL</option><option>LEC</option><option>TUT</option></select></label>
-          <input id="scheduleTitle" aria-label="提醒标题" placeholder="例如 ECO101 Essay 1">
-          <input id="scheduleCourse" placeholder="课程，例如 ECO101">
-          <input id="scheduleTime" type="datetime-local">
-          <input id="scheduleLocation" placeholder="提交位置，例如 Quercus / Room 101">
-          <textarea id="scheduleNotes" placeholder="补充要求、rubric 或备注"></textarea>
-          <button class="primary" data-action="add-schedule">添加提醒</button>
+        <details class="card schedule-manual" id="scheduleManual" ${state.scheduleManualOpen ? "open" : ""}>
+          <summary><span><b>＋ 手动添加提醒</b><small>直接填写一条 DDL、LEC 或 TUT</small></span><span class="schedule-disclosure" aria-hidden="true">⌄</span></summary>
+          <div class="schedule-manual-form">
+            <label class="schedule-field-wide">标题<input id="scheduleTitle" data-manual-field="title" value="${esc(state.scheduleManualDraft.title || "")}" placeholder="例如 ECO101 Essay 1"></label>
+            <label>类型<select id="scheduleKind" data-manual-field="kind">${["DDL", "LEC", "TUT"].map((kind) => `<option ${state.scheduleManualDraft.kind === kind ? "selected" : ""}>${kind}</option>`).join("")}</select></label>
+            <label>日期与时间<input id="scheduleTime" data-manual-field="startsAt" type="datetime-local" value="${esc(state.scheduleManualDraft.startsAt || "")}"></label>
+            <label>课程<input id="scheduleCourse" data-manual-field="course" value="${esc(state.scheduleManualDraft.course || "")}" placeholder="例如 ECO101"></label>
+            <label>地点 / 链接<input id="scheduleLocation" data-manual-field="location" value="${esc(state.scheduleManualDraft.location || "")}" placeholder="教室或提交入口"></label>
+            <label class="schedule-field-wide">备注（选填）<textarea id="scheduleNotes" data-manual-field="notes" placeholder="补充要求或备注">${esc(state.scheduleManualDraft.notes || "")}</textarea></label>
+            <div class="schedule-field-wide schedule-form-actions"><button class="primary" data-action="add-schedule">添加提醒</button></div>
+          </div>
+        </details>
+        <article class="card schedule-reminders">
+          <div class="schedule-list-header"><div><h2>待办与课程</h2><p>${pending.length ? `${pending.length} 条提醒 · 按时间排序` : "确认后的时间点会显示在这里"}</p></div>
+          <div class="schedule-type-legend"><span>DDL 截止</span><span>LEC 讲座</span><span>TUT 辅导课</span></div></div>
+          ${pending.length ? `<div class="schedule-list-rows">${pending.map((item) => scheduleItemHtml(item)).join("")}</div>` : `<div class="schedule-empty"><span aria-hidden="true">◷</span><b>时间表还空着</b><p>上传一份课程文件，或手动添加第一条提醒。</p></div>`}
+          ${done.length ? `<details class="schedule-completed"><summary>已完成 <span>${done.length}</span></summary>${done.map((item) => `<div class="mini-row done"><b>${esc(item.title)}</b><small>${esc(formatDate(item.startsAt))}</small></div>`).join("")}</details>` : ""}
         </article>
-        </div>
-        <article class="card">
-          <h2>全部提醒</h2>
-          ${pending.length ? pending.map((item) => scheduleItemHtml(item)).join("") : `<p class="empty">暂无未完成提醒。</p>`}
-          <h2>已完成</h2>
-          ${done.length ? done.map((item) => `<div class="mini-row done"><b>${esc(item.title)}</b><small>${esc(formatDate(item.startsAt))}</small></div>`).join("") : `<p class="muted">还没有已完成项目。</p>`}
-        </article>
+        <p class="schedule-timezone">时区：${esc(Intl.DateTimeFormat().resolvedOptions().timeZone)} · 不确定的时间将在确认时标出</p>
       </section>
     `;
   }
@@ -726,7 +737,7 @@
     return `
       <div class="schedule-item">
         <span>${esc(scheduleImport.kind(item.kind) || item.kind || "DDL")}</span>
-        <div><b>${esc(item.title)}</b><small>${esc(item.course || "")} | ${esc(formatDate(item.startsAt))} | ${esc(item.location || "")}</small></div>
+        <div><b>${esc(item.title)}</b><small>${esc([item.course, formatDate(item.startsAt), item.location].filter(Boolean).join(" · "))}</small></div>
         <strong data-countdown="${esc(item.startsAt)}">${esc(dueText(item.startsAt))}</strong>
         <button data-action="complete-schedule" data-course="${esc(item.courseId)}" data-doc="${esc(item.docId)}">已完成</button>
       </div>
@@ -1466,6 +1477,7 @@
         const course = await ensureScheduleCourse();
         const payload = { title, kind: $("scheduleKind")?.value || "DDL", course: $("scheduleCourse")?.value || "", startsAt: new Date(startsAt).toISOString(), location: $("scheduleLocation")?.value || "", notes: $("scheduleNotes")?.value || "", completedAt: "" };
         await api(`/api/courses/${course.id}/documents`, { method: "POST", body: { title: `${SCHEDULE_PREFIX} ${payload.title}`, type: "Schedule", text: JSON.stringify(payload) } });
+        state.scheduleManualDraft = {};
         await loadPage("schedule");
         } finally { button.disabled = false; }
         return;
@@ -1633,6 +1645,11 @@
   });
 
   document.addEventListener("change", (event) => {
+    if (event.target?.id === "scheduleFile") {
+      const name = $("scheduleFileName");
+      if (name) name.textContent = event.target.files?.[0]?.name || "选择课程文件";
+      return;
+    }
     if (event.target?.id === "studyMode") {
       const mode = event.target.value;
       if (!studyModes.getMode(mode)) return;
@@ -1654,11 +1671,17 @@
   });
 
   document.addEventListener("input", (event) => {
+    const manualField = event.target.dataset?.manualField;
+    if (manualField) { state.scheduleManualDraft[manualField] = event.target.value; return; }
     const field = event.target.dataset?.draftField;
     if (!field) return;
     const item = state.scheduleDrafts[Number(event.target.closest("[data-draft]")?.dataset.draft)];
     if (item) item[field] = field === "selected" ? event.target.checked : event.target.value;
   });
+
+  document.addEventListener("toggle", (event) => {
+    if (event.target?.id === "scheduleManual") state.scheduleManualOpen = event.target.open;
+  }, true);
 
   setInterval(() => {
     root.querySelectorAll("[data-countdown]").forEach((element) => {

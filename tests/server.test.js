@@ -348,6 +348,11 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
     assert.deepEqual((await request("/api/courses", { cookie })).data, beforeExtraction.data, "extraction must not create a planner or reminders");
     const pdf = await fs.readFile(path.join(root, "tests/fixtures/schedule.pdf"));
     assert.equal((await request("/api/schedule/extract", { method: "POST", cookie, body: { fileName: "schedule.pdf", fileData: pdf.toString("base64") } })).status, 200);
+    const fullPdf = await fs.readFile(path.join(root, "tests/fixtures/schedule-full.pdf"));
+    for (let repeat = 0; repeat < 4; repeat++) {
+      const result = await request("/api/schedule/extract", { method: "POST", cookie, body: { fileName: "schedule-full.pdf", fileData: `data:application/pdf;base64,${fullPdf.toString("base64")}`, timeZone: "America/New_York" } });
+      assert.equal(result.status, 200, "PDFs decoded from repeated HTTP uploads must not depend on Buffer pool offsets");
+    }
     const sourceBody = { fileName: "schedule.txt", fileData: Buffer.from("Essay due Nov 12, 2026 at 23:59").toString("base64") };
     assert.equal((await request("/api/schedule/extract", { method: "POST", cookie, body: { ...sourceBody, timeZone: "Invalid/Zone" } })).status, 400);
     assert.equal((await request("/api/schedule/extract", { method: "POST", cookie, body: { ...sourceBody, fileData: Buffer.from("x".repeat(100001)).toString("base64") } })).status, 400);
@@ -381,5 +386,8 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
       assert.ok(history.some((item) => item.role === "user" && item.mode === mode));
       assert.ok(history.some((item) => item.role === "assistant" && item.mode === mode));
     }
+    const pdfChat = await request(`/api/courses/${id}/chat`, { method: "POST", cookie, body: { message: "Read this schedule PDF", attachments: [{ name: "schedule-full.pdf", mime: "application/pdf", dataUrl: `data:application/pdf;base64,${fullPdf.toString("base64")}` }] } });
+    assert.equal(pdfChat.status, 201);
+    assert.ok(pdfChat.data.messages[1].content.includes("Essay due November 12, 2026 at 23:59"), "chat PDF extraction must retain document text too");
   });
 });

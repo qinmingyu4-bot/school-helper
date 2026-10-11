@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.55";
+  const VERSION = "1.1.56";
   const studyModes = window.StudyBridgeStudyModes;
   const scheduleImport = window.StudyBridgeScheduleImport;
   const STUDENT_PAGES = ["community", "classmates", "email", "schedule", "study", "tools", "profile"];

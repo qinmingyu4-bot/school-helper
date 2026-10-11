@@ -2,6 +2,9 @@
 
 ## 2026-10-11
 
+- Released `1.1.56` after live AI upload testing found a PDF parser failure caused by pooled Buffer offsets. Copied PDF bytes into an independent zero-offset array for both document uploads and chat attachments, and added repeated HTTP upload regression coverage.
+- Verified actual AI extraction using generated PDF, DOCX, XLSX, and CSV samples: exact DDL / LEC / TUT timestamps, a missing-time warning, no reminder creation before confirmation, and three confirmed reminders with countdowns retained after page reload in the local preview account.
+
 - Released `1.1.55` with a full-width Schedule layout, compact file selection and import steps, a collapsible manual form, and a primary reminder list with a clear empty state and completed-items disclosure.
 - Added responsive review cards and form spacing based on available content width; preserved manual drafts and disclosure state through page updates and verified desktop, narrow-panel, and mobile layouts alongside the existing import workflow.
 

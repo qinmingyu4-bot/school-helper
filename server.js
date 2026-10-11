@@ -656,7 +656,9 @@ async function extractUploadedText(body = {}, compact = compactDocumentText) {
     const buffer = decodeBase64Data(body.fileData);
     if (!buffer.length) throw new Error("PDF file is empty.");
     if (buffer.length > maxPdfBytes) throw new Error("PDF is too large. Please upload a file under 8 MB.");
-    const parsed = await pdfParse(buffer);
+    // The bundled PDF engine can read outside a pooled Buffer's byteOffset.
+    // Give it an independent, zero-offset byte array for uploaded PDFs.
+    const parsed = await pdfParse(Uint8Array.from(buffer));
     return compact(parsed.text || "");
   }
 
@@ -737,7 +739,7 @@ async function normalizeChatAttachments(input = []) {
       try {
         const buffer = attachmentBuffer(dataUrl);
         if (buffer.length > maxPdfBytes) throw new Error("PDF is over 8 MB.");
-        const parsed = await pdfParse(buffer);
+        const parsed = await pdfParse(Uint8Array.from(buffer));
         normalized.push({
           name,
           mime: mime || "application/pdf",

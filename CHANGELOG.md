@@ -2,6 +2,9 @@
 
 ## 2026-10-11
 
+- Updated to `1.1.57`: moved Email Assistant from the sidebar into Tools alongside Docs, Sheets, and Slides; retained email drafting and copying, remembered the selected tool, and redirected legacy email links to the new location. Aligned the wrapping tool selector with the workspace content.
+- Preserved email inputs and generated replies when switching tools or copying a reply. Verified 1440px and 390px layouts, drafting/copying with an isolated AI response, tool switching, refresh selection, and legacy redirects; JavaScript and asset checks passed.
+
 - Released `1.1.56` after live AI upload testing found a PDF parser failure caused by pooled Buffer offsets. Copied PDF bytes into an independent zero-offset array for both document uploads and chat attachments, and added repeated HTTP upload regression coverage.
 - Verified actual AI extraction using generated PDF, DOCX, XLSX, and CSV samples: exact DDL / LEC / TUT timestamps, a missing-time warning, no reminder creation before confirmation, and three confirmed reminders with countdowns retained after page reload in the local preview account.
 

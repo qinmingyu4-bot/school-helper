@@ -1,10 +1,10 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.56";
+  const VERSION = "1.1.57";
   const studyModes = window.StudyBridgeStudyModes;
   const scheduleImport = window.StudyBridgeScheduleImport;
-  const STUDENT_PAGES = ["community", "classmates", "email", "schedule", "study", "tools", "profile"];
+  const STUDENT_PAGES = ["community", "classmates", "schedule", "study", "tools", "profile"];
   const ADMIN_PAGES = ["admin"];
   const SCHEDULE_COURSE = "Schedule & Deadlines";
   const SCHEDULE_PREFIX = "[SCHEDULE_ITEM]";
@@ -16,6 +16,7 @@
   const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
 
   const root = document.getElementById("root");
+  const emailDraft = {};
   let classmatesEvents = null;
   let classmatesPoll = null;
   let classmatesSyncing = false;
@@ -96,10 +97,9 @@
   const pageLabels = {
     community: ["社", "社区", "全部、学校和专业频道"],
     classmates: ["友", "同学", "SB ID 申请和聊天"],
-    email: ["信", "邮件助手", "理解邮件并生成英文回复"],
     schedule: ["时", "时间表", "Deadline 和课程提醒"],
     study: ["学", "学习区", "课程资料、AI 对话和复习计划"],
-    tools: ["工", "工具", "SB Docs、Sheets、Slides"],
+    tools: ["工", "工具", "Docs、Sheets、Slides、邮件助手"],
     profile: ["人", "个人资料", "头像、学校、专业和 SB ID"],
     admin: ["管", "开发者端", "邀请码、用户和系统状态"]
   };
@@ -155,6 +155,11 @@
   }
 
   function setPage(page) {
+    if (state.mode !== "admin" && page === "email") {
+      page = "tools";
+      state.tool = "email";
+      localStorage.setItem("studybridge.tool", "email");
+    }
     if (state.mode === "admin") page = "admin";
     if (state.mode !== "admin" && !STUDENT_PAGES.includes(page)) page = "study";
     state.page = page;
@@ -293,7 +298,7 @@
 
   function sidebarHtml() {
     const p = profile();
-    const navOrder = ["community", "classmates", "email", "schedule", "study", "tools"];
+    const navOrder = ["community", "classmates", "schedule", "study", "tools"];
     const userNav = navOrder.map((page) => navButton(page)).join("");
     const devSwitch = isAdmin()
       ? `<div class="mode-switch">
@@ -414,7 +419,6 @@
       study: studyPage,
       community: communityPage,
       classmates: classmatesPage,
-      email: emailPage,
       schedule: schedulePage,
       tools: toolsPage,
       profile: profilePage
@@ -671,7 +675,6 @@
 
   function emailPage() {
     return `
-      ${pageHeader("EMAIL COACH", "邮件回复助手", "粘贴邮件内容，StudyBridge 会帮你看懂并起草回复。")}
       <section class="two-col">
         <article class="card">
           <h2>收到的邮件</h2>
@@ -819,16 +822,16 @@
 
   function toolsPage() {
     return `
-      ${pageHeader("STUDY TOOLS", "工具", "可以手动写 Docs、做 Sheets、做 Slides，AI 只是旁边的辅助工具。")}
-      <section class="tools-tabs">
-        ${["docs", "sheets", "slides"].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" data-action="tool-mode" data-tool="${tool}">SB ${tool[0].toUpperCase()}${tool.slice(1)}</button>`).join("")}
+      ${pageHeader("STUDY TOOLS", "工具", state.tool === "email" ? "粘贴邮件内容，StudyBridge 会帮你看懂并起草回复。" : "手动写文档、做表格和演示，或使用邮件助手起草回复。")}
+      <section class="tools-tabs" aria-label="工具选择">
+        ${["docs", "sheets", "slides", "email"].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" aria-pressed="${(state.tool || "docs") === tool}" data-action="tool-mode" data-tool="${tool}">${tool === "email" ? "邮件助手" : `SB ${tool[0].toUpperCase()}${tool.slice(1)}`}</button>`).join("")}
       </section>
-      <section class="two-col">
+      ${state.tool === "email" ? emailPage() : `<section class="two-col">
         <article class="card">
           ${toolEditorHtml(state.tool || "docs")}
         </article>
         <article class="card"><div class="section-title"><div><span>AI ASSIST</span><h2>辅助生成</h2></div><button data-action="copy-output">复制</button></div><textarea id="toolPrompt" placeholder="让 AI 帮你润色、生成结构、整理表格或做 PPT 大纲"></textarea><button class="primary" data-action="generate-tool">调用 AI</button><div id="toolOutput" class="output-box">AI 输出会显示在这里，你可以再复制回左侧手动编辑。</div></article>
-      </section>
+      </section>`}
     `;
   }
 
@@ -1464,7 +1467,8 @@
         const course = state.activeCourseId || (state.courses[0]?.id);
         if (!course) throw new Error("请先在学习区新增一门课程，用来保存 AI 对话。");
         const data = await api(`/api/courses/${course}/chat`, { method: "POST", body: { message: prompt, mode: "email" } });
-        output.innerHTML = formatText((data.messages || []).at(-1)?.content || "");
+        emailDraft.output = formatText((data.messages || []).at(-1)?.content || "");
+        if ($("emailOriginal")) $("toolOutput").innerHTML = emailDraft.output;
         return;
       }
       if (action === "add-schedule") {
@@ -1500,6 +1504,7 @@
       }
       if (action === "tool-mode") {
         state.tool = button.dataset.tool || "docs";
+        localStorage.setItem("studybridge.tool", state.tool);
         render();
         return;
       }
@@ -1558,6 +1563,10 @@
   }
 
   function render() {
+    for (const id of ["emailOriginal", "emailGoal", "emailTone", "emailOutput"]) {
+      if ($(id)) emailDraft[id] = $(id).value;
+    }
+    if ($("emailOriginal")) emailDraft.output = $("toolOutput")?.innerHTML || "";
     const previousDm = root.querySelector(".dm-list");
     const previousDmId = previousDm?.parentElement.dataset.chatId;
     const previousDmMessages = previousDm?.innerHTML;
@@ -1585,6 +1594,10 @@
         : `<main class="auth-shell"><section class="auth-card"><h1>StudyBridge</h1><p class="notice">${message}</p><button onclick="location.reload()">刷新</button></section></main>`;
     }
     if (state.busy) root.insertAdjacentHTML("beforeend", `<div class="busy">Loading...</div>`);
+    for (const id of ["emailOriginal", "emailGoal", "emailTone", "emailOutput"]) {
+      if ($(id) && emailDraft[id] !== undefined) $(id).value = emailDraft[id];
+    }
+    if ($("emailOriginal") && emailDraft.output) $("toolOutput").innerHTML = emailDraft.output;
     if (state.toast && state.user) root.insertAdjacentHTML("beforeend", `<div class="toast">${esc(state.toast)}</div>`);
     const chat = root.querySelector(".study-workspace .chat-area");
     if (chat) {
@@ -1612,6 +1625,8 @@
         return;
       }
       state.user = data.user;
+      const savedTool = localStorage.getItem("studybridge.tool");
+      state.tool = ["docs", "sheets", "slides", "email"].includes(savedTool) ? savedTool : "docs";
       state.mode = isAdmin() && localStorage.getItem("studybridge.mode") === "admin" ? "admin" : "student";
       const urlPage = new URL(location.href).searchParams.get("page");
       const savedPage = localStorage.getItem("studybridge.page");

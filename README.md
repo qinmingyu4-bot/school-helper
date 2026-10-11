@@ -12,6 +12,7 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, in
 - HttpOnly session cookie
 - Per-student courses, course documents, preferences, and chat history
 - Backend AI calls using `OPENAI_API_KEY`
+- Seven Study Area modes with mode-specific question shortcuts and AI workflows: preview, guided learning, review, assignment help, mock exams, cheatsheets, and exam cramming
 - Local JSON database for development or small private deployments
 - Optional DynamoDB storage for AWS production
 - Full-window classmate chats with live messages, persistent unread counts, latest-message sorting, and clickable peer avatars and public profiles
@@ -38,6 +39,16 @@ OWNER_INVITE_CODE=your-private-creator-code
 ```
 
 Register with that email and owner invite code. After login, the creator console appears inside the app.
+
+## Study Area
+
+The Study Area mode selector sits beside the question shortcuts above the input.
+Each mode supplies four editable prompts, with course introduction and deadline
+summary available in every mode. Selecting a shortcut fills the question without
+sending it. The selected mode is remembered in this browser per account and course;
+switching modes leaves drafts, attachments, and the current reading position intact.
+Course materials, account learning preferences, and the latest explicit request
+continue to guide the AI response.
 
 ## Health Checks
 

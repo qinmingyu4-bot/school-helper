@@ -443,6 +443,19 @@ a { color: var(--blue); }
   height: 44px;
   padding: 8px 12px;
 }
+.study-workspace .study-toolbar {
+  display: grid;
+  grid-template-columns: 148px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+.study-workspace #studyMode {
+  height: 32px;
+  min-width: 0;
+  padding: 4px 8px;
+  font-size: 12px;
+}
 .study-workspace .quick-prompts {
   flex-wrap: nowrap;
   overflow-x: auto;

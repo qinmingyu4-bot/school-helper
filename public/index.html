@@ -439,6 +439,19 @@ a { color: var(--blue); }
   height: 44px;
   padding: 8px 12px;
 }
+.study-workspace .study-toolbar {
+  display: grid;
+  grid-template-columns: 148px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+.study-workspace #studyMode {
+  height: 32px;
+  min-width: 0;
+  padding: 4px 8px;
+  font-size: 12px;
+}
 .study-workspace .quick-prompts {
   flex-wrap: nowrap;
   overflow-x: auto;
@@ -825,11 +838,12 @@ a { color: var(--blue); }
 }
 
     </style>
-    <link rel="stylesheet" href="/admin.css?v=1.1.52" />
-    <link rel="stylesheet" href="/classmates.css?v=1.1.52" />
+    <link rel="stylesheet" href="/admin.css?v=1.1.53" />
+    <link rel="stylesheet" href="/classmates.css?v=1.1.53" />
   </head>
   <body>
     <div id="root"></div>
-  <script src="/app.js?v=1.1.52"></script>
+  <script src="/study-modes.js?v=1.1.53"></script>
+  <script src="/app.js?v=1.1.53"></script>
   </body>
 </html>

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-11
+
+- Added seven current-platform Study Area workflows based on the original presets: preview, guided learning, review, assignment help, mock exams, cheatsheet creation, and exam cramming, without restoring legacy UI or scripts.
+- Added four full-question shortcuts per mode and shared course/deadline shortcuts in the compact composer; mode changes preserve the draft, attachments, and reading position.
+- Remembered the selected mode per signed-in account and course in the local browser, and passed the selected workflow to backend AI instructions while preserving explicit requests and learning preferences.
+- Bumped StudyBridge Cloud to `1.1.53` and refreshed entry asset versions. Existing fixed-bar spacing and newest-message scrolling remain unchanged.
+- Added shared browser/server configuration checks and isolated AI transport tests covering all seven workflows, learning preferences, course evidence, chat persistence, and both AI request formats without contacting external AI services. Verified desktop/mobile mode shortcuts, selection memory, preserved drafts/attachments, and a 101px composer locally.
+
 ## 2026-10-10
 
 - Released StudyBridge Cloud `1.1.52` with full-window classmate conversations, responsive message layout, and back navigation preserving drafts and reading position.

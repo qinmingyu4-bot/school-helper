@@ -1,7 +1,8 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.52";
+  const VERSION = "1.1.53";
+  const studyModes = window.StudyBridgeStudyModes;
   const STUDENT_PAGES = ["community", "classmates", "email", "schedule", "study", "tools", "profile"];
   const ADMIN_PAGES = ["admin"];
   const SCHEDULE_COURSE = "Schedule & Deadlines";
@@ -32,6 +33,7 @@
     page: "study",
     courses: [],
     activeCourseId: "",
+    studyMode: studyModes.defaultMode,
     docs: [],
     messages: [],
     allDocs: [],
@@ -437,12 +439,28 @@
     `;
   }
 
+  const studyModeStorageKey = () => `studybridge.studyMode.${state.user.id}.${state.activeCourseId}`;
+
+  function loadStudyMode() {
+    let saved = "";
+    try { saved = localStorage.getItem(studyModeStorageKey()); } catch { /* Storage may be disabled. */ }
+    state.studyMode = studyModes.getMode(saved) ? saved : studyModes.defaultMode;
+  }
+
+  function quickPromptsHtml() {
+    const selected = studyModes.getMode(state.studyMode) || studyModes.getMode(studyModes.defaultMode);
+    return [...selected.prompts, ...studyModes.globalPrompts]
+      .map(([label, prompt]) => `<button data-action="quick-prompt" data-prompt="${esc(prompt)}" title="${esc(prompt)}">${esc(label)}</button>`).join("");
+  }
+
   function composerHtml() {
     return `
       <footer class="composer" data-chat-dropzone="true">
-        <div class="quick-prompts">
-          <span>快捷指令</span>
-          ${["预习下一节", "课前关键词", "上课问题", "10 分钟预习", "课程介绍", "Deadline 汇总", "制作 Cheatsheet"].map((item) => `<button data-action="quick-prompt" data-prompt="${esc(item)}">${esc(item)}</button>`).join("")}
+        <div class="study-toolbar">
+          <select id="studyMode" aria-label="学习模式" title="学习模式">
+            ${Object.entries(studyModes.modes).map(([id, mode]) => `<option value="${id}" ${state.studyMode === id ? "selected" : ""}>${esc(mode.label)}</option>`).join("")}
+          </select>
+          <div class="quick-prompts" aria-label="学习快捷指令">${quickPromptsHtml()}</div>
         </div>
         <div class="compose-row">
           <button class="attach" data-action="pick-chat-file" aria-label="上传附件" title="上传附件，也可将 PDF、Word、PPT、Excel 或图片拖到输入区">+</button>
@@ -822,6 +840,7 @@
     if (!state.activeCourseId || !state.courses.some((c) => c.id === state.activeCourseId)) {
       state.activeCourseId = state.courses[0]?.id || "";
     }
+    loadStudyMode();
     if (state.activeCourseId) {
       const [docsData, messagesData] = await Promise.all([
         api(`/api/courses/${state.activeCourseId}/documents`),
@@ -1209,17 +1228,22 @@
       }
       if (action === "quick-prompt") {
         const input = $("chatInput");
-        if (input) input.value = button.dataset.prompt || "";
+        if (input) {
+          input.value = button.dataset.prompt || "";
+          input.focus();
+          input.setSelectionRange(input.value.length, input.value.length);
+        }
         return;
       }
       if (action === "send-chat") {
         if (!state.activeCourseId) throw new Error("请先选择或新增课程，然后再提问。");
         const text = $("chatInput")?.value || "";
+        const mode = state.studyMode;
         const attachments = await readFiles(state.uploadFiles);
         if (!text.trim() && !attachments.length) throw new Error("请输入问题或上传文件。");
         state.messages.push({ role: "user", content: text || "请分析我上传的文件。" }, { role: "assistant", content: "正在根据云端课程资料思考..." });
         render();
-        const data = await api(`/api/courses/${state.activeCourseId}/chat`, { method: "POST", body: { message: text, mode: $("studyMode")?.value || "guided", attachments } });
+        const data = await api(`/api/courses/${state.activeCourseId}/chat`, { method: "POST", body: { message: text, mode, attachments } });
         state.uploadFiles = [];
         state.messages = state.messages.slice(0, -2).concat(data.messages || []);
         render();
@@ -1499,6 +1523,14 @@
   });
 
   document.addEventListener("change", (event) => {
+    if (event.target?.id === "studyMode") {
+      const mode = event.target.value;
+      if (!studyModes.getMode(mode)) return;
+      state.studyMode = mode;
+      try { localStorage.setItem(studyModeStorageKey(), mode); } catch { /* Keep the selection for this session. */ }
+      root.querySelector(".quick-prompts").innerHTML = quickPromptsHtml();
+      return;
+    }
     if (event.target?.id === "chatFile") {
       try {
         if (addChatFiles(event.target.files)) render();

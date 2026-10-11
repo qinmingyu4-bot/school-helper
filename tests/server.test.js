@@ -22,8 +22,8 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
     await stop();
     await fs.rm(directory, { recursive: true, force: true });
   });
-  async function start() {
-    child = spawn(process.execPath, ["server.js"], {
+  async function start({ fakeAi = false, webSearch = false } = {}) {
+    child = spawn(process.execPath, [...(fakeAi ? ["--require", "./tests/fixtures/echo-ai.js"] : []), "server.js"], {
       cwd: root,
       env: {
         ...process.env, PORT: "0", NODE_ENV: "test", STUDYBRIDGE_DB: "local",
@@ -31,7 +31,8 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
         SESSION_SECRET: "isolated-health-check-session-secret", ADMIN_EMAILS: "admin@example.test,other-admin@example.test",
         OWNER_INVITE_CODE: "health-owner-invite", REQUIRE_INVITE_CODE: "true",
         OPENAI_SIMPLE_MODEL: "gpt-6-luna", OPENAI_COMPLEX_MODEL: "gpt-6.1-sol", OPENAI_SOL_ROUTE_PERCENT: "15",
-        REQUIRE_EMAIL_VERIFICATION: "false", OPENAI_API_KEY: "", GOOGLE_CLIENT_ID: "",
+        REQUIRE_EMAIL_VERIFICATION: "false", OPENAI_API_KEY: fakeAi ? "test-only-key" : "",
+        OPENAI_WEB_SEARCH: String(webSearch), GOOGLE_CLIENT_ID: "",
         GOOGLE_CLIENT_SECRET: "", SMTP_HOST: "", SMTP_USER: "", SMTP_PASS: ""
       },
       stdio: ["ignore", "pipe", "pipe"]
@@ -314,5 +315,41 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
     assert.equal((await request("/api/me", { cookie: alice.cookie })).status, 401);
     const login = await request("/api/auth/login", { method: "POST", body: { email: "alice@example.test", password: "HealthCheck-Password-123!" } });
     assert.equal(login.status, 200);
+  });
+
+  await t.test("all study modes reach actual AI prompts and survive in chat history", async () => {
+    const modes = require("../public/study-modes");
+    await stop();
+    await start({ fakeAi: true });
+    const login = await request("/api/auth/login", { method: "POST", body: { email: "alice@example.test", password: "HealthCheck-Password-123!" } });
+    const cookie = login.cookie;
+    const course = await request("/api/courses", { method: "POST", cookie, body: { name: "Mode workflows" } });
+    const id = course.data.course.id;
+    await request(`/api/courses/${id}/documents`, { method: "POST", cookie, body: { title: "Mode source", text: "Mode-specific course evidence" } });
+    await request("/api/me/preferences", { method: "PUT", cookie, body: { customInstruction: "Keep explanations concise" } });
+    for (const [mode, config] of Object.entries(modes.modes)) {
+      const question = config.prompts[0][1];
+      const chat = await request(`/api/courses/${id}/chat`, { method: "POST", cookie, body: { message: question, mode } });
+      assert.equal(chat.status, 201);
+      assert.ok(chat.data.messages.every((item) => item.mode === mode));
+      const payload = JSON.parse(chat.data.messages[1].content);
+      assert.ok(payload.messages[0].content.includes(modes.buildInstruction(mode)));
+      assert.ok(payload.messages[0].content.includes("Keep explanations concise"));
+      assert.ok(payload.messages[1].content.includes(question));
+      assert.ok(payload.messages[1].content.includes("Mode-specific course evidence"));
+      if (mode === "cheatsheet") assert.ok(payload.messages[0].content.includes("Cheatsheet mode requirements"));
+    }
+    const email = await request(`/api/courses/${id}/chat`, { method: "POST", cookie, body: { message: "Draft a short email", mode: "email" } });
+    assert.ok(!JSON.parse(email.data.messages[1].content).messages[0].content.includes("Selected study mode:"));
+    await stop();
+    await start({ fakeAi: true, webSearch: true });
+    const web = await request(`/api/courses/${id}/chat`, { method: "POST", cookie, body: { message: "Review the course", mode: "review" } });
+    assert.ok(JSON.parse(web.data.messages[1].content).input[0].content.includes(modes.buildInstruction("review")));
+    const history = (await request(`/api/courses/${id}/messages`, { cookie })).data.messages;
+    assert.equal(history.length, 18);
+    for (const mode of Object.keys(modes.modes)) {
+      assert.ok(history.some((item) => item.role === "user" && item.mode === mode));
+      assert.ok(history.some((item) => item.role === "assistant" && item.mode === mode));
+    }
   });
 });

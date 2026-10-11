@@ -393,7 +393,7 @@
   function studyPage() {
     const course = state.courses.find((item) => item.id === state.activeCourseId);
     return `
-      ${pageHeader("ACADEMIC COACH", course?.name || "请选择课程", "资料、对话和偏好会通过后端保存。", false)}
+      <header class="page-header"><div><h1>${esc(course?.name || "请选择课程")}</h1></div></header>
       ${upcomingBanner()}
       <section class="chat-area">
         <div class="messages" id="messages">

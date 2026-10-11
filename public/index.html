@@ -368,6 +368,46 @@ a { color: var(--blue); }
 .study-workspace > .composer {
   flex-shrink: 0;
 }
+.study-workspace .page-header {
+  padding: 12px 28px;
+}
+.study-workspace .page-header h1 {
+  font-size: 22px;
+  line-height: 1.3;
+}
+.study-workspace .deadline-banner {
+  gap: 12px;
+  margin-top: 8px;
+  padding: 8px 12px;
+}
+.study-workspace .deadline-banner > div {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  overflow-wrap: anywhere;
+}
+.study-workspace .deadline-banner b {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.study-workspace .deadline-banner p {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12px;
+}
+.study-workspace .deadline-banner > strong {
+  flex-shrink: 0;
+  min-width: 0;
+  padding: 6px 10px;
+  font-size: 18px;
+}
+.study-workspace .deadline-banner small {
+  display: inline;
+  margin-left: 4px;
+  font-size: 11px;
+}
 .study-workspace .chat-area {
   min-height: 0;
   overflow-y: auto;
@@ -376,6 +416,17 @@ a { color: var(--blue); }
 .study-workspace .composer {
   position: relative;
   bottom: auto;
+}
+.study-workspace .quick-prompts {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+.study-workspace .quick-prompts > * {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.study-workspace .quick-prompts button {
+  padding: 5px 10px;
 }
 .messages {
   display: grid;

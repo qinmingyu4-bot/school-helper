@@ -2,6 +2,8 @@
 
 ## 2026-10-10
 
+- Reduced the Study Area composer height with a compact input row and quick prompts, moved upload guidance to the attachment tooltip, and added breathing room to deadline notifications.
+- Dismissed signed-in notification toasts without rebuilding the page, preserving draft questions and focus while typing.
 - Compacted the fixed Study Area course header and deadline banner, and kept quick prompts on one horizontally scrollable row to leave more height for conversations.
 - Kept the Study Area deadline banner and composer visible while chat history scrolls independently.
 - Opened, reopened, refreshed, and switched course conversations at the newest message.

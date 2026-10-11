@@ -124,7 +124,8 @@
     if (message) window.setTimeout(() => {
       if (state.toast === message) {
         state.toast = "";
-        render();
+        if (state.user) root.querySelector(".toast")?.remove();
+        else render();
       }
     }, 2600);
   }
@@ -423,9 +424,9 @@
           ${["预习下一节", "课前关键词", "上课问题", "10 分钟预习", "课程介绍", "Deadline 汇总", "制作 Cheatsheet"].map((item) => `<button data-action="quick-prompt" data-prompt="${esc(item)}">${esc(item)}</button>`).join("")}
         </div>
         <div class="compose-row">
-          <button class="attach" data-action="pick-chat-file">+</button>
+          <button class="attach" data-action="pick-chat-file" aria-label="上传附件" title="上传附件，也可将 PDF、Word、PPT、Excel 或图片拖到输入区">+</button>
           <input id="chatFile" class="hidden" type="file" multiple accept="${SUPPORTED_UPLOAD_ACCEPT},*/*">
-          <textarea id="chatInput" rows="2" placeholder="问：帮我根据这门课资料做一个 final 复习计划"></textarea>
+          <textarea id="chatInput" rows="1" placeholder="输入问题..." aria-label="问题"></textarea>
           <button class="send" data-action="send-chat">发送</button>
         </div>
         ${selectedUploadFilesHtml()}
@@ -435,7 +436,7 @@
 
   function selectedUploadFilesHtml() {
     if (!state.uploadFiles.length) {
-      return `<p class="drop-hint">可点击 + 上传，也可以把 PDF、Word、PPT、Excel、图片或 Chrome 下载列表里的文件直接拖到这里。</p>`;
+      return "";
     }
     return `
       <div class="upload-list">

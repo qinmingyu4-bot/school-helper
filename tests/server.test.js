@@ -28,7 +28,7 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
       env: {
         ...process.env, PORT: "0", NODE_ENV: "test", STUDYBRIDGE_DB: "local",
         LOCAL_DB_FILE: path.join(directory, "database.json"), LOCAL_DB_BACKUP_DISABLED: "true",
-        SESSION_SECRET: "isolated-health-check-session-secret", ADMIN_EMAILS: "admin@example.test",
+        SESSION_SECRET: "isolated-health-check-session-secret", ADMIN_EMAILS: "admin@example.test,other-admin@example.test",
         OWNER_INVITE_CODE: "health-owner-invite", REQUIRE_INVITE_CODE: "true",
         OPENAI_SIMPLE_MODEL: "gpt-6-luna", OPENAI_COMPLEX_MODEL: "gpt-6.1-sol", OPENAI_SOL_ROUTE_PERCENT: "15",
         REQUIRE_EMAIL_VERIFICATION: "false", OPENAI_API_KEY: "", GOOGLE_CLIENT_ID: "",
@@ -93,12 +93,36 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
   });
   const invite = await request("/api/admin/invites", { method: "POST", cookie: admin.cookie, body: { label: "Health check", maxUses: 2, role: "student" } });
   assert.equal(invite.status, 201);
+  assert.equal(invite.data.invite.maxUses, 1);
   const code = invite.data.invite.code;
   const alice = await request("/api/auth/register", { method: "POST", body: registration("Alice", "alice@example.test", code) });
-  const bob = await request("/api/auth/register", { method: "POST", body: registration("Bob", "bob@example.test", code) });
+  const bobInvite = await request("/api/admin/invites", { method: "POST", cookie: admin.cookie, body: { label: "Bob", role: "student" } });
+  const bob = await request("/api/auth/register", { method: "POST", body: registration("Bob", "bob@example.test", bobInvite.data.invite.code) });
   assert.equal(alice.status, 201);
   assert.equal(bob.status, 201);
   let courseId;
+
+  await t.test("single-use invitations cannot be reused or raced", async () => {
+    assert.equal((await request("/api/auth/register", { method: "POST", body: registration("Other owner", "other-admin@example.test", "health-owner-invite") })).status, 403);
+    const generated = await request("/api/admin/invites", { method: "POST", cookie: admin.cookie, body: { maxUses: 100, role: "admin" } });
+    assert.equal(generated.data.invite.maxUses, 1);
+    const raceCode = generated.data.invite.code;
+    const attempts = await Promise.all(Array.from({ length: 4 }, (_, i) => request("/api/auth/register", { method: "POST", body: registration(`Concurrent ${i}`, `concurrent-${i}@example.test`, raceCode) })));
+    assert.equal(attempts.filter((item) => item.status === 201).length, 1);
+    assert.equal(attempts.filter((item) => item.status === 403).length, 3);
+    assert.equal(attempts.find((item) => item.status === 201).data.user.role, "admin");
+    const overview = await request("/api/admin/overview", { cookie: admin.cookie });
+    assert.equal(overview.data.users.filter((user) => user.inviteCode === raceCode).length, 1);
+    assert.equal(overview.data.invites.find((item) => item.code === raceCode).uses, 1);
+    await request(`/api/admin/invites/${generated.data.invite.id}`, { method: "PATCH", cookie: admin.cookie, body: { active: true } });
+    assert.equal((await request("/api/auth/register", { method: "POST", body: registration("Reuse", "reuse@example.test", raceCode) })).status, 403);
+    await stop();
+    const saved = JSON.parse(await fs.readFile(path.join(directory, "database.json"), "utf8"));
+    saved.invites[generated.data.invite.id].maxUses = 100;
+    await fs.writeFile(path.join(directory, "database.json"), JSON.stringify(saved));
+    await start();
+    assert.equal((await request("/api/auth/register", { method: "POST", body: registration("Legacy reuse", "legacy-reuse@example.test", raceCode) })).status, 403);
+  });
 
   await t.test("only admins can delete invitations without removing registered users", async () => {
     const created = await request("/api/admin/invites", { method: "POST", cookie: admin.cookie, body: { label: "Delete check", maxUses: 3 } });

@@ -2,6 +2,7 @@
 
 ## 2026-10-10
 
+- Enforced single-use invitations for new and existing codes, removed the usage-count setting, and made invitation redemption and account creation atomic for email and Google registration in local and DynamoDB storage.
 - Added confirmed invitation deletion to the creator console with admin-only API access, local and DynamoDB persistence, and preservation of existing users and password reset requests.
 - Displayed ordinary-task and complex-task model configuration separately in the creator console, clarified that AI connectivity checks probe only the ordinary-task model, and updated the health request for GPT-6 compatibility.
 - Aligned local AI model configuration and documented setup with GPT-6 Luna and GPT-6.1 Sol.

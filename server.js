@@ -179,8 +179,8 @@ function publicInvite(invite) {
     id: invite.id,
     code: invite.code,
     label: invite.label || "",
-    maxUses: Number(invite.maxUses || 1),
-    uses: Number(invite.uses || 0),
+    maxUses: 1,
+    uses: Math.max(Number(invite.uses || 0), invite.usedBy?.length || 0),
     active: invite.active !== false,
     role: normalizeInviteRole(invite.role),
     createdAt: invite.createdAt,
@@ -1298,13 +1298,16 @@ async function validateInviteForRegistration(inviteCode, email) {
   if (!normalized) throw new Error("Registration requires an invitation code from the creator.");
   if (ownerCode && normalized === ownerCode) {
     if (!adminEmails().includes(email)) throw new Error("Creator invitation code can only be used by the creator email.");
-    return { type: "owner", code: normalized, label: "Creator invite" };
+    if ((await db.listUsers()).some((user) => normalizeInviteCode(user.inviteCode) === normalized)) throw new Error("Invitation code has already been used.");
+    const existing = await db.findInviteByCode(normalized);
+    if (existing && (existing.active === false || Number(existing.uses || 0) >= 1 || existing.usedBy?.length)) throw new Error("Invitation code is disabled or already used.");
+    return { type: "owner", code: normalized, invite: existing || { id: `owner_${normalized}`, code: normalized, label: "Creator invite", role: "admin", active: true, uses: 0, bootstrap: true } };
   }
 
   const invite = await db.findInviteByCode(normalized);
-  if (!invite) throw new Error("Invitation code is invalid.");
+  if (!invite || isResetRequest(invite)) throw new Error("Invitation code is invalid.");
   if (invite.active === false) throw new Error("Invitation code is disabled.");
-  if (Number(invite.uses || 0) >= Number(invite.maxUses || 1)) throw new Error("Invitation code has already been used.");
+  if (Number(invite.uses || 0) >= 1 || invite.usedBy?.length) throw new Error("Invitation code has already been used.");
   return { type: "invite", invite };
 }
 
@@ -1718,11 +1721,7 @@ async function signInWithGoogle(req, res, url) {
           chineseExplanations: false,
           customInstruction: ""
         }
-      });
-      if (inviteGrant.invite) {
-        await db.consumeInvite(inviteGrant.invite.id, user.id);
-        if (normalizeInviteRole(inviteGrant.invite.role) === "admin") user.role = "admin";
-      }
+      }, inviteGrant.invite);
     }
 
     const token = createSessionToken();
@@ -1901,11 +1900,7 @@ async function routeApi(req, res) {
         chineseExplanations: false,
         customInstruction: ""
       }
-    });
-    if (inviteGrant.invite) {
-      await db.consumeInvite(inviteGrant.invite.id, user.id);
-      if (normalizeInviteRole(inviteGrant.invite.role) === "admin") user.role = "admin";
-    }
+    }, inviteGrant.invite);
 
     const token = createSessionToken();
     await db.createSession({ tokenHash: hashToken(token), userId: user.id, expiresAt: Date.now() + SESSION_TTL_MS });
@@ -2129,14 +2124,13 @@ if (openCommunityLikeMatch && method === "PATCH") {
     const admin = await requireAdmin(req, res);
     if (!admin) return;
     const body = await readJson(req);
-    const maxUses = Math.max(1, Math.min(100, Number(body.maxUses || 1)));
     const role = normalizeInviteRole(body.role);
     const invite = await db.createInvite({
       id: createId("invite"),
       code: createInviteCode(role),
       label: String(body.label || "Friend invite").trim().slice(0, 80),
       role,
-      maxUses,
+      maxUses: 1,
       createdBy: admin.id
     });
     return sendJson(res, 201, { invite: publicInvite(invite) });

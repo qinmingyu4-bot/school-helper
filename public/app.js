@@ -680,13 +680,12 @@
           <div class="section-title"><h2 id="adminInvitesTitle">邀请码</h2><small>共 ${invites.length} 个</small></div>
           <div class="admin-invite-form">
             <label class="admin-invite-label" for="inviteLabel">备注<input id="inviteLabel" placeholder="例如 Kevin / ECO101 小组"></label>
-            <label for="inviteMax">使用次数<input id="inviteMax" type="number" value="1" min="1"></label>
             <label for="inviteRole">用户角色<select id="inviteRole"><option value="student">普通用户</option><option value="admin">Co-admin</option></select></label>
             <button class="primary" data-action="generate-invite">生成邀请码</button>
           </div>
           <div class="admin-list">${invites.length ? invites.map((invite) => `<div class="invite-row">
-            <div class="admin-record-details"><b class="admin-invite-code">${esc(invite.code)}</b><div class="admin-record-meta"><span>${roleLabel(invite.role)}</span><span>已使用 ${invite.uses || 0} / ${invite.maxUses || 1} 次</span><span class="admin-invite-status ${invite.active ? "is-active" : "is-disabled"}">${invite.active ? "已启用" : "已停用"}</span></div>${invite.label ? `<p class="admin-record-note">${esc(invite.label)}</p>` : ""}</div>
-            <div class="admin-row-actions"><button data-copy="${esc(invite.code)}" aria-label="复制邀请码 ${esc(invite.code)}">复制</button><button data-action="toggle-invite" data-id="${esc(invite.id)}" data-active="${invite.active ? "false" : "true"}">${invite.active ? "停用" : "启用"}</button><button class="admin-delete-invite" data-action="delete-invite" data-id="${esc(invite.id)}" data-code="${esc(invite.code)}" aria-label="删除邀请码 ${esc(invite.code)}">删除</button></div>
+            <div class="admin-record-details"><b class="admin-invite-code">${esc(invite.code)}</b><div class="admin-record-meta"><span>${roleLabel(invite.role)}</span><span>仅限一次</span><span class="admin-invite-status ${invite.uses > 0 || !invite.active ? "is-disabled" : "is-active"}">${invite.uses > 0 ? "已使用" : invite.active ? "未使用" : "已停用"}</span></div>${invite.label ? `<p class="admin-record-note">${esc(invite.label)}</p>` : ""}</div>
+            <div class="admin-row-actions"><button data-copy="${esc(invite.code)}" aria-label="复制邀请码 ${esc(invite.code)}">复制</button><button data-action="toggle-invite" data-id="${esc(invite.id)}" data-active="${invite.active ? "false" : "true"}" ${invite.uses > 0 ? "disabled" : ""}>${invite.uses > 0 ? "已使用" : invite.active ? "停用" : "启用"}</button><button class="admin-delete-invite" data-action="delete-invite" data-id="${esc(invite.id)}" data-code="${esc(invite.code)}" aria-label="删除邀请码 ${esc(invite.code)}">删除</button></div>
           </div>`).join("") : `<p class="muted admin-empty">暂无邀请码。</p>`}</div>
         </article>
         <article class="admin-section" aria-labelledby="adminUsersTitle">
@@ -1135,7 +1134,7 @@
         return;
       }
       if (action === "generate-invite") {
-        await api("/api/admin/invites", { method: "POST", body: { label: $("inviteLabel")?.value || "", maxUses: $("inviteMax")?.value || 1, role: $("inviteRole")?.value || "student" } });
+        await api("/api/admin/invites", { method: "POST", body: { label: $("inviteLabel")?.value || "", role: $("inviteRole")?.value || "student" } });
         await loadPage("admin");
         return;
       }

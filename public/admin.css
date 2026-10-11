@@ -14,7 +14,7 @@
 .admin-section .section-title small { color: var(--muted); }
 .admin-invite-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 110px 150px auto;
+  grid-template-columns: minmax(0, 1fr) 150px auto;
   align-items: end;
   gap: 12px;
   margin-bottom: 20px;
@@ -58,9 +58,9 @@
 .admin-user-stats dd { margin: 0; font-weight: 800; font-size: 18px; overflow-wrap: anywhere; }
 .admin-empty { margin: 0; padding: 20px 0; border-top: 1px solid var(--line); }
 @container (max-width: 720px) {
-  .admin-invite-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .admin-invite-form { grid-template-columns: minmax(0, 1fr) auto; }
   .admin-invite-label { grid-column: 1 / -1; }
-  .admin-invite-form button { grid-column: 1 / -1; justify-self: start; }
+  .admin-invite-form button { justify-self: end; }
 }
 @container (max-width: 460px) {
   .admin-management .invite-row, .admin-management .user-row { grid-template-columns: minmax(0, 1fr); gap: 14px; }

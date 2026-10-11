@@ -54,6 +54,9 @@ kept only as historical references.
 
 ## Important Environment Variables
 
+Each invitation permits one successful registration. Previously used codes cannot
+be reused, even if their old usage limit was higher or they are re-enabled.
+
 ```text
 SESSION_SECRET=replace-with-a-long-random-secret
 ADMIN_EMAILS=your-real-email@example.com

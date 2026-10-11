@@ -44,9 +44,13 @@ jobs:
             echo "LIGHTSAIL_SSH_KEY_B64 is missing. Add the base64 one-line private key as a repository secret."
             exit 1
           fi
-          printf '%s' "$LIGHTSAIL_SSH_KEY_B64" | base64 -d > ~/.ssh/studybridge_deploy_key
+          printf '%s' "$LIGHTSAIL_SSH_KEY_B64" | tr -d '[:space:]' | base64 -d | tr -d '\r' > ~/.ssh/studybridge_deploy_key
+          printf '\n' >> ~/.ssh/studybridge_deploy_key
           chmod 600 ~/.ssh/studybridge_deploy_key
-          ssh-keygen -y -f ~/.ssh/studybridge_deploy_key > /dev/null
+          if ! ssh-keygen -y -f ~/.ssh/studybridge_deploy_key > /dev/null; then
+            echo "LIGHTSAIL_SSH_KEY_B64 must contain the base64-encoded complete, unencrypted SSH private key."
+            exit 1
+          fi
           ssh-keyscan -H "$LIGHTSAIL_HOST" >> ~/.ssh/known_hosts
           ssh -i ~/.ssh/studybridge_deploy_key "$LIGHTSAIL_USER@$LIGHTSAIL_HOST" <<'EOF'
             set -e

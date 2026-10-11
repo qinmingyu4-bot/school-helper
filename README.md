@@ -12,6 +12,7 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, in
 - HttpOnly session cookie
 - Per-student courses, course documents, preferences, and chat history
 - Backend AI calls using `OPENAI_API_KEY`
+- Self-hosted Inter Variable and Noto Sans SC interface fonts, with bundled licenses and source notes in `public/fonts/SOURCES.md`
 - Seven Study Area modes with mode-specific question shortcuts and AI workflows: preview, guided learning, review, assignment help, mock exams, cheatsheets, and exam cramming
 - Local JSON database for development or small private deployments
 - Optional DynamoDB storage for AWS production

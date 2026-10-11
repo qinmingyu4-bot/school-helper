@@ -20,7 +20,7 @@ html, body, #root {
 body {
   margin: 0;
   color: var(--ink);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-ui, system-ui, sans-serif);
   background:
     linear-gradient(rgba(237, 244, 249, .92), rgba(237, 244, 249, .92)),
     linear-gradient(90deg, rgba(20, 75, 99, .07) 1px, transparent 1px),
@@ -39,7 +39,7 @@ button {
   background: #fff;
   border-radius: 8px;
   padding: 10px 16px;
-  font-weight: 800;
+  font-weight: 600;
   cursor: pointer;
 }
 button:hover { border-color: var(--green); }
@@ -53,7 +53,7 @@ input, textarea, select {
   outline: none;
 }
 textarea { min-height: 120px; resize: vertical; }
-label { display: grid; gap: 7px; font-weight: 800; color: #506484; }
+label { display: grid; gap: 7px; font-weight: 500; color: #506484; }
 a { color: var(--blue); }
 
 .auth-shell {
@@ -82,7 +82,7 @@ a { color: var(--blue); }
   display: block;
   color: #08745a;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 600;
   text-transform: uppercase;
 }
 .brand-row strong {
@@ -98,7 +98,7 @@ a { color: var(--blue); }
   border-radius: 8px;
   background: linear-gradient(135deg, var(--teal), var(--green));
   color: #fff;
-  font-weight: 900;
+  font-weight: 600;
 }
 .segmented, .mode-switch {
   display: grid;
@@ -123,7 +123,7 @@ a { color: var(--blue); }
   align-items: center;
   gap: 10px;
   color: var(--muted);
-  font-weight: 800;
+  font-weight: 600;
 }
 .or-line:before, .or-line:after {
   content: "";
@@ -144,7 +144,7 @@ a { color: var(--blue); }
 }
 .notice, .toast {
   color: var(--danger);
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .app-shell {
@@ -248,7 +248,7 @@ a { color: var(--blue); }
   border-radius: 8px;
   background: linear-gradient(135deg, var(--teal), var(--green));
   color: #fff;
-  font-weight: 900;
+  font-weight: 600;
 }
 .nav-card small {
   color: var(--muted);
@@ -366,7 +366,7 @@ section.page-header { height: auto; min-height: 54px; }
   border-radius: 8px;
   background: linear-gradient(135deg, rgba(236,250,246,.96), rgba(247,252,251,.96));
 }
-.deadline-banner span { color: #08745a; font-size: 12px; font-weight: 900; }
+.deadline-banner span { color: #08745a; font-size: 12px; font-weight: 600; }
 .deadline-banner b { display: block; font-size: 20px; }
 .deadline-banner p { margin: 5px 0 0; color: var(--muted); }
 .deadline-banner > strong {
@@ -508,7 +508,7 @@ section.page-header { height: auto; min-height: 54px; }
   gap: 10px;
   align-items: flex-start;
   min-width: 0;
-  font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-ui, system-ui, sans-serif);
   font-size: 15px;
   color: #24323f;
 }
@@ -558,7 +558,7 @@ section.page-header { height: auto; min-height: 54px; }
 }
 .message > div > p { margin: 0 0 10px; }
 .message > div > p:last-child { margin-bottom: 0; }
-.message strong { font-weight: 650; color: #192833; }
+.message strong { font-weight: 600; color: #192833; }
 .message .markdown-table-wrap {
   max-width: 100%;
   margin: 10px 0;
@@ -581,7 +581,7 @@ section.page-header { height: auto; min-height: 54px; }
 }
 .message .markdown-table th {
   background: #f1f6f4;
-  font-weight: 650;
+  font-weight: 600;
 }
 .message .markdown-table tr:nth-child(even) td { background: #f8faf9; }
 .markdown-table-wrap {
@@ -605,7 +605,7 @@ section.page-header { height: auto; min-height: 54px; }
 .markdown-table th {
   background: #f2f7fb;
   color: var(--ink);
-  font-weight: 900;
+  font-weight: 600;
 }
 .markdown-table tr:nth-child(even) td {
   background: rgba(244, 248, 252, .72);
@@ -813,7 +813,7 @@ section.page-header { height: auto; min-height: 54px; }
   border-radius: 8px;
   background: var(--teal);
   color: #fff;
-  font-weight: 900;
+  font-weight: 600;
 }
 .avatar img {
   width: 100%;
@@ -862,7 +862,7 @@ section.page-header { height: auto; min-height: 54px; }
   border-radius: 99px;
   background: #edf6f2;
   color: var(--green);
-  font-weight: 900;
+  font-weight: 600;
 }
 .done { opacity: .68; }
 .output-box, .doc-editor, .slide-preview {

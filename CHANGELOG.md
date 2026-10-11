@@ -2,6 +2,10 @@
 
 ## 2026-10-11
 
+- Updated to `1.1.62`: unified product typography with self-hosted Inter Variable and Noto Sans SC, lighter controls/labels, and consistent chat fonts. Bundled the OFL licenses and font source/subsetting notes; the Chinese asset covers GB2312 ideographs with platform sans-serif fallback for rarer characters.
+- Added WOFF2 delivery and immutable caching for versioned font assets, preloaded fonts, and preserved latest-message positioning after asynchronous font loads unless the user starts reading older messages.
+- Verified actual bundled Latin and CJK glyph rendering, consistent headings/buttons/form controls across student and developer pages at 1440px and 390px, delayed-font scroll behavior, and existing 320px-1440px conversation layouts. All 26 automated tests passed, including font signatures, MIME types, caching, and missing-font responses.
+
 - Updated to `1.1.61`: added a light gray AI reply background, a visible fine outline, and a muted green left edge to separate replies from the white conversation surface while retaining compact padding, paragraph spacing, and independently scrolling nested tables.
 - Verified reply/background separation at four desktop/mobile widths, no overlap or overflow, compact questions, nested tables, pinned reminders, and newest-message scrolling; all 26 automated tests and JavaScript/asset checks passed.
 

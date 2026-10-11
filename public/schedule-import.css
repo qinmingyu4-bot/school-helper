@@ -15,7 +15,7 @@
   background: linear-gradient(115deg, #fff, #f5faf9);
   border-color: #bfd9d1;
 }
-.schedule-kicker { color: var(--green); font-size: 11px; font-weight: 850; letter-spacing: 1.2px; }
+.schedule-kicker { color: var(--green); font-size: 11px; font-weight: 600; letter-spacing: 0; }
 .schedule-upload h2 { margin-top: 7px; }
 .schedule-upload-intro p { color: var(--muted); font-size: 14px; line-height: 1.65; margin: 9px 0 16px; }
 .schedule-steps { display: flex; gap: 16px; flex-wrap: wrap; color: #4d6479; font-size: 12px; }

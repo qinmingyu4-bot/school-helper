@@ -55,7 +55,7 @@
 .admin-user-stats { display: grid; grid-template-columns: repeat(3, minmax(60px, 1fr)); margin: 0; }
 .admin-user-stats > div { display: grid; gap: 6px; padding: 0 14px; text-align: center; border-left: 1px solid var(--line); }
 .admin-user-stats dt { color: var(--muted); font-size: 12px; }
-.admin-user-stats dd { margin: 0; font-weight: 800; font-size: 18px; overflow-wrap: anywhere; }
+.admin-user-stats dd { margin: 0; font-weight: 600; font-size: 18px; overflow-wrap: anywhere; }
 .admin-empty { margin: 0; padding: 20px 0; border-top: 1px solid var(--line); }
 @container (max-width: 720px) {
   .admin-invite-form { grid-template-columns: minmax(0, 1fr) auto; }

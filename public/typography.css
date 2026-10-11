@@ -1,0 +1,20 @@
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/inter-variable-4.1.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Noto Sans SC";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/noto-sans-sc-gb2312-v2.004.woff2") format("woff2");
+}
+:root {
+  --font-ui: "Inter Variable", "Noto Sans SC", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Segoe UI", sans-serif;
+}
+body { font-weight: 400; font-optical-sizing: auto; }
+h1, h2, h3, b, strong { font-weight: 600; }
+body input, body textarea, body select { font-weight: 400; }

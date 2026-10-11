@@ -146,6 +146,7 @@ const mimeTypes = {
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
   ".svg": "image/svg+xml",
+  ".woff2": "font/woff2",
   ".b64": "text/plain; charset=utf-8"
 };
 
@@ -162,6 +163,7 @@ const staticAssetExtensions = new Set([
   ".pdf",
   ".txt",
   ".webp",
+  ".woff2",
   ".b64"
 ]);
 
@@ -372,7 +374,7 @@ async function serveStatic(req, res) {
     const file = await fs.readFile(filePath);
     res.writeHead(200, {
       "content-type": mimeTypes[extension] || "application/octet-stream",
-      "cache-control": "no-store"
+      "cache-control": extension === ".woff2" ? "public, max-age=31536000, immutable" : "no-store"
     });
     res.end(file);
   } catch {

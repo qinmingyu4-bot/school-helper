@@ -69,6 +69,16 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
     assert.equal((await request("/")).status, 200);
     assert.equal((await request("/app.js")).status, 200);
     assert.equal((await request("/missing.js")).status, 404);
+    assert.equal((await request("/fonts/missing.woff2")).status, 404);
+    for (const file of ["inter-variable-4.1.woff2", "noto-sans-sc-gb2312-v2.004.woff2"]) {
+      const response = await fetch(`${base}/fonts/${file}`);
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get("content-type"), "font/woff2");
+      assert.ok(response.headers.get("cache-control").includes("immutable"));
+      const bytes = Buffer.from(await response.arrayBuffer());
+      assert.equal(bytes.subarray(0, 4).toString(), "wOF2");
+      assert.ok(bytes.length > 10000 && bytes.length < 3 * 1024 * 1024);
+    }
     assert.equal((await request("/api/health")).data.ok, true);
     assert.equal((await request("/api/me")).status, 401);
     assert.equal((await request("/api/auth/login", { method: "POST", raw: "{" })).status, 400);

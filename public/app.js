@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.61";
+  const VERSION = "1.1.62";
   const studyModes = window.StudyBridgeStudyModes;
   const scheduleImport = window.StudyBridgeScheduleImport;
   const STUDENT_PAGES = ["community", "classmates", "schedule", "study", "tools", "profile"];
@@ -1562,6 +1562,23 @@
     }
   }
 
+  function keepLatestAfterFontLoad(list) {
+    if (!document.fonts || document.fonts.status === "loaded"
+      || list.scrollHeight - list.clientHeight - list.scrollTop > 2) return;
+    // Intentional history reading takes priority over following a late font swap.
+    let interrupted = false;
+    const interrupt = () => { interrupted = true; };
+    const events = ["wheel", "touchmove", "pointerdown", "keydown"];
+    for (const event of events) list.addEventListener(event, interrupt, { passive: true });
+    document.fonts.ready.then(() => {
+      for (const event of events) list.removeEventListener(event, interrupt);
+      if (list.isConnected && !interrupted) {
+        list.scrollTop = list.scrollHeight;
+        if (list.classList.contains("dm-list")) acknowledgeClassmateRead();
+      }
+    });
+  }
+
   function render() {
     for (const id of ["emailOriginal", "emailGoal", "emailTone", "emailOutput"]) {
       if ($(id)) emailDraft[id] = $(id).value;
@@ -1604,11 +1621,13 @@
       const showLatest = !previousChat || previousCourseId !== state.activeCourseId
         || previousMessages !== chat.querySelector(".messages")?.innerHTML;
       chat.scrollTop = showLatest ? chat.scrollHeight : previousScrollTop;
+      keepLatestAfterFontLoad(chat);
     }
     const dm = root.querySelector(".dm-list");
     if (dm) {
       const sameChat = previousDmId === dm.parentElement.dataset.chatId;
       dm.scrollTop = !sameChat || previousDmMessages !== dm.innerHTML ? dm.scrollHeight : previousDmScroll;
+      keepLatestAfterFontLoad(dm);
       if (sameChat) $("dmInput").value = previousDmDraft;
     }
     startClassmatesLive();

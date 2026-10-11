@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.58";
+  const VERSION = "1.1.59";
   const studyModes = window.StudyBridgeStudyModes;
   const scheduleImport = window.StudyBridgeScheduleImport;
   const STUDENT_PAGES = ["community", "classmates", "schedule", "study", "tools", "profile"];
@@ -328,7 +328,7 @@
           <nav class="side-nav">${userNav}</nav>
         ` : ""}
         ${devSwitch}
-        ${state.mode === "student" ? studySidebarHtml() : adminSideHint()}
+        ${state.mode === "admin" ? adminSideHint() : state.page === "study" ? studySidebarHtml() : ""}
       </aside>
     `;
   }

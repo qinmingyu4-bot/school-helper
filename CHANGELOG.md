@@ -2,6 +2,9 @@
 
 ## 2026-10-11
 
+- Updated to `1.1.59`: display the Courses, Course Materials, and Learning Style sidebar sections only inside the Study Area. Other student pages keep the profile and primary navigation without study-specific controls; returning to the Study Area reveals the existing course data and saved preferences. Developer-side hints remain unchanged.
+- Verified direct entry, navigation, refresh, Study Area re-entry, and developer/student switching at 1440px and 390px; all 26 automated tests and JavaScript/asset checks passed.
+
 - Updated to `1.1.58`: standardized workspace page headers on the Study Area's compact size (54px height, 22px title, shared spacing), including Community, Classmates, Schedule, and Tools. Reduced the back button and retained page guidance as title tooltips and accessible descriptions; removed conflicting mobile Classmates header sizing.
 
 - Updated to `1.1.57`: moved Email Assistant from the sidebar into Tools alongside Docs, Sheets, and Slides; retained email drafting and copying, remembered the selected tool, and redirected legacy email links to the new location. Aligned the wrapping tool selector with the workspace content.

@@ -359,6 +359,28 @@ a { color: var(--blue); }
   min-height: 420px;
   padding: 18px 28px 96px;
 }
+.workspace.study-workspace {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+.study-workspace > .page-header,
+.study-workspace > .deadline-banner,
+.study-workspace > .composer {
+  flex-shrink: 0;
+}
+.study-workspace .chat-area {
+  flex: 1;
+  min-height: 0;
+  padding-bottom: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.study-workspace .composer {
+  position: relative;
+  bottom: auto;
+}
 .messages {
   display: grid;
   gap: 18px;

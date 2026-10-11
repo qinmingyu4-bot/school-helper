@@ -2,6 +2,11 @@
 
 ## 2026-10-10
 
+- Kept the Study Area deadline banner and composer visible while chat history scrolls independently.
+- Opened, reopened, refreshed, and switched course conversations at the newest message.
+- Scrolled to new requests and completed AI replies, including when sending from an older history position.
+- Preserved the reading position when attachments or other unchanged chat UI are rendered; verified desktop and mobile layouts.
+- Recorded the project owner's preference to update related source, documentation, and changelog and sync completed changes to GitHub automatically.
 - Bumped StudyBridge Cloud to `1.1.50` and reconciled local source with the existing Git history.
 - Excluded private database backups, caches, and local verification copies from commits.
 - Updated ZIP and email dependencies to versions with no reported npm audit vulnerabilities.

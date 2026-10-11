@@ -359,7 +359,7 @@
     return `
       <div class="app-shell">
         ${sidebarHtml()}
-        <main class="workspace" id="workspace">
+        <main class="workspace${state.mode !== "admin" && state.page === "study" ? " study-workspace" : ""}" id="workspace" data-course-id="${esc(state.activeCourseId)}">
           ${content}
         </main>
       </div>
@@ -1124,6 +1124,10 @@
   }
 
   function render() {
+    const previousChat = root.querySelector(".study-workspace .chat-area");
+    const previousCourseId = previousChat?.parentElement.dataset.courseId;
+    const previousMessages = previousChat?.querySelector(".messages")?.innerHTML;
+    const previousScrollTop = previousChat?.scrollTop || 0;
     try {
       root.innerHTML = routeHtml();
     } catch (error) {
@@ -1142,6 +1146,12 @@
     }
     if (state.busy) root.insertAdjacentHTML("beforeend", `<div class="busy">Loading...</div>`);
     if (state.toast && state.user) root.insertAdjacentHTML("beforeend", `<div class="toast">${esc(state.toast)}</div>`);
+    const chat = root.querySelector(".study-workspace .chat-area");
+    if (chat) {
+      const showLatest = !previousChat || previousCourseId !== state.activeCourseId
+        || previousMessages !== chat.querySelector(".messages")?.innerHTML;
+      chat.scrollTop = showLatest ? chat.scrollHeight : previousScrollTop;
+    }
   }
 
   async function boot() {

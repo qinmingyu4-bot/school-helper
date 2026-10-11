@@ -100,6 +100,29 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
   assert.equal(bob.status, 201);
   let courseId;
 
+  await t.test("only admins can delete invitations without removing registered users", async () => {
+    const created = await request("/api/admin/invites", { method: "POST", cookie: admin.cookie, body: { label: "Delete check", maxUses: 3 } });
+    assert.equal(created.status, 201);
+    const deletedInvite = created.data.invite;
+    const registered = await request("/api/auth/register", { method: "POST", body: registration("Invited user", "invited@example.test", deletedInvite.code) });
+    assert.equal(registered.status, 201);
+    const route = `/api/admin/invites/${deletedInvite.id}`;
+    assert.equal((await request(route, { method: "DELETE" })).status, 401);
+    assert.equal((await request(route, { method: "DELETE", cookie: alice.cookie })).status, 403);
+    assert.ok((await request("/api/admin/overview", { cookie: admin.cookie })).data.invites.some((item) => item.id === deletedInvite.id));
+    const removed = await request(route, { method: "DELETE", cookie: admin.cookie });
+    assert.equal(removed.status, 200);
+    assert.equal(removed.data.deleted, true);
+    assert.equal((await request(route, { method: "DELETE", cookie: admin.cookie })).status, 404);
+    assert.equal((await request("/api/auth/register", { method: "POST", body: registration("Blocked", "deleted-code@example.test", deletedInvite.code) })).status, 403);
+    assert.equal((await request("/api/me", { cookie: registered.cookie })).data.user.email, "invited@example.test");
+    await stop();
+    await start();
+    const overview = await request("/api/admin/overview", { cookie: admin.cookie });
+    assert.ok(!overview.data.invites.some((item) => item.id === deletedInvite.id));
+    assert.ok(overview.data.users.some((item) => item.email === "invited@example.test" && item.inviteCode === deletedInvite.code));
+  });
+
   await t.test("profile uniqueness, role boundary, and exhausted invites", async () => {
     assert.equal((await request("/api/admin/overview", { cookie: alice.cookie })).status, 403);
     assert.equal((await request("/api/auth/register", { method: "POST", body: registration("Extra", "extra@example.test", code) })).status, 403);

@@ -686,7 +686,7 @@
           </div>
           <div class="admin-list">${invites.length ? invites.map((invite) => `<div class="invite-row">
             <div class="admin-record-details"><b class="admin-invite-code">${esc(invite.code)}</b><div class="admin-record-meta"><span>${roleLabel(invite.role)}</span><span>已使用 ${invite.uses || 0} / ${invite.maxUses || 1} 次</span><span class="admin-invite-status ${invite.active ? "is-active" : "is-disabled"}">${invite.active ? "已启用" : "已停用"}</span></div>${invite.label ? `<p class="admin-record-note">${esc(invite.label)}</p>` : ""}</div>
-            <div class="admin-row-actions"><button data-copy="${esc(invite.code)}" aria-label="复制邀请码 ${esc(invite.code)}">复制</button><button data-action="toggle-invite" data-id="${esc(invite.id)}" data-active="${invite.active ? "false" : "true"}">${invite.active ? "停用" : "启用"}</button></div>
+            <div class="admin-row-actions"><button data-copy="${esc(invite.code)}" aria-label="复制邀请码 ${esc(invite.code)}">复制</button><button data-action="toggle-invite" data-id="${esc(invite.id)}" data-active="${invite.active ? "false" : "true"}">${invite.active ? "停用" : "启用"}</button><button class="admin-delete-invite" data-action="delete-invite" data-id="${esc(invite.id)}" data-code="${esc(invite.code)}" aria-label="删除邀请码 ${esc(invite.code)}">删除</button></div>
           </div>`).join("") : `<p class="muted admin-empty">暂无邀请码。</p>`}</div>
         </article>
         <article class="admin-section" aria-labelledby="adminUsersTitle">
@@ -699,6 +699,23 @@
       </section>
       <section class="card"><h2>密码重置申请</h2>${(overview?.resetRequests || []).length ? overview.resetRequests.map((req) => `<div class="mini-row"><b>${esc(req.email)}</b><small>${esc(req.status)}</small><button data-action="reset-password" data-id="${esc(req.id)}">生成临时密码</button></div>`).join("") : `<p class="muted">还没有密码重置申请。</p>`}</section>
     `;
+  }
+
+  function confirmInviteDeletion(code) {
+    return new Promise((resolve) => {
+      const dialog = document.createElement("dialog");
+      dialog.className = "admin-delete-dialog";
+      dialog.setAttribute("aria-labelledby", "deleteInviteTitle");
+      dialog.setAttribute("aria-describedby", "deleteInviteDescription");
+      dialog.innerHTML = `<h2 id="deleteInviteTitle">删除邀请码？</h2><p class="admin-invite-code">${esc(code)}</p><p id="deleteInviteDescription">删除后，该邀请码将无法再用于注册。已注册的用户不受影响。</p><form method="dialog"><button value="cancel" autofocus>取消</button><button class="admin-confirm-delete" value="delete">删除邀请码</button></form>`;
+      dialog.addEventListener("close", () => {
+        const confirmed = dialog.returnValue === "delete";
+        dialog.remove();
+        resolve(confirmed);
+      }, { once: true });
+      document.body.append(dialog);
+      dialog.showModal();
+    });
   }
 
   function adminStatusHtml() {
@@ -1125,6 +1142,18 @@
       if (action === "toggle-invite") {
         await api(`/api/admin/invites/${button.dataset.id}`, { method: "PATCH", body: { active: button.dataset.active === "true" } });
         await loadPage("admin");
+        return;
+      }
+      if (action === "delete-invite") {
+        if (!await confirmInviteDeletion(button.dataset.code)) return;
+        button.disabled = true;
+        try {
+          await api(`/api/admin/invites/${button.dataset.id}`, { method: "DELETE" });
+          setToast("邀请码已删除。");
+          await loadPage("admin");
+        } finally {
+          button.disabled = false;
+        }
         return;
       }
       if (action === "reset-password") {

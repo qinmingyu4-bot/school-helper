@@ -2163,6 +2163,13 @@ if (openCommunityLikeMatch && method === "PATCH") {
   }
 
   const inviteMatch = url.pathname.match(/^\/api\/admin\/invites\/([^/]+)$/);
+  if (inviteMatch && method === "DELETE") {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+    const invite = await db.deleteInvite(inviteMatch[1]);
+    if (!invite) return sendError(res, 404, "Invitation code not found.");
+    return sendJson(res, 200, { deleted: true, id: invite.id });
+  }
   if (inviteMatch && method === "PATCH") {
     const admin = await requireAdmin(req, res);
     if (!admin) return;

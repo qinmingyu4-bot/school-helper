@@ -24,6 +24,24 @@ test("local writes recover after a duplicate SB ID is rejected", async (t) => {
   assert.deepEqual(await fs.readdir(directory), ["database.json"]);
 });
 
+test("DynamoDB invitation deletion preserves password reset requests and unrelated records", async () => {
+  const db = new StudyBridgeDatabase();
+  const invite = { id: "invite", code: "SB-DELETE" };
+  const reset = { id: "reset", code: "RESET-CODE", kind: "passwordReset" };
+  const records = [invite, reset];
+  const deletions = [];
+  db.dynamo = {
+    scanType: async () => records,
+    delete: async (pk, sk) => { deletions.push([pk, sk]); records.splice(records.indexOf(invite), 1); }
+  };
+  assert.equal(await db.deleteInvite("missing"), null);
+  assert.equal(await db.deleteInvite("reset"), null);
+  assert.deepEqual(deletions, []);
+  assert.deepEqual(await db.deleteInvite("invite"), invite);
+  assert.deepEqual(deletions, [["INVITE#SB-DELETE", "META"]]);
+  assert.deepEqual(records, [reset]);
+});
+
 test("corrupted local data is reported without replacing the file", async (t) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "studybridge-corrupt-"));
   t.after(() => fs.rm(directory, { recursive: true, force: true }));

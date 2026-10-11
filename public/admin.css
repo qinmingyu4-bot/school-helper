@@ -42,8 +42,16 @@
 .admin-record-note { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
 .admin-invite-status.is-active { color: var(--green); }
 .admin-invite-status.is-disabled { color: var(--danger); }
-.admin-row-actions { display: flex; gap: 8px; }
+.admin-row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .admin-row-actions button { min-width: 64px; min-height: 40px; padding: 8px 12px; white-space: nowrap; }
+.admin-row-actions .admin-delete-invite { color: var(--danger); }
+.admin-row-actions .admin-delete-invite:hover { border-color: var(--danger); }
+.admin-delete-dialog { width: min(420px, calc(100% - 32px)); padding: 24px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: #fff; }
+.admin-delete-dialog::backdrop { background: rgba(0, 0, 0, .4); }
+.admin-delete-dialog h2 { margin: 0 0 16px; font-size: 20px; }
+.admin-delete-dialog p { line-height: 1.6; overflow-wrap: anywhere; }
+.admin-delete-dialog form { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.admin-delete-dialog .admin-confirm-delete { background: var(--danger); border-color: var(--danger); color: #fff; }
 .admin-user-stats { display: grid; grid-template-columns: repeat(3, minmax(60px, 1fr)); margin: 0; }
 .admin-user-stats > div { display: grid; gap: 6px; padding: 0 14px; text-align: center; border-left: 1px solid var(--line); }
 .admin-user-stats dt { color: var(--muted); font-size: 12px; }

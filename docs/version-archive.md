@@ -10,6 +10,27 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.51 - 2026-10-10
+
+Purpose:
+- Keep deadline notifications and the composer visible while history scrolls.
+- Open conversations at the latest message and scroll to new requests and AI replies.
+- Compact the course header and composer while retaining readable deadline notifications.
+- Preserve draft questions when notification toasts disappear.
+- Refresh cached entry scripts with `/app.js?v=1.1.51`.
+
+Feature commits:
+- `a5160bb`: chat scrolling and GitHub synchronization policy.
+- `c3f45b3`: compact course header and fixed bars.
+- `fe1a5b2`: compact composer, deadline spacing, and draft preservation.
+
+Validation:
+- Syntax and entry-asset checks, server integration tests, dependency audit,
+  and desktop/mobile chat scrolling checks before deployment.
+
+Rollback target:
+- `187ad91` (previous production version `1.1.50`).
+
 ### 1.1.13 - 2026-10-08
 
 Purpose:

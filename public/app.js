@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.50";
+  const VERSION = "1.1.51";
   const STUDENT_PAGES = ["community", "classmates", "email", "schedule", "study", "tools", "profile"];
   const ADMIN_PAGES = ["admin"];
   const SCHEDULE_COURSE = "Schedule & Deadlines";

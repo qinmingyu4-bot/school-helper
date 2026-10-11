@@ -134,3 +134,57 @@ test("corrupted local data is reported without replacing the file", async (t) =>
   await assert.rejects(db.createCourse({ id: "course", userId: "alice", name: "Calculus" }), SyntaxError);
   assert.equal(await fs.readFile(db.local.file, "utf8"), original);
 });
+
+test("read acknowledgements preserve newer messages and isolate each private chat", async (t) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "studybridge-read-"));
+  t.after(() => fs.rm(directory, { recursive: true, force: true }));
+  const db = new StudyBridgeDatabase();
+  db.dynamo = null;
+  db.local.file = path.join(directory, "database.json");
+  for (const message of [
+    { id: "seen", chatId: "chat", senderId: "bob" },
+    { id: "new", chatId: "chat", senderId: "bob" },
+    { id: "mine", chatId: "chat", senderId: "alice" },
+    { id: "other", chatId: "other-chat", senderId: "bob" }
+  ]) await db.createDirectMessage({ ...message, content: message.id });
+  await db.local.write((state) => {
+    for (const message of Object.values(state.directMessages)) message.createdAt = "2026-10-10T12:00:00.000Z";
+  });
+  assert.equal(await db.markDirectMessagesRead("chat", "alice", ["seen", "mine", "other", "missing"]), 1);
+  assert.equal(await db.markDirectMessagesRead("chat", "alice", ["seen"]), 0);
+  const reopened = new StudyBridgeDatabase();
+  reopened.dynamo = null;
+  reopened.local.file = db.local.file;
+  const rows = await reopened.listDirectMessages("chat", Infinity);
+  assert.ok(rows.find((message) => message.id === "seen").readAt);
+  assert.equal(rows.find((message) => message.id === "new").readAt, undefined);
+  assert.equal(rows.find((message) => message.id === "mine").readAt, undefined);
+  assert.equal((await reopened.listDirectMessages("other-chat"))[0].readAt, undefined);
+});
+
+test("DynamoDB read acknowledgements update only the recipient's displayed messages", async () => {
+  const db = new StudyBridgeDatabase();
+  const rows = [
+    { id: "seen", chatId: "chat", senderId: "bob", createdAt: "2026-10-10T12:00:00.000Z" },
+    { id: "new", chatId: "chat", senderId: "bob", createdAt: "2026-10-10T12:00:00.000Z" },
+    { id: "mine", chatId: "chat", senderId: "alice", createdAt: "2026-10-10T12:00:00.000Z" }
+  ];
+  db.dynamo = {
+    query: async (pk, prefix) => {
+      assert.equal(pk, "DM#chat");
+      assert.equal(prefix, "MSG#");
+      return rows;
+    },
+    put: async (pk, sk, type, record) => {
+      assert.equal(pk, "DM#chat");
+      assert.equal(sk, `MSG#${rows[0].createdAt}#seen`);
+      assert.equal(type, "directMessage");
+      rows[0] = record;
+    }
+  };
+  assert.equal(await db.markDirectMessagesRead("chat", "alice", ["seen", "mine"]), 1);
+  assert.equal(await db.markDirectMessagesRead("chat", "alice", ["seen"]), 0);
+  assert.ok(rows[0].readAt);
+  assert.equal(rows[1].readAt, undefined);
+  assert.equal(rows[2].readAt, undefined);
+});

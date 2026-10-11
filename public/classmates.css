@@ -1,0 +1,198 @@
+.classmates-workspace { container-type: inline-size; }
+.classmates-workspace .page-header p:empty { display: none; }
+.classmates-workspace .classmates-layout {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+  padding: 20px 24px 28px;
+  min-width: 0;
+}
+.app-shell.classmate-chat-shell {
+  grid-template-columns: minmax(0, 1fr);
+  height: 100dvh;
+  min-height: 0;
+}
+.classmates-workspace.classmate-chat-workspace {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+.classmates-chat-view { flex: 1; min-height: 0; }
+.classmates-workspace.classmate-chat-workspace .chat-panel {
+  height: 100%;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+}
+.classmates-sidebar { min-width: 0; }
+.classmates-sidebar h2 { margin: 0 0 12px; font-size: 18px; }
+.classmates-sidebar .muted { font-size: 13px; line-height: 1.5; }
+.classmates-sidebar .inline-fields { gap: 8px; margin: 16px 0 12px; }
+.classmates-sidebar .inline-fields input { min-width: 0; padding: 10px; }
+.classmates-sidebar .inline-fields button { padding: 10px; white-space: nowrap; font-size: 13px; }
+.classmates-sidebar .request-box { margin-bottom: 24px; font-size: 13px; background: #fff; }
+.classmates-sidebar .mini-row { display: flex; flex-wrap: wrap; gap: 8px; overflow-wrap: anywhere; }
+.classmates-sidebar .friend-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 32px;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  background: #fff;
+  font-weight: 400;
+}
+.classmates-sidebar .friend-row.active { background: #edf7f2; border-color: var(--green); }
+.friend-info { min-width: 0; display: grid; gap: 4px; }
+.friend-info b { font-size: 14px; overflow-wrap: anywhere; }
+.friend-info small { color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+.friend-preview { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--muted); font-size: 12px; }
+.friend-unread {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 11px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.classmate-avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #e0eee8;
+  color: #226650;
+  font-size: 16px;
+  font-weight: 700;
+}
+.classmate-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.peer-avatar-button { padding: 0; border: 0; cursor: pointer; }
+.peer-avatar-button:hover { box-shadow: 0 0 0 2px var(--green); }
+.classmates-workspace .chat-panel {
+  min-width: 0;
+  height: clamp(420px, calc(100dvh - 170px), 820px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+.dm-header {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.dm-peer { flex: 1; min-width: 0; }
+.dm-peer h2 { margin: 0; font-size: 18px; line-height: 1.4; overflow-wrap: anywhere; }
+.dm-peer p { margin: 4px 0 0; font-size: 12px; line-height: 1.5; color: var(--muted); overflow-wrap: anywhere; }
+.classmates-workspace .dm-icon-button {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  flex: 0 0 42px;
+  padding: 0;
+}
+.dm-icon-button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.classmates-workspace .dm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  min-height: 0;
+  padding: 24px 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 0;
+  border-radius: 0;
+  background: #f5f7fa;
+}
+.classmates-workspace .dm {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  width: fit-content;
+  max-width: min(560px, 85%);
+  min-width: 0;
+  padding: 10px 14px 8px;
+  border: 1px solid #dce3ec;
+  border-radius: 8px;
+  background: #fff;
+}
+.classmates-workspace .dm.mine { align-self: flex-end; background: #eaf3ff; border-color: #cadcf5; }
+.dm-row {
+  display: flex;
+  align-items: flex-start;
+  align-self: flex-start;
+  flex: 0 0 auto;
+  gap: 10px;
+  width: fit-content;
+  max-width: min(610px, 90%);
+  min-width: 0;
+}
+.dm-row.mine { align-self: flex-end; }
+.classmates-workspace .dm-row .dm { flex: 0 1 auto; max-width: 100%; }
+.dm-sender { display: block; margin-bottom: 4px; color: var(--muted); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.dm-content { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.7; }
+.dm small { display: block; margin-top: 6px; color: var(--muted); font-size: 11px; line-height: 1.4; text-align: right; white-space: nowrap; }
+.classmates-workspace .dm-list .empty { margin: auto; padding: 20px; text-align: center; font-size: 14px; line-height: 1.7; }
+.classmates-workspace .dm-compose {
+  grid-template-columns: minmax(0, 1fr) 42px;
+  gap: 10px;
+  align-items: center;
+  padding: 14px 16px;
+  border-top: 1px solid var(--line);
+}
+.dm-compose input { min-width: 0; height: 42px; padding: 10px 12px; font-size: 14px; }
+.dm-compose .send { background: var(--green); }
+.classmates-workspace button:focus-visible, .dm-compose input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.peer-profile-page { display: flex; flex-direction: column; background: #fff; }
+.peer-profile-body { flex: 1; min-height: 0; overflow-y: auto; }
+.peer-profile-cover { height: min(200px, 25dvh); background: #e4eee8; }
+.peer-profile-cover img { width: 100%; height: 100%; object-fit: cover; }
+.peer-profile-info { width: min(760px, 100%); margin: 0 auto; padding: 28px 24px 36px; }
+.peer-profile-summary { display: flex; align-items: center; gap: 20px; }
+.peer-profile-summary > div { min-width: 0; }
+.peer-profile-summary h1 { margin: 0; font-size: 24px; line-height: 1.4; overflow-wrap: anywhere; }
+.peer-profile-summary p { margin: 6px 0 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.peer-profile-avatar { width: 80px; height: 80px; flex: 0 0 80px; font-size: 30px; }
+.peer-profile-facts { margin: 28px 0; }
+.peer-profile-facts > div { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.peer-profile-facts dt { color: var(--muted); }
+.peer-profile-facts dd { margin: 0; overflow-wrap: anywhere; }
+
+@container (max-width: 760px) {
+  .classmates-workspace .classmates-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; padding: 20px; }
+  .classmates-sidebar .friend-row { max-width: 100%; }
+  .classmates-sidebar .request-box { margin-bottom: 18px; }
+  .classmates-workspace .chat-panel { height: clamp(420px, 65dvh, 680px); }
+}
+@container (max-width: 440px) {
+  .classmates-workspace .page-header { padding: 20px 16px; align-items: center; gap: 12px; }
+  .classmates-workspace .page-header h1 { font-size: 26px; }
+  .classmates-workspace .page-header > button { padding: 10px; font-size: 12px; }
+  .classmates-workspace .classmates-layout { padding: 16px 12px; }
+  .dm-header { padding: 12px; gap: 10px; }
+  .dm-peer h2 { font-size: 16px; }
+  .classmates-workspace .dm-list { padding: 18px 12px; }
+  .classmates-workspace .dm { max-width: 90%; padding: 10px 12px 8px; }
+  .dm-row { max-width: 100%; gap: 8px; }
+  .dm-row.mine { max-width: 90%; }
+  .peer-profile-info { padding: 24px 16px; }
+  .peer-profile-summary { gap: 16px; }
+  .classmates-workspace .dm-compose { padding: 12px; }
+}

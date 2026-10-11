@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.51";
+  const VERSION = "1.1.52";
   const STUDENT_PAGES = ["community", "classmates", "email", "schedule", "study", "tools", "profile"];
   const ADMIN_PAGES = ["admin"];
   const SCHEDULE_COURSE = "Schedule & Deadlines";
@@ -14,6 +14,17 @@
   const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
 
   const root = document.getElementById("root");
+  let classmatesEvents = null;
+  let classmatesPoll = null;
+  let classmatesSyncing = false;
+  let classmatesSyncQueued = false;
+  let classmatesGeneration = 0;
+  let classmateListScroll = 0;
+  let classmateListDraft = "";
+  let classmateRequestsOpen = false;
+  let classmateProfileChatScroll = 0;
+  let classmateProfileChatAtBottom = true;
+  const classmateReadPending = new Set();
   const state = {
     version: VERSION,
     user: null,
@@ -29,7 +40,11 @@
     community: null,
     classmates: null,
     activeClassmateId: "",
+    classmateChatOpen: false,
+    classmateProfileOpen: false,
+    directMessageDrafts: {},
     directMessages: [],
+    directMessageReadIds: [],
     admin: null,
     status: null,
     googleEnabled: false,
@@ -115,7 +130,7 @@
     }
     const response = await fetch(path, init);
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || data.message || `请求失败 (${response.status})`);
+    if (!response.ok) throw Object.assign(new Error(data.error || data.message || `请求失败 (${response.status})`), { status: response.status });
     return data;
   }
 
@@ -134,6 +149,11 @@
     if (state.mode === "admin") page = "admin";
     if (state.mode !== "admin" && !STUDENT_PAGES.includes(page)) page = "study";
     state.page = page;
+    if (page !== "classmates") {
+      state.classmateChatOpen = false;
+      state.classmateProfileOpen = false;
+    }
+    if (page !== "classmates") stopClassmatesLive();
     localStorage.setItem("studybridge.page", page);
     history.replaceState(null, "", `${location.pathname}?page=${encodeURIComponent(page)}&v=${VERSION}`);
   }
@@ -357,10 +377,11 @@
   }
 
   function shellHtml(content) {
+    const fullChat = state.mode !== "admin" && state.page === "classmates" && state.classmateChatOpen;
     return `
-      <div class="app-shell">
-        ${sidebarHtml()}
-        <main class="workspace${state.mode !== "admin" && state.page === "study" ? " study-workspace" : ""}" id="workspace" data-course-id="${esc(state.activeCourseId)}">
+      <div class="app-shell${fullChat ? " classmate-chat-shell" : ""}">
+        ${fullChat ? "" : sidebarHtml()}
+        <main class="workspace${state.mode !== "admin" && state.page === "study" ? " study-workspace" : ""}${state.mode !== "admin" && state.page === "classmates" ? " classmates-workspace" : ""}${fullChat ? " classmate-chat-workspace" : ""}" id="workspace" data-course-id="${esc(state.activeCourseId)}">
           ${content}
         </main>
       </div>
@@ -539,19 +560,19 @@
   function classmatesPage() {
     const classmates = state.classmates?.classmates || [];
     const requests = state.classmates?.requests || { incoming: [], outgoing: [] };
-    const active = classmates.find((item) => item.id === state.activeClassmateId) || classmates[0] || null;
-    if (active && active.id !== state.activeClassmateId) state.activeClassmateId = active.id;
+    const active = classmates.find((item) => item.id === state.activeClassmateId) || null;
+    if (state.classmateChatOpen) return state.classmateProfileOpen ? classmateProfilePage(active?.peer) : classmateChatPage(active);
     return `
-      ${pageHeader("CLASSMATES", "同学", "通过 SB ID 发送好友申请，通过后可以聊天。")}
+      ${pageHeader("CLASSMATES", "同学", "")}
       <section class="two-col classmates-layout">
-        <article class="card">
+        <aside class="classmates-sidebar" aria-label="同学列表">
           <h2>添加同学</h2>
           <p class="muted">当前学校：${esc(state.classmates?.school || profile().school || "未填写")}</p>
           <div class="inline-fields">
-            <input id="classmateSbId" placeholder="输入 SB ID，例如 adam2026">
+            <input id="classmateSbId" aria-label="同学的 SB ID" placeholder="输入 SB ID" value="${esc(classmateListDraft)}">
             <button data-action="add-classmate">发送申请</button>
           </div>
-          <details class="request-box">
+          <details class="request-box" ${classmateRequestsOpen ? "open" : ""}>
             <summary>申请列表 ${(requests.incoming || []).length ? `<span class="dot"></span>` : ""}</summary>
             ${(requests.incoming || []).length ? requests.incoming.map((req) => `
               <div class="mini-row"><b>${esc(req.from?.name || "同学")}</b><small>SB ID: ${esc(req.from?.sbId || "")}</small><button data-action="friend-accept" data-id="${esc(req.id)}">通过</button><button data-action="friend-ignore" data-id="${esc(req.id)}">忽略</button></div>
@@ -559,33 +580,66 @@
             ${(requests.outgoing || []).length ? `<h3>已发送</h3>${requests.outgoing.map((req) => `<div class="mini-row"><b>${esc(req.to?.name || "同学")}</b><small>等待对方通过</small></div>`).join("")}` : ""}
           </details>
           <h2>同学列表</h2>
+          <div class="friend-list">
           ${classmates.length ? classmates.map((mate) => `
             <button class="friend-row ${mate.id === state.activeClassmateId ? "active" : ""}" data-action="select-classmate" data-id="${esc(mate.id)}">
-              <b>${esc(mate.peer?.name || "同学")}</b>
+              <span class="classmate-avatar" aria-hidden="true">${mate.peer?.avatarUrl ? `<img src="${esc(mate.peer.avatarUrl)}" alt="">` : esc(initials(mate.peer?.name))}</span>
+              <span class="friend-info"><b>${esc(mate.peer?.name || "同学")}</b>
               <small>SB ID: ${esc(mate.peer?.sbId || "")}</small>
-              ${mate.lastMessage ? `<span>${esc(mate.lastMessage.mine ? "你：" : "")}${esc(mate.lastMessage.content || "")}</span>` : ""}
+              ${mate.lastMessage ? `<span class="friend-preview">${esc(mate.lastMessage.mine ? "你：" : "")}${esc(mate.lastMessage.content || "")}</span>` : ""}</span>
+              ${mate.unreadCount > 0 ? `<span class="friend-unread" aria-label="${esc(mate.unreadCount)} 条未读消息">${mate.unreadCount > 99 ? "99+" : esc(mate.unreadCount)}</span>` : ""}
             </button>
           `).join("") : `<p class="muted">还没有添加同学。</p>`}
-        </article>
-        <article class="card chat-panel">
-          <div class="section-title"><div><span>DIRECT CHAT</span><h2>${esc(active?.peer?.name || "请选择一位同学")}</h2></div><button data-action="refresh-classmates">刷新</button></div>
-          ${active ? peerCard(active.peer) : ""}
-          <div class="dm-list">${state.directMessages.length ? state.directMessages.map((msg) => `<div class="dm ${msg.mine ? "mine" : ""}"><div class="formatted-text">${formatText(msg.content)}</div><small>${esc(formatDate(msg.createdAt))}</small></div>`).join("") : `<p class="empty">选择同学后，这里会显示你们的聊天。</p>`}</div>
-          <div class="compose-row"><input id="dmInput" placeholder="写一句话给同学"><button class="send" data-action="send-dm">发送</button></div>
+          </div>
+        </aside>
+      </section>
+    `;
+  }
+
+  function classmateChatPage(active) {
+    return `
+      <section class="classmates-chat-view">
+        <article class="chat-panel" data-chat-id="${esc(active?.id || "")}" aria-label="同学聊天">
+          <header class="dm-header">
+            <button class="dm-icon-button" data-action="back-classmates" title="返回同学列表" aria-label="返回同学列表"><svg aria-hidden="true"><use href="/classmates-icons.svg#back"></use></svg></button>
+            ${active ? classmateProfileAvatar(active.peer) : ""}
+            <div class="dm-peer"><h2>${esc(active?.peer?.name || "请选择一位同学")}</h2>${active ? `<p>SB ID: ${esc(active.peer?.sbId || "")}${active.peer?.school ? ` · ${esc(active.peer.school)}` : ""}</p>` : ""}</div>
+            <button class="dm-icon-button" data-action="refresh-classmates" title="刷新聊天" aria-label="刷新聊天"><svg aria-hidden="true"><use href="/classmates-icons.svg#refresh"></use></svg></button>
+          </header>
+          <div class="dm-list" role="log" aria-label="聊天记录">${state.directMessages.length ? state.directMessages.map((msg) => `<div class="dm-row ${msg.mine ? "mine" : ""}">${!msg.mine && active ? classmateProfileAvatar(active.peer) : ""}<div class="dm ${msg.mine ? "mine" : ""}">${!msg.mine ? `<span class="dm-sender">${esc(active?.peer?.name || "同学")}</span>` : ""}<div class="dm-content">${esc(msg.content)}</div><small>${esc(formatDate(msg.createdAt))}</small></div></div>`).join("") : `<p class="empty">${active ? "还没有聊天记录。先打个招呼吧。" : "选择同学后，这里会显示你们的聊天。"}</p>`}</div>
+          <form class="compose-row dm-compose"><input id="dmInput" aria-label="聊天消息" autocomplete="off" maxlength="1200" placeholder="写一句话给同学" value="${esc(state.directMessageDrafts[state.activeClassmateId] || "")}" ${active ? "" : "disabled"}><button class="send dm-icon-button" data-action="send-dm" type="submit" title="发送消息" aria-label="发送消息" ${active ? "" : "disabled"}><svg aria-hidden="true"><use href="/classmates-icons.svg#send"></use></svg></button></form>
         </article>
       </section>
     `;
   }
 
-  function peerCard(peer) {
+  function classmateProfileAvatar(peer) {
+    const label = `查看${peer?.name || "同学"}的主页`;
+    return `<button type="button" class="classmate-avatar peer-avatar-button" data-action="view-classmate-profile" title="${esc(label)}" aria-label="${esc(label)}">${peer?.avatarUrl ? `<img src="${esc(peer.avatarUrl)}" alt="">` : esc(initials(peer?.name))}</button>`;
+  }
+
+  function classmateProfilePage(peer) {
     return `
-      <div class="peer-card">
-        <div class="cover" style="${peer?.backgroundUrl ? `background-image:url('${esc(peer.backgroundUrl)}')` : ""}"></div>
-        <div class="avatar">${peer?.avatarUrl ? `<img src="${esc(peer.avatarUrl)}" alt="">` : esc(initials(peer?.name))}</div>
-        <h3>${esc(peer?.name || "同学")}</h3>
-        <p>${esc([peer?.school, peer?.major].filter(Boolean).join(" · "))}</p>
-        <span>SB ID: ${esc(peer?.sbId || "")}</span>
-      </div>
+      <section class="classmates-chat-view peer-profile-page">
+        <header class="dm-header">
+          <button class="dm-icon-button" data-action="back-classmate-chat" title="返回聊天" aria-label="返回聊天"><svg aria-hidden="true"><use href="/classmates-icons.svg#back"></use></svg></button>
+          <div class="dm-peer"><h2>${esc(peer?.name || "同学")}的主页</h2></div>
+        </header>
+        <div class="peer-profile-body">
+          <div class="peer-profile-cover">${peer?.backgroundUrl ? `<img src="${esc(peer.backgroundUrl)}" alt="${esc(peer.name)}的背景图片">` : ""}</div>
+          <div class="peer-profile-info">
+            <div class="peer-profile-summary">
+              <span class="classmate-avatar peer-profile-avatar">${peer?.avatarUrl ? `<img src="${esc(peer.avatarUrl)}" alt="${esc(peer.name)}的头像">` : esc(initials(peer?.name))}</span>
+              <div><h1>${esc(peer?.name || "同学")}</h1><p>SB ID: ${esc(peer?.sbId || "未设置")}</p></div>
+            </div>
+            <dl class="peer-profile-facts">
+              <div><dt>学校</dt><dd>${esc(peer?.school || "未填写")}</dd></div>
+              <div><dt>专业</dt><dd>${esc(peer?.major || "未填写")}</dd></div>
+            </dl>
+            <button class="primary" data-action="back-classmate-chat">发消息</button>
+          </div>
+        </div>
+      </section>
     `;
   }
 
@@ -811,6 +865,7 @@
   }
 
   async function loadPage(page) {
+    const generation = ++classmatesGeneration;
     setPage(page);
     state.busy = true;
     render();
@@ -818,12 +873,22 @@
       if (page === "study") await loadStudy();
       if (page === "community") state.community = await api(`/api/community?channel=${encodeURIComponent(state.communityChannel)}`);
       if (page === "classmates") {
-        state.classmates = await api("/api/classmates");
-        const first = state.classmates.classmates?.[0];
-        if (!state.activeClassmateId && first) state.activeClassmateId = first.id;
-        if (state.activeClassmateId) {
+        const data = await api("/api/classmates");
+        if (generation !== classmatesGeneration) return;
+        state.classmates = data;
+        const classmates = state.classmates.classmates || [];
+        if (state.activeClassmateId && !classmates.some((item) => item.id === state.activeClassmateId)) {
+          state.activeClassmateId = "";
+          state.classmateChatOpen = false;
+        }
+        if (state.classmateChatOpen && state.activeClassmateId) {
           const dm = await api(`/api/classmates/${state.activeClassmateId}/messages`);
+          if (generation !== classmatesGeneration) return;
           state.directMessages = dm.messages || [];
+          state.directMessageReadIds = dm.readMessageIds || [];
+        } else {
+          state.directMessages = [];
+          state.directMessageReadIds = [];
         }
       }
       if (page === "schedule") await loadScheduleItems();
@@ -834,8 +899,133 @@
     } catch (error) {
       setToast(error.message);
     } finally {
-      state.busy = false;
+      if (page !== "classmates" || generation === classmatesGeneration) {
+        state.busy = false;
+        render();
+        if (state.page === "classmates") void syncClassmatesLive();
+      }
+    }
+  }
+
+  function stopClassmatesLive() {
+    classmatesEvents?.close();
+    classmatesEvents = null;
+    clearInterval(classmatesPoll);
+    classmatesPoll = null;
+    classmatesSyncQueued = false;
+    classmatesGeneration += 1;
+  }
+
+  function startClassmatesLive() {
+    if (!state.user || state.mode === "admin" || state.page !== "classmates") {
+      stopClassmatesLive();
+      return;
+    }
+    if (classmatesPoll) return;
+    if (typeof EventSource !== "undefined") {
+      classmatesEvents = new EventSource("/api/classmates/events");
+      classmatesEvents.addEventListener("open", () => void syncClassmatesLive());
+      classmatesEvents.addEventListener("classmates", () => void syncClassmatesLive());
+    }
+    // Reconcile missed events, including updates handled by another server instance.
+    classmatesPoll = setInterval(() => void syncClassmatesLive(), 5000);
+  }
+
+  async function syncClassmatesLive() {
+    if (!state.user || state.mode === "admin" || state.page !== "classmates" || document.hidden) return;
+    if (classmatesSyncing || state.busy) {
+      classmatesSyncQueued = true;
+      return;
+    }
+    classmatesSyncing = true;
+    classmatesSyncQueued = false;
+    const generation = classmatesGeneration;
+    const chatId = state.activeClassmateId;
+    const chatOpen = state.classmateChatOpen;
+    try {
+      const classmates = await api("/api/classmates");
+      const selected = classmates.classmates.find((mate) => mate.id === chatId);
+      const dm = chatOpen && selected ? await api(`/api/classmates/${selected.id}/messages`) : { messages: [], readMessageIds: [] };
+      if (generation !== classmatesGeneration || state.page !== "classmates" || state.busy || chatId !== state.activeClassmateId || chatOpen !== state.classmateChatOpen) return;
+      state.classmates = classmates;
+      state.activeClassmateId = selected?.id || "";
+      if (!selected) state.classmateChatOpen = false;
+      state.directMessages = dm.messages || [];
+      state.directMessageReadIds = dm.readMessageIds || [];
+      updateClassmatesLiveView();
+      requestAnimationFrame(acknowledgeClassmateRead);
+    } catch (error) {
+      if (generation === classmatesGeneration && error.status === 401) stopClassmatesLive();
+    } finally {
+      classmatesSyncing = false;
+      if (classmatesSyncQueued) {
+        classmatesSyncQueued = false;
+        void syncClassmatesLive();
+      }
+    }
+  }
+
+  function updateClassmatesLiveView() {
+    if (state.classmateChatOpen && state.classmateProfileOpen) {
+      const current = root.querySelector(".peer-profile-body");
+      if (!current) {
+        render();
+        return;
+      }
+      const template = document.createElement("template");
+      template.innerHTML = classmatesPage();
+      for (const selector of [".dm-header", ".peer-profile-body"]) {
+        const element = root.querySelector(selector);
+        const next = template.content.querySelector(selector);
+        if (element.innerHTML !== next.innerHTML) element.innerHTML = next.innerHTML;
+      }
+      return;
+    }
+    const panel = root.querySelector(".chat-panel");
+    if (state.classmateChatOpen ? !panel || panel.dataset.chatId !== state.activeClassmateId : Boolean(panel || root.querySelector(".peer-profile-page"))) {
       render();
+      return;
+    }
+    const template = document.createElement("template");
+    template.innerHTML = classmatesPage();
+    const selectors = state.classmateChatOpen ? [".dm-header"] : [".friend-list", ".request-box"];
+    for (const selector of selectors) {
+      const current = root.querySelector(selector);
+      const next = template.content.querySelector(selector);
+      if (current.innerHTML === next.innerHTML) continue;
+      if (selector === ".request-box") next.open = current.open;
+      current.replaceWith(next);
+    }
+    if (!panel) return;
+    const list = panel.querySelector(".dm-list");
+    const nextList = template.content.querySelector(".dm-list");
+    if (list.innerHTML === nextList.innerHTML) return;
+    const nearBottom = list.scrollHeight - list.clientHeight - list.scrollTop < 64;
+    const scrollTop = list.scrollTop;
+    list.innerHTML = nextList.innerHTML;
+    list.scrollTop = nearBottom ? list.scrollHeight : scrollTop;
+  }
+
+  async function acknowledgeClassmateRead() {
+    if (document.hidden || state.page !== "classmates" || !state.classmateChatOpen || state.classmateProfileOpen || state.busy) return;
+    const chatId = state.activeClassmateId;
+    if (root.querySelector(".chat-panel")?.dataset.chatId !== chatId) return;
+    const messageIds = state.directMessageReadIds.filter((id) => !classmateReadPending.has(id)).slice(0, 10000);
+    if (!messageIds.length) return;
+    messageIds.forEach((id) => classmateReadPending.add(id));
+    try {
+      const result = await api(`/api/classmates/${chatId}/read`, { method: "POST", body: { messageIds } });
+      const mate = state.classmates?.classmates.find((item) => item.id === chatId);
+      if (mate) mate.unreadCount = result.unreadCount;
+      if (state.activeClassmateId === chatId) {
+        const read = new Set(messageIds);
+        state.directMessageReadIds = state.directMessageReadIds.filter((id) => !read.has(id));
+      }
+      if (state.page === "classmates") updateClassmatesLiveView();
+    } catch {
+      // Retry acknowledgement on the next automatic sync after a connection failure.
+    } finally {
+      messageIds.forEach((id) => classmateReadPending.delete(id));
     }
   }
 
@@ -1073,14 +1263,68 @@
         return;
       }
       if (action === "select-classmate") {
-        state.activeClassmateId = button.dataset.id;
+        const chatId = button.dataset.id;
+        classmateListScroll = window.scrollY;
+        classmateListDraft = $("classmateSbId")?.value || "";
+        classmateRequestsOpen = root.querySelector(".request-box")?.open || false;
+        state.activeClassmateId = chatId;
+        state.classmateChatOpen = true;
+        state.classmateProfileOpen = false;
+        state.directMessages = [];
+        state.directMessageReadIds = [];
         await loadPage("classmates");
+        if (state.classmateChatOpen && state.activeClassmateId === chatId) window.scrollTo(0, 0);
+        return;
+      }
+      if (action === "back-classmates") {
+        classmatesGeneration += 1;
+        state.busy = false;
+        state.classmateChatOpen = false;
+        state.classmateProfileOpen = false;
+        render();
+        window.scrollTo(0, classmateListScroll);
+        root.querySelector(`.friend-row[data-id="${CSS.escape(state.activeClassmateId)}"]`)?.focus({ preventScroll: true });
+        void syncClassmatesLive();
+        return;
+      }
+      if (action === "view-classmate-profile") {
+        const list = root.querySelector(".dm-list");
+        if (!list || !state.classmateChatOpen) return;
+        classmateProfileChatScroll = list.scrollTop;
+        classmateProfileChatAtBottom = list.scrollHeight - list.clientHeight - list.scrollTop < 64;
+        state.classmateProfileOpen = true;
+        render();
+        root.querySelector("[data-action='back-classmate-chat']")?.focus({ preventScroll: true });
+        return;
+      }
+      if (action === "back-classmate-chat") {
+        state.classmateProfileOpen = false;
+        render();
+        const list = root.querySelector(".dm-list");
+        if (list) list.scrollTop = classmateProfileChatAtBottom ? list.scrollHeight : classmateProfileChatScroll;
+        root.querySelector(".dm-header .peer-avatar-button")?.focus({ preventScroll: true });
+        void syncClassmatesLive();
         return;
       }
       if (action === "send-dm") {
         if (!state.activeClassmateId) throw new Error("请先选择一位同学。");
-        await api(`/api/classmates/${state.activeClassmateId}/messages`, { method: "POST", body: { content: $("dmInput")?.value || "" } });
+        const chatId = state.activeClassmateId;
+        const input = $("dmInput");
+        const content = input?.value.trim() || "";
+        if (!content || button.disabled) return;
+        button.disabled = true;
+        try {
+          await api(`/api/classmates/${chatId}/messages`, { method: "POST", body: { content } });
+        } finally {
+          button.disabled = false;
+        }
+        input.value = "";
+        state.directMessageDrafts[chatId] = "";
+        if (!state.classmateChatOpen || state.activeClassmateId !== chatId) return;
         await loadPage("classmates");
+        const list = root.querySelector(".dm-list");
+        if (list) list.scrollTop = list.scrollHeight;
+        $("dmInput")?.focus({ preventScroll: true });
         return;
       }
       if (action === "draft-email") {
@@ -1168,6 +1412,12 @@
   }
 
   function render() {
+    const previousDm = root.querySelector(".dm-list");
+    const previousDmId = previousDm?.parentElement.dataset.chatId;
+    const previousDmMessages = previousDm?.innerHTML;
+    const previousDmScroll = previousDm?.scrollTop || 0;
+    const previousDmDraft = $("dmInput")?.value || "";
+    if (state.user && previousDmId) state.directMessageDrafts[previousDmId] = previousDmDraft;
     const previousChat = root.querySelector(".study-workspace .chat-area");
     const previousCourseId = previousChat?.parentElement.dataset.courseId;
     const previousMessages = previousChat?.querySelector(".messages")?.innerHTML;
@@ -1196,6 +1446,14 @@
         || previousMessages !== chat.querySelector(".messages")?.innerHTML;
       chat.scrollTop = showLatest ? chat.scrollHeight : previousScrollTop;
     }
+    const dm = root.querySelector(".dm-list");
+    if (dm) {
+      const sameChat = previousDmId === dm.parentElement.dataset.chatId;
+      dm.scrollTop = !sameChat || previousDmMessages !== dm.innerHTML ? dm.scrollHeight : previousDmScroll;
+      if (sameChat) $("dmInput").value = previousDmDraft;
+    }
+    startClassmatesLive();
+    requestAnimationFrame(acknowledgeClassmateRead);
   }
 
   async function boot() {
@@ -1252,6 +1510,19 @@
       }
     }
   });
+
+  document.addEventListener("submit", async (event) => {
+    if (!event.target.matches(".dm-compose")) return;
+    event.preventDefault();
+    await handleAction(event.target.querySelector("button[type='submit']"));
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) void syncClassmatesLive();
+  });
+  window.addEventListener("online", () => void syncClassmatesLive());
+  window.addEventListener("pagehide", stopClassmatesLive);
+  window.addEventListener("pageshow", startClassmatesLive);
 
   document.addEventListener("dragover", (event) => {
     if (!state.user || state.page !== "study") return;

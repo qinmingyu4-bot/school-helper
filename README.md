@@ -14,6 +14,7 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, in
 - Backend AI calls using `OPENAI_API_KEY`
 - Local JSON database for development or small private deployments
 - Optional DynamoDB storage for AWS production
+- Full-window classmate chats with live messages, persistent unread counts, latest-message sorting, and clickable peer avatars and public profiles
 
 ## Local Run
 

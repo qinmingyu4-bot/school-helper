@@ -96,6 +96,44 @@ const solRoutePercent = Math.max(
 const googleClientId = String(process.env.GOOGLE_CLIENT_ID || "").trim();
 const googleClientSecret = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();
 let cachedAiHealth = null;
+const classmateStreams = new Map();
+
+function notifyClassmates(userIds, chatId) {
+  for (const userId of userIds) {
+    for (const client of classmateStreams.get(userId) || []) {
+      if (!client.res.destroyed && !client.res.writableEnded) client.res.write(`event: classmates\ndata: ${JSON.stringify({ chatId })}\n\n`);
+    }
+  }
+}
+
+function openClassmateStream(req, res, auth) {
+  res.writeHead(200, {
+    "content-type": "text/event-stream; charset=utf-8",
+    "cache-control": "no-cache, no-transform",
+    "connection": "keep-alive",
+    "x-accel-buffering": "no"
+  });
+  res.write("retry: 2000\n\n");
+  const clients = classmateStreams.get(auth.user.id) || new Set();
+  const client = { res, tokenHash: auth.tokenHash };
+  clients.add(client);
+  classmateStreams.set(auth.user.id, clients);
+  const heartbeat = setInterval(async () => {
+    try {
+      if (!(await currentUser(req))) return res.end();
+      if (!res.destroyed && !res.writableEnded) res.write(": heartbeat\n\n");
+    } catch {
+      res.end();
+    }
+  }, 25000);
+  heartbeat.unref();
+  res.on("error", () => res.destroy());
+  res.on("close", () => {
+    clearInterval(heartbeat);
+    clients.delete(client);
+    if (!clients.size) classmateStreams.delete(auth.user.id);
+  });
+}
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -260,10 +298,11 @@ function publicCommunityPost(post, viewer) {
 async function publicClassmate(connection, viewerId) {
   const peerId = (connection.userIds || []).find((id) => id !== viewerId);
   const peer = peerId ? await db.getUser(peerId) : null;
-  const messages = await db.listDirectMessages(connection.id, 1);
+  const messages = await db.listDirectMessages(connection.id, Infinity);
   const last = messages[messages.length - 1] || null;
   return {
     id: connection.id,
+    unreadCount: messages.filter((message) => message.senderId !== viewerId && !message.readAt).length,
     peer: peer
       ? {
           id: peer.id,
@@ -1919,7 +1958,12 @@ async function routeApi(req, res) {
 
   if (url.pathname === "/api/auth/logout" && method === "POST") {
     const auth = await currentUser(req);
-    if (auth) await db.deleteSession(auth.tokenHash);
+    if (auth) {
+      await db.deleteSession(auth.tokenHash);
+      for (const client of classmateStreams.get(auth.user.id) || []) {
+        if (client.tokenHash === auth.tokenHash) client.res.end();
+      }
+    }
     return sendJson(res, 200, { ok: true }, { "set-cookie": clearSessionCookie() });
   }
 
@@ -2187,11 +2231,22 @@ if (openCommunityLikeMatch && method === "PATCH") {
     return sendJson(res, 200, { user: publicUser(withEffectiveRole(updated)) });
   }
 
+  if (url.pathname === "/api/classmates/events" && method === "GET") {
+    const auth = await currentUser(req);
+    if (!auth) return sendError(res, 401, "Please log in first.");
+    return openClassmateStream(req, res, auth);
+  }
+
   if (url.pathname === "/api/classmates" && method === "GET") {
   const user = await requireUser(req, res);
   if (!user) return;
   const connections = await db.listClassmates(user.id);
   const classmates = await Promise.all(connections.map((item) => publicClassmate(item, user.id)));
+  classmates.sort((a, b) =>
+    Number(Boolean(b.lastMessage)) - Number(Boolean(a.lastMessage))
+    || String(b.lastMessage?.createdAt || b.updatedAt).localeCompare(String(a.lastMessage?.createdAt || a.updatedAt))
+    || String(b.updatedAt).localeCompare(String(a.updatedAt))
+  );
   const connectedIds = new Set(connections.flatMap((item) => item.userIds || []));
   const school = String(user.profile?.school || "").trim();
   const pendingRequests = (await db.listClassmateRequests(user.id)).filter((item) => (item.status || "pending") === "pending");
@@ -2323,9 +2378,10 @@ if (directMessageMatch && method === "GET") {
   if (!user) return;
   const connection = await db.getClassmate(user.id, directMessageMatch[1]);
   if (!connection) return sendError(res, 404, "Classmate chat not found.");
-  const messages = await db.listDirectMessages(connection.id);
+  const messages = await db.listDirectMessages(connection.id, Infinity);
   return sendJson(res, 200, {
-    messages: messages.map((message) => ({
+    readMessageIds: messages.filter((message) => message.senderId !== user.id && !message.readAt).map((message) => message.id),
+    messages: messages.slice(-80).map((message) => ({
       id: message.id,
       content: message.content,
       createdAt: message.createdAt,
@@ -2333,6 +2389,23 @@ if (directMessageMatch && method === "GET") {
       mine: message.senderId === user.id
     }))
   });
+}
+
+const directMessageReadMatch = url.pathname.match(/^\/api\/classmates\/([^/]+)\/read$/);
+if (directMessageReadMatch && method === "POST") {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  const connection = await db.getClassmate(user.id, directMessageReadMatch[1]);
+  if (!connection) return sendError(res, 404, "Classmate chat not found.");
+  const body = await readJson(req);
+  if (!Array.isArray(body.messageIds) || body.messageIds.length > 10000 || body.messageIds.some((id) => typeof id !== "string" || id.length > 100)) {
+    return sendError(res, 400, "Please provide valid message IDs.");
+  }
+  const markedCount = await db.markDirectMessagesRead(connection.id, user.id, body.messageIds);
+  const messages = await db.listDirectMessages(connection.id, Infinity);
+  const unreadCount = messages.filter((message) => message.senderId !== user.id && !message.readAt).length;
+  if (markedCount) notifyClassmates([user.id], connection.id);
+  return sendJson(res, 200, { markedCount, unreadCount });
 }
 
 if (directMessageMatch && method === "POST") {
@@ -2344,6 +2417,7 @@ if (directMessageMatch && method === "POST") {
   const content = String(body.content || "").trim().slice(0, 1200);
   if (!content) return sendError(res, 400, "Message is required.");
   const message = await db.createDirectMessage({ id: createId("dm"), chatId: connection.id, senderId: user.id, content });
+  notifyClassmates(connection.userIds, connection.id);
   return sendJson(res, 201, { message: { ...message, mine: true } });
 }
 

@@ -2,6 +2,10 @@
 
 ## 2026-10-10
 
+- Released StudyBridge Cloud `1.1.52` with full-window classmate conversations, responsive message layout, and back navigation preserving drafts and reading position.
+- Added real-time direct-message updates with authenticated server events and automatic reconciliation, persistent unread counts, and latest-conversation ordering.
+- Added peer avatars and names to incoming messages, with clickable public profiles showing school, major, and SB ID; messages received while viewing a profile remain unread.
+- Corrected legacy classmate request endpoints and response handling, and added local and DynamoDB read-receipt and messaging integration coverage. Local test accounts and data are excluded from deployment.
 - Enforced single-use invitations for new and existing codes, removed the usage-count setting, and made invitation redemption and account creation atomic for email and Google registration in local and DynamoDB storage.
 - Added confirmed invitation deletion to the creator console with admin-only API access, local and DynamoDB persistence, and preservation of existing users and password reset requests.
 - Displayed ordinary-task and complex-task model configuration separately in the creator console, clarified that AI connectivity checks probe only the ordinary-task model, and updated the health request for GPT-6 compatibility.

@@ -326,6 +326,7 @@
       const data = await api("/api/classmates").catch(() => ({ classmates: [], incoming: [], outgoing: [], schoolmates: [] }));
       if (token !== routeToken) return;
       const friends = data.classmates || data.friends || [];
+      const requests = data.requests || { incoming: data.incoming || [], outgoing: data.outgoing || [] };
       const selected = friends.find((item) => String(item.id) === String(selectedId)) || friends[0] || null;
       page.innerHTML = `
         <header class="sb-page-head">
@@ -337,13 +338,13 @@
             <h3>添加同学</h3>
             <div class="sb-row"><input class="sb-input" id="sbFriendIdInput" placeholder="输入 SB ID，例如 adam2026"><button class="sb-button" id="sbFriendRequestButton">发送申请</button></div>
             <p class="sb-muted" id="sbFriendMsg"></p>
-            <button class="sb-button" id="sbRequestsToggle">申请列表 ${data.incoming?.length ? "●" : ""}</button>
-            <div class="sb-list" id="sbRequests" hidden>${renderRequests(data.incoming || [])}</div>
+            <button class="sb-button" id="sbRequestsToggle">申请列表 ${requests.incoming?.length ? "●" : ""}</button>
+            <div class="sb-list" id="sbRequests" hidden>${renderRequests(requests.incoming || [])}</div>
             <h3>同学列表</h3>
-            <div class="sb-list">${friends.length ? friends.map((user) => `<button class="sb-channel ${selected?.id === user.id ? "active" : ""}" data-friend="${esc(user.id)}"><strong>${esc(user.name || user.sbId || "同学")}</strong><br><span class="sb-muted">SB ID: ${esc(user.sbId || "")}</span></button>`).join("") : `<p class="sb-muted">还没有同学。</p>`}</div>
+            <div class="sb-list">${friends.length ? friends.map((user) => `<button class="sb-channel ${selected?.id === user.id ? "active" : ""}" data-friend="${esc(user.id)}"><strong>${esc(user.peer?.name || user.name || "同学")}</strong><br><span class="sb-muted">SB ID: ${esc(user.peer?.sbId || user.sbId || "")}</span></button>`).join("") : `<p class="sb-muted">还没有同学。</p>`}</div>
           </section>
           <section class="sb-card">
-            <div class="sb-row between"><div><p class="sb-eyebrow">DIRECT CHAT</p><h3>${esc(selected?.name || "请选择一位同学")}</h3></div><button class="sb-button" id="sbChatRefresh">刷新</button></div>
+            <div class="sb-row between"><div><p class="sb-eyebrow">DIRECT CHAT</p><h3>${esc(selected?.peer?.name || selected?.name || "请选择一位同学")}</h3></div><button class="sb-button" id="sbChatRefresh">刷新</button></div>
             <div class="sb-chat-box" id="sbClassmateChat">${selected ? "<p class='sb-muted'>正在读取聊天...</p>" : "<p class='sb-muted'>选择同学后这里会显示聊天。</p>"}</div>
             <div class="sb-row" style="margin-top:12px"><input class="sb-input" id="sbChatInput" placeholder="写一句话给同学"><button class="sb-button primary" id="sbChatSend">发送</button></div>
           </section>
@@ -354,8 +355,9 @@
         if (!sbId) return;
         $("#sbFriendMsg", page).textContent = "发送中...";
         try {
-          await api("/api/classmates/requests", { method: "POST", body: { sbId } });
+          await api("/api/classmates", { method: "POST", body: { sbId } });
           $("#sbFriendMsg", page).textContent = "申请已发送，等待对方同意。";
+          renderClassmates(++routeToken, selected?.id || "");
         } catch (error) {
           $("#sbFriendMsg", page).textContent = error.message;
         }
@@ -366,7 +368,7 @@
       });
       $$("#sbRequests [data-request-action]", page).forEach((button) => {
         button.addEventListener("click", async () => {
-          await api(`/api/classmate-requests/${button.dataset.requestId}`, { method: "POST", body: { action: button.dataset.requestAction } });
+          await api(`/api/classmate-requests/${button.dataset.requestId}`, { method: "PATCH", body: { action: button.dataset.requestAction } });
           renderClassmates(++routeToken, selected?.id || "");
         });
       });
@@ -405,7 +407,7 @@
     if (!requests.length) return `<p class="sb-muted">还没有好友申请。</p>`;
     return requests.map((request) => `
       <article class="sb-list-item">
-        <strong>${esc(request.name || request.fromName || request.sbId || "同学")}</strong>
+        <strong>${esc(request.from?.name || request.name || request.fromName || request.sbId || "同学")}</strong>
         <div class="sb-row">
           <button class="sb-button primary" data-request-id="${esc(request.id)}" data-request-action="accept">通过</button>
           <button class="sb-button" data-request-id="${esc(request.id)}" data-request-action="ignore">忽略</button>

@@ -200,8 +200,104 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
     assert.equal(accepted.status, 200);
     const route = `/api/classmates/${accepted.data.classmate.id}/messages`;
     assert.equal((await request(route, { cookie: admin.cookie })).status, 404);
+    assert.equal((await request("/api/classmates/events")).status, 401);
+    async function subscribe(cookie) {
+      const controller = new AbortController();
+      t.after(() => controller.abort());
+      const response = await fetch(`${base}/api/classmates/events`, { headers: { cookie }, signal: controller.signal });
+      assert.equal(response.status, 200);
+      assert.match(response.headers.get("content-type"), /text\/event-stream/);
+      const reader = response.body.getReader();
+      const events = [];
+      const decoder = new TextDecoder();
+      const reading = (async () => {
+        let buffer = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) return;
+          buffer += decoder.decode(value, { stream: true });
+          let boundary;
+          while ((boundary = buffer.indexOf("\n\n")) !== -1) {
+            const frame = buffer.slice(0, boundary);
+            buffer = buffer.slice(boundary + 2);
+            if (frame.startsWith("event: classmates\n")) events.push(JSON.parse(frame.split("\ndata: ")[1]));
+          }
+        }
+      })().catch((error) => { if (error.name !== "AbortError") throw error; });
+      return { events, reading, close: () => controller.abort() };
+    }
+    async function waitForEvents(stream, count) {
+      const deadline = Date.now() + 2000;
+      while (stream.events.length < count && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 10));
+      assert.equal(stream.events.length, count);
+      assert.equal(stream.events.at(-1).chatId, accepted.data.classmate.id);
+    }
+    const aliceStream = await subscribe(alice.cookie);
+    const bobStream = await subscribe(bob.cookie);
+    const unrelatedStream = await subscribe(admin.cookie);
     assert.equal((await request(route, { method: "POST", cookie: alice.cookie, body: { content: "Hello Bob" } })).status, 201);
+    await Promise.all([waitForEvents(aliceStream, 1), waitForEvents(bobStream, 1)]);
     assert.equal((await request(route, { cookie: bob.cookie })).data.messages.at(-1).content, "Hello Bob");
+    assert.equal((await request(route, { method: "POST", cookie: bob.cookie, body: { content: "Hello Alice" } })).status, 201);
+    await Promise.all([waitForEvents(aliceStream, 2), waitForEvents(bobStream, 2)]);
+    assert.deepEqual(unrelatedStream.events, []);
+    const secondBobLogin = await request("/api/auth/login", { method: "POST", body: { email: "bob@example.test", password: "HealthCheck-Password-123!" } });
+    const logoutStream = await subscribe(secondBobLogin.cookie);
+    assert.equal((await request("/api/auth/logout", { method: "POST", cookie: secondBobLogin.cookie })).status, 200);
+    await logoutStream.reading;
+    assert.equal((await request("/api/classmates/events", { cookie: secondBobLogin.cookie })).status, 401);
+    for (const stream of [aliceStream, bobStream, unrelatedStream]) stream.close();
+    await Promise.all([aliceStream.reading, bobStream.reading, unrelatedStream.reading]);
+
+    const unreadFor = async (cookie) => (await request("/api/classmates", { cookie })).data.classmates.find((mate) => mate.id === accepted.data.classmate.id).unreadCount;
+    assert.equal(await unreadFor(alice.cookie), 1);
+    assert.equal(await unreadFor(bob.cookie), 1);
+    const snapshot = (await request(route, { cookie: bob.cookie })).data;
+    assert.equal(await unreadFor(bob.cookie), 1);
+    const readRoute = `/api/classmates/${accepted.data.classmate.id}/read`;
+    assert.equal((await request(readRoute, { method: "POST", cookie: admin.cookie, body: { messageIds: snapshot.readMessageIds } })).status, 404);
+    assert.equal((await request(readRoute, { method: "POST", cookie: bob.cookie, body: { messageIds: "invalid" } })).status, 400);
+    assert.equal((await request(route, { method: "POST", cookie: alice.cookie, body: { content: "Message after snapshot" } })).status, 201);
+    const read = await request(readRoute, { method: "POST", cookie: bob.cookie, body: { messageIds: snapshot.readMessageIds } });
+    assert.equal(read.status, 200);
+    assert.equal(read.data.markedCount, 1);
+    assert.equal(read.data.unreadCount, 1);
+    assert.equal(await unreadFor(alice.cookie), 1);
+    for (let index = 0; index < 80; index += 1) {
+      assert.equal((await request(route, { method: "POST", cookie: alice.cookie, body: { content: `Unread history ${index}` } })).status, 201);
+    }
+    const fullSnapshot = (await request(route, { cookie: bob.cookie })).data;
+    assert.equal(fullSnapshot.messages.length, 80);
+    assert.equal(fullSnapshot.readMessageIds.length, 81);
+    assert.equal(await unreadFor(bob.cookie), 81);
+    const cleared = await request(readRoute, { method: "POST", cookie: bob.cookie, body: { messageIds: fullSnapshot.readMessageIds } });
+    assert.equal(cleared.data.unreadCount, 0);
+    assert.equal(await unreadFor(bob.cookie), 0);
+  });
+
+  await t.test("latest messages move classmates above empty chats without clearing unread", async () => {
+    const existing = (await request("/api/classmates", { cookie: alice.cookie })).data.classmates[0];
+    const pending = await request("/api/classmates", { method: "POST", cookie: alice.cookie, body: { email: "admin@example.test" } });
+    const accepted = await request(`/api/classmate-requests/${pending.data.request.id}`, { method: "PATCH", cookie: admin.cookie, body: { action: "accept" } });
+    const newChat = accepted.data.classmate.id;
+    const list = async () => (await request("/api/classmates", { cookie: alice.cookie })).data.classmates;
+    assert.equal((await list())[0].id, existing.id);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    assert.equal((await request(`/api/classmates/${newChat}/messages`, { method: "POST", cookie: admin.cookie, body: { content: "New message from second classmate" } })).status, 201);
+    const afterIncoming = await list();
+    assert.equal(afterIncoming[0].id, newChat);
+    assert.equal(afterIncoming[0].unreadCount, 1);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    assert.equal((await request(`/api/classmates/${existing.id}/messages`, { method: "POST", cookie: bob.cookie, body: { content: "Newest message from Bob" } })).status, 201);
+    const afterNext = await list();
+    assert.equal(afterNext[0].id, existing.id);
+    assert.equal(afterNext[0].unreadCount, 2);
+    const snapshot = (await request(`/api/classmates/${existing.id}/messages`, { cookie: alice.cookie })).data;
+    await request(`/api/classmates/${existing.id}/read`, { method: "POST", cookie: alice.cookie, body: { messageIds: snapshot.readMessageIds } });
+    const afterRead = await list();
+    assert.equal(afterRead[0].id, existing.id);
+    assert.equal(afterRead[0].unreadCount, 0);
+    assert.equal(afterRead[1].unreadCount, 1);
   });
 
   await t.test("AI fallback and persistence across restart", async () => {
@@ -211,6 +307,7 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
     await stop();
     await start();
     assert.equal((await request("/api/me", { cookie: alice.cookie })).data.user.email, "alice@example.test");
+    assert.equal((await request("/api/classmates", { cookie: bob.cookie })).data.classmates[0].unreadCount, 0);
     assert.equal((await request(`/api/courses/${courseId}/documents`, { cookie: alice.cookie })).data.documents.length, 5);
     assert.equal((await request(`/api/courses/${courseId}/messages`, { cookie: alice.cookie })).data.messages.length, 2);
     assert.equal((await request("/api/auth/logout", { method: "POST", cookie: alice.cookie })).status, 200);

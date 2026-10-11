@@ -1540,7 +1540,8 @@ function requestOpenAiChatHealth(model) {
         { role: "system", content: "Reply with OK only." },
         { role: "user", content: "health check" }
       ],
-      max_tokens: 4
+      max_completion_tokens: 64,
+      ...(/^gpt-6(?:[.-]|$)/i.test(model) ? { reasoning_effort: /^gpt-6-(?:luna|sol)(?:-|$)/i.test(model) ? "none" : "low" } : {})
     });
 
     const req = https.request(

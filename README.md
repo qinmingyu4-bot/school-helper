@@ -60,7 +60,9 @@ ADMIN_EMAILS=your-real-email@example.com
 REQUIRE_INVITE_CODE=true
 OWNER_INVITE_CODE=your-private-creator-code
 OPENAI_API_KEY=your-openai-api-key
-OPENAI_MODEL=gpt-4o-mini
+OPENAI_SIMPLE_MODEL=gpt-6-luna
+OPENAI_COMPLEX_MODEL=gpt-6.1-sol
+OPENAI_SOL_ROUTE_PERCENT=15
 ```
 
 For AWS DynamoDB:

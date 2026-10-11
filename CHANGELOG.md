@@ -2,6 +2,8 @@
 
 ## 2026-10-10
 
+- Displayed ordinary-task and complex-task model configuration separately in the creator console, clarified that AI connectivity checks probe only the ordinary-task model, and updated the health request for GPT-6 compatibility.
+- Aligned local AI model configuration and documented setup with GPT-6 Luna and GPT-6.1 Sol.
 - Reorganized creator-console invitations and users into responsive full-width lists, labeled invitation fields, separated row actions and user statistics, and wrapped long account details without overlap.
 - Corrected creator-console AI status details and distinguished an unconfigured AI service.
 - Released StudyBridge Cloud `1.1.51` with the reviewed Study Area scrolling and compact fixed-bar improvements; updated the entry script version to refresh browser caches.

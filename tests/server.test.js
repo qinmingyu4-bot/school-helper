@@ -30,6 +30,7 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
         LOCAL_DB_FILE: path.join(directory, "database.json"), LOCAL_DB_BACKUP_DISABLED: "true",
         SESSION_SECRET: "isolated-health-check-session-secret", ADMIN_EMAILS: "admin@example.test",
         OWNER_INVITE_CODE: "health-owner-invite", REQUIRE_INVITE_CODE: "true",
+        OPENAI_SIMPLE_MODEL: "gpt-6-luna", OPENAI_COMPLEX_MODEL: "gpt-6.1-sol", OPENAI_SOL_ROUTE_PERCENT: "15",
         REQUIRE_EMAIL_VERIFICATION: "false", OPENAI_API_KEY: "", GOOGLE_CLIENT_ID: "",
         GOOGLE_CLIENT_SECRET: "", SMTP_HOST: "", SMTP_USER: "", SMTP_PASS: ""
       },
@@ -80,6 +81,16 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
   const admin = await request("/api/auth/register", { method: "POST", body: registration("Admin", "admin@example.test", "health-owner-invite") });
   assert.equal(admin.status, 201);
   assert.equal(admin.data.user.role, "admin");
+  await t.test("admin status reports both configured task models", async () => {
+    assert.equal((await request("/api/admin/system-status")).status, 401);
+    const status = await request("/api/admin/system-status", { cookie: admin.cookie });
+    assert.equal(status.status, 200);
+    assert.equal(status.data.ai.simpleModel, "gpt-6-luna");
+    assert.equal(status.data.ai.complexModel, "gpt-6.1-sol");
+    assert.equal(status.data.ai.complexRoutePercent, 15);
+    assert.equal(status.data.ai.configured, false);
+    assert.equal(status.data.ai.ok, false);
+  });
   const invite = await request("/api/admin/invites", { method: "POST", cookie: admin.cookie, body: { label: "Health check", maxUses: 2, role: "student" } });
   assert.equal(invite.status, 201);
   const code = invite.data.invite.code;

@@ -28,51 +28,6 @@
     if (majorInput) majorInput.value = profile.major || "";
   }
 
-  function installEntryCleanupStyle() {
-    if (document.querySelector("#studybridge-entry-cleanup-style")) return;
-    const style = document.createElement("style");
-    style.id = "studybridge-entry-cleanup-style";
-    style.textContent = `
-      #openStudyAreaButton,
-      #openSchoolCommunityButton,
-      #openClassmatesButton,
-      #openEmailReplyButton,
-      #openScheduleButton {
-        display: grid !important;
-        grid-template-columns: 34px minmax(0, 1fr) !important;
-        align-items: center !important;
-        min-height: 48px !important;
-        max-height: 54px !important;
-        overflow: hidden !important;
-      }
-
-      #openStudyAreaButton .small-button,
-      #openSchoolCommunityButton .small-button,
-      #openClassmatesButton .small-button,
-      #openEmailReplyButton .small-button,
-      #openScheduleButton .small-button,
-      #openStudyAreaButton > :nth-child(n + 3),
-      #openSchoolCommunityButton > :nth-child(n + 3),
-      #openClassmatesButton > :nth-child(n + 3),
-      #openEmailReplyButton > :nth-child(n + 3),
-      #openScheduleButton > :nth-child(n + 3) {
-        display: none !important;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  function cleanFeatureEntries() {
-    ["#openStudyAreaButton", "#openSchoolCommunityButton", "#openClassmatesButton", "#openEmailReplyButton", "#openScheduleButton"].forEach((selector) => {
-      const entry = document.querySelector(selector);
-      if (!entry) return;
-      entry.querySelectorAll(":scope > .small-button").forEach((control) => control.remove());
-      Array.from(entry.children)
-        .slice(2)
-        .forEach((child) => child.remove());
-    });
-  }
-
   async function saveOnboarding(event) {
     const form = event.target?.closest?.("#profileOnboardingForm");
     if (!form) return;
@@ -120,10 +75,4 @@
   }
 
   document.addEventListener("submit", saveOnboarding, true);
-  installEntryCleanupStyle();
-  cleanFeatureEntries();
-  setInterval(() => {
-    installEntryCleanupStyle();
-    cleanFeatureEntries();
-  }, 500);
 })();

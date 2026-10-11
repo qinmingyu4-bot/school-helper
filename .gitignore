@@ -3,3 +3,18 @@
 node_modules
 .DS_Store
 *.log
+
+# Local caches and temporary verification files.
+.npm-cache/
+.tmp*
+tmp-live-*
+tmp_live_*
+backups/
+docs/rollback/
+docs/*.local.gz.b64
+server.github*
+server.remote.js
+env.github*
+Fetcher.cs
+headless-dom.html
+verify-live-*.png

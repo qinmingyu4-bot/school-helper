@@ -133,6 +133,7 @@
     const type = file.type || "";
     if (type.startsWith("image/")) return "image";
     if (type === "application/pdf" || name.endsWith(".pdf")) return "pdf";
+    if (/\.(docx?|pptx?|xlsx?)$/i.test(name)) return "office";
     if (type.startsWith("text/") || /\.(txt|md|csv|json|js|ts|tsx|jsx|py|java|cpp|c|h|html|css|xml|yaml|yml|log)$/i.test(name)) return "text";
     return "file";
   }
@@ -228,10 +229,10 @@
       };
 
       try {
-        if (kind === "image" || kind === "pdf") {
-          item.dataUrl = await readAsDataUrl(file);
-        } else if (kind === "text" && file.size <= MAX_TEXT_BYTES) {
+        if (kind === "text" && file.size <= MAX_TEXT_BYTES) {
           item.text = await readAsText(file);
+        } else {
+          item.dataUrl = await readAsDataUrl(file);
         }
         attachments.push(item);
       } catch (error) {
@@ -263,7 +264,7 @@
     button.id = "studyAttachmentButton";
     button.className = "study-attachment-button";
     button.type = "button";
-    button.title = "Upload images, screenshots, PDFs, or files";
+    button.title = "Upload screenshots, images, PDF, Word, PPT, Excel, or other files";
     button.textContent = "+";
 
     const tray = document.createElement("div");
@@ -290,7 +291,7 @@
 
     ["dragenter", "dragover"].forEach((type) => {
       form.addEventListener(type, (event) => {
-        if (!event.dataTransfer?.files?.length) return;
+        if (!hasTransferFiles(event.dataTransfer)) return;
         event.preventDefault();
         form.classList.add("study-drag-over");
       });
@@ -301,7 +302,7 @@
     });
 
     form.addEventListener("drop", async (event) => {
-      const files = event.dataTransfer?.files;
+      const files = filesFromTransfer(event.dataTransfer);
       if (!files?.length) return;
       event.preventDefault();
       await addFiles(files);
@@ -312,6 +313,18 @@
       if (!files.length) return;
       await addFiles(files);
     });
+  }
+
+  function filesFromTransfer(dataTransfer) {
+    const direct = Array.from(dataTransfer?.files || []).filter(Boolean);
+    if (direct.length) return direct;
+    return Array.from(dataTransfer?.items || [])
+      .map((item) => (item.kind === "file" && typeof item.getAsFile === "function" ? item.getAsFile() : null))
+      .filter(Boolean);
+  }
+
+  function hasTransferFiles(dataTransfer) {
+    return Array.from(dataTransfer?.types || []).includes("Files") || Array.from(dataTransfer?.items || []).some((item) => item.kind === "file") || Boolean(dataTransfer?.files?.length);
   }
 
   async function api(path, options = {}) {

@@ -1,4 +1,7 @@
 (() => {
+  if (window.__studybridgeClassmatesRequestPatch === "20261007-3") return;
+  window.__studybridgeClassmatesRequestPatch = "20261007-3";
+
   let page = null;
   let button = null;
   let classmates = [];
@@ -50,7 +53,7 @@
         grid-template-columns: minmax(290px, 390px) minmax(0, 1fr);
         gap: 18px;
         min-height: 0;
-        padding: 22px 28px;
+        padding: 22px 28px 32px;
         overflow: hidden;
       }
 
@@ -146,7 +149,9 @@
 
       .classmates-chat-shell {
         display: grid;
-        grid-template-rows: auto minmax(0, 1fr) auto;
+        grid-template-rows: auto auto minmax(0, 1fr) auto;
+        min-height: 0;
+        overflow: hidden;
       }
 
       .classmates-chat-head {
@@ -162,22 +167,116 @@
         margin: 0;
       }
 
+      .peer-profile-card {
+        margin: 14px 18px 0;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+        background: white;
+      }
+
+      .peer-profile-card[hidden] {
+        display: none;
+      }
+
+      .peer-profile-cover {
+        height: 86px;
+        background: linear-gradient(135deg, #234764, #2f7d62);
+        overflow: hidden;
+      }
+
+      .peer-profile-cover img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .peer-profile-main {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 12px;
+        align-items: center;
+        padding: 12px 14px 14px;
+      }
+
+      .peer-profile-avatar {
+        width: 58px;
+        height: 58px;
+        border-radius: 8px;
+        border: 3px solid white;
+        margin-top: -34px;
+        background: #1f4d5c;
+        color: white;
+        display: grid;
+        place-items: center;
+        font-weight: 800;
+        box-shadow: 0 8px 22px rgba(25, 36, 58, 0.16);
+        overflow: hidden;
+      }
+
+      .peer-profile-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .peer-profile-name {
+        margin: 0;
+        font-size: 18px;
+        line-height: 1.2;
+      }
+
+      .peer-profile-facts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 7px;
+      }
+
+      .peer-profile-facts span {
+        border: 1px solid #dfe7f1;
+        border-radius: 999px;
+        padding: 4px 8px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.2;
+        background: #f8fbff;
+      }
+
       .direct-message-list {
-        align-content: end;
-        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        align-content: stretch;
+        justify-content: flex-start;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 18px 18px 36px;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
       }
 
       .direct-message {
+        display: grid;
+        flex: 0 0 auto;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
+        gap: 16px;
         max-width: min(620px, 86%);
-        padding: 11px 13px;
+        min-height: 0;
+        height: auto;
+        padding: 9px 14px;
         border: 1px solid var(--line);
         border-radius: 8px;
         background: white;
-        line-height: 1.55;
+        line-height: 1.42;
         white-space: pre-wrap;
       }
 
       .direct-message.mine {
+        align-self: flex-end;
         justify-self: end;
         border-color: #cbd8f4;
         background: #f0f5ff;
@@ -185,9 +284,11 @@
 
       .direct-message time {
         display: block;
-        margin-top: 5px;
+        margin: 0;
         color: var(--muted);
         font-size: 11px;
+        white-space: nowrap;
+        text-align: right;
       }
 
       .classmate-chat-form {
@@ -303,6 +404,7 @@
             </div>
             <button class="small-button" id="refreshClassmatesButton" type="button">刷新</button>
           </header>
+          <article class="peer-profile-card" id="peerProfileCard" hidden></article>
           <div class="direct-message-list" id="directMessageList"></div>
           <form class="classmate-chat-form" id="classmateChatForm">
             <textarea id="classmateMessageInput" placeholder="写一句话给同学"></textarea>
@@ -320,8 +422,26 @@
     return page;
   }
 
+  function setWorkspaceShell(activeFeaturePage = true) {
+    const workspacePage = document.querySelector("#workspacePage");
+    if (workspacePage) {
+      workspacePage.hidden = false;
+      workspacePage.removeAttribute("hidden");
+      workspacePage.style.display = "";
+      workspacePage.style.visibility = "visible";
+    }
+    document.body.classList.toggle("studybridge-secondary-page", activeFeaturePage);
+    document.body.classList.toggle("study-sidebar-hidden", activeFeaturePage);
+    document.body.classList.remove("creator-clean-mode", "admin-boundary-active");
+    ["#developerPanel", "#scheduleDashboard", "#chatArea", "#quickPrompts", "#chatForm"].forEach((selector) => {
+      const element = document.querySelector(`#workspacePage > ${selector}`);
+      if (element) element.hidden = activeFeaturePage;
+    });
+  }
+
   function hideOtherPages() {
-    ["#workspacePage", "#profilePage", "#schoolCommunityPage", "#emailReplyPage", "#schedulePage"].forEach((selector) => {
+    setWorkspaceShell(true);
+    ["#profilePage", "#schoolCommunityPage", "#emailReplyPage", "#schedulePage"].forEach((selector) => {
       const element = document.querySelector(selector);
       if (element) element.hidden = true;
     });
@@ -333,8 +453,7 @@
       const element = document.querySelector(selector);
       if (element) element.hidden = true;
     });
-    const workspacePage = document.querySelector("#workspacePage");
-    if (workspacePage) workspacePage.hidden = false;
+    setWorkspaceShell(false);
   }
 
   async function showClassmatesPage() {
@@ -353,7 +472,7 @@
     classmatesRefreshTimer = setInterval(() => {
       if (!page || page.hidden || document.visibilityState === "hidden") return;
       loadClassmates({ silent: true });
-    }, 6000);
+    }, 10000);
   }
 
   async function loadClassmates(options = {}) {
@@ -374,7 +493,8 @@
       renderRequests();
       renderClassmates();
       renderCandidates();
-      await loadDirectMessages();
+      if (!silent) await loadDirectMessages();
+      else renderPeerProfile(classmates.find((item) => item.id === activeClassmateId));
       const incomingCount = requests.incoming?.length || 0;
       const outgoingCount = requests.outgoing?.length || 0;
       status.textContent = incomingCount || outgoingCount
@@ -497,6 +617,50 @@
     });
   }
 
+  function initialsForProfile(name) {
+    return String(name || "SB")
+      .trim()
+      .split(/\s+/)
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "SB";
+  }
+
+  function renderPeerProfile(active) {
+    const card = page.querySelector("#peerProfileCard");
+    if (!card) return;
+    const peer = active?.peer;
+    if (!peer) {
+      card.hidden = true;
+      card.innerHTML = "";
+      return;
+    }
+    const name = peer.name || "\u540c\u5b66";
+    const facts = [
+      peer.school ? `\u5b66\u6821\uff1a${peer.school}` : "",
+      peer.major ? `\u4e13\u4e1a\uff1a${peer.major}` : "",
+      peer.sbId ? `SB ID: ${peer.sbId}` : ""
+    ].filter(Boolean);
+    card.hidden = false;
+    card.innerHTML = `
+      <div class="peer-profile-cover">
+        ${peer.backgroundUrl ? `<img src="${escapeHtml(peer.backgroundUrl)}" alt="">` : ""}
+      </div>
+      <div class="peer-profile-main">
+        <div class="peer-profile-avatar">
+          ${peer.avatarUrl ? `<img src="${escapeHtml(peer.avatarUrl)}" alt="">` : escapeHtml(initialsForProfile(name))}
+        </div>
+        <div>
+          <h4 class="peer-profile-name">${escapeHtml(name)}</h4>
+          <div class="peer-profile-facts">
+            ${facts.length ? facts.map((fact) => `<span>${escapeHtml(fact)}</span>`).join("") : "<span>\u8fd8\u6ca1\u6709\u586b\u5199\u516c\u5f00\u8d44\u6599</span>"}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   async function addClassmate(event) {
     event.preventDefault();
     const input = page.querySelector("#classmateSbIdInput");
@@ -537,10 +701,12 @@
     const list = page.querySelector("#directMessageList");
     const active = classmates.find((item) => item.id === activeClassmateId);
     if (!active) {
+      renderPeerProfile(null);
       title.textContent = "请选择一位同学";
       list.innerHTML = '<p class="empty">申请通过后，这里会显示你们的聊天。</p>';
       return;
     }
+    renderPeerProfile(active);
     title.textContent = active.peer?.name || "同学";
     const result = await api(`/api/classmates/${encodeURIComponent(active.id)}/messages`);
     const messages = result.messages || [];
@@ -551,8 +717,8 @@
     list.innerHTML = messages
       .map(
         (message) => `
-          <article class="direct-message ${message.mine ? "mine" : ""}">
-            ${escapeHtml(message.content)}
+          <article class="direct-message ${message.mine ? "mine" : ""}" data-normalized-bubble="true">
+            <span>${escapeHtml(message.content)}</span>
             <time>${formatDateTime(message.createdAt)}</time>
           </article>
         `
@@ -584,6 +750,7 @@
     ensurePage();
   }
 
+  window.studybridgeOpenClassmatesPage = showClassmatesPage;
   boot();
-  setInterval(boot, 1200);
+  setInterval(boot, 2500);
 })();

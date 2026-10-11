@@ -41,36 +41,221 @@
     const style = document.createElement("style");
     style.id = "studybridge-classmates-style";
     style.textContent = `
-      .classmates-entry { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: white; color: var(--navy); text-align: left; box-shadow: 0 8px 24px rgba(25, 36, 58, 0.04); }
-      .classmates-entry:hover { border-color: var(--green); }
-      .classmates-entry-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 8px; background: linear-gradient(145deg, var(--navy), var(--green)); color: white; font-weight: 900; }
-      .classmates-entry strong { display: block; font-size: 14px; }
-      .classmates-entry span { color: var(--muted); font-size: 12px; }
-      .classmates-page { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100vh; min-height: 0; background: #f4f6f9; }
-      .classmates-page[hidden] { display: none; }
-      .classmates-body { display: grid; grid-template-columns: minmax(270px, 370px) minmax(0, 1fr); gap: 18px; min-height: 0; padding: 22px 28px; overflow: hidden; }
-      .classmates-side, .classmates-chat-shell { min-height: 0; border: 1px solid var(--line); border-radius: 8px; background: white; box-shadow: 0 12px 30px rgba(25, 36, 58, 0.05); }
-      .classmates-side { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 12px; padding: 16px; overflow: hidden; }
-      .classmate-add-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
-      .classmate-add-form input { min-width: 0; }
-      .classmate-list, .classmate-candidates, .direct-message-list { display: grid; gap: 8px; min-height: 0; overflow: auto; }
-      .classmate-list { align-content: start; }
-      .classmate-candidates { max-height: 180px; align-content: start; }
-      .classmate-row, .candidate-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 10px; border: 1px solid #dfe7f1; border-radius: 8px; background: #fbfdff; }
-      .classmate-row.active { border-color: rgba(56, 103, 214, 0.52); background: #eef4ff; box-shadow: inset 3px 0 0 var(--blue); }
-      .classmate-row button, .candidate-row button { text-align: left; }
-      .classmate-meta { display: block; color: var(--muted); font-size: 12px; }
-      .classmates-chat-shell { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
-      .classmates-chat-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
-      .classmates-chat-head h3 { margin: 0; }
-      .direct-message-list { align-content: end; padding: 18px; }
-      .direct-message { max-width: min(620px, 86%); padding: 11px 13px; border: 1px solid var(--line); border-radius: 8px; background: white; line-height: 1.55; white-space: pre-wrap; }
-      .direct-message.mine { justify-self: end; border-color: #cbd8f4; background: #f0f5ff; }
-      .direct-message time { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; }
-      .classmate-chat-form { display: grid; grid-template-columns: minmax(0, 1fr) 86px; gap: 10px; padding: 14px 18px 18px; border-top: 1px solid var(--line); background: rgba(244, 246, 249, 0.86); }
-      .classmate-chat-form textarea { height: 52px; min-height: 52px; max-height: 140px; resize: none; }
-      .classmates-message { min-height: 18px; margin: 0; color: var(--muted); font-size: 12px; }
-      @media (max-width: 900px) { .classmates-page { height: auto; min-height: 680px; } .classmates-body { grid-template-columns: 1fr; overflow: visible; padding: 16px; } .classmates-chat-shell { min-height: 520px; } }
+      .classmates-entry {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        min-height: 48px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: white;
+        color: var(--navy);
+        text-align: left;
+        box-shadow: 0 8px 24px rgba(25, 36, 58, 0.04);
+      }
+
+      .classmates-entry:hover {
+        border-color: var(--green);
+      }
+
+      .classmates-entry-icon {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        background: linear-gradient(145deg, var(--navy), var(--green));
+        color: white;
+        font-weight: 900;
+      }
+
+      .classmates-entry strong {
+        display: block;
+        font-size: 14px;
+      }
+
+      .classmates-entry span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .classmates-page {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        height: 100vh;
+        min-height: 0;
+        background: #f4f6f9;
+      }
+
+      .classmates-page[hidden] {
+        display: none;
+      }
+
+      .classmates-body {
+        display: grid;
+        grid-template-columns: minmax(270px, 370px) minmax(0, 1fr);
+        gap: 18px;
+        min-height: 0;
+        padding: 22px 28px;
+        overflow: hidden;
+      }
+
+      .classmates-side,
+      .classmates-chat-shell {
+        min-height: 0;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: white;
+        box-shadow: 0 12px 30px rgba(25, 36, 58, 0.05);
+      }
+
+      .classmates-side {
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr);
+        gap: 12px;
+        padding: 16px;
+      }
+
+      .classmate-add-form {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+      }
+
+      .classmate-add-form input {
+        min-width: 0;
+      }
+
+      .classmate-list,
+      .classmate-candidates,
+      .direct-message-list {
+        display: grid;
+        gap: 8px;
+        min-height: 0;
+        overflow: auto;
+      }
+
+      .classmate-list {
+        align-content: start;
+      }
+
+      .classmate-row,
+      .candidate-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        padding: 10px;
+        border: 1px solid #dfe7f1;
+        border-radius: 8px;
+        background: #fbfdff;
+      }
+
+      .classmate-row.active {
+        border-color: rgba(56, 103, 214, 0.52);
+        background: #eef4ff;
+        box-shadow: inset 3px 0 0 var(--blue);
+      }
+
+      .classmate-row button,
+      .candidate-row button {
+        text-align: left;
+      }
+
+      .classmate-meta {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .classmates-chat-shell {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+      }
+
+      .classmates-chat-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .classmates-chat-head h3 {
+        margin: 0;
+      }
+
+      .direct-message-list {
+        align-content: end;
+        padding: 18px;
+      }
+
+      .direct-message {
+        max-width: min(620px, 86%);
+        padding: 11px 13px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: white;
+        line-height: 1.55;
+        white-space: pre-wrap;
+      }
+
+      .direct-message.mine {
+        justify-self: end;
+        border-color: #cbd8f4;
+        background: #f0f5ff;
+      }
+
+      .direct-message time {
+        display: block;
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .classmate-chat-form {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 86px;
+        gap: 10px;
+        padding: 14px 18px 18px;
+        border-top: 1px solid var(--line);
+        background: rgba(244, 246, 249, 0.86);
+      }
+
+      .classmate-chat-form textarea {
+        height: 52px;
+        min-height: 52px;
+        max-height: 140px;
+        resize: none;
+      }
+
+      .classmates-message {
+        min-height: 18px;
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      @media (max-width: 900px) {
+        .classmates-page {
+          height: auto;
+          min-height: 680px;
+        }
+
+        .classmates-body {
+          grid-template-columns: 1fr;
+          overflow: visible;
+          padding: 16px;
+        }
+
+        .classmates-chat-shell {
+          min-height: 520px;
+        }
+      }
     `;
     document.head.appendChild(style);
   }
@@ -89,7 +274,6 @@
     button.innerHTML = `
       <span class="classmates-entry-icon">友</span>
       <span><strong>同学</strong><span id="classmatesEntrySchool">添加同校同学并聊天</span></span>
-      <span class="small-button">进入</span>
     `;
     anchor.insertAdjacentElement("afterend", button);
     button.addEventListener("click", showClassmatesPage);
@@ -105,20 +289,42 @@
     page.hidden = true;
     page.innerHTML = `
       <header class="topbar">
-        <div><p class="eyebrow">Classmates</p><h2>同学</h2><span id="classmatesStatusLine">按 Profile 的学校展示同校同学。</span></div>
+        <div>
+          <p class="eyebrow">Classmates</p>
+          <h2>同学</h2>
+          <span id="classmatesStatusLine">按 Profile 的学校展示同校同学。</span>
+        </div>
         <button class="ghost-button" id="backFromClassmatesButton" type="button">返回学习区</button>
       </header>
       <div class="classmates-body">
         <aside class="classmates-side">
-          <div><h3>同学列表</h3><p class="classmates-message" id="classmatesSchoolLine">先填写 Profile 学校。</p></div>
-          <form class="classmate-add-form" id="classmateAddForm"><input id="classmateEmailInput" type="text" placeholder="输入同学的 SB ID，例如 adam2026" autocomplete="off" /><button class="small-button" type="submit">添加</button></form>
+          <div>
+            <h3>同学列表</h3>
+            <p class="classmates-message" id="classmatesSchoolLine">先填写 Profile 学校。</p>
+          </div>
+          <form class="classmate-add-form" id="classmateAddForm">
+            <input id="classmateEmailInput" type="text" placeholder="输入同学的 SB ID，例如 adam2026" autocomplete="off" />
+            <button class="small-button" type="submit">添加</button>
+          </form>
           <div class="classmate-list" id="classmateList"></div>
-          <div><h3>同校用户</h3><div class="classmate-candidates" id="classmateCandidates"></div></div>
+          <div>
+            <h3>同校用户</h3>
+            <div class="classmate-candidates" id="classmateCandidates"></div>
+          </div>
         </aside>
         <section class="classmates-chat-shell">
-          <header class="classmates-chat-head"><div><p class="eyebrow">Direct Chat</p><h3 id="classmateChatTitle">请选择一位同学</h3></div><button class="small-button" id="refreshClassmatesButton" type="button">刷新</button></header>
+          <header class="classmates-chat-head">
+            <div>
+              <p class="eyebrow">Direct Chat</p>
+              <h3 id="classmateChatTitle">请选择一位同学</h3>
+            </div>
+            <button class="small-button" id="refreshClassmatesButton" type="button">刷新</button>
+          </header>
           <div class="direct-message-list" id="directMessageList"></div>
-          <form class="classmate-chat-form" id="classmateChatForm"><textarea id="classmateMessageInput" placeholder="写一句话给同学"></textarea><button class="send-button" type="submit">发送</button></form>
+          <form class="classmate-chat-form" id="classmateChatForm">
+            <textarea id="classmateMessageInput" placeholder="写一句话给同学"></textarea>
+            <button class="send-button" type="submit">发送</button>
+          </form>
         </section>
       </div>
     `;
@@ -182,13 +388,22 @@
   function renderClassmates() {
     const list = page.querySelector("#classmateList");
     if (!classmates.length) {
-      list.innerHTML = '<p class="empty">还没有添加同学。输入同学的 SB ID 开始。</p>';
+      list.innerHTML = '<p class="empty">还没有添加同学。输入同学注册邮箱开始。</p>';
       return;
     }
-    list.innerHTML = classmates.map((item) => {
-      const last = item.lastMessage?.content ? ` · ${item.lastMessage.mine ? "你：" : ""}${item.lastMessage.content}` : "";
-      return `<article class="classmate-row ${item.id === activeClassmateId ? "active" : ""}"><button class="item-main" type="button" data-open-classmate="${item.id}"><strong>${escapeHtml(item.peer?.name || "同学")}</strong><span class="classmate-meta">${escapeHtml(item.peer?.sbId ? `@${item.peer.sbId}` : item.peer?.email || "")}${escapeHtml(last).slice(0, 70)}</span></button></article>`;
-    }).join("");
+    list.innerHTML = classmates
+      .map((item) => {
+        const last = item.lastMessage?.content ? ` · ${item.lastMessage.mine ? "你：" : ""}${item.lastMessage.content}` : "";
+        return `
+          <article class="classmate-row ${item.id === activeClassmateId ? "active" : ""}">
+            <button class="item-main" type="button" data-open-classmate="${item.id}">
+              <strong>${escapeHtml(item.peer?.name || "同学")}</strong>
+              <span class="classmate-meta">${escapeHtml(item.peer?.sbId ? `@${item.peer.sbId}` : item.peer?.email || "")}${escapeHtml(last).slice(0, 70)}</span>
+            </button>
+          </article>
+        `;
+      })
+      .join("");
     list.querySelectorAll("[data-open-classmate]").forEach((item) => {
       item.addEventListener("click", async () => {
         activeClassmateId = item.dataset.openClassmate;
@@ -201,10 +416,22 @@
   function renderCandidates() {
     const list = page.querySelector("#classmateCandidates");
     if (!candidates.length) {
-      list.innerHTML = '<p class="empty">暂时没有可直接添加的同校用户，也可以输入 SB ID 添加。</p>';
+      list.innerHTML = '<p class="empty">暂时没有可直接添加的同校用户，也可以输入邮箱添加。</p>';
       return;
     }
-    list.innerHTML = candidates.map((item) => `<article class="candidate-row"><div><strong>${escapeHtml(item.name)}</strong><span class="classmate-meta">${escapeHtml(item.sbId ? `@${item.sbId}` : item.email)}</span></div><button class="small-button" type="button" data-add-candidate="${escapeHtml(item.sbId || item.email)}">添加</button></article>`).join("");
+    list.innerHTML = candidates
+      .map(
+        (item) => `
+          <article class="candidate-row">
+            <div>
+              <strong>${escapeHtml(item.name)}</strong>
+              <span class="classmate-meta">${escapeHtml(item.sbId ? `@${item.sbId}` : item.email)}</span>
+            </div>
+            <button class="small-button" type="button" data-add-candidate="${escapeHtml(item.sbId || item.email)}">添加</button>
+          </article>
+        `
+      )
+      .join("");
     list.querySelectorAll("[data-add-candidate]").forEach((button) => {
       button.addEventListener("click", async () => {
         page.querySelector("#classmateEmailInput").value = button.dataset.addCandidate;
@@ -217,11 +444,11 @@
     event.preventDefault();
     const input = page.querySelector("#classmateEmailInput");
     const status = page.querySelector("#classmatesStatusLine");
-    const email = input.value.trim();
-    if (!email) return;
+    const sbId = input.value.trim().replace(/^@+/, "");
+    if (!sbId) return;
     status.textContent = "正在添加同学...";
     try {
-      const result = await api("/api/classmates", { method: "POST", body: { email } });
+      const result = await api("/api/classmates", { method: "POST", body: { sbId } });
       input.value = "";
       activeClassmateId = result.classmate.id;
       await loadClassmates();
@@ -247,7 +474,16 @@
       list.innerHTML = '<p class="empty">还没有消息。先打个招呼吧。</p>';
       return;
     }
-    list.innerHTML = messages.map((message) => `<article class="direct-message ${message.mine ? "mine" : ""}">${escapeHtml(message.content)}<time>${formatDateTime(message.createdAt)}</time></article>`).join("");
+    list.innerHTML = messages
+      .map(
+        (message) => `
+          <article class="direct-message ${message.mine ? "mine" : ""}">
+            ${escapeHtml(message.content)}
+            <time>${formatDateTime(message.createdAt)}</time>
+          </article>
+        `
+      )
+      .join("");
     list.scrollTop = list.scrollHeight;
   }
 
@@ -273,6 +509,8 @@
     ensureButton();
     ensurePage();
   }
+
+  window.studybridgeOpenClassmatesPage = showClassmatesPage;
 
   boot();
   setInterval(() => {

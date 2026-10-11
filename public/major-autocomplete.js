@@ -1,35 +1,169 @@
 (() => {
   const majors = [
-    { name: "Business Administration", aliases: ["business", "bus", "bba", "management", "commerce"], area: "Business", examples: "case study, presentation, marketing, operations, management" },
-    { name: "Accounting", aliases: ["accounting", "acct", "audit", "tax"], area: "Business", examples: "financial statements, audit, tax, managerial accounting" },
-    { name: "Finance", aliases: ["finance", "fin", "investment", "banking"], area: "Business", examples: "valuation, markets, corporate finance, portfolio analysis" },
-    { name: "Marketing", aliases: ["marketing", "market", "digital marketing", "brand"], area: "Business", examples: "consumer behavior, branding, campaign strategy, analytics" },
-    { name: "Economics", aliases: ["economics", "econ", "microeconomics", "macroeconomics"], area: "Social Science", examples: "models, graphs, policy, statistics, market behavior" },
-    { name: "Engineering", aliases: ["engineering", "engineer", "eng", "en"], area: "Engineering", examples: "problem sets, design projects, lab reports, technical reasoning" },
-    { name: "Computer Engineering", aliases: ["computer engineering", "ce", "ece", "comp eng"], area: "Engineering", examples: "circuits, embedded systems, hardware/software systems" },
-    { name: "Electrical Engineering", aliases: ["electrical", "electrical engineering", "ee", "electronics"], area: "Engineering", examples: "circuits, signals, power, electronics, control systems" },
-    { name: "Mechanical Engineering", aliases: ["mechanical", "mechanical engineering", "mech", "me"], area: "Engineering", examples: "mechanics, thermodynamics, CAD, design, manufacturing" },
-    { name: "Civil Engineering", aliases: ["civil", "civil engineering", "structural", "construction"], area: "Engineering", examples: "structures, transportation, materials, project planning" },
-    { name: "Computer Science", aliases: ["computer science", "cs", "comp sci", "programming", "software"], area: "Technology", examples: "algorithms, code, debugging, data structures, systems" },
-    { name: "Software Engineering", aliases: ["software engineering", "software", "swe", "software dev"], area: "Technology", examples: "software design, testing, architecture, team projects" },
-    { name: "Data Science", aliases: ["data science", "data", "analytics", "machine learning", "ml"], area: "Technology", examples: "statistics, Python/R, machine learning, visualization" },
-    { name: "Information Technology", aliases: ["information technology", "it", "information systems", "is"], area: "Technology", examples: "networks, databases, systems, cybersecurity basics" },
-    { name: "Nursing", aliases: ["nursing", "nurse", "health care", "healthcare"], area: "Health", examples: "clinical reasoning, care plans, patient communication" },
-    { name: "Biology", aliases: ["biology", "bio", "life science", "bioscience"], area: "Science", examples: "cells, genetics, lab reports, ecology, physiology" },
-    { name: "Psychology", aliases: ["psychology", "psych", "cognitive", "mental health"], area: "Social Science", examples: "research methods, theories, experiments, essays" },
-    { name: "Education", aliases: ["education", "teaching", "teacher", "pedagogy"], area: "Education", examples: "lesson plans, classroom practice, reflection, assessment" },
-    { name: "English", aliases: ["english", "literature", "writing", "creative writing"], area: "Humanities", examples: "essay structure, close reading, argument, citation" },
-    { name: "Media and Communication", aliases: ["media", "communication", "communications", "journalism"], area: "Arts / Media", examples: "writing, audience analysis, campaigns, production" },
-    { name: "Graphic Design", aliases: ["graphic design", "design", "visual design", "ux", "ui"], area: "Design", examples: "portfolio, critique, visual hierarchy, design process" },
-    { name: "Hospitality and Tourism", aliases: ["hospitality", "tourism", "hotel", "restaurant"], area: "Applied Business", examples: "service operations, guest experience, event planning" },
-    { name: "Social Work", aliases: ["social work", "social service", "community service"], area: "Social Service", examples: "case notes, ethics, policy, community resources" },
-    { name: "Criminology", aliases: ["criminology", "criminal justice", "law enforcement"], area: "Social Science", examples: "policy, theory, case studies, research writing" },
-    { name: "Architecture", aliases: ["architecture", "arch", "architectural"], area: "Design / Built Environment", examples: "studio critique, drawings, design concepts, precedents" },
-    { name: "Mathematics", aliases: ["math", "mathematics", "statistics", "stats"], area: "Science", examples: "proofs, formulas, problem solving, modeling" }
+    {
+      name: "Business Administration",
+      aliases: ["business", "bus", "bba", "management", "commerce"],
+      area: "Business",
+      examples: "case study, presentation, marketing, operations, management"
+    },
+    {
+      name: "Accounting",
+      aliases: ["accounting", "acct", "audit", "tax"],
+      area: "Business",
+      examples: "financial statements, audit, tax, managerial accounting"
+    },
+    {
+      name: "Finance",
+      aliases: ["finance", "fin", "investment", "banking"],
+      area: "Business",
+      examples: "valuation, markets, corporate finance, portfolio analysis"
+    },
+    {
+      name: "Marketing",
+      aliases: ["marketing", "market", "digital marketing", "brand"],
+      area: "Business",
+      examples: "consumer behavior, branding, campaign strategy, analytics"
+    },
+    {
+      name: "Economics",
+      aliases: ["economics", "econ", "microeconomics", "macroeconomics"],
+      area: "Social Science",
+      examples: "models, graphs, policy, statistics, market behavior"
+    },
+    {
+      name: "Engineering",
+      aliases: ["engineering", "engineer", "eng", "en"],
+      area: "Engineering",
+      examples: "problem sets, design projects, lab reports, technical reasoning"
+    },
+    {
+      name: "Computer Engineering",
+      aliases: ["computer engineering", "ce", "ece", "comp eng"],
+      area: "Engineering",
+      examples: "circuits, embedded systems, hardware/software systems"
+    },
+    {
+      name: "Electrical Engineering",
+      aliases: ["electrical", "electrical engineering", "ee", "electronics"],
+      area: "Engineering",
+      examples: "circuits, signals, power, electronics, control systems"
+    },
+    {
+      name: "Mechanical Engineering",
+      aliases: ["mechanical", "mechanical engineering", "mech", "me"],
+      area: "Engineering",
+      examples: "mechanics, thermodynamics, CAD, design, manufacturing"
+    },
+    {
+      name: "Civil Engineering",
+      aliases: ["civil", "civil engineering", "structural", "construction"],
+      area: "Engineering",
+      examples: "structures, transportation, materials, project planning"
+    },
+    {
+      name: "Computer Science",
+      aliases: ["computer science", "cs", "comp sci", "programming", "software"],
+      area: "Technology",
+      examples: "algorithms, code, debugging, data structures, systems"
+    },
+    {
+      name: "Software Engineering",
+      aliases: ["software engineering", "software", "swe", "software dev"],
+      area: "Technology",
+      examples: "software design, testing, architecture, team projects"
+    },
+    {
+      name: "Data Science",
+      aliases: ["data science", "data", "analytics", "machine learning", "ml"],
+      area: "Technology",
+      examples: "statistics, Python/R, machine learning, visualization"
+    },
+    {
+      name: "Information Technology",
+      aliases: ["information technology", "it", "information systems", "is"],
+      area: "Technology",
+      examples: "networks, databases, systems, cybersecurity basics"
+    },
+    {
+      name: "Nursing",
+      aliases: ["nursing", "nurse", "health care", "healthcare"],
+      area: "Health",
+      examples: "clinical reasoning, care plans, patient communication"
+    },
+    {
+      name: "Biology",
+      aliases: ["biology", "bio", "life science", "bioscience"],
+      area: "Science",
+      examples: "cells, genetics, lab reports, ecology, physiology"
+    },
+    {
+      name: "Psychology",
+      aliases: ["psychology", "psych", "cognitive", "mental health"],
+      area: "Social Science",
+      examples: "research methods, theories, experiments, essays"
+    },
+    {
+      name: "Education",
+      aliases: ["education", "teaching", "teacher", "pedagogy"],
+      area: "Education",
+      examples: "lesson plans, classroom practice, reflection, assessment"
+    },
+    {
+      name: "English",
+      aliases: ["english", "literature", "writing", "creative writing"],
+      area: "Humanities",
+      examples: "essay structure, close reading, argument, citation"
+    },
+    {
+      name: "Media and Communication",
+      aliases: ["media", "communication", "communications", "journalism"],
+      area: "Arts / Media",
+      examples: "writing, audience analysis, campaigns, production"
+    },
+    {
+      name: "Graphic Design",
+      aliases: ["graphic design", "design", "visual design", "ux", "ui"],
+      area: "Design",
+      examples: "portfolio, critique, visual hierarchy, design process"
+    },
+    {
+      name: "Hospitality and Tourism",
+      aliases: ["hospitality", "tourism", "hotel", "restaurant"],
+      area: "Applied Business",
+      examples: "service operations, guest experience, event planning"
+    },
+    {
+      name: "Social Work",
+      aliases: ["social work", "social service", "community service"],
+      area: "Social Service",
+      examples: "case notes, ethics, policy, community resources"
+    },
+    {
+      name: "Criminology",
+      aliases: ["criminology", "criminal justice", "law enforcement"],
+      area: "Social Science",
+      examples: "policy, theory, case studies, research writing"
+    },
+    {
+      name: "Architecture",
+      aliases: ["architecture", "arch", "architectural"],
+      area: "Design / Built Environment",
+      examples: "studio critique, drawings, design concepts, precedents"
+    },
+    {
+      name: "Mathematics",
+      aliases: ["math", "mathematics", "statistics", "stats"],
+      area: "Science",
+      examples: "proofs, formulas, problem solving, modeling"
+    }
   ];
 
   function normalize(value) {
-    return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+    return String(value || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
   }
 
   function escapeHtml(value) {
@@ -70,7 +204,10 @@
     const style = document.createElement("style");
     style.id = "studybridge-major-autocomplete-style";
     style.textContent = `
-      .major-field-shell { position: relative; }
+      .major-field-shell {
+        position: relative;
+      }
+
       .major-suggest-list {
         position: absolute;
         left: 0;
@@ -87,7 +224,11 @@
         background: #ffffff;
         box-shadow: 0 18px 44px rgba(25, 36, 58, 0.16);
       }
-      .major-suggest-list[hidden] { display: none; }
+
+      .major-suggest-list[hidden] {
+        display: none;
+      }
+
       .major-suggest-option {
         display: grid;
         gap: 3px;
@@ -98,11 +239,30 @@
         color: var(--ink);
         text-align: left;
       }
+
       .major-suggest-option:hover,
-      .major-suggest-option.is-active { border-color: var(--green); background: #ffffff; }
-      .major-suggest-name { color: var(--navy); font-weight: 900; }
-      .major-suggest-meta { color: var(--muted); font-size: 12px; line-height: 1.35; }
-      .major-suggest-empty { padding: 10px; color: var(--muted); font-size: 12px; }
+      .major-suggest-option.is-active {
+        border-color: var(--green);
+        background: #ffffff;
+      }
+
+      .major-suggest-name {
+        color: var(--navy);
+        font-weight: 900;
+      }
+
+      .major-suggest-meta {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .major-suggest-empty {
+        padding: 10px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
       .major-match-card {
         display: grid;
         gap: 8px;
@@ -112,9 +272,23 @@
         border-radius: 8px;
         background: #f8fbff;
       }
-      .major-match-card[hidden] { display: none; }
-      .major-match-card h4 { margin: 0; color: var(--navy); font-size: 14px; }
-      .major-match-card p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+
+      .major-match-card[hidden] {
+        display: none;
+      }
+
+      .major-match-card h4 {
+        margin: 0;
+        color: var(--navy);
+        font-size: 14px;
+      }
+
+      .major-match-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
     `;
     document.head.appendChild(style);
   }

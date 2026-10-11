@@ -19,6 +19,7 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, in
 
 ```bash
 cp .env.example .env
+npm ci
 node server.js
 ```
 
@@ -36,6 +37,20 @@ OWNER_INVITE_CODE=your-private-creator-code
 ```
 
 Register with that email and owner invite code. After login, the creator console appears inside the app.
+
+## Health Checks
+
+```bash
+npm run check
+npm test
+npm audit --omit=dev
+```
+
+Tests use isolated temporary databases and disable external AI, email, and Google services.
+Pushes to `main` run these checks before the Lightsail deployment. Historical one-time
+hotfix workflows are preserved in `.github/legacy-workflows` and no longer run automatically
+or overwrite the checked source. Some archived definitions contain invalid YAML and are
+kept only as historical references.
 
 ## Important Environment Variables
 

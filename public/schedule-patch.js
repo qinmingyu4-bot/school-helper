@@ -1,4 +1,7 @@
 (() => {
+  if (window.__studybridgeSchedulePatch === "20261007-3") return;
+  window.__studybridgeSchedulePatch = "20261007-3";
+
   const COURSE_NAME = "Schedule & Deadlines";
   const ITEM_PREFIX = "[SCHEDULE_ITEM]";
   const SOURCE_PREFIX = "[SCHEDULE_SOURCE]";
@@ -158,6 +161,87 @@
 
       .schedule-dashboard.urgent .schedule-dashboard-countdown {
         background: linear-gradient(145deg, #7a2e1f, #c66a2c);
+      }
+
+      .schedule-dashboard-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .schedule-dashboard-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 12px;
+        padding: 9px 10px;
+        border: 1px solid rgba(31, 58, 95, 0.1);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      .schedule-dashboard-row strong,
+      .schedule-dashboard-row span {
+        display: block;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .schedule-dashboard-row strong {
+        color: var(--navy);
+        font-size: 14px;
+        line-height: 1.2;
+      }
+
+      .schedule-dashboard-row span {
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .schedule-dashboard-mini-countdown {
+        display: inline-grid !important;
+        place-items: center;
+        min-width: 92px;
+        min-height: 30px;
+        margin: 0 !important;
+        padding: 0 10px;
+        border-radius: 999px;
+        background: rgba(47, 125, 98, 0.11);
+        color: var(--green) !important;
+        font-size: 12px !important;
+        font-weight: 850;
+      }
+
+      .schedule-dashboard-side {
+        display: grid;
+        align-content: center;
+        justify-items: center;
+        gap: 8px;
+        min-width: 138px;
+      }
+
+      .schedule-dashboard-more {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.35;
+        text-align: center;
+      }
+
+      .schedule-dashboard-open {
+        display: inline-grid;
+        place-items: center;
+        min-height: 34px;
+        padding: 0 12px;
+        border: 1px solid rgba(31, 58, 95, 0.16);
+        border-radius: 8px;
+        background: white;
+        color: var(--navy);
+        font-size: 13px;
+        font-weight: 850;
+        box-shadow: 0 8px 20px rgba(25, 36, 58, 0.06);
       }
 
       .schedule-page {
@@ -405,6 +489,14 @@
   }
 
   function ensureDashboard() {
+    const existingDashboards = Array.from(document.querySelectorAll("#scheduleDashboard"));
+    if (existingDashboards.length) {
+      dashboard = existingDashboards[0];
+      existingDashboards.slice(1).forEach((element) => element.remove());
+      const topbar = document.querySelector("#workspacePage > .topbar");
+      if (topbar && dashboard.previousElementSibling !== topbar) topbar.insertAdjacentElement("afterend", dashboard);
+      return dashboard;
+    }
     if (dashboard && document.body.contains(dashboard)) return dashboard;
     const workspacePage = document.querySelector("#workspacePage");
     const topbar = workspacePage?.querySelector(".topbar");
@@ -429,6 +521,8 @@
     renderDashboard();
     return dashboard;
   }
+
+  window.studybridgeEnsureScheduleDashboard = ensureDashboard;
 
   function ensurePage() {
     if (page) return page;
@@ -522,8 +616,26 @@
     return page;
   }
 
+  function setWorkspaceShell(activeFeaturePage = true) {
+    const workspacePage = document.querySelector("#workspacePage");
+    if (workspacePage) {
+      workspacePage.hidden = false;
+      workspacePage.removeAttribute("hidden");
+      workspacePage.style.display = "";
+      workspacePage.style.visibility = "visible";
+    }
+    document.body.classList.toggle("studybridge-secondary-page", activeFeaturePage);
+    document.body.classList.toggle("study-sidebar-hidden", activeFeaturePage);
+    document.body.classList.remove("creator-clean-mode", "admin-boundary-active");
+    ["#developerPanel", "#scheduleDashboard", "#chatArea", "#quickPrompts", "#chatForm"].forEach((selector) => {
+      const element = document.querySelector(`#workspacePage > ${selector}`);
+      if (element) element.hidden = activeFeaturePage;
+    });
+  }
+
   function hideOtherPages() {
-    ["#workspacePage", "#profilePage", "#schoolCommunityPage", "#classmatesPage", "#emailReplyPage"].forEach((selector) => {
+    setWorkspaceShell(true);
+    ["#profilePage", "#schoolCommunityPage", "#classmatesPage", "#emailReplyPage"].forEach((selector) => {
       const element = document.querySelector(selector);
       if (element) element.hidden = true;
     });
@@ -535,8 +647,7 @@
       const element = document.querySelector(selector);
       if (element) element.hidden = true;
     });
-    const workspacePage = document.querySelector("#workspacePage");
-    if (workspacePage) workspacePage.hidden = false;
+    setWorkspaceShell(false);
   }
 
   async function showSchedulePage() {
@@ -751,7 +862,7 @@
       "If an assignment/deadline has a date but no time, use 23:59.",
       "If a class/exam has a date but no time, use 09:00.",
       "Do not invent items that are not supported by the uploaded material."
-    ].join("\n");
+    ].join("\\n");
   }
 
   function parseExtractedItems(text) {
@@ -791,14 +902,16 @@
   function renderDashboard() {
     const card = ensureDashboard();
     if (!card) return;
-    const next = getUpcomingItems()[0];
-    if (!next) {
+    const upcoming = getUpcomingItems();
+    const fiveDaysFromNow = Date.now() + 5 * 24 * 60 * 60 * 1000;
+    const nextFiveDays = upcoming.filter((item) => new Date(item.startsAt).getTime() <= fiveDaysFromNow);
+    if (!nextFiveDays.length) {
       card.classList.remove("urgent");
       card.innerHTML = `
         <div>
           <p class="eyebrow">Next Due</p>
-          <h3>暂时没有 upcoming deadline</h3>
-          <span class="schedule-dashboard-meta">添加作业、考试或上传 syllabus 后，这里会直接显示最近倒计时。</span>
+          <h3>5 天内暂时没有 deadline</h3>
+          <span class="schedule-dashboard-meta">${upcoming[0] ? `下一个是 ${escapeHtml(upcoming[0].title)} · ${escapeHtml(timeUntil(upcoming[0].startsAt))}` : "添加作业、考试或上传 syllabus 后，这里会直接显示最近倒计时。"}</span>
         </div>
         <div class="schedule-dashboard-countdown">
           <strong>--</strong>
@@ -807,8 +920,39 @@
       `;
       return;
     }
+    const visible = nextFiveDays.slice(0, 3);
+    const next = visible[0];
     const countdown = countdownParts(next.startsAt);
     card.classList.toggle("urgent", !countdown.past && countdown.totalMinutes <= 24 * 60);
+    if (visible.length > 1) {
+      card.innerHTML = `
+        <div>
+          <p class="eyebrow">最近要做</p>
+          <h3>5 天内有 ${nextFiveDays.length} 个任务</h3>
+          <div class="schedule-dashboard-list">
+            ${visible
+              .map((item) => {
+                const itemCountdown = countdownParts(item.startsAt);
+                return `
+                  <div class="schedule-dashboard-row">
+                    <div>
+                      <strong>${escapeHtml(item.title)}</strong>
+                      <span>${escapeHtml(formatItemMeta(item))}</span>
+                    </div>
+                    <span class="schedule-dashboard-mini-countdown">${escapeHtml(itemCountdown.compact || itemCountdown.primary)}</span>
+                  </div>
+                `;
+              })
+              .join("")}
+          </div>
+        </div>
+        <div class="schedule-dashboard-side">
+          ${nextFiveDays.length > 3 ? `<span class="schedule-dashboard-more">五天内更多需完成</span>` : ""}
+          <span class="schedule-dashboard-open">查看时间表</span>
+        </div>
+      `;
+      return;
+    }
     card.innerHTML = `
       <div>
         <p class="eyebrow">最近要做</p>
@@ -1059,6 +1203,7 @@
     renderSchedule();
   }
 
+  window.studybridgeOpenSchedulePage = showSchedulePage;
   boot();
   setInterval(() => {
     ensureButton();

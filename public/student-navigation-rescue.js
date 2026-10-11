@@ -1,3 +1,3 @@
 (() => {
-  window.__studybridgeStudentNavigationRescue = "disabled-20261007-16";
+  window.__studybridgeStudentNavigationRescue = "disabled-20261007-15";
 })();

@@ -10,68 +10,183 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.13 - 2026-10-08
+
+Purpose:
+- Emergency recovery after the live app became unresponsive and several sidebar feature pages stopped rendering.
+- Replace the front-end entry with a single compact router for Study, Profile, Community, Classmates, Email Assistant, Schedule, Tools, and Developer pages.
+- Remove competing patch-script assumptions from the live entry path and restore normal browser scrolling.
+- Cache-bust `index.html` to load `/app.js?v=1.1.13`.
+
+Files:
+- `public/app.js`
+- `public/index.html`
+- `package.json`
+- `docs/version-archive.md`
+
+Rollback target:
+- If `1.1.13` fails, restore `1.1.11` only long enough to inspect the previous router conflict, then keep one page router active.
+
+### 1.1.11 - 2026-10-08
+
+Purpose:
+- Emergency recovery after the live page became unresponsive and sidebar navigation stopped opening pages.
+- Replace the front-end app entry with a single stable router for Profile, Study, Community, Classmates, Email Assistant, Schedule, Tools, and Developer views.
+- Remove the old viewport scroll locks from the app shell and workspace so the browser can scroll normally again.
+- Cache-bust `index.html` to load `/app.js?v=1.1.11`.
+
+Files:
+- `public/app.js`
+- `public/index.html`
+- `public/style.css`
+- `package.json`
+- `docs/version-archive.md`
+
+Rollback target:
+- If `1.1.11` fails, restore `1.1.7` and keep only one front-end router active before adding new features.
+
+### 1.1.7 - 2026-10-08
+
+Purpose:
+- Disable the damaged `stable-pages-router.js` and replace it with a safe no-op recovery marker.
+- Add `rescue-router.js` as the single final controller for Profile, Community, Classmates, Email Assistant, Schedule, Study, Tools, and Developer page switching.
+- Remove old viewport locks so the workspace and study chat can scroll instead of freezing the browser.
+- Hide the developer switch from non-admin users while keeping admin/co-admin access to the developer console.
+- Cache-bust all frontend entry scripts so browsers fetch this recovery build instead of stale broken code.
+
+Files:
+- `public/index.html`
+- `public/stable-pages-router.js`
+- `public/rescue-router.js`
+- `public/google-auth-patch.js`
+- `package.json`
+- `docs/version-archive.md`
+
+Rollback target:
+- If `1.1.7` fails, restore `1.1.5` first, then keep only one router script active before adding new page features.
+
+### 1.1.5 - 2026-10-08
+
+Purpose:
+- Rebuild the frozen app entry shell with valid Chinese text and complete HTML tags.
+- Replace the Google auth loader with a clean loader that only adds the Google button and then loads the stable page router.
+- Prepare `stable-pages-router.js` as the single owner for Profile, Study, Tools, Community, Classmates, Email Assistant, Schedule, and Developer page switching.
+- Keep this as the recovery point before further feature work.
+
+Files:
+- `public/index.html`
+- `public/google-auth-patch.js`
+- `public/stable-pages-router.js`
+- `package.json`
+- `docs/version-archive.md`
+
+Rollback target:
+- If `1.1.5` fails, restore `1.1.4` files first, then check whether `public/stable-pages-router.js` exists on the server before changing page logic again.
+
+### 1.1.3 - 2026-10-08
+
+Purpose:
+- Rebuild the main `index.html` shell after corrupted Chinese text broke multiple HTML tags and caused the workspace to freeze or render blank pages.
+- Restore clean login/register fields, profile fields, study composer, quick prompts, course materials, and developer-panel anchor elements while keeping the original IDs/classes used by the existing app.
+- Rebuild the Google auth loader with valid Chinese text and a fresh router cache-bust so the browser no longer loads stale or malformed workspace scripts.
+
+Files:
+- `public/index.html`
+- `public/google-auth-patch.js`
+- `package.json`
+- `docs/version-archive.md`
+
+Rollback target:
+- If `1.1.3` fails, roll back to `1.1.2`, then inspect `public/index.html` first for malformed tags before changing router logic again.
+
+### 1.1.2 - 2026-10-08
+
+Purpose:
+- Repair frozen navigation by making the stable page router install its click handlers only once.
+- Allow every sidebar click to redraw its page, even when the app thinks that route is already active.
+- Prevent stale page-opening requests from blocking newer clicks or rendering into duplicate hidden containers.
+- Keep the workspace visible while switching between Study, Tools, Community, Classmates, Email, Schedule, Profile, and Developer pages.
+
+Files:
+- `public/stable-pages-router.js`
+- `public/google-auth-patch.js`
+- `public/index.html`
+- `package.json`
+
+Rollback target:
+- If `1.1.2` fails, roll back to `1.1.1`, then keep only one router script active before reapplying navigation fixes.
+
+### 1.1.1 - 2026-10-08
+
+Purpose:
+- Fix the stable page router boot sequence so it waits for the async workspace check before deciding it has started.
+- Stop the Google/auth loader observer after the workspace router has loaded, reducing repeated DOM scanning.
+- Cache-bust the frontend scripts so browsers fetch the repaired router instead of stale broken code.
+
+Files:
+- `public/stable-pages-router.js`
+- `public/google-auth-patch.js`
+- `public/index.html`
+- `package.json`
+
+Rollback target:
+- If `1.1.1` fails, roll back to `1.1.0`, then inspect router boot timing before re-enabling old page patches.
+
+### 1.1.0 - 2026-10-08
+
+Purpose:
+- Recover the frozen workspace by replacing competing student navigation and scroll patches with one stable page router.
+- Stop the old direct-page, study-scroll, and role-boundary scripts from running MutationObserver/scroll logic against the same DOM.
+- Restore a single route owner for Study, Tools, Community, Classmates, Email Assistant, Schedule, Profile, and Developer pages.
+- Keep the page scroll native so Chrome can scroll normally instead of being trapped by JavaScript.
+
+Files:
+- `public/stable-pages-router.js`
+- `public/google-auth-patch.js`
+- `public/studybridge-direct-pages.js`
+- `public/study-scroll-bridge.js`
+- `public/role-boundary-strict.js`
+- `public/index.html`
+- `package.json`
+
+Rollback target:
+- If `1.1.0` fails, roll back to `1.0.99` only as a temporary emergency restore, then re-enable one navigation owner at a time.
+
 ### 1.0.99 - 2026-10-08
 
 Purpose:
 - Stop legacy layout, bottom-chat, dashboard, and sidebar stabilizer scripts from fighting the current page router.
-- Make Google/login loader wait until the workspace is visible before loading the direct page router.
-- Keep the login page lighter so it does not load workspace-only scripts before a user is signed in.
-- Restore a clear rollback marker after the blank-page and unresponsive-page failures.
+- Make Google/login loader wait until the workspace is visible before loading the single direct page router.
+- Remove duplicate direct-router loading from `index.html` so the left feature cards do not appear twice or freeze the browser.
 
-GitHub commits:
-- `ffee6001df2316644f62b938491708167fef7f45` - disable the legacy main navigation stabilizer.
-- `328b635c314212ef90ea879bf0ff5a63b3c96245` - disable the legacy layout fix script.
-- `62ed42e8ad98210cbf45c9cc82df78232cfe38c1` - disable the legacy dashboard stability script.
-- `c8c8b0202166a1ebad1dbae8bd502e875967d3f5` - disable the legacy study bottom patch.
-- `e8ee33624620d5141e1d0f3ef66b4f6510e455f3` - install the safe workspace script loader.
-- `57ecaf59f6e7808aaec29ead6e9c006950a353fe` - bump package version to 1.0.99.
-
-Rollback target:
-- If `1.0.99` fails, roll back to `1.0.97`, then re-enable only one navigation owner at a time.
-
-Live checks to use:
-- `http://3.98.63.195:3000/google-auth-patch.js` should show `20261008-safe-auth-loader-1.0.99`.
-- `http://3.98.63.195:3000/main-nav-stabilizer.js` should only contain the disabled marker.
-- `http://3.98.63.195:3000/layout-fix.js`, `nav-dashboard-stability.js`, and `study-chat-bottom-fix.js` should only contain disabled markers.
-
-### 1.0.97 - 2026-10-08
-
-Purpose:
-- Stop the login page from loading workspace-only hotfix scripts before the user is logged in.
-- Update the homepage script versions from the stale `1.0.83` entry to `1.0.97` so browsers stop using old navigation code.
-- Move `studybridge-direct-pages.js` behind the logged-in workspace gate so it starts only after `#appShell` is visible.
-- Reduce the chance of login-page browser freezes and stale cached navigation behavior.
-
-GitHub commits:
-- `7bcfeaf824c5216c25abaf91352990efa699c3b4` - guard workspace hotfix loading until login.
-- `f5329d29dfac5713405fa2b5bf32b04b29a150d3` - load stable StudyBridge entry scripts.
-- `af387ea033eb9185349c3bef28753f675ce5d9ef` - bump package version to 1.0.97.
+Files:
+- `public/google-auth-patch.js`
+- `public/main-nav-stabilizer.js`
+- `public/layout-fix.js`
+- `public/nav-dashboard-stability.js`
+- `public/study-chat-bottom-fix.js`
+- `public/index.html`
+- `package.json`
 
 Rollback target:
-- If `1.0.97` fails, restore to `1.0.96` and then re-apply only the entry-script version bump after confirming the login page is stable.
-
-Live checks to use:
-- `http://3.98.63.195:3000/` should load `/app.js?v=20261008-1.0.97` and `/google-auth-patch.js?v=20261008-1.0.97` only.
-- `http://3.98.63.195:3000/google-auth-patch.js` should show `20261008-google-auth-loader-1.0.97`.
+- If `1.0.99` fails, roll back to `1.0.96`, then only re-enable one navigation script at a time.
 
 ### 1.0.96 - 2026-10-08
 
 Purpose:
-- Stop the browser freeze caused by two sidebar navigation scripts repeatedly removing and recreating each other.
-- Make `public/main-nav-stabilizer.js` the stable visible owner of the six student navigation entries.
-- Preserve existing feature-page routing while hiding duplicate legacy navigation blocks.
-- Keep sidebar scrolling responsive by removing the aggressive sidebar mutation watcher.
+- Fix the browser freeze caused by two navigation scripts rebuilding the sidebar at the same time.
+- Make the left feature navigation idempotent: it renders once, updates only when the version changes, and no longer watches every sidebar mutation.
+- Keep `studybridge-direct-pages.js` as the page renderer only when the main navigation exists, so it no longer creates a duplicate navigation bar.
 
-GitHub commits:
-- `dd3c0d2e458689bdbdec68deabf83b3d439fc47f` - replace the sidebar navigation stabilizer with a non-looping version.
-- `b50cb7f1e332ae3efe7adac9cf069f1daca947ee` - bump package version to 1.0.96.
+Files:
+- `public/main-nav-stabilizer.js`
+- `public/studybridge-direct-pages.js`
+- `public/google-auth-patch.js`
+- `public/index.html`
+- `package.json`
 
 Rollback target:
-- If `1.0.96` fails, restore the repository to `1.0.95` or the last commit before `dd3c0d2e458689bdbdec68deabf83b3d439fc47f`, then let the AWS auto-sync pull it.
-
-Live checks to use:
-- `http://3.98.63.195:3000/main-nav-stabilizer.js` should show `20261008-main-nav-stabilizer-1.0.96`.
-- `http://3.98.63.195:3000/google-auth-patch.js` should load `main-nav-stabilizer.js?v=20261008-1.0.96`.
+- If `1.0.96` fails, roll back to `1.0.95`, but keep in mind `1.0.95` can trigger the sidebar navigation loop under some browser states.
 
 ### 1.0.95 - 2026-10-08
 
@@ -91,3 +206,24 @@ Rollback target:
 Live checks used:
 - `http://3.98.63.195:3000/main-nav-stabilizer.js` returns the `1.0.95` script.
 - `http://3.98.63.195:3000/google-auth-patch.js` includes `main-nav-stabilizer` and no longer includes `six-zone-router-equalizer`.
+# StudyBridge Version Archive
+
+### 1.1.4 - 2026-10-08
+
+Purpose:
+- Repair the frozen login/workspace page caused by a corrupted `public/index.html` shell.
+- Replace broken mojibake text, malformed attributes, and damaged closing tags that made the browser parse the app incorrectly.
+- Bump the frontend cache keys so Chrome reloads the repaired entry page, Google auth loader, and stable page router.
+
+Files:
+- `public/index.html`
+- `public/google-auth-patch.js`
+- `public/stable-pages-router.js`
+- `package.json`
+
+Validation:
+- `node --check` passed for `server.js`, `public/app.js`, `public/google-auth-patch.js`, and `public/stable-pages-router.js`.
+- Local server returned HTTP 200 and confirmed the repaired page includes `authForm`, Chinese login text, and version `1.1.4`.
+
+Rollback target:
+- If `1.1.4` fails after deployment, roll back to the last working version before the broken `index.html` shell was introduced, then reapply only the clean cache-bust and router changes.

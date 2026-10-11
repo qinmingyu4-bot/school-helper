@@ -2,10 +2,6 @@ name: Apply StudyBridge attachment support
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - ".github/workflows/study-attachment-hotfix.yml"
-      - "public/study-attachment-patch.js"
 
 permissions:
   contents: write

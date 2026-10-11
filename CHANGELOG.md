@@ -1,58 +1,36 @@
 # Changelog
 
+## 2026-10-10
+
+- Bumped StudyBridge Cloud to `1.1.50` and reconciled local source with the existing Git history.
+- Excluded private database backups, caches, and local verification copies from commits.
+- Updated ZIP and email dependencies to versions with no reported npm audit vulnerabilities.
+- Made local database saves atomic, preserved corrupt files, and recovered the write queue after rejected operations.
+- Blocked static paths outside the public directory and returned proper errors for malformed requests.
+- Corrected creator console database status, auto-sync status, and invitation usage fields.
+- Fixed mobile spreadsheet and creator-console overflow and kept the chat composer from covering content.
+- Added syntax and integration checks before deployment and locked dependency installation.
+- Archived historical one-time workflows, including invalid definitions, to prevent source rewriting after pushes.
+
 ## 2026-10-07
 
-### Fixed
+### Added
 
+- Bumped StudyBridge Cloud to `1.0.24`.
+- Made the older student router delegate sidebar clicks to the stable router so Community, Classmates, Email Helper, Schedule, Study Area, and Profile no longer get intercepted into a blank workspace.
+- Bumped the sidebar routing script URLs to force browsers and the AWS server to load the corrected navigation bundle.
 - Bumped StudyBridge Cloud to `1.0.23`.
 - Fixed the student sidebar router so Profile, Community, Classmates, Email Helper, Schedule, and Study Area open their target workspace immediately instead of leaving the right panel blank.
 - Restored the shared `studybridgeDirectOpenPage` navigation hook used by the later stability scripts.
-
-## 2026-10-07
-
-### Fixed
-
 - Bumped StudyBridge Cloud to `1.0.22`.
 - Disabled the legacy sidebar router and old student navigation hardening scripts that were still loaded by the live page and could blank the right workspace when opening Community, Classmates, Email Helper, Schedule, or Profile.
-- Kept the final inline student router as the only active student-page switcher so the left sidebar features are no longer fighting each other.
-
-## 2026-10-07
-
-### Fixed
-
+- Added a safe no-op `nav-dashboard-stability.js` so the live page no longer receives HTML for a missing JavaScript file.
 - Bumped StudyBridge Cloud to `1.0.21`.
-- Added an early inline student router inside the compact browser patch so Community, Classmates, Email Helper, Schedule, Profile, and Study Area clicks are handled before older navigation helpers can hide the workspace.
-- Removed the older direct sidebar routers from the compact patch load path to reduce blank right-panel conflicts.
-
-## 2026-10-07
-
-### Fixed
-
-- Bumped StudyBridge Cloud to `1.0.20`.
-- Fixed the student navigation rescue layer so it no longer hides the whole Study Area container when opening Profile, Community, Classmates, Email Helper, or Schedule.
-- Kept the right-side workspace shell visible and only hides the Study Area chat chrome, so secondary student pages can render instead of leaving a blank panel.
-
-## 2026-10-07
-
-### Added
-
-- Bumped StudyBridge Cloud to `1.0.19`.
-- Added a final student navigation rescue layer so Profile, Community, Classmates, Email Helper, and Schedule are shown as workspace-level pages instead of being pushed below the Study Area.
-- Preserved the existing feature pages while preventing older navigation helpers from swallowing sidebar clicks or leaving a blank right panel.
-
-## 2026-10-07
-
-### Added
-
-- Bumped StudyBridge Cloud to `1.0.18`.
-- Replaced the aggressive student page route lock with a lightweight click-based router to prevent browser out-of-memory crashes.
-- Reduced developer mode observer work so developer/student switching no longer loops over hidden/class changes.
-- Bumped StudyBridge Cloud to `1.0.17`.
-- Moved the student page router to the final browser patch load so Community, Classmates, Email Helper, Schedule, Profile, and Study Area are not overridden by older navigation scripts.
-- Stopped the developer access helper from loading the student router early, preserving the developer/student boundary while avoiding blank student pages.
+- Added an early final student router so Profile, Community, Classmates, Email Helper, Schedule, and Study Area open from the sidebar before older patch scripts can hide the workspace.
+- Reduced old sidebar router loading from the compact patch bundle to prevent blank right-side pages after navigation.
 - Bumped StudyBridge Cloud to `1.0.16`.
-- Added a stable student page shell router so Profile, Community, Classmates, Email Helper, Schedule, and Study Area cannot be hidden by older navigation patches.
-- Kept developer access loading the new student router automatically while preserving the developer/student boundary.
+- Added a final student page shell router so Profile, Community, Classmates, Email Helper, Schedule, and Study Area cannot be hidden by older navigation patches.
+- Added a fallback Profile page with account-saved profile editing so the profile entrance still works even if older profile UI scripts fail.
 - Bumped StudyBridge Cloud to `1.0.15`.
 - Restored the developer console entrance after the student navigation hardening added in the `1.0.13` line.
 - Added a developer access guard so student page restore/navigation loops cannot hide the admin panel.
@@ -110,3 +88,62 @@
 
 - Added a local server start command so StudyBridge can be opened at `http://127.0.0.1:5173`.
 - Documented that the local server uses the same static app files as the direct `index.html` version.
+- Added a macOS `start.command` launcher so the app can run locally without npm.
+- Changed study-mode quick prompts into a slide-out drawer so mode-specific shortcuts are easier to notice.
+- Kept the quick prompt drawer open after selecting a shortcut until the user manually closes it.
+- Added per-course Past Chats keyword search across titles, messages, and image attachment names.
+- Added an assignment assistance study mode focused on prompts, rubrics, task breakdown, and draft checking.
+- Added quick prompt drawer controls to clear only the current typed text and reopen shortcuts after closing.
+- Reduced the quick prompt drawer height for a slimmer toolbar-style layout.
+- Replaced composer action glyphs with cleaner SVG icons for trash, image upload, and send controls.
+
+## 2026-05-07
+
+### Added
+
+- Added Semester Courses so each course has its own Course Pack, Past Chats, and study workflow section.
+- Added a welcome cover page that appears on each app open before entering the workspace.
+- Added Semester Course deletion with cleanup for that course's Course Pack and Past Chats.
+- Added customizable Learning Style controls for bilingual teaching preferences.
+- Added fast and thoughtful AI answer modes, including visible thinking time and expandable high-level thinking directions.
+- Added browser-local preference memory that adapts to English-answer, Chinese-explanation, problem-solving, and cheatsheet usage signals.
+- Added image attachments in the chat composer with local preview and saved conversation history.
+- Added drag-and-drop plus paste support for screenshot/image attachments in the chat composer.
+- Added local Course Pack persistence for extracted text from uploaded and pasted course materials.
+- Added local conversation history with session switching and browser-local memory.
+- Added answer generation that can reference recent past conversations.
+- Added cheatsheet support for compact exam-facing study sheets.
+- Added urgent exam review mode focused on minimum knowledge, question patterns, and how to solve problems quickly.
+- Added browser-local PDF text extraction with PDF.js for readable PDFs.
+- Added fallback guidance for scanned PDFs that do not contain selectable text.
+
+### Changed
+
+- Reframed the app away from assignment completion and toward full-course learning support.
+- Replaced the previous mode set with preview, guided study, review, mock exam generation, course overview, and deadline summary.
+- Updated prompts and default goal to focus on understanding the course, keeping pace, preparing for exams, and planning deadlines.
+- Refined the visual design with a richer workspace sidebar, chat history list, and stronger study-mode controls.
+- Updated coaching responses to explain concepts in Chinese while preserving English exam terms and English answer formats.
+- Changed the welcome cover behavior so it appears once per day after the user clicks start, instead of on every refresh.
+
+### Added
+
+- Added mock question generation for standalone questions and full midterm/final-style practice exams.
+- Added deadline summary behavior for syllabus schedules, exam dates, due dates, and preparation checkpoints.
+- Added course overview responses that introduce what the course is like and how to study it.
+
+## 2026-05-04
+
+### Changed
+
+- Repositioned the product for international students in North American schools.
+- Replaced the Chinese classroom teacher persona with an academic coach style.
+- Updated the interface language around syllabus, rubric, assignment, office hours, quiz prep, and academic writing.
+- Adjusted the visual style to feel more like a modern campus productivity tool.
+
+### Added
+
+- Added Course Pack upload and paste workflow.
+- Added the first study mode set for course support workflows.
+- Added course material type detection for syllabus, rubric, assignment, and lecture notes.
+- Added quick prompts for common North American college study workflows.

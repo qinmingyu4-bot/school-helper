@@ -13,7 +13,10 @@
 }
 
 * { box-sizing: border-box; }
-html, body, #root { min-height: 100%; }
+html, body, #root {
+  min-height: 100%;
+  height: 100%;
+}
 body {
   margin: 0;
   color: var(--ink);
@@ -24,6 +27,7 @@ body {
     linear-gradient(rgba(20, 75, 99, .07) 1px, transparent 1px);
   background-size: auto, 34px 34px, 34px 34px;
   letter-spacing: 0;
+  overflow: hidden;
 }
 
 button, input, textarea, select {
@@ -54,6 +58,7 @@ a { color: var(--blue); }
 
 .auth-shell {
   min-height: 100vh;
+  overflow: auto;
   display: grid;
   place-items: center;
   padding: 32px;
@@ -143,15 +148,17 @@ a { color: var(--blue); }
 }
 
 .app-shell {
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
   display: grid;
   grid-template-columns: minmax(330px, 380px) minmax(0, 1fr);
 }
 .sidebar {
-  position: sticky;
-  top: 0;
+  position: relative;
   height: 100vh;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 18px 12px 28px;
   background: rgba(255,255,255,.92);
   border-right: 1px solid var(--line);
@@ -298,7 +305,11 @@ a { color: var(--blue); }
 
 .workspace {
   min-width: 0;
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
 }
@@ -344,9 +355,9 @@ a { color: var(--blue); }
   font-size: 13px;
 }
 .chat-area {
-  flex: 1;
-  min-height: 360px;
-  padding: 18px 28px 0;
+  flex: 1 0 auto;
+  min-height: 420px;
+  padding: 18px 28px 96px;
 }
 .messages {
   display: grid;
@@ -373,14 +384,52 @@ a { color: var(--blue); }
   grid-template-columns: minmax(0, 520px) 42px;
 }
 .message.user b { grid-column: 2; background: var(--blue); }
-.message.user div { grid-row: 1; }
-.message div {
+.message.user > div { grid-row: 1; }
+.message > div {
   padding: 16px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
   box-shadow: 0 8px 24px rgba(7, 27, 58, .04);
   line-height: 1.75;
+}
+.message > div p {
+  margin: 0 0 12px;
+}
+.message > div p:last-child {
+  margin-bottom: 0;
+}
+.markdown-table-wrap {
+  max-width: 100%;
+  margin: 10px 0 14px;
+  overflow-x: auto;
+}
+.markdown-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.markdown-table th,
+.markdown-table td {
+  padding: 9px 10px;
+  border: 1px solid #d7e1ee;
+  text-align: left;
+  vertical-align: top;
+}
+.markdown-table th {
+  background: #f2f7fb;
+  color: var(--ink);
+  font-weight: 900;
+}
+.markdown-table tr:nth-child(even) td {
+  background: rgba(244, 248, 252, .72);
+}
+.formatted-text p {
+  margin: 0 0 10px;
+}
+.formatted-text p:last-child {
+  margin-bottom: 0;
 }
 .composer {
   position: sticky;
@@ -391,6 +440,53 @@ a { color: var(--blue); }
   border-top: 1px solid var(--line);
   background: rgba(244, 248, 252, .96);
   z-index: 5;
+}
+.composer.drop-ready {
+  outline: 2px dashed var(--green);
+  outline-offset: -8px;
+  background: rgba(229, 244, 238, .96);
+}
+.side-section.drop-ready {
+  outline: 2px dashed var(--green);
+  outline-offset: -6px;
+  background: rgba(229, 244, 238, .72);
+}
+.drop-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.upload-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.upload-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 360px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+}
+.upload-pill b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.upload-pill small {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+.upload-pill button {
+  flex: 0 0 auto;
+  min-width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 8px;
 }
 .quick-prompts {
   display: flex;

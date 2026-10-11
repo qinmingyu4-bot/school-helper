@@ -2,13 +2,6 @@ name: System Status Repair Runner
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/classmate-profile-card-hotfix.yml"
-      - "public/layout-fix.js"
-      - "public/system-status-patch.js"
-      - "server.js"
 
 permissions:
   contents: write

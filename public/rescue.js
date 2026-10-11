@@ -1,57 +1,627 @@
 (() => {
   "use strict";
-  const VERSION = "1.1.15";
+
+  const VERSION = "1.1.16";
   const root = document.getElementById("root");
-  const pages = ["study","community","classmates","email","schedule","tools","profile","admin"];
+  const state = {
+    user: null,
+    page: localStorage.getItem("sb_page") || "study",
+    mode: "user",
+    courses: [],
+    courseId: localStorage.getItem("sb_course") || "",
+    documents: [],
+    messages: [],
+    classmates: null,
+    activeClassmateId: "",
+    directMessages: [],
+    community: null,
+    admin: null,
+    status: null,
+    busy: "",
+    error: "",
+    notice: ""
+  };
+
   const nav = [
-    ["community","社","社区","全部、学校和专业频道"],
-    ["classmates","友","同学","SB ID 申请和聊天"],
-    ["email","信","邮件助手","理解邮件并生成英文回复"],
-    ["schedule","时","时间表","Deadline 和课程提醒"],
-    ["study","学","学习区","课程资料、AI 对话和复习计划"],
-    ["tools","工","工具","SB Docs、Sheets、Slides"]
+    ["community", "社", "社区", "全部、学校和专业频道"],
+    ["classmates", "友", "同学", "SB ID 申请和聊天"],
+    ["email", "信", "邮件助手", "理解邮件并生成英文回复"],
+    ["schedule", "时", "时间表", "Deadline 和课程提醒"],
+    ["study", "学", "学习区", "课程资料、AI 对话和复习计划"],
+    ["tools", "工", "工具", "SB Docs、Sheets、Slides"]
   ];
-  const state = { user:null, authMode:"login", google:false, page:pages.includes(localStorage.getItem("studybridge.page"))?localStorage.getItem("studybridge.page"):"study", courseId:localStorage.getItem("studybridge.course")||"", courses:[], docs:[], messages:[], notice:"", community:{channel:"all",posts:[]}, classmates:{list:[],incoming:[],outgoing:[],selected:"",messages:[]}, admin:{users:[],invites:[]}, status:null, tool:"docs" };
-  const $ = id => document.getElementById(id);
-  const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
-  const arr = v => Array.isArray(v) ? v : [];
+
+  const qs = (sel, base = document) => base.querySelector(sel);
+  const qsa = (sel, base = document) => [...base.querySelectorAll(sel)];
+  const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#39;"
+  }[char]));
+  const fmt = (date) => {
+    if (!date) return "";
+    const d = new Date(date);
+    return Number.isNaN(d.getTime()) ? "" : d.toLocaleString("zh-CN", { hour12: false });
+  };
   const profile = () => state.user?.profile || {};
-  const isAdmin = () => ["admin","co-admin"].includes(state.user?.role);
-  const activeCourse = () => state.courses.find(c => c.id === state.courseId) || state.courses[0] || null;
-  const note = m => state.notice = m || "";
-  async function api(path, options={}) {
-    const res = await fetch(path, { method: options.method || "GET", headers:{"Content-Type":"application/json"}, credentials:"same-origin", body: options.body ? JSON.stringify(options.body) : undefined });
-    let data = {}; try { data = await res.json(); } catch {}
-    if (!res.ok) throw new Error(data.error || `请求失败：${res.status}`);
+  const initials = (name) => String(name || "SB").trim().slice(0, 1).toUpperCase() || "S";
+  const role = () => state.user?.role || "student";
+  const isAdmin = () => role() === "admin";
+
+  async function api(path, options = {}) {
+    const res = await fetch(path, {
+      credentials: "same-origin",
+      headers: { "content-type": "application/json", ...(options.headers || {}) },
+      ...options
+    });
+    let data = {};
+    try {
+      data = await res.json();
+    } catch {
+      data = {};
+    }
+    if (!res.ok) throw new Error(data.error || data.message || `Request failed: ${res.status}`);
     return data;
   }
-  function css(){ if($("sb-css")) return; const s=document.createElement("style"); s.id="sb-css"; s.textContent=`html,body{margin:0;min-height:100%;overflow-y:auto!important;background:#eef4f8;color:#061b3a;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif}*{box-sizing:border-box}button,input,textarea,select{font:inherit}button{cursor:pointer}.grid-bg{background:linear-gradient(rgba(30,60,95,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(30,60,95,.045) 1px,transparent 1px),#f4f8fb;background-size:34px 34px}.auth{min-height:100vh;display:grid;place-items:center}.card,.auth-card{background:rgba(255,255,255,.97);border:1px solid #d4dfec;border-radius:8px;box-shadow:0 14px 34px rgba(15,31,56,.06)}.auth-card{width:min(460px,calc(100vw - 32px));padding:22px}.brand{display:flex;align-items:center;gap:12px}.brand h1{margin:0;font-size:25px}.mark,.icon{display:grid;place-items:center;border-radius:8px;background:linear-gradient(135deg,#24466a,#2b7d61);color:#fff;font-weight:900}.mark{width:52px;height:52px}.icon{width:36px;height:36px;flex:0 0 auto}.eyebrow{font-size:12px;text-transform:uppercase;color:#08704f;font-weight:900}.muted{color:#526884;font-size:13px}.danger{color:#c03344}label{display:grid;gap:6px;margin:10px 0;font-size:13px;font-weight:850;color:#405570}input,textarea,select{width:100%;border:1px solid #cbd8e8;border-radius:8px;padding:11px;background:#fff;color:#061b3a}textarea{min-height:112px;resize:vertical}button{border:1px solid #cbd8e8;background:#fff;color:#09234a;border-radius:8px;padding:10px 13px;font-weight:900}.primary{border:0!important;background:linear-gradient(135deg,#24466a,#2b7d61)!important;color:#fff!important}.small{padding:7px 10px;font-size:13px}.tabs,.switcher{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#f1f5f9;border:1px solid #d4dfec;border-radius:8px;padding:5px;margin:16px 0}.tabs button,.switcher button{border:0;background:transparent}.tabs .active,.switcher .active{background:#fff}.app{display:grid;grid-template-columns:380px minmax(0,1fr);min-height:100vh}.sidebar{height:100vh;overflow-y:auto;background:#fff;border-right:1px solid #d5e0ee;padding:16px}.main{min-height:100vh;overflow:visible}.topbar{position:sticky;top:0;z-index:5;background:rgba(255,255,255,.94);border-bottom:1px solid #d5e0ee;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px}.topbar h2{margin:0;font-size:28px}.workspace{padding:24px 28px 128px;min-height:calc(100vh - 96px)}.profile-card{padding:12px;margin:14px 0}.cover{height:86px;border-radius:7px;background:linear-gradient(135deg,#35516f,#65a37f);position:relative;margin-bottom:10px}.avatar{width:56px;height:56px;border-radius:8px;object-fit:cover;border:4px solid #fff;box-shadow:0 8px 22px rgba(7,27,58,.16)}.profile-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}.nav-list,.list{display:grid;gap:10px}.nav-list{margin:14px 0}.nav-item,.course-item{display:grid;grid-template-columns:38px minmax(0,1fr);gap:12px;align-items:center;text-align:left;width:100%;min-height:56px;background:#fff;border:1px solid #d4dfec;border-radius:8px;padding:10px}.nav-item.active,.course-item.active{border-color:#23815f;background:#f7fbf9}.nav-item span span,.course-item span span{display:block}.side-section{margin:14px 0}.section-title,.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.section-title{justify-content:space-between;font-weight:900;margin-bottom:10px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.split{display:grid;grid-template-columns:390px minmax(0,1fr);gap:16px}.item{border:1px solid #d4dfec;border-radius:8px;background:#fff;padding:12px}.pill{display:inline-block;border-radius:999px;background:#e8f4ee;color:#08704f;padding:4px 9px;font-size:12px;font-weight:900}.chat-wrap{display:flex;flex-direction:column;min-height:calc(100vh - 180px)}.chat-log{flex:1;min-height:420px;overflow-y:auto;padding:22px 0 24px}.msg{display:grid;grid-template-columns:44px minmax(0,780px);gap:12px;margin:14px 0}.msg.user{grid-template-columns:minmax(0,780px) 44px;justify-content:end}.bubble{background:#fff;border:1px solid #d5e0ee;border-radius:8px;padding:14px 16px;white-space:pre-wrap;line-height:1.65}.msg.user .bubble{background:#eef5ff;border-color:#bdd2fb}.composer{position:sticky;bottom:0;z-index:4;background:#f4f7fb;border-top:1px solid #d5e0ee;padding:12px 28px 18px;margin:0 -28px -128px}.composer-row{display:grid;grid-template-columns:auto minmax(0,1fr) 92px;gap:10px}.composer input,.composer button{min-height:52px}.deadline{display:grid;grid-template-columns:minmax(0,1fr) 136px;align-items:center;border:1px solid #23815f;background:rgba(232,246,239,.9);border-radius:8px;padding:16px 20px;margin-bottom:16px}.count{background:linear-gradient(135deg,#24466a,#2b7d61);color:#fff;border-radius:8px;text-align:center;padding:12px;font-weight:900}.count b{font-size:26px}.tool-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.tool-tab{display:grid;grid-template-columns:44px 1fr;gap:12px;text-align:left;align-items:center}.editor{min-height:340px}.table-editor{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.slide-card{min-height:160px;border:1px dashed #b7c9dc;border-radius:8px;padding:14px;background:#fff}@media(max-width:900px){.app,.grid2,.grid3,.split{grid-template-columns:1fr}.sidebar{height:auto}.composer-row{grid-template-columns:1fr}.msg,.msg.user{grid-template-columns:1fr}}`; document.head.appendChild(s); }
-  function renderSafe(){ css(); try{ render(); } catch(e){ console.error(e); root.innerHTML=`<main class="auth grid-bg"><section class="auth-card"><h2>StudyBridge 页面暂时卡住</h2><p class="danger">${esc(e.message)}</p><button onclick="location.reload()">刷新页面</button></section></main>`; } }
-  function render(){ if(!state.user){ root.innerHTML=authHtml(); return; } if(state.page==="admin"&&!isAdmin()) state.page="study"; root.innerHTML=`<div class="app"><aside class="sidebar">${sidebar()}</aside><main class="main grid-bg">${main()}</main></div>`; const log=$("chatLog")||$("classmateChatLog"); if(log) log.scrollTop=log.scrollHeight; }
-  function authHtml(){ return `<main class="auth grid-bg"><section class="auth-card"><div class="brand"><div class="mark">SB</div><div><div class="eyebrow">StudyBridge Cloud</div><h1>StudyBridge</h1></div></div><div class="tabs"><button class="${state.authMode==="login"?"active":""}" data-auth-mode="login">登录</button><button class="${state.authMode==="register"?"active":""}" data-auth-mode="register">注册</button></div>${state.authMode==="register"?`<label>姓名<input id="authName" placeholder="你的名字"></label>`:""}<label>Email<input id="authEmail" placeholder="you@example.com"></label><label>密码<input id="authPassword" type="password" placeholder="至少 8 位"></label>${state.authMode==="register"?`<label>确认密码<input id="authPassword2" type="password" placeholder="再输入一次密码"></label><label>邀请码<input id="authInvite" placeholder="向创作者索取邀请码"></label>`:""}${state.google?`<button style="width:100%;margin-top:10px" data-action="google-login">Google 登录 / 注册</button>`:`<p class="muted">Google 登录待配置；普通邮箱注册仍可使用。</p>`}<button class="primary" style="width:100%;margin-top:12px" data-action="${state.authMode==="register"?"register":"login"}">${state.authMode==="register"?"创建账号":"登录"}</button><button style="width:100%;margin-top:10px;border:0" data-action="forgot">忘记密码？</button>${state.notice?`<p class="danger">${esc(state.notice)}</p>`:""}</section></main>`; }
-  function sidebar(){ if(state.page==="admin") return `<div class="brand"><div class="mark">SB</div><div><h1>StudyBridge</h1><p class="muted">${esc(state.user.name)} | ${esc(state.user.email)}</p></div><button data-action="logout">退出</button></div><div class="switcher"><button data-page="study">普通用户端</button><button class="active" data-page="admin">开发者端</button></div>`; const p=profile(); return `<div class="brand"><div class="mark">SB</div><div><h1>StudyBridge</h1><p class="muted">${esc(state.user.name)} | ${esc(state.user.email)}</p></div><button data-action="logout">退出</button></div><section class="card profile-card"><div class="cover">${p.avatarUrl?`<img class="avatar" style="position:absolute;left:14px;bottom:-20px" src="${esc(p.avatarUrl)}">`:""}</div><div class="profile-row" style="margin-top:24px"><div><strong>${esc(state.user.name)}</strong><p class="muted">${esc(p.school||"还没有填写学校")}${p.major?` · ${esc(p.major)}`:""}</p><p class="muted"><b>SB ID:</b> ${esc(p.sbId||"未生成")}</p></div><button data-page="profile">打开</button></div></section><nav class="nav-list">${nav.map(n=>navButton(...n)).join("")}</nav>${isAdmin()?`<div class="switcher"><button class="${state.page!=="admin"?"active":""}" data-page="study">普通用户端</button><button data-page="admin">开发者端</button></div>`:""}${state.page==="study"?studySide():""}`; }
-  function navButton(id,icon,title,sub){ return `<button class="nav-item ${state.page===id?"active":""}" data-page="${id}"><span class="icon">${icon}</span><span><strong>${title}</strong><span class="muted">${sub}</span></span></button>`; }
-  function studySide(){ return `<section class="card side-section"><div class="section-title"><span>课程</span><button data-action="add-course">新增</button></div><div class="list">${arr(state.courses).map(c=>`<button class="course-item ${c.id===state.courseId?"active":""}" data-course="${esc(c.id)}"><span><strong>${esc(c.name)}</strong><span class="muted">Current term</span></span></button>`).join("")||`<p class="muted">还没有课程。先新增一门课程。</p>`}</div></section><section class="card side-section"><div class="section-title"><span>课程资料</span><span class="muted">${arr(state.docs).length}</span></div><textarea id="docText" placeholder="粘贴 syllabus、lecture notes、rubric、deadline 或样卷文字"></textarea><div class="row"><input id="docTitle" placeholder="资料标题"><button data-action="save-doc">保存</button></div><input id="docFile" type="file" accept="*/*"><button style="margin-top:8px" data-action="upload-doc">上传文件</button></section><section class="card side-section"><div class="section-title"><span>Learning Style</span><span class="muted">Saved</span></div><label><input type="checkbox" checked> 保留 English terms</label><label><input type="checkbox" checked> 做题先给 English answer</label><label><input type="checkbox" checked> 用中文解释 reasoning</label><textarea id="learningStyle">${esc(state.user.preferences?.learningStyle||"")}</textarea></section>`; }
-  function main(){ const t={profile:"个人资料",community:"社区",classmates:"同学",email:"邮件回复助手",schedule:"时间表",tools:"工具",admin:"开发者端"}; const title=state.page==="study"?(activeCourse()?.name||"请选择课程"):(t[state.page]||"StudyBridge"); return `<header class="topbar"><div><div class="eyebrow">${state.page==="study"?"Academic Coach":""}</div><h2>${esc(title)}</h2><p class="muted">${esc(state.notice||(state.page==="study"?"资料、对话和偏好会通过后端保存。":""))}</p></div>${state.page!=="study"?`<button data-page="study">返回学习区</button>`:`<select id="studyMode"><option value="preview">预习</option><option value="review">复习</option><option value="exam">考试</option></select>`}</header><section class="workspace">${route()}</section>`; }
-  function route(){ return state.page==="profile"?profilePage():state.page==="community"?communityPage():state.page==="classmates"?classmatesPage():state.page==="email"?emailPage():state.page==="schedule"?schedulePage():state.page==="tools"?toolsPage():state.page==="admin"?adminPage():studyPage(); }
-  function nextDue(){ const now=Date.now(); return arr(state.docs).filter(d=>d.dueAt&&!d.completed).map(d=>({...d,ms:new Date(d.dueAt).getTime()-now})).filter(d=>d.ms>0).sort((a,b)=>a.ms-b.ms)[0]; }
-  function dueText(ms){ const h=Math.max(0,Math.floor(ms/36e5)),d=Math.floor(h/24),r=h%24; return d?`${d}天${r}小时`:`${r}小时`; }
-  function studyPage(){ const due=nextDue(); return `<div class="chat-wrap">${due?`<div class="deadline"><div><div class="eyebrow">最近要做</div><h3>${esc(due.title)}</h3><p class="muted">${esc(due.courseName||activeCourse()?.name||"")} | ${esc(new Date(due.dueAt).toLocaleString())} | ${esc(due.source||"")}</p></div><div class="count"><b>${dueText(due.ms)}</b><br>后 due</div></div>`:`<div class="deadline"><div><div class="eyebrow">提醒</div><h3>暂时没有 upcoming deadline</h3><p class="muted">添加作业、考试或 syllabus 后，这里会显示最近倒计时。</p></div></div>`}<div class="chat-log" id="chatLog">${arr(state.messages).map(msg).join("")}</div><div class="composer"><div class="row" style="margin-bottom:8px"><span class="muted">快捷指令</span>${["预习下一节","课前关键词","上课问题","10 分钟预习","课程介绍","Deadline 汇总","制作 Cheatsheet"].map(x=>`<button class="small" data-prompt="${esc(x)}">${esc(x)}</button>`).join("")}</div><div class="composer-row"><input id="chatFiles" type="file" multiple><input id="chatInput" placeholder="问：帮我根据这门课资料做一个 final 复习计划"><button class="primary" data-action="send-chat">发送</button></div></div></div>`; }
-  function msg(m){ const u=m.role==="user"; return `<div class="msg ${u?"user":""}">${u?"":`<span class="icon">AI</span>`}<div class="bubble">${fmt(m.content)}</div>${u?`<span class="icon" style="background:#3567d8">你</span>`:""}</div>`; }
-  function profilePage(){ const p=profile(); return `<div class="grid2"><section class="card"><div class="cover">${p.avatarUrl?`<img class="avatar" style="position:absolute;left:20px;bottom:-28px" src="${esc(p.avatarUrl)}">`:`<div class="avatar icon" style="position:absolute;left:20px;bottom:-28px">${esc(state.user.name?.[0]||"S")}</div>`}</div><div style="margin-top:40px"><h2>${esc(state.user.name)}</h2><p>${esc(p.school||"未填写学校")}${p.major?` · ${esc(p.major)}`:""}</p><p><b>专业</b> ${esc(p.major||"未填写")}</p><p><b>SB ID:</b> ${esc(p.sbId||"未生成")}</p><section class="item"><strong>${esc(p.school||"学校")} 概览</strong><p class="muted">StudyBridge 会把学校和专业写入 AI 学习上下文。学校排名、地点和特色之后可以继续接入更完整的学校库。</p></section></div></section><section class="card"><h3>编辑资料</h3><label>姓名<input id="profileName" value="${esc(state.user.name)}"></label><label>学校<input id="profileSchool" value="${esc(p.school||"")}"></label><label>专业<input id="profileMajor" value="${esc(p.major||"")}"></label><label>SB ID<input id="profileSbId" value="${esc(p.sbId||"")}" placeholder="只能自定义一次"></label><label>头像图片链接 / data URL<input id="profileAvatar" value="${esc(p.avatarUrl||"")}"></label><label>背景图片链接<input id="profileCover" value="${esc(p.coverUrl||"")}"></label><button class="primary" data-action="save-profile">保存资料</button></section></div>`; }
-  function communityPage(){ return `<div class="grid2"><section class="card"><h3>选择频道</h3>${[["all","全","全部社区","所有公开讨论"],["school","校","学校社区",profile().school||"按学校分类"],["major","专","专业社区",profile().major||"按专业分类"]].map(([k,i,t,s])=>`<button class="nav-item ${state.community.channel===k?"active":""}" data-channel="${k}"><span class="icon">${i}</span><span><strong>${t}</strong><span class="muted">${esc(s)}</span></span></button>`).join("")}<textarea id="communityPost" placeholder="分享一个问题、经验或提醒"></textarea><button class="primary" data-action="post-community">发布</button></section><section class="card"><h3>讨论</h3><div class="list">${arr(state.community.posts).map(p=>`<div class="item"><strong>${esc(p.authorName||p.name||"同学")}</strong><p>${fmt(p.text||p.content||"")}</p></div>`).join("")||`<p class="muted">还没有帖子。</p>`}</div></section></div>`; }
-  function classmatesPage(){ const sel=arr(state.classmates.list).find(f=>f.id===state.classmates.selected); return `<div class="split"><section class="card"><h3>添加同学</h3><p class="muted">输入对方 Profile 里的 SB ID。</p><div class="row"><input id="friendSbId" placeholder="输入 SB ID，例如 adam2026"><button class="primary" data-action="send-friend-request">发送申请</button></div><details><summary><b>申请列表</b> ${arr(state.classmates.incoming).length?`<span class="pill">${arr(state.classmates.incoming).length}</span>`:""}</summary><div class="list">${arr(state.classmates.incoming).map(r=>`<div class="item"><strong>${esc(r.fromName||r.name||"同学")}</strong><button data-action="friend-accept" data-id="${esc(r.id)}">通过</button><button data-action="friend-ignore" data-id="${esc(r.id)}">忽略</button></div>`).join("")||`<p class="muted">还没有好友申请。</p>`}</div></details><h3>同学列表</h3><div class="list">${arr(state.classmates.list).map(f=>`<button class="item" data-friend="${esc(f.id)}"><strong>${esc(f.name||"同学")}</strong><p class="muted">SB ID: ${esc(f.sbId||"")}</p><p>${esc(f.lastMessage||"")}</p></button>`).join("")||`<p class="muted">还没有添加同学。</p>`}</div></section><section class="card chat-wrap"><div><div class="eyebrow">Direct Chat</div><h3>${sel?esc(sel.name):"请选择一位同学"}</h3>${sel?`<p class="muted">${esc(sel.school||"")}${sel.major?` · ${esc(sel.major)}`:""} · SB ID: ${esc(sel.sbId||"")}</p>`:""}</div><div class="chat-log" id="classmateChatLog">${arr(state.classmates.messages).map(m=>`<div class="msg ${m.senderId===state.user.id?"user":""}"><div class="bubble">${esc(m.text||m.content||"")}<p class="muted">${esc(m.createdAt?new Date(m.createdAt).toLocaleString():"")}</p></div></div>`).join("")}</div><div class="composer-row"><input id="friendMessage" placeholder="写一句话给同学"><button class="primary" data-action="send-friend-message">发送</button></div></section></div>`; }
-  function emailPage(){ return `<div class="grid2"><section class="card"><h3>收到的邮件</h3><label>邮件原文<textarea id="emailOriginal" placeholder="把邮件粘贴在这里"></textarea></label><label>你想怎么回复<textarea id="emailIntent" placeholder="例如：我想礼貌申请延期"></textarea></label><button class="primary" data-action="email-ai">生成回复</button></section><section class="card"><h3>建议回复</h3><div id="toolOutput" class="bubble">生成后会显示邮件重点和英文回复。</div></section></div>`; }
-  function schedulePage(){ const items=arr(state.docs).filter(d=>d.dueAt); return `<div class="grid2"><section class="card"><h3>新增提醒</h3><label>标题<input id="dueTitle" placeholder="ECO101 Essay 1"></label><label>课程<input id="dueCourse" value="${esc(activeCourse()?.name||"")}"></label><label>截止时间<input id="dueAt" type="datetime-local"></label><label>提交位置<input id="dueSource" placeholder="Quercus / Canvas"></label><button class="primary" data-action="add-due">保存 deadline</button></section><section class="card"><h3>全部提醒</h3><div class="list">${items.map(i=>`<div class="item"><span class="pill">DDL</span><h3>${esc(i.title)}</h3><p class="muted">${esc(i.courseName||"")} | ${esc(new Date(i.dueAt).toLocaleString())} | ${esc(i.source||"")}</p></div>`).join("")||`<p class="muted">还没有 deadline。</p>`}</div></section></div>`; }
-  function toolsPage(){ const manual=state.tool==="sheets"?`<div class="table-editor">${Array.from({length:20},(_,i)=>`<input placeholder="${String.fromCharCode(65+i%4)}${Math.floor(i/4)+1}">`).join("")}</div>`:state.tool==="slides"?`<div class="slide-card" contenteditable="true">Slide title<br><br>Bullet 1<br>Bullet 2</div>`:`<textarea id="toolManual" class="editor" placeholder="在这里直接写 essay、report 或 reading response。"></textarea>`; return `<section class="card"><div class="tool-tabs">${[["docs","D","SB Docs","写 essay 和 report"],["sheets","S","SB Sheets","做表格和计划表"],["slides","P","SB Slides","做 PPT 大纲"]].map(([k,i,t,s])=>`<button class="tool-tab ${state.tool===k?"active":""}" data-tool="${k}"><span class="icon">${i}</span><span><strong>${t}</strong><span class="muted">${s}</span></span></button>`).join("")}</div></section><div class="grid2" style="margin-top:16px"><section class="card"><h3>手动编辑区</h3>${manual}<label>AI 帮我<textarea id="toolPrompt" placeholder="帮我改成更学术；整理成表格；做 presentation outline"></textarea></label><button class="primary" data-action="tool-ai">调用 AI</button></section><section class="card"><h3>AI 输出</h3><div id="toolOutput" class="bubble">你可以先手动制作，再让 AI 在旁边辅助。</div></section></div>`; }
-  function adminPage(){ const s=state.status||{}; const cards=[["当前版本",s.version?.current||VERSION,s.version?.detail||"前端稳定版"],["最后部署时间",s.deploy?.lastModified||"暂未检测到",s.deploy?.detail||""],["数据库模式",s.database?.mode||"local",s.database?.detail||"本地数据库可读写"],["AI 是否正常",s.ai?.label||"待确认",s.ai?.detail||"点击检测刷新真实状态"],["Google 登录",s.google?.label||"未配置",s.google?.detail||"普通邮箱注册仍可用"],["服务器自动同步",s.sync?.label||"待确认",s.sync?.detail||""]]; return `<section class="card"><div class="row" style="justify-content:space-between"><div><h3>系统状态</h3><p class="muted">检测完成：${esc(new Date().toLocaleString())}</p></div><button data-action="admin-refresh">检测</button></div><div class="grid3">${cards.map(([k,v,d])=>`<div class="item"><span class="pill">${esc(k)}</span><h3>${esc(v)}</h3><p class="muted">${esc(d)}</p></div>`).join("")}</div></section><div class="grid2" style="margin-top:16px"><section class="card"><h3>邀请码</h3><input id="inviteLabel" placeholder="备注：例如 Kevin / ECO101 小组"><div class="row"><input id="inviteUses" type="number" value="1" min="1"><select id="inviteRole"><option value="student">普通用户</option><option value="co-admin">Co-admin</option></select><button class="primary" data-action="create-invite">生成邀请码</button></div><div class="list" style="margin-top:12px">${arr(state.admin.invites).map(i=>`<div class="item"><strong>${esc(i.code)}</strong><p class="muted">${esc(i.role||"user")} · ${esc(i.label||"")} · ${esc(i.usedCount||0)}/${esc(i.maxUses||1)} used</p><button data-copy-text="${esc(i.code)}">复制</button></div>`).join("")}</div></section><section class="card"><h3>用户</h3><div class="list">${arr(state.admin.users).map(u=>`<div class="item"><strong>${esc(u.name)}</strong><p class="muted">${esc(u.email)} · ${esc(u.role||"student")}</p><span class="pill">${esc(u.courseCount||0)} courses</span> <span class="pill">${esc(u.docCount||0)} docs</span> <span class="pill">${esc(u.chatCount||0)} chats</span><p class="muted">邀请码：${esc(u.inviteCode||"未记录")}</p></div>`).join("")}</div></section></div>`; }
-  function fmt(t){ return esc(t||"").replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>").replace(/\n/g,"<br>"); }
-  async function loadStudy(){ const c=await api("/api/courses").catch(()=>({courses:[]})); state.courses=arr(c.courses); if(!state.courseId&&state.courses[0]) state.courseId=state.courses[0].id; localStorage.setItem("studybridge.course",state.courseId||""); if(!state.courseId){state.docs=[];state.messages=[];return;} const d=await api(`/api/courses/${state.courseId}/documents`).catch(()=>({documents:[]})); const m=await api(`/api/courses/${state.courseId}/messages`).catch(()=>({messages:[]})); state.docs=arr(d.documents); state.messages=arr(m.messages); }
-  async function loadClassmates(){ const d=await api("/api/classmates").catch(()=>({})); state.classmates.list=arr(d.classmates||d.friends); const r=d.requests||{}; state.classmates.incoming=arr(r.incoming||d.incoming); state.classmates.outgoing=arr(r.outgoing||d.outgoing); if(!state.classmates.selected&&state.classmates.list[0]) state.classmates.selected=state.classmates.list[0].id; if(state.classmates.selected){ const m=await api(`/api/classmates/${state.classmates.selected}/messages`).catch(()=>({messages:[]})); state.classmates.messages=arr(m.messages); } }
-  async function loadPage(page){ state.page=pages.includes(page)?page:"study"; if(state.page==="admin"&&!isAdmin()) state.page="study"; localStorage.setItem("studybridge.page",state.page); note("正在打开页面..."); renderSafe(); try{ if(state.page==="study"||state.page==="schedule") await loadStudy(); if(state.page==="community"){ const d=await api(`/api/community?channel=${encodeURIComponent(state.community.channel)}`).catch(()=>({posts:[]})); state.community.posts=arr(d.posts); } if(state.page==="classmates") await loadClassmates(); if(state.page==="admin"){ state.admin=await api("/api/admin/overview").catch(()=>({users:[],invites:[]})); state.status=await api("/api/admin/system-status").catch(()=>null); } note(""); }catch(e){ note(e.message); } renderSafe(); }
-  async function readFiles(input){ return Promise.all(arr(input?.files).map(file=>new Promise(resolve=>{ const r=new FileReader(); r.onload=()=>resolve({name:file.name,type:file.type,data:r.result}); r.readAsDataURL(file); }))); }
-  async function action(a,b){ if(a==="logout"){await api("/api/auth/logout",{method:"POST"}).catch(()=>null);state.user=null;renderSafe();return;} if(a==="login"){const d=await api("/api/auth/login",{method:"POST",body:{email:$("authEmail")?.value||"",password:$("authPassword")?.value||""}});state.user=d.user;await loadPage(state.page);return;} if(a==="register"){if(($("authPassword")?.value||"")!==($("authPassword2")?.value||"")) throw new Error("两次密码不一致。");const d=await api("/api/auth/register",{method:"POST",body:{name:$("authName")?.value||"",email:$("authEmail")?.value||"",password:$("authPassword")?.value||"",inviteCode:$("authInvite")?.value||""}});state.user=d.user;await loadPage("study");return;} if(a==="google-login") location.assign("/api/auth/google"); if(a==="forgot"){await api("/api/auth/request-manual-reset",{method:"POST",body:{email:$("authEmail")?.value||""}});throw new Error("已提交密码重置申请，请联系开发者。");} if(a==="add-course"){const name=prompt("课程名称，例如 ECO101"); if(!name) return; const d=await api("/api/courses",{method:"POST",body:{name}}); state.courseId=d.course?.id||state.courseId; await loadPage("study");return;} if(a==="save-doc"){if(!state.courseId) throw new Error("还没有选择课程。请先新增或选择课程。"); await api(`/api/courses/${state.courseId}/documents`,{method:"POST",body:{title:$("docTitle")?.value||"Untitled",content:$("docText")?.value||"",type:"note"}}); await loadPage("study");return;} if(a==="upload-doc"){if(!state.courseId) throw new Error("还没有选择课程。请先新增或选择课程。"); for(const f of await readFiles($("docFile"))) await api(`/api/courses/${state.courseId}/documents`,{method:"POST",body:{title:f.name,content:f.data,type:f.type||"file"}}); await loadPage("study");return;} if(a==="send-chat"){if(!state.courseId) throw new Error("还没有选择课程。请先新增或选择课程，再发送问题。"); const text=($("chatInput")?.value||"").trim(), files=await readFiles($("chatFiles")); if(!text&&!files.length) throw new Error("请先输入问题，或上传文件。"); state.messages.push({role:"user",content:text||"请分析我上传的文件。"},{role:"assistant",content:"正在根据云端课程资料思考..."}); renderSafe(); const d=await api(`/api/courses/${state.courseId}/chat`,{method:"POST",body:{message:text,mode:$("studyMode")?.value||"preview",attachments:files}}); state.messages=arr(d.messages); renderSafe();return;} if(a==="save-profile"){const body={name:$("profileName")?.value||"",school:$("profileSchool")?.value||"",major:$("profileMajor")?.value||"",sbId:$("profileSbId")?.value||"",avatarUrl:$("profileAvatar")?.value||"",coverUrl:$("profileCover")?.value||""}; const d=await api("/api/me/profile",{method:"PUT",body}); state.user=d.user||{...state.user,name:body.name,profile:{...profile(),...body}}; await loadPage("profile");return;} if(a==="post-community"){await api("/api/community/posts",{method:"POST",body:{channel:state.community.channel,text:$("communityPost")?.value||""}});await loadPage("community");return;} if(a==="send-friend-request"){const sbId=($("friendSbId")?.value||"").trim(); if(!sbId) throw new Error("请输入对方的 SB ID。"); await api("/api/classmate-requests",{method:"POST",body:{sbId}}); note("好友申请已发送。"); await loadPage("classmates");return;} if(a==="friend-accept"||a==="friend-ignore"){await api(`/api/classmate-requests/${b.dataset.id}`,{method:a==="friend-accept"?"POST":"DELETE"}); await loadPage("classmates");return;} if(a==="send-friend-message"){if(!state.classmates.selected) throw new Error("请先选择一位同学。"); const text=($("friendMessage")?.value||"").trim(); if(!text) return; await api(`/api/classmates/${state.classmates.selected}/messages`,{method:"POST",body:{text}}); await loadPage("classmates");return;} if(a==="add-due"){if(!state.courseId) throw new Error("请先在学习区新增或选择一门课程。"); await api(`/api/courses/${state.courseId}/documents`,{method:"POST",body:{title:$("dueTitle")?.value||"Deadline",content:$("dueSource")?.value||"",type:"deadline",dueAt:$("dueAt")?.value||"",courseName:$("dueCourse")?.value||activeCourse()?.name||"",source:$("dueSource")?.value||""}}); await loadPage("schedule");return;} if(a==="email-ai"||a==="tool-ai"){if(!state.courseId) throw new Error("请先选择一门课程。"); const p=a==="email-ai"?`帮我回复这封邮件。\n邮件原文：${$("emailOriginal")?.value||""}\n我的目的：${$("emailIntent")?.value||""}`:`工具：${state.tool}\n我写的内容：${$("toolManual")?.value||""}\n请帮我：${$("toolPrompt")?.value||""}`; const d=await api(`/api/courses/${state.courseId}/chat`,{method:"POST",body:{message:p,mode:"tool"}}); if($("toolOutput")) $("toolOutput").innerHTML=fmt(arr(d.messages).at(-1)?.content||"没有生成内容。");return;} if(a==="admin-refresh") return loadPage("admin"); if(a==="create-invite"){await api("/api/admin/invites",{method:"POST",body:{label:$("inviteLabel")?.value||"",maxUses:Number($("inviteUses")?.value||1),role:$("inviteRole")?.value||"student"}}); return loadPage("admin");} }
-  document.addEventListener("click", async e=>{ const t=e.target instanceof Element?e.target:e.target?.parentElement; if(!t) return; const p=t.closest("[data-page]"); if(p){e.preventDefault();return loadPage(p.dataset.page);} const c=t.closest("[data-course]"); if(c){e.preventDefault();state.courseId=c.dataset.course;localStorage.setItem("studybridge.course",state.courseId);return loadPage("study");} const pr=t.closest("[data-prompt]"); if(pr&&$("chatInput")) $("chatInput").value=pr.dataset.prompt||""; const ch=t.closest("[data-channel]"); if(ch){e.preventDefault();state.community.channel=ch.dataset.channel;return loadPage("community");} const fr=t.closest("[data-friend]"); if(fr){e.preventDefault();state.classmates.selected=fr.dataset.friend;return loadPage("classmates");} const tool=t.closest("[data-tool]"); if(tool){e.preventDefault();state.tool=tool.dataset.tool;return renderSafe();} const copy=t.closest("[data-copy-text]"); if(copy){await navigator.clipboard.writeText(copy.dataset.copyText||"");note("已复制。");return renderSafe();} const mode=t.closest("[data-auth-mode]"); if(mode){state.authMode=mode.dataset.authMode;note("");return renderSafe();} const b=t.closest("[data-action]"); if(!b) return; e.preventDefault(); try{await action(b.dataset.action,b);}catch(err){note(err.message);renderSafe();} });
-  async function boot(){ css(); state.google=Boolean((await api("/api/auth/google/config").catch(()=>({enabled:false}))).enabled); const me=await api("/api/me").catch(()=>null); state.user=me?.user||null; if(!state.user) return renderSafe(); await loadPage(state.page); }
-  boot().catch(e=>{console.error(e); root.innerHTML=`<main class="auth grid-bg"><section class="auth-card"><h2>StudyBridge 暂时没有打开</h2><p class="danger">${esc(e.message)}</p><button onclick="location.reload()">刷新</button></section></main>`;});
+
+  function setPage(page) {
+    state.page = page;
+    localStorage.setItem("sb_page", page);
+    state.error = "";
+    state.notice = "";
+    render();
+    loadPageData();
+  }
+
+  function selectedCourse() {
+    return state.courses.find((course) => course.id === state.courseId) || state.courses[0] || null;
+  }
+
+  async function init() {
+    try {
+      const me = await api("/api/me");
+      state.user = me.user;
+      if (!isAdmin() && state.page === "admin") state.page = "study";
+      await loadBase();
+      render();
+      await loadPageData();
+    } catch {
+      renderAuth();
+    }
+  }
+
+  async function loadBase() {
+    const courses = await api("/api/courses").catch(() => ({ courses: [] }));
+    state.courses = courses.courses || [];
+    if (!state.courseId && state.courses[0]) state.courseId = state.courses[0].id;
+    if (state.courseId && !state.courses.some((course) => course.id === state.courseId)) {
+      state.courseId = state.courses[0]?.id || "";
+    }
+    localStorage.setItem("sb_course", state.courseId || "");
+  }
+
+  async function loadPageData() {
+    if (!state.user) return;
+    try {
+      if (state.page === "study") await loadStudy();
+      if (state.page === "community") state.community = await api("/api/community?channel=all");
+      if (state.page === "classmates") state.classmates = await api("/api/classmates");
+      if (state.page === "admin" && isAdmin()) {
+        const [admin, status] = await Promise.all([
+          api("/api/admin/overview"),
+          api("/api/admin/system-status").catch(() => null)
+        ]);
+        state.admin = admin;
+        state.status = status;
+      }
+      render();
+    } catch (error) {
+      state.error = error.message;
+      render();
+    }
+  }
+
+  async function loadStudy() {
+    const course = selectedCourse();
+    if (!course) {
+      state.documents = [];
+      state.messages = [];
+      return;
+    }
+    const [docs, messages] = await Promise.all([
+      api(`/api/courses/${course.id}/documents`).catch(() => ({ documents: [] })),
+      api(`/api/courses/${course.id}/messages`).catch(() => ({ messages: [] }))
+    ]);
+    state.documents = docs.documents || [];
+    state.messages = messages.messages || [];
+  }
+
+  function renderAuth() {
+    root.innerHTML = `
+      <main class="auth-page">
+        <section class="auth-card">
+          <div class="auth-brand">
+            <div class="brand-mark">SB</div>
+            <div><span>STUDYBRIDGE CLOUD</span><strong>StudyBridge</strong></div>
+          </div>
+          <div class="auth-tabs">
+            <button class="active" data-auth-tab="login">登录</button>
+            <button data-auth-tab="register">注册</button>
+          </div>
+          <form id="authForm" class="auth-form" data-mode="login">
+            <label data-register-only hidden>姓名<input name="name" placeholder="你的名字" /></label>
+            <label>Email<input name="email" placeholder="you@example.com" autocomplete="email" /></label>
+            <label>密码<input name="password" type="password" placeholder="至少 8 位" autocomplete="current-password" /></label>
+            <label data-register-only hidden>确认密码<input name="passwordConfirm" type="password" placeholder="再次输入密码" /></label>
+            <label data-register-only hidden>邀请码<input name="inviteCode" placeholder="向创建者索取邀请码" /></label>
+            <button class="primary-btn" type="submit">登录</button>
+            <p class="muted">Google 登录暂未配置时，普通邮箱登录/注册仍可使用。</p>
+            <p class="error-text" id="authError"></p>
+          </form>
+        </section>
+      </main>`;
+  }
+
+  function render() {
+    if (!state.user) return renderAuth();
+    if (state.mode === "admin" && !isAdmin()) state.mode = "user";
+    const adminMode = state.mode === "admin" && isAdmin();
+    root.innerHTML = `
+      <div class="app-shell stable-shell">
+        <aside class="sidebar stable-sidebar">
+          ${sidebar(adminMode)}
+        </aside>
+        <main class="main-content stable-main">
+          ${adminMode ? adminPage() : page()}
+        </main>
+      </div>`;
+  }
+
+  function sidebar(adminMode) {
+    if (adminMode) {
+      return `
+        <div class="side-brand">
+          <div class="brand-mark">SB</div>
+          <div><strong>StudyBridge</strong><span>${esc(state.user.name)} | ${esc(state.user.email)}</span></div>
+          <button data-action="logout">退出</button>
+        </div>
+        <div class="mode-switch">
+          <button data-mode="user">普通用户端</button>
+          <button class="active" data-mode="admin">开发者端</button>
+        </div>`;
+    }
+    const p = profile();
+    return `
+      <div class="side-brand">
+        <div class="brand-mark">SB</div>
+        <div><strong>StudyBridge</strong><span>${esc(state.user.name)} | ${esc(state.user.email)}</span></div>
+        <button data-action="logout">退出</button>
+      </div>
+      <section class="profile-tile ${state.page === "profile" ? "active" : ""}" data-page="profile">
+        <div class="profile-cover" style="${p.backgroundUrl ? `background-image:url('${esc(p.backgroundUrl)}')` : ""}">
+          <div class="avatar">${p.avatarUrl ? `<img src="${esc(p.avatarUrl)}" alt="">` : initials(state.user.name)}</div>
+        </div>
+        <div class="profile-row">
+          <div><strong>${esc(state.user.name)}</strong><span>${esc(p.school || "还没有填写学校")}${p.major ? ` · ${esc(p.major)}` : ""}</span><span>SB ID: ${esc(p.sbId || "未设置")}</span></div>
+          <button data-page="profile">打开</button>
+        </div>
+      </section>
+      <nav class="side-nav">
+        ${nav.map(([key, icon, title, desc]) => `
+          <button class="nav-card ${state.page === key ? "active" : ""}" data-page="${key}">
+            <span class="nav-icon">${icon}</span>
+            <span><strong>${title}</strong><small>${desc}</small></span>
+          </button>`).join("")}
+      </nav>
+      ${isAdmin() ? `
+        <div class="mode-switch">
+          <button class="active" data-mode="user">普通用户端</button>
+          <button data-mode="admin">开发者端</button>
+        </div>` : ""}
+      <section class="side-panel">
+        <div class="panel-title"><strong>课程</strong><button data-action="addCourse">新增</button></div>
+        ${state.courses.length ? state.courses.map((course) => `
+          <button class="course-item ${course.id === state.courseId ? "active" : ""}" data-course="${esc(course.id)}">
+            <strong>${esc(course.name)}</strong><small>${esc(course.term || "Current term")}</small>
+          </button>`).join("") : `<p class="muted">还没有课程。点击新增创建第一门课。</p>`}
+      </section>
+      <section class="side-panel">
+        <div class="panel-title"><strong>课程资料</strong><span>${state.documents.length}</span></div>
+        <textarea id="docText" placeholder="粘贴 syllabus、lecture notes、rubric、deadline 或样卷文字"></textarea>
+        <div class="row"><input id="docTitle" placeholder="资料标题" /><button data-action="saveDoc">保存</button></div>
+      </section>`;
+  }
+
+  function pageHeader(label, title, sub) {
+    return `<header class="page-header"><div><span>${label}</span><h1>${title}</h1><p>${sub}</p></div><button data-page="study">返回学习区</button></header>${noticeBlock()}`;
+  }
+
+  function noticeBlock() {
+    return `${state.error ? `<div class="notice error">${esc(state.error)}</div>` : ""}${state.notice ? `<div class="notice">${esc(state.notice)}</div>` : ""}`;
+  }
+
+  function page() {
+    if (state.page === "community") return communityPage();
+    if (state.page === "classmates") return classmatesPage();
+    if (state.page === "email") return emailPage();
+    if (state.page === "schedule") return schedulePage();
+    if (state.page === "tools") return toolsPage();
+    if (state.page === "profile") return profilePage();
+    return studyPage();
+  }
+
+  function studyPage() {
+    const course = selectedCourse();
+    return `
+      <section class="study-page">
+        <header class="study-head">
+          <div><span>ACADEMIC COACH</span><h1>${esc(course?.name || "请选择课程")}</h1><p>对话已经保存到云端。</p></div>
+          <select id="studyMode"><option value="preview">预习</option><option value="review">复习</option><option value="exam">考试</option></select>
+        </header>
+        <div class="chat-area">
+          ${course ? messageList() : `<div class="empty-state">还没有选择课程。请先在左侧新增或选择一门课程，然后再发送问题。</div>`}
+        </div>
+        <form class="chat-compose" id="chatForm">
+          <div class="quick-row">
+            ${["预习下一节", "课前关键词", "上课问题", "10 分钟预习", "课程介绍", "Deadline 汇总", "制作 Cheatsheet"].map((text) => `<button type="button" data-quick="${text}">${text}</button>`).join("")}
+          </div>
+          <div class="compose-row">
+            <input id="chatInput" placeholder="问：帮我根据这门课资料做一个 final 复习计划" ${course ? "" : "disabled"} />
+            <button class="primary-btn" ${course ? "" : "disabled"}>发送</button>
+          </div>
+        </form>
+      </section>`;
+  }
+
+  function messageList() {
+    const items = state.messages.length ? state.messages : [{ role: "assistant", content: "欢迎回来。先保存课程资料，然后问我预习、复习、deadline、作业要求或模拟考试。" }];
+    return `<div class="messages">${items.map((msg) => `
+      <div class="msg ${msg.role === "user" ? "mine" : "ai"}">
+        <span>${msg.role === "user" ? "你" : "AI"}</span>
+        <div class="bubble">${formatText(msg.content)}</div>
+      </div>`).join("")}</div>`;
+  }
+
+  function formatText(text) {
+    return esc(text).replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br>");
+  }
+
+  function communityPage() {
+    const data = state.community;
+    return `
+      ${pageHeader("COMMUNITY", "社区", "可以看全部社区，也可以按学校和专业浏览。")}
+      <section class="grid-two">
+        <div class="card">
+          <h2>发布讨论</h2>
+          <input id="postTopic" placeholder="主题，例如 Course / Housing / Exam" />
+          <textarea id="postContent" placeholder="写下你想讨论的问题"></textarea>
+          <button class="primary-btn" data-action="postCommunity">发布</button>
+        </div>
+        <div class="card">
+          <h2>讨论区</h2>
+          ${(data?.posts || []).map((post) => `<article class="list-item"><strong>${esc(post.topic || "Question")}</strong><p>${formatText(post.content)}</p><small>${esc(post.authorName || "同学")} · ${fmt(post.createdAt)}</small></article>`).join("") || `<p class="muted">还没有帖子。</p>`}
+        </div>
+      </section>`;
+  }
+
+  function classmatesPage() {
+    const data = state.classmates || {};
+    const mates = data.classmates || [];
+    const active = mates.find((item) => item.id === state.activeClassmateId) || mates[0];
+    if (active && !state.activeClassmateId) state.activeClassmateId = active.id;
+    return `
+      ${pageHeader("CLASSMATES", "同学", "通过 SB ID 发送好友申请，通过后可以聊天。")}
+      <section class="grid-two classmates-grid">
+        <div class="card">
+          <h2>添加同学</h2>
+          <p class="muted">当前学校：${esc(data.school || profile().school || "未填写")}</p>
+          <div class="row"><input id="sbIdInput" placeholder="输入 SB ID，例如 adam2026" /><button data-action="addClassmate">发送申请</button></div>
+          <details><summary>申请列表 ${((data.requests?.incoming || []).length) ? "•" : ""}</summary>
+            ${(data.requests?.incoming || []).map((req) => `<div class="list-item"><strong>${esc(req.from?.name)}</strong><small>SB ID: ${esc(req.from?.sbId)}</small><button data-request="${req.id}" data-action="acceptRequest">通过</button><button data-request="${req.id}" data-action="ignoreRequest">忽略</button></div>`).join("") || `<p class="muted">还没有好友申请。</p>`}
+            ${(data.requests?.outgoing || []).map((req) => `<p class="muted">已发送给 ${esc(req.to?.name || req.to?.sbId)}</p>`).join("")}
+          </details>
+          <h2>同学列表</h2>
+          ${mates.map((mate) => `<button class="list-item wide ${mate.id === state.activeClassmateId ? "active" : ""}" data-mate="${esc(mate.id)}"><strong>${esc(mate.peer?.name || mate.name || "同学")}</strong><small>SB ID: ${esc(mate.peer?.sbId || mate.sbId || "")}</small></button>`).join("") || `<p class="muted">还没有同学。</p>`}
+        </div>
+        <div class="card chat-card">
+          <div class="panel-title"><div><span>DIRECT CHAT</span><h2>${esc(active?.peer?.name || active?.name || "请选择一位同学")}</h2></div><button data-action="refreshClassmates">刷新</button></div>
+          <div class="direct-messages">
+            ${active ? state.directMessages.map((msg) => `<div class="dm ${msg.mine ? "mine" : ""}"><p>${esc(msg.content)}</p><small>${fmt(msg.createdAt)}</small></div>`).join("") : `<p class="muted">选择同学后，这里会显示你们的聊天。</p>`}
+          </div>
+          <div class="row"><input id="dmInput" placeholder="写一句话给同学" ${active ? "" : "disabled"} /><button data-action="sendDm" ${active ? "" : "disabled"}>发送</button></div>
+        </div>
+      </section>`;
+  }
+
+  function emailPage() {
+    return `
+      ${pageHeader("EMAIL COACH", "邮件助手", "粘贴邮件内容，StudyBridge 会帮你看重点并起草英文回复。")}
+      <section class="grid-two">
+        <div class="card"><h2>收到的邮件</h2><textarea id="emailText" placeholder="把老师、TA、学校办公室或同学发来的邮件粘贴在这里"></textarea><textarea id="emailGoal" placeholder="你想怎么回复，例如请假、确认 meeting time、问清作业要求"></textarea><button class="primary-btn" data-action="draftEmail">生成回复</button></div>
+        <div class="card"><h2>建议回复</h2><div id="emailOutput" class="output-box">生成后会显示在这里。</div></div>
+      </section>`;
+  }
+
+  function schedulePage() {
+    const allDocs = state.documents.filter((doc) => /\[SCHEDULE ITEM\]|deadline|due/i.test(`${doc.title} ${doc.text}`));
+    return `
+      ${pageHeader("SCHEDULE", "时间表", "记录课程、作业 deadline 和提醒。")}
+      <section class="grid-two">
+        <div class="card"><h2>新增提醒</h2><input id="deadlineTitle" placeholder="例如 ECO101 Essay 1" /><input id="deadlineCourse" placeholder="课程，例如 ECO101" /><input id="deadlineAt" type="datetime-local" /><button class="primary-btn" data-action="addDeadline">保存提醒</button></div>
+        <div class="card"><h2>全部提醒</h2>${allDocs.map((doc) => `<div class="list-item"><strong>${esc(doc.title)}</strong><small>${esc(doc.type || "Schedule")} · ${fmt(doc.createdAt)}</small></div>`).join("") || `<p class="muted">还没有提醒。添加后会显示在这里。</p>`}</div>
+      </section>`;
+  }
+
+  function toolsPage() {
+    return `
+      ${pageHeader("STUDY TOOLS", "工具", "Docs、Sheets、Slides 可以手动编辑，旁边再调用 AI。")}
+      <section class="grid-two">
+        <div class="card"><h2>SB Docs</h2><textarea class="big-editor" placeholder="在这里写 essay、report 或 reading response。"></textarea><button data-action="toolAi">让 AI 帮我优化</button></div>
+        <div class="card"><h2>SB Sheets / Slides</h2><textarea class="big-editor" placeholder="表格计划、数据、PPT 大纲都可以先手动写在这里。"></textarea><button data-action="toolAi">让 AI 帮我整理</button></div>
+      </section>`;
+  }
+
+  function profilePage() {
+    const p = profile();
+    return `
+      ${pageHeader("PERSONAL PROFILE", "个人资料", "头像、背景、学校、专业和 SB ID 都在这里管理。")}
+      <section class="grid-two">
+        <div class="card profile-preview">
+          <div class="profile-cover large" style="${p.backgroundUrl ? `background-image:url('${esc(p.backgroundUrl)}')` : ""}"><div class="avatar large">${p.avatarUrl ? `<img src="${esc(p.avatarUrl)}" alt="">` : initials(state.user.name)}</div></div>
+          <h2>${esc(state.user.name)}</h2>
+          <p>${esc(p.school || "未填写学校")}${p.major ? ` · ${esc(p.major)}` : ""}</p>
+          <p><strong>SB ID:</strong> ${esc(p.sbId || "未设置")}</p>
+          <div class="school-box"><strong>${esc(p.school || "学校")} 概览</strong><p>填写学校后，这里会用于 AI 个性化学习建议。QS 排名、地点和特色之后可以继续完善。</p></div>
+        </div>
+        <form class="card" id="profileForm">
+          <h2>编辑资料</h2>
+          <label>姓名<input name="name" value="${esc(state.user.name)}" /></label>
+          <label>学校<input name="school" value="${esc(p.school || "")}" placeholder="University of Toronto" /></label>
+          <label>专业<input name="major" value="${esc(p.major || "")}" placeholder="Finance / Economics / CS" /></label>
+          <label>SB ID<input name="sbId" value="${esc(p.sbId || "")}" placeholder="你的唯一 ID" /></label>
+          <label>头像图片链接<input name="avatarUrl" value="${esc(p.avatarUrl || "")}" /></label>
+          <label>背景图片链接<input name="backgroundUrl" value="${esc(p.backgroundUrl || "")}" /></label>
+          <button class="primary-btn">保存资料</button>
+        </form>
+      </section>`;
+  }
+
+  function adminPage() {
+    const data = state.admin;
+    return `
+      ${pageHeader("CREATOR CONSOLE", "开发者端", "管理邀请码、用户、系统状态和密码重置申请。")}
+      <section class="card">
+        <div class="panel-title"><h2>系统状态</h2><button data-action="checkStatus">检测</button></div>
+        ${state.status ? statusGrid() : `<p class="muted">点击检测查看系统状态。</p>`}
+      </section>
+      <section class="grid-two">
+        <div class="card">
+          <h2>邀请码</h2>
+          <input id="inviteLabel" placeholder="备注：例如 Kevin / ECO101 小组" />
+          <div class="row"><input id="inviteUses" type="number" min="1" value="1" /><select id="inviteRole"><option value="student">普通用户</option><option value="admin">Co-admin</option></select><button data-action="createInvite">生成邀请码</button></div>
+          ${(data?.invites || []).map((invite) => `<div class="list-item"><strong>${esc(invite.code)}</strong><small>${esc(invite.role)} · ${esc(invite.label || "")} · ${invite.usedCount || 0}/${invite.maxUses || 1} used</small><button data-copy="${esc(invite.code)}">复制</button><button data-invite="${invite.id}" data-active="${invite.active ? "0" : "1"}" data-action="toggleInvite">${invite.active ? "停用" : "启用"}</button></div>`).join("")}
+        </div>
+        <div class="card">
+          <h2>用户</h2>
+          ${(data?.users || []).map((user) => `<div class="list-item"><strong>${esc(user.name)}</strong><small>${esc(user.email)} · ${esc(user.role)} · 邀请码：${esc(user.inviteCode || "无")}</small><div class="pill-row"><span>${user.stats?.courses || 0} courses</span><span>${user.stats?.docs || 0} docs</span><span>${user.stats?.chats || 0} chats</span></div></div>`).join("") || `<p class="muted">暂无用户数据。</p>`}
+        </div>
+      </section>`;
+  }
+
+  function statusGrid() {
+    const s = state.status;
+    const cards = [
+      ["当前版本", s.version?.app || VERSION, `Node ${s.version?.node || ""}`, "ok"],
+      ["最后部署时间", fmt(s.deploy?.lastCodeUpdateAt) || "未检测到", "按服务器文件时间显示。", s.deploy?.lastCodeUpdateAt ? "ok" : "warn"],
+      ["数据库模式", s.database?.mode || "local", s.database?.ok ? "Local database is readable and writable." : "请检查数据库。", s.database?.ok ? "ok" : "bad"],
+      ["AI 是否正常", s.ai?.ok ? "正常" : "未确认", s.ai?.model ? `Current model ${s.ai.model}` : "点击检测后确认。", s.ai?.ok ? "ok" : "warn"],
+      ["Google 登录", s.google?.enabled ? "已配置" : "未配置", "普通邮箱注册仍可用。", s.google?.enabled ? "ok" : "warn"],
+      ["邮箱验证码", s.email?.verificationRequired ? "已启用" : "非必需", s.email?.sendingConfigured ? "真实发信可用。" : "邀请码仍是主要注册控制。", "ok"],
+      ["服务器自动同步", s.autoSync?.detected ? "已检测到" : "未确认", "Server auto-sync script status.", s.autoSync?.detected ? "ok" : "warn"],
+      ["管理接口", "正常", "可以读取用户、邀请码和重置申请。", "ok"]
+    ];
+    return `<div class="status-grid">${cards.map(([title, value, desc, tone]) => `<div class="status-card ${tone}"><strong>${title}</strong><b>${value}</b><p>${desc}</p></div>`).join("")}</div>`;
+  }
+
+  async function handleClick(event) {
+    const target = event.target.closest("[data-page],[data-mode],[data-action],[data-course],[data-quick],[data-mate],[data-copy]");
+    if (!target) return;
+    event.preventDefault();
+    if (target.dataset.page) return setPage(target.dataset.page);
+    if (target.dataset.mode) {
+      state.mode = target.dataset.mode;
+      if (state.mode === "admin") state.page = "admin";
+      if (state.mode === "user" && state.page === "admin") state.page = "study";
+      render();
+      return loadPageData();
+    }
+    if (target.dataset.course) {
+      state.courseId = target.dataset.course;
+      localStorage.setItem("sb_course", state.courseId);
+      state.page = "study";
+      render();
+      return loadStudy().then(render);
+    }
+    if (target.dataset.quick) {
+      const input = qs("#chatInput");
+      if (input) input.value = target.dataset.quick;
+      return;
+    }
+    if (target.dataset.mate) {
+      state.activeClassmateId = target.dataset.mate;
+      await loadDirectMessages();
+      return render();
+    }
+    if (target.dataset.copy) {
+      await navigator.clipboard?.writeText(target.dataset.copy);
+      state.notice = "已复制。";
+      return render();
+    }
+    return runAction(target.dataset.action, target);
+  }
+
+  async function runAction(action, target) {
+    try {
+      state.error = "";
+      state.notice = "";
+      if (action === "logout") {
+        await api("/api/auth/logout", { method: "POST", body: "{}" });
+        location.reload();
+      }
+      if (action === "addCourse") {
+        const name = prompt("课程名称，例如 ECO364");
+        if (!name) return;
+        const out = await api("/api/courses", { method: "POST", body: JSON.stringify({ name }) });
+        state.courseId = out.course.id;
+        await loadBase();
+        setPage("study");
+      }
+      if (action === "saveDoc") {
+        const course = selectedCourse();
+        if (!course) throw new Error("请先选择课程。");
+        await api(`/api/courses/${course.id}/documents`, { method: "POST", body: JSON.stringify({ title: qs("#docTitle")?.value || "Course note", text: qs("#docText")?.value || "" }) });
+        state.notice = "课程资料已保存。";
+        await loadStudy();
+        render();
+      }
+      if (action === "postCommunity") {
+        await api("/api/community/posts", { method: "POST", body: JSON.stringify({ topic: qs("#postTopic")?.value || "Question", content: qs("#postContent")?.value || "", channel: "all" }) });
+        state.community = await api("/api/community?channel=all");
+        render();
+      }
+      if (action === "addClassmate") {
+        const id = qs("#sbIdInput")?.value || "";
+        await api("/api/classmates", { method: "POST", body: JSON.stringify({ sbId: id }) });
+        state.notice = "好友申请已发送。";
+        state.classmates = await api("/api/classmates");
+        render();
+      }
+      if (action === "acceptRequest" || action === "ignoreRequest") {
+        await api(`/api/classmate-requests/${target.dataset.request}`, { method: "PATCH", body: JSON.stringify({ action: action === "acceptRequest" ? "accept" : "ignore" }) });
+        state.classmates = await api("/api/classmates");
+        render();
+      }
+      if (action === "refreshClassmates") {
+        state.classmates = await api("/api/classmates");
+        await loadDirectMessages();
+        render();
+      }
+      if (action === "sendDm") {
+        const text = qs("#dmInput")?.value || "";
+        const mate = state.activeClassmateId || (state.classmates?.classmates || [])[0]?.id;
+        if (!mate) throw new Error("请先选择一位同学。");
+        await api(`/api/classmates/${mate}/messages`, { method: "POST", body: JSON.stringify({ content: text }) });
+        await loadDirectMessages();
+        render();
+      }
+      if (action === "draftEmail" || action === "toolAi") {
+        const box = qs("#emailOutput");
+        if (box) box.textContent = "先整理重点，再生成英文回复。这个轻量工具会继续接入 AI。";
+      }
+      if (action === "addDeadline") {
+        const course = selectedCourse();
+        if (!course) throw new Error("请先选择课程。");
+        const title = qs("#deadlineTitle")?.value || "Schedule item";
+        const at = qs("#deadlineAt")?.value || "";
+        await api(`/api/courses/${course.id}/documents`, { method: "POST", body: JSON.stringify({ title: `[SCHEDULE ITEM] ${title}`, type: "Schedule", text: `${qs("#deadlineCourse")?.value || course.name}\n${at}` }) });
+        state.notice = "提醒已保存。";
+        await loadStudy();
+        render();
+      }
+      if (action === "checkStatus") {
+        state.status = await api("/api/admin/system-status");
+        render();
+      }
+      if (action === "createInvite") {
+        await api("/api/admin/invites", { method: "POST", body: JSON.stringify({ label: qs("#inviteLabel")?.value || "Friend invite", maxUses: qs("#inviteUses")?.value || 1, role: qs("#inviteRole")?.value || "student" }) });
+        state.admin = await api("/api/admin/overview");
+        render();
+      }
+      if (action === "toggleInvite") {
+        await api(`/api/admin/invites/${target.dataset.invite}`, { method: "PATCH", body: JSON.stringify({ active: target.dataset.active === "1" }) });
+        state.admin = await api("/api/admin/overview");
+        render();
+      }
+    } catch (error) {
+      state.error = error.message;
+      render();
+    }
+  }
+
+  async function loadDirectMessages() {
+    const mate = state.activeClassmateId || (state.classmates?.classmates || [])[0]?.id;
+    if (!mate) {
+      state.directMessages = [];
+      return;
+    }
+    state.activeClassmateId = mate;
+    const out = await api(`/api/classmates/${mate}/messages`).catch(() => ({ messages: [] }));
+    state.directMessages = out.messages || [];
+  }
+
+  async function handleSubmit(event) {
+    if (event.target.id === "authForm") {
+      event.preventDefault();
+      const form = new FormData(event.target);
+      const mode = event.target.dataset.mode || "login";
+      const body = Object.fromEntries(form.entries());
+      const err = qs("#authError");
+      try {
+        const out = await api(mode === "login" ? "/api/auth/login" : "/api/auth/register", { method: "POST", body: JSON.stringify(body) });
+        state.user = out.user;
+        await loadBase();
+        setPage("study");
+      } catch (error) {
+        if (err) err.textContent = error.message;
+      }
+    }
+    if (event.target.id === "chatForm") {
+      event.preventDefault();
+      const course = selectedCourse();
+      const input = qs("#chatInput");
+      const message = input?.value.trim();
+      if (!course) {
+        state.error = "还没有选择课程。请先新增或选择课程。";
+        return render();
+      }
+      if (!message) return;
+      input.value = "";
+      state.messages.push({ role: "user", content: message }, { role: "assistant", content: "正在根据云端课程资料思考..." });
+      render();
+      try {
+        const out = await api(`/api/courses/${course.id}/chat`, { method: "POST", body: JSON.stringify({ message, mode: qs("#studyMode")?.value || "preview" }) });
+        state.messages = (state.messages || []).filter((msg) => msg.content !== "正在根据云端课程资料思考...").concat(out.messages || []);
+        render();
+      } catch (error) {
+        state.messages = state.messages.filter((msg) => msg.content !== "正在根据云端课程资料思考...");
+        state.error = error.message;
+        render();
+      }
+    }
+    if (event.target.id === "profileForm") {
+      event.preventDefault();
+      const body = Object.fromEntries(new FormData(event.target).entries());
+      const out = await api("/api/me/profile", { method: "PUT", body: JSON.stringify(body) });
+      state.user = out.user;
+      state.notice = "资料已保存。";
+      render();
+    }
+  }
+
+  root.addEventListener("click", handleClick);
+  root.addEventListener("submit", handleSubmit);
+  root.addEventListener("click", (event) => {
+    const tab = event.target.closest("[data-auth-tab]");
+    if (!tab) return;
+    const form = qs("#authForm");
+    const mode = tab.dataset.authTab;
+    form.dataset.mode = mode;
+    qsa("[data-auth-tab]").forEach((btn) => btn.classList.toggle("active", btn === tab));
+    qsa("[data-register-only]").forEach((el) => { el.hidden = mode !== "register"; });
+    qs(".auth-form .primary-btn").textContent = mode === "register" ? "创建账号" : "登录";
+  });
+
+  init();
 })();

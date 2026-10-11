@@ -1,7 +1,19 @@
 (() => {
+  if (window.__studybridgeEmailReplyPatch === "20261007-3") return;
+  window.__studybridgeEmailReplyPatch = "20261007-3";
+
   let page = null;
   let button = null;
   let lastDraft = "";
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
 
   async function api(path, options = {}) {
     const response = await fetch(path, {
@@ -21,7 +33,7 @@
     style.textContent = `
       .email-helper-entry {
         display: grid;
-        grid-template-columns: auto 1fr auto;
+        grid-template-columns: auto 1fr;
         align-items: center;
         gap: 10px;
         width: 100%;
@@ -175,7 +187,6 @@
     button.innerHTML = `
       <span class="email-helper-entry-icon">信</span>
       <span><strong>邮件助手</strong><span>理解邮件并生成英文回复</span></span>
-      <span class="small-button">打开</span>
     `;
     anchor.insertAdjacentElement("afterend", button);
     button.addEventListener("click", showEmailHelperPage);
@@ -253,8 +264,26 @@
     return page;
   }
 
+  function setWorkspaceShell(activeFeaturePage = true) {
+    const workspacePage = document.querySelector("#workspacePage");
+    if (workspacePage) {
+      workspacePage.hidden = false;
+      workspacePage.removeAttribute("hidden");
+      workspacePage.style.display = "";
+      workspacePage.style.visibility = "visible";
+    }
+    document.body.classList.toggle("studybridge-secondary-page", activeFeaturePage);
+    document.body.classList.toggle("study-sidebar-hidden", activeFeaturePage);
+    document.body.classList.remove("creator-clean-mode", "admin-boundary-active");
+    ["#developerPanel", "#scheduleDashboard", "#chatArea", "#quickPrompts", "#chatForm"].forEach((selector) => {
+      const element = document.querySelector(`#workspacePage > ${selector}`);
+      if (element) element.hidden = activeFeaturePage;
+    });
+  }
+
   function hideOtherPages() {
-    ["#workspacePage", "#profilePage", "#schoolCommunityPage", "#classmatesPage"].forEach((selector) => {
+    setWorkspaceShell(true);
+    ["#profilePage", "#schoolCommunityPage", "#classmatesPage", "#schedulePage"].forEach((selector) => {
       const element = document.querySelector(selector);
       if (element) element.hidden = true;
     });
@@ -266,8 +295,7 @@
       const element = document.querySelector(selector);
       if (element) element.hidden = true;
     });
-    const workspacePage = document.querySelector("#workspacePage");
-    if (workspacePage) workspacePage.hidden = false;
+    setWorkspaceShell(false);
   }
 
   async function showEmailHelperPage() {
@@ -382,6 +410,7 @@
     ensurePage();
   }
 
+  window.studybridgeOpenEmailReplyPage = showEmailHelperPage;
   boot();
   setInterval(() => {
     ensureButton();

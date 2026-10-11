@@ -35,6 +35,13 @@ try {
   pdfParse = null;
 }
 
+let AdmZip = null;
+try {
+  AdmZip = require("adm-zip");
+} catch {
+  AdmZip = null;
+}
+
 function loadEnvFile(filePath = path.join(__dirname, ".env")) {
   if (!fsSync.existsSync(filePath)) return;
   const lines = fsSync.readFileSync(filePath, "utf8").split(/\r?\n/);
@@ -63,8 +70,9 @@ const requireInviteCode = process.env.REQUIRE_INVITE_CODE !== "false";
 const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION === "true";
 const allowEmailCodeFallback = process.env.ALLOW_EMAIL_CODE_FALLBACK !== "false";
 const emailCodeTtlMs = Number(process.env.EMAIL_CODE_TTL_MINUTES || 15) * 60 * 1000;
-const maxJsonBytes = 16 * 1024 * 1024;
+const maxJsonBytes = 32 * 1024 * 1024;
 const maxPdfBytes = 8 * 1024 * 1024;
+const maxOfficeBytes = 12 * 1024 * 1024;
 const localBackupDisabled = process.env.LOCAL_DB_BACKUP_DISABLED === "true";
 const localBackupIntervalHours = Math.max(1, Number(process.env.LOCAL_DB_BACKUP_INTERVAL_HOURS || 6));
 const localBackupRetention = Math.max(3, Number(process.env.LOCAL_DB_BACKUP_RETENTION || 72));
@@ -97,7 +105,8 @@ const mimeTypes = {
   ".png": "image/png",
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
-  ".svg": "image/svg+xml"
+  ".svg": "image/svg+xml",
+  ".b64": "text/plain; charset=utf-8"
 };
 
 const staticAssetExtensions = new Set([
@@ -112,7 +121,8 @@ const staticAssetExtensions = new Set([
   ".ico",
   ".pdf",
   ".txt",
-  ".webp"
+  ".webp",
+  ".b64"
 ]);
 
 function sendJson(res, status, payload, headers = {}) {
@@ -146,8 +156,14 @@ function withEffectiveRole(user) {
   return { ...user, role };
 }
 
-function createInviteCode() {
-  return `SB-${crypto.randomBytes(3).toString("hex").toUpperCase()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+function normalizeInviteRole(role) {
+  const normalized = String(role || "").trim().toLowerCase();
+  return normalized === "admin" || normalized === "co-admin" || normalized === "coadmin" ? "admin" : "student";
+}
+
+function createInviteCode(role = "student") {
+  const prefix = normalizeInviteRole(role) === "admin" ? "SB-A" : "SB-U";
+  return `${prefix}-${crypto.randomBytes(3).toString("hex").toUpperCase()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
 }
 
 function createTemporaryPassword() {
@@ -166,6 +182,7 @@ function publicInvite(invite) {
     maxUses: Number(invite.maxUses || 1),
     uses: Number(invite.uses || 0),
     active: invite.active !== false,
+    role: normalizeInviteRole(invite.role),
     createdAt: invite.createdAt,
     updatedAt: invite.updatedAt
   };
@@ -275,19 +292,40 @@ async function readJson(req) {
   let size = 0;
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > maxJsonBytes) throw new Error("Request body is too large.");
+    if (size > maxJsonBytes) {
+      const error = new Error("Request body is too large. Please upload fewer files at once, or keep each upload under the listed file limit.");
+      error.statusCode = 413;
+      throw error;
+    }
     chunks.push(chunk);
   }
   const body = Buffer.concat(chunks).toString("utf8");
   if (!body) return {};
-  return JSON.parse(body);
+  try {
+    const parsed = JSON.parse(body);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error();
+    return parsed;
+  } catch {
+    const error = new Error("Request body must be a valid JSON object.");
+    error.statusCode = 400;
+    throw error;
+  }
 }
 
 async function serveStatic(req, res) {
   const url = new URL(req.url, "http://localhost");
-  const requested = decodeURIComponent(url.pathname === "/" ? "/index.html" : url.pathname);
+  let requested;
+  try {
+    requested = decodeURIComponent(url.pathname === "/" ? "/index.html" : url.pathname);
+  } catch {
+    return sendError(res, 400, "Invalid URL encoding.");
+  }
+  if (requested.includes("\0")) return sendError(res, 400, "Invalid path.");
   const filePath = path.normalize(path.join(publicDir, requested));
-  if (!filePath.startsWith(publicDir)) return sendError(res, 403, "Forbidden");
+  const relativePath = path.relative(publicDir, filePath);
+  if (relativePath === ".." || relativePath.startsWith(`..${path.sep}`) || path.isAbsolute(relativePath)) {
+    return sendError(res, 403, "Forbidden");
+  }
   const extension = path.extname(filePath).toLowerCase();
   try {
     const file = await fs.readFile(filePath);
@@ -351,12 +389,16 @@ function compactDocumentText(text) {
   return String(text || "").replace(/\s+/g, " ").trim().slice(0, 12000);
 }
 
-function cleanProfile(body = {}) {
-  const sbId = String(body.sbId || "")
+function normalizeSbId(value) {
+  return String(value || "")
     .trim()
     .toLowerCase()
     .replace(/^@+/, "")
     .slice(0, 24);
+}
+
+function cleanProfile(body = {}) {
+  const sbId = normalizeSbId(body.sbId);
   return {
     avatarUrl: String(body.avatarUrl || "").trim().slice(0, 2200000),
     backgroundUrl: String(body.backgroundUrl || "").trim().slice(0, 2200000),
@@ -371,16 +413,190 @@ function isValidSbId(value) {
   return !sbId || /^[a-z0-9][a-z0-9._-]{2,23}$/.test(sbId);
 }
 
+async function ensureSbIdAvailable(sbId, ownerUserId) {
+  const normalized = normalizeSbId(sbId);
+  if (!normalized) return;
+  if (!isValidSbId(normalized)) {
+    throw new Error("SB ID must be 3-24 characters and can only use lowercase letters, numbers, dots, underscores, or hyphens.");
+  }
+  const existing = await db.findUserBySbId(normalized);
+  if (existing && existing.id !== ownerUserId) {
+    throw new Error("This SB ID is already taken. Please choose another one.");
+  }
+}
+
 function decodeBase64Data(data) {
   const raw = String(data || "");
   const clean = raw.includes(",") ? raw.split(",").pop() : raw;
   return Buffer.from(clean, "base64");
 }
 
+function normalizeUploadBody(body = {}) {
+  return {
+    ...body,
+    fileName: body.fileName || body.name || body.title || "",
+    fileType: body.fileType || body.mime || body.type || "",
+    fileSize: body.fileSize || body.size || 0,
+    fileData: body.fileData || body.dataUrl || "",
+    fileText: body.fileText || body.text || ""
+  };
+}
+
+function decodeXmlEntities(text = "") {
+  return String(text)
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCharCode(parseInt(code, 16)));
+}
+
+function xmlToReadableText(xml = "") {
+  return compactDocumentText(
+    decodeXmlEntities(
+      String(xml)
+        .replace(/<\/(w:p|a:p|row|si)>/gi, "\n")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<[^>]+>/g, " ")
+    )
+  );
+}
+
+function fileExtension(name = "") {
+  const match = String(name).toLowerCase().match(/\.([a-z0-9]+)$/);
+  return match ? match[1] : "";
+}
+
+function officeKind(fileName = "", mime = "") {
+  const ext = fileExtension(fileName);
+  const type = String(mime || "").toLowerCase();
+  if (ext === "docx" || type.includes("wordprocessingml")) return "docx";
+  if (ext === "pptx" || type.includes("presentationml")) return "pptx";
+  if (ext === "xlsx" || type.includes("spreadsheetml")) return "xlsx";
+  if (ext === "ppt" || type.includes("ms-powerpoint")) return "ppt";
+  if (ext === "doc" || type.includes("msword")) return "doc";
+  if (ext === "xls" || type.includes("ms-excel")) return "xls";
+  return "";
+}
+
+function uploadedDocumentType(body = {}) {
+  body = normalizeUploadBody(body);
+  const name = String(body.fileName || body.title || "").toLowerCase();
+  const mime = String(body.fileType || "").toLowerCase();
+  const ext = fileExtension(name);
+  if (ext === "pdf" || mime.includes("pdf")) return "PDF";
+  if (["doc", "docx"].includes(ext) || mime.includes("word")) return "Word";
+  if (["ppt", "pptx"].includes(ext) || mime.includes("presentation")) return "PPT";
+  if (["xls", "xlsx", "csv"].includes(ext) || mime.includes("spreadsheet") || mime.includes("csv")) return "Sheet";
+  if (mime.startsWith("image/") || ["png", "jpg", "jpeg", "webp", "gif"].includes(ext)) return "Image";
+  if (isPlainTextFile(name, mime)) return "Text";
+  return String(body.type || "File").slice(0, 60);
+}
+
+function isPlainTextFile(fileName = "", mime = "") {
+  const ext = fileExtension(fileName);
+  const type = String(mime || "").toLowerCase();
+  return type.startsWith("text/") || ["txt", "md", "csv", "json", "html", "css", "js"].includes(ext);
+}
+
+function extractTextFromPlainFile(buffer) {
+  if (!buffer?.length) return "";
+  return compactDocumentText(buffer.toString("utf8").replace(/\0/g, " "));
+}
+
+function readZipEntryText(zip, entryName) {
+  const entry = zip.getEntry(entryName);
+  return entry ? zip.readAsText(entry) : "";
+}
+
+function sortedZipEntries(zip, predicate) {
+  return zip
+    .getEntries()
+    .filter((entry) => !entry.isDirectory && predicate(entry.entryName))
+    .sort((a, b) => a.entryName.localeCompare(b.entryName, undefined, { numeric: true }));
+}
+
+function extractLegacyOfficeBinaryText(buffer, label = "Office file") {
+  const maxBinaryBytes = 12 * 1024 * 1024;
+  if (!buffer.length) throw new Error("Uploaded file is empty.");
+  if (buffer.length > maxBinaryBytes) throw new Error("Office file is too large. Please upload a file under 12 MB.");
+
+  const ascii = buffer.toString("latin1").match(/[A-Za-z0-9\u00c0-\u024f][A-Za-z0-9\u00c0-\u024f\s.,;:!?'"()[\]@#%&+\-/$]{5,}/g) || [];
+  const asciiText = ascii.join(" ");
+  const utf16 = asciiText.length > 40
+    ? []
+    : buffer.toString("utf16le").match(/[A-Za-z0-9\u00c0-\u024f\u4e00-\u9fff][A-Za-z0-9\u00c0-\u024f\u4e00-\u9fff\s.,;:!?'"()[\]@#%&+\-/$]{5,}/g) || [];
+  const seen = new Set();
+  const chunks = [];
+
+  for (const raw of [...ascii, ...utf16]) {
+    const text = compactDocumentText(raw)
+      .replace(/\s+/g, " ")
+      .replace(/[^\x09\x0a\x0d\x20-\x7e\u00c0-\u024f\u4e00-\u9fff]/g, "")
+      .trim();
+    if (text.length < 8 || text.length > 800) continue;
+    const lower = text.toLowerCase();
+    if (seen.has(lower)) continue;
+    if (/^(ppt|powerpoint|microsoft|office|theme|slide layout|ole|xml|rels?)$/i.test(text)) continue;
+    seen.add(lower);
+    chunks.push(text);
+    if (chunks.join(" ").length > 12000) break;
+  }
+
+  const result = compactDocumentText(chunks.join("\n"));
+  if (!result) {
+    throw new Error(`${label} could not be read. PPTX, DOCX, and XLSX files are supported best; old binary Office files may need to be saved as PPTX/DOCX/XLSX.`);
+  }
+  return result;
+}
+
+function extractOfficeText(buffer, kind) {
+  if (!buffer.length) throw new Error("Uploaded file is empty.");
+  if (buffer.length > maxOfficeBytes) throw new Error("Office file is too large. Please upload a file under 12 MB.");
+  if (kind === "ppt" || kind === "doc" || kind === "xls") {
+    return extractLegacyOfficeBinaryText(buffer, kind.toUpperCase());
+  }
+  if (!AdmZip) throw new Error("Office text extraction is unavailable on this server.");
+  const zip = new AdmZip(buffer);
+  if (kind === "docx") {
+    const parts = [
+      readZipEntryText(zip, "word/document.xml"),
+      ...sortedZipEntries(zip, (name) => /^word\/(header|footer|footnotes|endnotes|comments).*\.xml$/i.test(name)).map((entry) => zip.readAsText(entry))
+    ];
+    return compactDocumentText(parts.map(xmlToReadableText).filter(Boolean).join("\n"));
+  }
+  if (kind === "pptx") {
+    const slides = sortedZipEntries(zip, (name) => /^ppt\/slides\/slide\d+\.xml$/i.test(name))
+      .map((entry, index) => {
+        const text = xmlToReadableText(zip.readAsText(entry));
+        return text ? `Slide ${index + 1}: ${text}` : "";
+      });
+    const notes = sortedZipEntries(zip, (name) => /^ppt\/notesSlides\/notesSlide\d+\.xml$/i.test(name))
+      .map((entry, index) => {
+        const text = xmlToReadableText(zip.readAsText(entry));
+        return text ? `Speaker notes ${index + 1}: ${text}` : "";
+      });
+    const parts = [...slides, ...notes];
+    return compactDocumentText(parts.filter(Boolean).join("\n"));
+  }
+  if (kind === "xlsx") {
+    const shared = xmlToReadableText(readZipEntryText(zip, "xl/sharedStrings.xml"));
+    const sheets = sortedZipEntries(zip, (name) => /^xl\/worksheets\/sheet\d+\.xml$/i.test(name))
+      .map((entry, index) => `Sheet ${index + 1}: ${xmlToReadableText(zip.readAsText(entry))}`);
+    return compactDocumentText([shared, ...sheets].filter(Boolean).join("\n"));
+  }
+  return "";
+}
+
 async function extractUploadedText(body = {}) {
+  body = normalizeUploadBody(body);
   const fileName = String(body.fileName || body.title || "Uploaded file").slice(0, 180);
   const fileType = String(body.fileType || "").toLowerCase();
-  const isPdf = fileType.includes("pdf") || fileName.toLowerCase().endsWith(".pdf");
+  const lowerName = fileName.toLowerCase();
+  const isPdf = fileType.includes("pdf") || lowerName.endsWith(".pdf");
 
   if (isPdf) {
     if (!pdfParse) throw new Error("PDF upload support is still installing. Please try again in a minute.");
@@ -391,14 +607,23 @@ async function extractUploadedText(body = {}) {
     return compactDocumentText(parsed.text || "");
   }
 
+  if (body.fileData) {
+    const buffer = decodeBase64Data(body.fileData);
+    const kind = officeKind(fileName, fileType);
+    if (kind) return extractOfficeText(buffer, kind);
+    if (isPlainTextFile(fileName, fileType)) return extractTextFromPlainFile(buffer);
+  }
+
   return compactDocumentText(body.text || body.fileText || "");
 }
 
 function hasUploadedFile(body = {}) {
+  body = normalizeUploadBody(body);
   return Boolean(String(body.fileName || "").trim() || String(body.fileData || "").trim());
 }
 
 function uploadedFilePlaceholder(body = {}, reason = "") {
+  body = normalizeUploadBody(body);
   const fileName = cleanAttachmentName(body.fileName || body.title || "Uploaded file");
   const fileType = String(body.fileType || body.type || "unknown file type").trim() || "unknown file type";
   const note = reason ? `\nText extraction note: ${String(reason).slice(0, 220)}` : "";
@@ -406,6 +631,7 @@ function uploadedFilePlaceholder(body = {}, reason = "") {
     `Uploaded file: ${fileName}\nFile type: ${fileType}${note}\n\nNo readable document text was extracted yet. The file is saved as a course material entry, and the student can paste text from it later if needed.`
   );
 }
+
 function cleanAttachmentName(name) {
   return String(name || "Uploaded attachment").replace(/[^\w .()[\]\-@#&,+]/g, "").trim().slice(0, 180) || "Uploaded attachment";
 }
@@ -430,6 +656,7 @@ async function normalizeChatAttachments(input = []) {
     const dataUrl = String(raw.dataUrl || raw.fileData || "").trim();
     const text = String(raw.text || raw.fileText || "").trim();
     const lowerName = name.toLowerCase();
+    const office = officeKind(name, mime);
     const kind =
       String(raw.kind || "").toLowerCase() ||
       (mime.startsWith("image/")
@@ -467,6 +694,33 @@ async function normalizeChatAttachments(input = []) {
         });
       } catch (error) {
         normalized.push({ name, mime: mime || "application/pdf", size, kind: "file", text: `PDF could not be read: ${error.message}` });
+      }
+      continue;
+    }
+
+    if (office && dataUrl) {
+      try {
+        const buffer = attachmentBuffer(dataUrl);
+        const extracted = extractOfficeText(buffer, office);
+        normalized.push({
+          name,
+          mime: mime || `application/${office}`,
+          size: buffer.length || size,
+          kind: office,
+          text: compactDocumentText(extracted).slice(0, 9000)
+        });
+      } catch (error) {
+        normalized.push({ name, mime: mime || `application/${office}`, size, kind: "file", text: `Office file could not be read: ${error.message}` });
+      }
+      continue;
+    }
+
+    if (!text && dataUrl && isPlainTextFile(name, mime)) {
+      try {
+        const buffer = attachmentBuffer(dataUrl);
+        normalized.push({ name, mime: mime || "text/plain", size: buffer.length || size, kind: "text", text: extractTextFromPlainFile(buffer).slice(0, 9000) });
+      } catch (error) {
+        normalized.push({ name, mime: mime || "text/plain", size, kind: "file", text: `Text file could not be read: ${error.message}` });
       }
       continue;
     }
@@ -604,6 +858,7 @@ async function verifyEmailCode(email, purpose, code) {
   await db.deleteAuthCode(email, purpose);
 }
 
+const scheduleCourseName = "Schedule & Deadlines";
 const scheduleItemPrefix = "[SCHEDULE_ITEM]";
 
 function parseScheduleDocument(doc, course = {}) {
@@ -666,8 +921,39 @@ function looksLikeWeatherQuestion(message) {
   );
 }
 
+function looksLikeCheatSheetRequest(mode, message) {
+  const lower = String(message || "").toLowerCase();
+  return (
+    String(mode || "").toLowerCase() === "cheatsheet" ||
+    /cheat\s*sheet|cheatsheet|formula\s*sheet|study\s*sheet|one[- ]page|one page|double[- ]sided|front\s*and\s*back|小抄|公式纸|公式表|考试纸|一页纸|正反面|双面|开卷纸|复习纸/.test(lower)
+  );
+}
+
+function buildCheatSheetInstruction(mode, message) {
+  if (!looksLikeCheatSheetRequest(mode, message)) return "";
+  return `
+
+Cheatsheet mode requirements:
+- Treat this as an exam-allowed reference sheet, not a normal summary.
+- The goal is to fit the most useful exam information into a limited physical sheet/page allowance.
+- First identify constraints from the student question: paper size (A4/Letter/index card), number of pages, one-sided or double-sided, handwritten or typed, allowed content, course units covered, and exam type.
+- If constraints are missing, still produce a useful draft using an explicit default assumption: "Assumption: Letter/A4, 1 page, front side only, typed, compact but readable." Then ask the student to reply with exact rules if different.
+- Prioritize by exam utility: high-frequency formulas, definitions that unlock many questions, decision rules, step-by-step problem templates, common traps, symbol meanings, and one tiny example only when it prevents mistakes.
+- Cut background prose, long explanations, obvious material, repeated definitions, and anything the student can quickly derive under pressure.
+- Organize for fast lookup under exam time pressure: clear blocks, short labels, abbreviations, formulas with variable meanings, and "When to use this" cues.
+- Include a space budget: Must include / Include if space / Cut if crowded.
+- Output format:
+  1. Sheet rules and assumptions
+  2. Priority map
+  3. Draft cheatsheet content, split by Side A / Side B when double-sided or by columns/blocks when one-sided
+  4. Tiny layout plan: section order, suggested font/density, and what to shrink first
+  5. Final exam-use tips: how to locate info quickly and what to memorize instead of printing
+- If the student provides course materials, ground the sheet in those materials first. If materials are missing, ask for syllabus/lecture notes while still giving a template they can fill.
+- Respond in Chinese by default, but keep academic terms, formulas, and symbols in English where useful.`;
+}
+
 function inferWeatherLocation(message, user) {
-  const text = (String(message || "") + " " + String((user && user.profile && user.profile.school) || "")).toLowerCase();
+  const text = `${message || ""} ${user?.profile?.school || ""}`.toLowerCase();
   const locations = [
     ["Toronto", ["toronto", "\u591a\u4f26\u591a", "university of toronto", "centennial", "seneca", "george brown", "york university", "toronto metropolitan"]],
     ["Vancouver", ["vancouver", "\u6e29\u54e5\u534e", "ubc", "university of british columbia"]],
@@ -686,10 +972,8 @@ function inferWeatherLocation(message, user) {
     ["Seattle", ["seattle", "university of washington", "\u897f\u96c5\u56fe"]],
     ["Chicago", ["chicago", "uchicago", "northwestern", "\u829d\u52a0\u54e5"]]
   ];
-  const match = locations.find(function(row) {
-    return row[1].some(function(key) { return text.includes(key); });
-  });
-  return match ? match[0] : "Toronto";
+  const match = locations.find(([, keys]) => keys.some((key) => text.includes(key)));
+  return match ? match[0] : "";
 }
 
 function weatherCodeLabel(code) {
@@ -714,15 +998,15 @@ function weatherCodeLabel(code) {
     82: "Violent rain showers",
     95: "Thunderstorm"
   };
-  return labels[Number(code)] || "Weather code " + code;
+  return labels[Number(code)] || `Weather code ${code}`;
 }
 
 async function fetchJsonWithTimeout(url, timeoutMs = 6500) {
   const controller = new AbortController();
-  const timer = setTimeout(function() { controller.abort(); }, timeoutMs);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) throw new Error("Weather API returned " + response.status);
+    if (!response.ok) throw new Error(`Weather API returned ${response.status}`);
     return await response.json();
   } finally {
     clearTimeout(timer);
@@ -732,32 +1016,34 @@ async function fetchJsonWithTimeout(url, timeoutMs = 6500) {
 async function getWeatherContextForQuestion(message, user) {
   if (!looksLikeWeatherQuestion(message)) return "";
   const location = inferWeatherLocation(message, user);
+  if (!location) {
+    return "Weather question detected, but no city was clear from the message or student profile. Ask the student for the city before answering.";
+  }
   try {
-    const geoUrl = "https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(location) + "&count=1&language=en&format=json";
+    const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=en&format=json`;
     const geo = await fetchJsonWithTimeout(geoUrl);
-    const place = geo && geo.results && geo.results[0];
-    if (!place) return "Weather lookup could not find coordinates for " + location + ".";
+    const place = geo?.results?.[0];
+    if (!place) return `Weather lookup could not find coordinates for ${location}.`;
     const forecastUrl =
-      "https://api.open-meteo.com/v1/forecast?latitude=" + place.latitude + "&longitude=" + place.longitude +
+      `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}` +
       "&current=temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m" +
       "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum" +
       "&forecast_days=1&timezone=auto";
     const forecast = await fetchJsonWithTimeout(forecastUrl);
     const current = forecast.current || {};
     const daily = forecast.daily || {};
-    const placeLabel = place.name + (place.admin1 ? ", " + place.admin1 : "") + (place.country ? ", " + place.country : "");
     return [
-      "Real-time weather lookup for " + placeLabel + ".",
-      "Current condition: " + weatherCodeLabel(current.weather_code) + ".",
-      "Current temperature: " + current.temperature_2m + (forecast.current_units && forecast.current_units.temperature_2m ? forecast.current_units.temperature_2m : "C") + ".",
-      "Feels like: " + current.apparent_temperature + (forecast.current_units && forecast.current_units.apparent_temperature ? forecast.current_units.apparent_temperature : "C") + ".",
-      "Wind speed: " + current.wind_speed_10m + (forecast.current_units && forecast.current_units.wind_speed_10m ? forecast.current_units.wind_speed_10m : "km/h") + ".",
-      "Today's high/low: " + ((daily.temperature_2m_max || [])[0]) + (forecast.daily_units && forecast.daily_units.temperature_2m_max ? forecast.daily_units.temperature_2m_max : "C") + " / " + ((daily.temperature_2m_min || [])[0]) + (forecast.daily_units && forecast.daily_units.temperature_2m_min ? forecast.daily_units.temperature_2m_min : "C") + ".",
-      "Today's precipitation: " + ((daily.precipitation_sum || [])[0]) + (forecast.daily_units && forecast.daily_units.precipitation_sum ? forecast.daily_units.precipitation_sum : "mm") + ".",
-      "Weather data time: " + (current.time || "unknown") + "."
+      `Real-time weather lookup for ${place.name}${place.admin1 ? `, ${place.admin1}` : ""}${place.country ? `, ${place.country}` : ""}.`,
+      `Current condition: ${weatherCodeLabel(current.weather_code)}.`,
+      `Current temperature: ${current.temperature_2m}${forecast.current_units?.temperature_2m || "C"}.`,
+      `Feels like: ${current.apparent_temperature}${forecast.current_units?.apparent_temperature || "C"}.`,
+      `Wind speed: ${current.wind_speed_10m}${forecast.current_units?.wind_speed_10m || "km/h"}.`,
+      `Today's high/low: ${daily.temperature_2m_max?.[0]}${forecast.daily_units?.temperature_2m_max || "C"} / ${daily.temperature_2m_min?.[0]}${forecast.daily_units?.temperature_2m_min || "C"}.`,
+      `Today's precipitation: ${daily.precipitation_sum?.[0]}${forecast.daily_units?.precipitation_sum || "mm"}.`,
+      `Weather data time: ${current.time || forecast.generationtime_ms || "unknown"}.`
     ].join("\n");
   } catch (error) {
-    return "Weather lookup failed: " + ((error && error.message) || "unknown error") + ". If web search is available, use it to answer the weather question instead of stopping. If no live lookup is available, tell the student the weather service is temporarily unavailable.";
+    return `Weather lookup failed: ${error?.message || "unknown error"}. If web search is available, use it to answer the weather question instead of stopping. If no live lookup is available, tell the student the weather service is temporarily unavailable.`;
   }
 }
 
@@ -775,320 +1061,59 @@ function buildStudyPrompt({ user, course, documents, history, scheduleItems, wea
     {
       role: "system",
       content:
-        "You are StudyBridge, a bilingual academic coach and general-purpose AI assistant for international students. Answer any user question that is allowed by OpenAI safety rules; do not refuse just because the question is not about school. Explain in Chinese by default, preserve key English academic terms, and help students learn without doing prohibited final submissions for them. For course, deadline, profile, or schedule questions, ground the answer in the provided StudyBridge data first. For general knowledge, current-information questions, weather, news, product prices, policies, rankings, or any question where local StudyBridge data is missing, use reliable general knowledge and, when web search is available, use web search for fresh facts instead of claiming you cannot browse. When you rely on web information, briefly say the information comes from a live lookup and avoid pretending it came from saved course data. When the student asks about due dates, unfinished work, deadlines, exams, or what to do next, always use the global unfinished schedule/deadline context, even if the current chat is inside a different course. When real-time weather context is provided, answer the weather question directly and include practical clothing/commute advice." +
+        "You are StudyBridge, an academic coach and general-purpose AI assistant for international students. Answer any user question that is allowed by OpenAI safety rules; do not refuse just because the question is not about school. Match the language of the student's latest message by default: if they ask in Chinese, answer in Chinese; if they ask in English, answer fully in English; if mixed, use the dominant language. Preserve key English academic terms where useful, but do not make every answer bilingual unless the student's Learning Style custom instruction explicitly asks for bilingual / Chinese-English output. For course, deadline, profile, or schedule questions, ground the answer in the provided StudyBridge data first. For uploaded files, use the extracted attachment text whenever it is present, including PPTX slide text, speaker notes, DOCX, XLSX, PDFs, and plain text; do not say you cannot read a PowerPoint when readable attachment content is included below. For general knowledge, current-information questions, weather, news, product prices, policies, rankings, or any question where local StudyBridge data is missing, use reliable general knowledge and, when web search is available, use web search for fresh facts instead of claiming you cannot browse. When you rely on web information, briefly say the information comes from a live lookup and avoid pretending it came from saved course data. When the student asks about due dates, unfinished work, deadlines, exams, or what to do next, always use the global unfinished schedule/deadline context, even if the current chat is inside a different course. When real-time weather context is provided, answer the weather question directly and include practical clothing/commute advice. For math, statistics, accounting, finance, coding, and other problem-solving answers, give the final answers clearly first, then concise steps. Do not use raw LaTeX delimiters or commands such as \\\\(, \\\\), \\\\[ , \\\\], \\\\frac, \\\\sqrt, \\\\circ, or \\\\cdot because the StudyBridge chat uses plain text. Write formulas in readable plain text such as sqrt(x), (sqrt(x)+1)/x, f(g(x)), and 1/(sqrt(x)+1)." +
         preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction +
-        preferenceInstruction
+        buildCheatSheetInstruction(mode, message)
     },
     {
       role: "user",
-      content: buildUserPromptContent(`Student: ${user.name}\nSchool: ${user.profile?.school || "Not provided"}\nMajor: ${user.profile?.major || "Not provided"}\nCourse: ${course.name}\nMode: ${mode}\nLearning style instructions:\n${preferenceInstruction || "Use StudyBridge defaults: Chinese explanation with helpful English academic terms."}\nRaw preferences: ${JSON.stringify(
+      content: buildUserPromptContent(`Student: ${user.name}\nSchool: ${user.profile?.school || "Not provided"}\nMajor: ${user.profile?.major || "Not provided"}\nCourse: ${course.name}\nMode: ${mode}\nLearning style instructions:\n${preferenceInstruction || "Use StudyBridge defaults: match the user's language and keep helpful English academic terms."}\nRaw preferences: ${JSON.stringify(
         user.preferences || {}
-      )}\nCurrent server time: ${new Date().toISOString()}\n\nReal-time external context:\n${weatherContext || "No external context was needed or available for this question."}\n\nGlobal unfinished schedule/deadline items across this student's account:\n${formatScheduleContext(scheduleItems)}\n\nCourse material for the current chat course:\n${docContext || "No course material saved yet."}\n\nRecent chat in the current course:\n${recent || "No prior messages."}\n\nStudent question:\n${message}`, attachments)
+      )}\nCurrent server time: ${new Date().toISOString()}\n\nReal-time external context:\n${weatherContext || "No external context was needed or available for this question."}\n\nGlobal unfinished schedule/deadline items across this student's account:\n${formatScheduleContext(scheduleItems)}\n\nCourse material for the current chat course:\n${docContext || "No course material saved yet."}\n\nRecent chat in the current course:\n${recent || "No prior messages."}\n\nStudent question:\n${message}`
+      , attachments)
     }
   ];
 }
 
 function buildPreferenceInstruction(preferences = {}) {
   const englishTerms = preferences.englishTerms !== false;
-  const englishAnswers = preferences.englishAnswers !== false;
-  const chineseExplanations = preferences.chineseExplanations !== false;
+  const englishAnswers = preferences.englishAnswers === true;
+  const chineseExplanations = preferences.chineseExplanations === true;
   const customInstruction = String(preferences.customInstruction || "").trim();
+  const customWantsBilingual = /双语|中英|英文.*中文|中文.*英文|bilingual|chinese[-\s/]*english|english[-\s/]*chinese/i.test(customInstruction);
+  const legacyDefaultStyle = englishTerms && englishAnswers && chineseExplanations && !customInstruction;
   const lines = [
     "\n\nLearning Style is mandatory. It overrides the general default language style unless it conflicts with safety or the user's latest message."
   ];
 
   if (englishTerms) {
-    lines.push("- English terms ON: keep important academic keywords, formulas, course concepts, due-date labels, assignment wording, and technical terms in English. Add concise Chinese explanation after them when helpful.");
+    lines.push("- English terms ON: keep important academic keywords, formulas, course concepts, due-date labels, assignment wording, and technical terms in English where useful. If the user asked in Chinese, explain around those terms in Chinese.");
   } else {
     lines.push("- English terms OFF: translate English academic terms into Chinese when natural, but keep proper nouns, formulas, and exact course labels unchanged.");
   }
 
-  if (englishAnswers && chineseExplanations) {
-    lines.push("- English answer ON + Chinese reasoning ON: for problem-solving, assignments, emails, practice questions, exam prep, or study planning, use this order exactly: first provide the direct answer/draft in English, then provide the reasoning, steps, study plan, and warnings in Chinese.");
+  if (legacyDefaultStyle) {
+    lines.push("- Language default: this account has the old default toggles enabled. Treat them as StudyBridge defaults, not a request for bilingual output. Chinese questions should receive Chinese answers with English terms kept where helpful. English questions should receive English answers.");
+  } else if (customWantsBilingual && englishAnswers && chineseExplanations) {
+    lines.push("- Bilingual custom style requested: for problem-solving, assignments, emails, practice questions, exam prep, or study planning, provide the direct answer/draft in English first, then provide the reasoning, steps, study plan, and warnings in Chinese.");
   } else if (englishAnswers) {
-    lines.push("- English answer ON: provide the direct answer/draft in English first, then keep the rest concise.");
+    lines.push("- English answer ON: when the task needs a final draft, answer, or wording that will be submitted or sent in English, provide that final output in English. Do not add a Chinese duplicate unless the custom instruction asks for bilingual output.");
   } else if (chineseExplanations) {
-    lines.push("- Chinese reasoning ON: explain reasoning, steps, and study strategy in Chinese first. Include English only where it improves academic accuracy.");
+    lines.push("- Chinese reasoning ON: if the user asks in Chinese, explain reasoning, steps, and study strategy in Chinese. Include English only where it improves academic accuracy.");
   } else {
     lines.push("- Keep answers concise and match the user's language.");
   }
 
-  lines.push("- These three default options do not conflict: English terms are vocabulary anchors, English answer is the final/draft output layer, and Chinese reasoning is the explanation layer.");
-  lines.push("- Do not ignore these settings. If the answer is not a question-solving task, still preserve English terms when enabled and use Chinese for explanation when enabled.");
+  lines.push("- Do not output bilingual answers by default. Only use bilingual output when the student's custom instruction explicitly asks for it.");
+  lines.push("- If the answer is not a question-solving task, still match the user's language and preserve English terms when enabled.");
+  lines.push("- Use plain readable math text instead of raw LaTeX. Examples: sqrt(x), (a+b)/c, f(g(x)), x^2. Always label final answers clearly.");
 
   if (customInstruction) {
-    lines.push("- Student custom instruction: " + customInstruction);
+    lines.push(`- Student custom instruction: ${customInstruction}`);
   }
 
   return lines.join("\n");
 }
-
 
 function chooseAiModel({ documents = [], history = [], mode = "", message = "" }) {
   const lowerMessage = String(message || "").toLowerCase();
@@ -1196,7 +1221,7 @@ async function callAiWithResponses(messages, model, toolType = "web_search") {
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
-      authorization: "Bearer " + process.env.OPENAI_API_KEY,
+      authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       "content-type": "application/json"
     },
     body: JSON.stringify({
@@ -1206,25 +1231,25 @@ async function callAiWithResponses(messages, model, toolType = "web_search") {
         content: toResponsesContent(item.content)
       })),
       tools: [
-        {
-          type: toolType,
-          search_context_size: "medium"
-        }
+          {
+            type: toolType,
+            search_context_size: "medium"
+          }
       ],
       store: false
     })
   });
   const text = await response.text();
-  if (!response.ok) throw new Error("AI web request failed: " + text);
+  if (!response.ok) throw new Error(`AI web request failed: ${text}`);
   const payload = JSON.parse(text);
-  return extractResponsesText(payload) || "AI 没有返回内容，请稍后再试。";
+  return extractResponsesText(payload) || "AI \u6ca1\u6709\u8fd4\u56de\u5185\u5bb9\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5\u3002";
 }
 
 async function callAiWithChatCompletions(messages, model) {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
-      authorization: "Bearer " + process.env.OPENAI_API_KEY,
+      authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       "content-type": "application/json"
     },
     body: JSON.stringify({
@@ -1236,9 +1261,9 @@ async function callAiWithChatCompletions(messages, model) {
     })
   });
   const text = await response.text();
-  if (!response.ok) throw new Error("AI request failed: " + text);
+  if (!response.ok) throw new Error(`AI request failed: ${text}`);
   const payload = JSON.parse(text);
-  return payload.choices?.[0]?.message?.content || "AI 没有返回内容，请稍后再试。";
+  return payload.choices?.[0]?.message?.content || "AI \u6ca1\u6709\u8fd4\u56de\u5185\u5bb9\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5\u3002";
 }
 
 async function callAi(messages, model = simpleAiModel) {
@@ -1250,15 +1275,15 @@ async function callAi(messages, model = simpleAiModel) {
     try {
       return await callAiWithResponses(messages, webSearchModel || model);
     } catch (error) {
-      const message = String((error && error.message) || error);
+      const message = String(error?.message || error);
       if (message.includes("web_search")) {
         try {
           return await callAiWithResponses(messages, webSearchModel || model, "web_search_preview");
         } catch (previewError) {
-          console.warn("StudyBridge preview web route failed, falling back to chat completions: " + ((previewError && previewError.message) || previewError));
+          console.warn(`StudyBridge preview web route failed, falling back to chat completions: ${previewError?.message || previewError}`);
         }
       } else {
-        console.warn("StudyBridge web AI route failed, falling back to chat completions: " + message);
+        console.warn(`StudyBridge web AI route failed, falling back to chat completions: ${message}`);
       }
     }
   }
@@ -1309,7 +1334,8 @@ function emailDeliveryConfigured() {
 
 function packageVersion() {
   try {
-    const pkg = JSON.parse(fsSync.readFileSync(path.join(__dirname, "package.json"), "utf8"));
+    const raw = fsSync.readFileSync(path.join(__dirname, "package.json"), "utf8").replace(/^\uFEFF/, "");
+    const pkg = JSON.parse(raw);
     return String(pkg.version || "unknown");
   } catch {
     return "unknown";
@@ -1323,7 +1349,6 @@ function fileIsoTime(filePath) {
     return "";
   }
 }
-
 
 function localDatabaseFilePath() {
   return db.local?.file || path.resolve(process.env.LOCAL_DB_FILE || ".data/studybridge.json");
@@ -1356,9 +1381,9 @@ async function listLocalBackups() {
       names
         .filter((name) => /^studybridge-.+\.json$/i.test(name))
         .map(async (name) => {
-const filePath = path.join(backupDir, name);
-const stat = await fs.stat(filePath);
-return { name, filePath, mtimeMs: stat.mtimeMs, mtime: stat.mtime.toISOString(), bytes: stat.size };
+          const filePath = path.join(backupDir, name);
+          const stat = await fs.stat(filePath);
+          return { name, filePath, mtimeMs: stat.mtimeMs, mtime: stat.mtime.toISOString(), bytes: stat.size };
         })
     );
     return rows.sort((a, b) => b.mtimeMs - a.mtimeMs);
@@ -1437,11 +1462,11 @@ async function localBackupStatusClean() {
       ? "Local database backups are disabled. Turn on backups before inviting more users."
       : ready
         ? fresh
-? "Local database backups are active. This reduces browser-close and server restart risk, but a cloud database is still safer for long-term public use."
-: "Backups exist, but the newest backup is older than expected. Check the server auto-backup timer."
+          ? "Local database backups are active. This reduces browser-close and server restart risk, but a cloud database is still safer for long-term public use."
+          : "Backups exist, but the newest backup is older than expected. Check the server auto-backup timer."
         : fileExists
-? "Local database is present, but no backup was confirmed yet."
-: "Local database file has not been created yet."
+          ? "Local database is present, but no backup was confirmed yet."
+          : "Local database file has not been created yet."
   };
 }
 
@@ -1456,40 +1481,6 @@ function scheduleLocalDatabaseBackups() {
   setInterval(() => run("scheduled"), localBackupIntervalHours * 60 * 60 * 1000);
 }
 
-
-function autoSyncStatus() {
-  const candidates = [path.join(os.homedir(), "studybridge-auto-deploy.sh"), "/home/ubuntu/studybridge-auto-deploy.sh"];
-  const scriptPath = candidates.find((item) => fsSync.existsSync(item)) || "";
-  const logPath = path.join(os.homedir(), "studybridge-deploy.log");
-  return {
-    configured: Boolean(scriptPath),
-    scriptPath: scriptPath ? scriptPath.replace(os.homedir(), "~") : "",
-    lastLogAt: fileIsoTime(logPath),
-    note: scriptPath ? "Server auto-sync script was detected." : "Server auto-sync script was not detected."
-  };
-}
-
-async function databaseStatus() {
-  const mode = db.mode || process.env.STUDYBRIDGE_DB || "local";
-  try {
-    const users = await db.listUsers();
-    return {
-      mode,
-      ready: true,
-      userCount: Array.isArray(users) ? users.length : 0,
-      note: mode === "local" ? "Local database is readable and writable. Add backups or a cloud database before larger public use." : "Cloud database connection is healthy."
-    };
-  } catch (error) {
-    return {
-      mode,
-      ready: false,
-      userCount: 0,
-      note: error?.message || "Database read failed."
-    };
-  }
-}
-
-
 function autoSyncStatusClean() {
   const candidates = [
     path.join(os.homedir(), "studybridge-auto-deploy.sh"),
@@ -1501,7 +1492,7 @@ function autoSyncStatusClean() {
     configured: Boolean(scriptPath),
     scriptPath: scriptPath ? scriptPath.replace(os.homedir(), "~") : "",
     lastLogAt: fileIsoTime(logPath),
-    note: scriptPath ? "Server auto-sync script was detected." : "Server auto-sync script was not detected."
+    note: scriptPath ? "\u670d\u52a1\u5668\u81ea\u52a8\u540c\u6b65\u811a\u672c\u5df2\u5b58\u5728\u3002" : "\u672a\u68c0\u6d4b\u5230\u81ea\u52a8\u540c\u6b65\u811a\u672c\u3002"
   };
 }
 
@@ -1522,15 +1513,14 @@ async function databaseStatusClean() {
       fileBytes: localStat ? localStat.size : 0,
       note:
         mode === "local"
-? "\u7528\u6237\u8d44\u6599\u3001\u8bfe\u7a0b\u3001\u804a\u5929\u548c deadline \u90fd\u6309\u8d26\u53f7\u4fdd\u5b58\u5728\u670d\u52a1\u5668\u672c\u5730\u6570\u636e\u5e93\u3002"
-: "\u4e91\u6570\u636e\u5e93\u8fde\u63a5\u6b63\u5e38\u3002"
+          ? "\u7528\u6237\u8d44\u6599\u3001\u8bfe\u7a0b\u3001\u804a\u5929\u548c deadline \u90fd\u6309\u8d26\u53f7\u4fdd\u5b58\u5728\u670d\u52a1\u5668\u672c\u5730\u6570\u636e\u5e93\u3002"
+          : "\u4e91\u6570\u636e\u5e93\u8fde\u63a5\u6b63\u5e38\u3002"
     };
   } catch (error) {
     return {
       mode,
       ready: false,
       userCount: 0,
-      dataSavedWithAccount: false,
       note: error?.message || "\u6570\u636e\u5e93\u8bfb\u53d6\u5931\u8d25\u3002"
     };
   }
@@ -1540,7 +1530,7 @@ function requestOpenAiChatHealth(model) {
   return new Promise((resolve) => {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      resolve({ configured: false, ok: false, detail: "OPENAI_API_KEY is not configured." });
+      resolve({ configured: false, ok: false, detail: "\u672a\u914d\u7f6e OPENAI_API_KEY\u3002" });
       return;
     }
 
@@ -1584,16 +1574,18 @@ function requestOpenAiChatHealth(model) {
             configured: true,
             ok,
             statusCode: response.statusCode,
-            detail: ok ? `Current model ${model} can respond normally.` : `Current model ${model} failed: ${message || "OpenAI API returned a non-success status."}`
+            detail: ok
+              ? `\u5f53\u524d\u6a21\u578b ${model} \u53ef\u4ee5\u6b63\u5e38\u56de\u590d\u3002`
+              : `\u5f53\u524d\u6a21\u578b ${model} \u68c0\u6d4b\u5931\u8d25\uff1a${message || "OpenAI API \u8fd4\u56de\u5f02\u5e38\u72b6\u6001\u3002"}`
           });
         });
       }
     );
     req.on("timeout", () => {
       req.destroy();
-      resolve({ configured: true, ok: false, detail: `Current model ${model} timed out.` });
+      resolve({ configured: true, ok: false, detail: `\u5f53\u524d\u6a21\u578b ${model} \u68c0\u6d4b\u8d85\u65f6\u3002` });
     });
-    req.on("error", (error) => resolve({ configured: true, ok: false, detail: error.message || "OpenAI API connection failed." }));
+    req.on("error", (error) => resolve({ configured: true, ok: false, detail: error.message || "OpenAI API \u8fde\u63a5\u5931\u8d25\u3002" }));
     req.write(body);
     req.end();
   });
@@ -1707,7 +1699,7 @@ async function signInWithGoogle(req, res, url) {
         name: String(googleProfile.name || email.split("@")[0] || "StudyBridge Student").trim().slice(0, 80),
         email,
         passwordHash: "",
-        role: adminEmails().includes(email) ? "admin" : "student",
+        role: adminEmails().includes(email) || normalizeInviteRole(inviteGrant.invite?.role) === "admin" ? "admin" : "student",
         inviteCode: inviteGrant.code || inviteGrant.invite?.code || "",
         inviteId: inviteGrant.invite?.id || "",
         googleSub: googleProfile.sub || "",
@@ -1721,12 +1713,15 @@ async function signInWithGoogle(req, res, url) {
         },
         preferences: {
           englishTerms: true,
-          englishAnswers: true,
-          chineseExplanations: true,
+          englishAnswers: false,
+          chineseExplanations: false,
           customInstruction: ""
         }
       });
-      if (inviteGrant.invite) await db.consumeInvite(inviteGrant.invite.id, user.id);
+      if (inviteGrant.invite) {
+        await db.consumeInvite(inviteGrant.invite.id, user.id);
+        if (normalizeInviteRole(inviteGrant.invite.role) === "admin") user.role = "admin";
+      }
     }
 
     const token = createSessionToken();
@@ -1891,7 +1886,7 @@ async function routeApi(req, res) {
       name,
       email,
       passwordHash: hashPassword(body.password),
-      role: adminEmails().includes(email) ? "admin" : "student",
+      role: adminEmails().includes(email) || normalizeInviteRole(inviteGrant.invite?.role) === "admin" ? "admin" : "student",
       inviteCode: inviteGrant.code || inviteGrant.invite?.code || "",
       inviteId: inviteGrant.invite?.id || "",
       profile: {
@@ -1901,12 +1896,15 @@ async function routeApi(req, res) {
       },
       preferences: {
         englishTerms: true,
-        englishAnswers: true,
-        chineseExplanations: true,
+        englishAnswers: false,
+        chineseExplanations: false,
         customInstruction: ""
       }
     });
-    if (inviteGrant.invite) await db.consumeInvite(inviteGrant.invite.id, user.id);
+    if (inviteGrant.invite) {
+      await db.consumeInvite(inviteGrant.invite.id, user.id);
+      if (normalizeInviteRole(inviteGrant.invite.role) === "admin") user.role = "admin";
+    }
 
     const token = createSessionToken();
     await db.createSession({ tokenHash: hashToken(token), userId: user.id, expiresAt: Date.now() + SESSION_TTL_MS });
@@ -1942,8 +1940,16 @@ async function routeApi(req, res) {
     const name = String(body.name || "").trim().slice(0, 80);
     if (!name) return sendError(res, 400, "Name is required.");
     const profile = cleanProfile(body);
-    const updated = await db.updateUser(user.id, { name, profile });
-    return sendJson(res, 200, { user: publicUser(withEffectiveRole(updated)) });
+    if (!isValidSbId(profile.sbId)) {
+      return sendError(res, 400, "SB ID must be 3-24 characters and can only use lowercase letters, numbers, dots, underscores, or hyphens.");
+    }
+    try {
+      await ensureSbIdAvailable(profile.sbId, user.id);
+      const updated = await db.updateUser(user.id, { name, profile });
+      return sendJson(res, 200, { user: publicUser(withEffectiveRole(updated)) });
+    } catch (error) {
+      return sendError(res, 409, error.message);
+    }
   }
 
   if (url.pathname === "/api/community" && method === "GET") {
@@ -2123,10 +2129,12 @@ if (openCommunityLikeMatch && method === "PATCH") {
     if (!admin) return;
     const body = await readJson(req);
     const maxUses = Math.max(1, Math.min(100, Number(body.maxUses || 1)));
+    const role = normalizeInviteRole(body.role);
     const invite = await db.createInvite({
       id: createId("invite"),
-      code: createInviteCode(),
+      code: createInviteCode(role),
       label: String(body.label || "Friend invite").trim().slice(0, 80),
+      role,
       maxUses,
       createdBy: admin.id
     });
@@ -2377,7 +2385,7 @@ if (directMessageMatch && method === "POST") {
       return sendJson(res, 200, { documents: await db.listDocuments(user.id, courseId) });
     }
     if (child === "documents" && method === "POST") {
-      const body = await readJson(req);
+      const body = normalizeUploadBody(await readJson(req));
       const title = String(body.title || body.fileName || "Course note").trim().slice(0, 160);
       let text;
       const uploadedFile = hasUploadedFile(body);
@@ -2402,7 +2410,7 @@ if (directMessageMatch && method === "POST") {
         courseId,
         title,
         text,
-        type: String(body.type || (String(body.fileName || "").toLowerCase().endsWith(".pdf") ? "PDF" : "Note")).slice(0, 60)
+        type: uploadedFile ? uploadedDocumentType(body) : String(body.type || "Note").slice(0, 60)
       });
       return sendJson(res, 201, { document });
     }
@@ -2462,12 +2470,13 @@ const server = http.createServer(async (req, res) => {
     if (req.url.startsWith("/api/")) return await routeApi(req, res);
     return await serveStatic(req, res);
   } catch (error) {
-    console.error(error);
-    return sendError(res, 500, error.message || "Server error.");
+    const status = error.statusCode || 500;
+    if (status === 500) console.error(error);
+    return sendError(res, status, error.message || "Server error.");
   }
 });
 
 server.listen(port, () => {
-  console.log(`StudyBridge cloud app running on http://localhost:${port}`);
+  console.log(`StudyBridge cloud app running on http://localhost:${server.address().port}`);
   scheduleLocalDatabaseBackups();
 });

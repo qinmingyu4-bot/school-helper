@@ -42,28 +42,53 @@
       style.id = "studybridge-classmate-chat-bubble-fix";
       document.head.appendChild(style);
     }
+    if (style.dataset.ready === "true") return;
 
     style.textContent = `
+      #classmatesPage {
+        min-height: 0 !important;
+      }
+
+      #classmatesPage .classmates-body {
+        min-height: 0 !important;
+        overflow: hidden !important;
+      }
+
       #classmatesPage .classmates-chat-shell {
+        height: 100% !important;
+        min-height: 0 !important;
         grid-template-rows: auto auto minmax(0, 1fr) auto !important;
+        overflow: hidden !important;
       }
 
       #classmatesPage .direct-message-list {
-        align-content: end !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-content: stretch !important;
+        justify-content: flex-start !important;
         gap: 10px !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        padding-bottom: 34px !important;
+        overscroll-behavior: contain !important;
+        scrollbar-gutter: stable !important;
       }
 
       #classmatesPage .direct-message {
-        display: flex !important;
-        align-items: flex-end !important;
+        display: grid !important;
+        flex: 0 0 auto !important;
+        grid-template-columns: minmax(0, 1fr) auto !important;
+        align-items: end !important;
         justify-content: space-between !important;
         gap: 16px !important;
+        box-sizing: border-box !important;
         width: fit-content !important;
         min-width: min(360px, 72vw) !important;
         max-width: min(720px, 86%) !important;
-        min-height: auto !important;
+        min-height: 0 !important;
         height: auto !important;
-        padding: 10px 14px !important;
+        padding: 9px 14px !important;
         border-radius: 8px !important;
         line-height: 1.42 !important;
         white-space: pre-wrap !important;
@@ -71,9 +96,11 @@
 
       #classmatesPage .direct-message > span {
         min-width: 0 !important;
+        display: block !important;
       }
 
       #classmatesPage .direct-message.mine {
+        align-self: flex-end !important;
         justify-self: end !important;
       }
 
@@ -240,8 +267,8 @@
 
       @media (max-width: 640px) {
         #classmatesPage .direct-message {
+          grid-template-columns: 1fr !important;
           align-items: flex-start !important;
-          flex-direction: column !important;
           gap: 4px !important;
           min-width: min(260px, 82vw) !important;
           max-width: 92% !important;
@@ -252,6 +279,7 @@
         }
       }
     `;
+    style.dataset.ready = "true";
   }
 
   function countVisibleRequests(list) {
@@ -355,7 +383,7 @@
     const facts = [
       peer.school ? `学校：${peer.school}` : "",
       peer.major ? `专业：${peer.major}` : "",
-      peer.sbId ? `SB ID：@${peer.sbId}` : ""
+      peer.sbId ? `SB ID: ${peer.sbId}` : ""
     ].filter(Boolean);
 
     card.hidden = false;
@@ -393,14 +421,51 @@
     const page = document.querySelector("#classmatesPage:not([hidden])");
     if (!page) return;
     page.querySelectorAll(".direct-message").forEach((message) => {
-      if (message.dataset.normalizedBubble === "true") return;
-      const time = message.querySelector("time");
-      const timeHtml = time ? time.outerHTML : "";
-      if (time) time.remove();
-      const body = message.textContent.trim();
-      message.innerHTML = `<span>${escapeHtml(body)}</span>${timeHtml}`;
-      message.dataset.normalizedBubble = "true";
+      if (message.dataset.normalizedBubble !== "true") {
+        const time = message.querySelector("time");
+        const timeHtml = time ? time.outerHTML : "";
+        if (time) time.remove();
+        const body = message.textContent.trim();
+        message.innerHTML = `<span>${escapeHtml(body)}</span>${timeHtml}`;
+        message.dataset.normalizedBubble = "true";
+      }
+      compactMessageCard(message);
     });
+  }
+
+  function compactMessageCard(message) {
+    if (!message) return;
+    Object.assign(message.style, {
+      display: "grid",
+      gridTemplateColumns: "minmax(0, 1fr) auto",
+      alignItems: "end",
+      gap: "16px",
+      minHeight: "0px",
+      height: "auto",
+      padding: "9px 14px",
+      lineHeight: "1.42"
+    });
+    const text = message.querySelector("span");
+    if (text) text.style.display = "block";
+    const time = message.querySelector("time");
+    if (time) {
+      Object.assign(time.style, {
+        margin: "0",
+        alignSelf: "end",
+        whiteSpace: "nowrap",
+        textAlign: "right"
+      });
+    }
+  }
+
+  function installMessageObserver() {
+    const list = document.querySelector("#classmatesPage #directMessageList");
+    if (!list || list.dataset.compactObserver === "true") return;
+    const observer = new MutationObserver(() => {
+      requestAnimationFrame(normalizeMessageCards);
+    });
+    observer.observe(list, { childList: true, subtree: true });
+    list.dataset.compactObserver = "true";
   }
 
   async function pollActiveClassmateMessages() {
@@ -411,6 +476,7 @@
     const list = page.querySelector("#directMessageList");
     if (!activeClassmateId || !list) return;
 
+    const activeChanged = activeClassmateId !== lastActiveClassmateId;
     if (activeClassmateId !== lastActiveClassmateId) {
       lastActiveClassmateId = activeClassmateId;
       lastMessageSignature = "";
@@ -423,6 +489,7 @@
       const messages = result.messages || [];
       const signature = messages.map((item) => `${item.id}:${item.createdAt}:${item.content}`).join("|");
       if (signature !== lastMessageSignature) {
+        const wasNearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 100;
         lastMessageSignature = signature;
         list.innerHTML = messages.length
           ? messages
@@ -436,7 +503,7 @@
               )
               .join("")
           : '<p class="empty">还没有消息。先打个招呼吧。</p>';
-        list.scrollTop = list.scrollHeight;
+        if (wasNearBottom || activeChanged) list.scrollTop = list.scrollHeight;
       }
     } catch {
       // Keep the existing view if the network hiccups.
@@ -449,6 +516,7 @@
     installStyle();
     installRequestListCollapse();
     ensurePeerProfileCard();
+    installMessageObserver();
     normalizeMessageCards();
     renderPeerProfile();
   }
@@ -464,8 +532,12 @@
 
   boot();
   setInterval(() => {
-    boot();
-    refreshClassmateProfiles();
+    const page = document.querySelector("#classmatesPage:not([hidden])");
+    if (!page || document.visibilityState === "hidden") return;
     pollActiveClassmateMessages();
-  }, 3000);
+  }, 2500);
+  setInterval(() => {
+    boot();
+    if (document.querySelector("#classmatesPage:not([hidden])")) refreshClassmateProfiles();
+  }, 10000);
 })();

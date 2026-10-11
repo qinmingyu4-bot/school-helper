@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = "20261007-16";
+  const VERSION = "20261007-18";
   if (window.__studybridgeStudentCoreRouter === VERSION) return;
   window.__studybridgeStudentCoreRouter = VERSION;
 
@@ -9,6 +9,9 @@
   const PAGE_IDS = ["profilePage", "schoolCommunityPage", "classmatesPage", "emailReplyPage", "schedulePage"];
   const loadedScripts = new Map();
   let openingPage = "";
+  let visibleLockTimer = 0;
+  let visibleLockPageId = "";
+  let visibleLockUntil = 0;
 
   const routes = {
     openStudyAreaButton: { pageId: WORKSPACE_ID, title: "\u5b66\u4e60\u533a" },
@@ -19,16 +22,16 @@
       pageId: "schoolCommunityPage",
       title: "\u793e\u533a",
       opener: "studybridgeOpenCommunityPage",
-      scripts: ["/school-community-patch.js?v=20261007-16"]
+      scripts: ["/school-community-patch.js?v=20261007-18"]
     },
     openClassmatesButton: {
       pageId: "classmatesPage",
       title: "\u540c\u5b66",
       opener: "studybridgeOpenClassmatesPage",
       scripts: [
-        "/classmates-request-patch.js?v=20261007-16",
-        "/classmate-chat-bubble-fix.js?v=20261007-16",
-        "/classmates-performance-patch.js?v=20261007-16"
+        "/classmates-request-patch.js?v=20261007-18",
+        "/classmate-chat-bubble-fix.js?v=20261007-18",
+        "/classmates-performance-patch.js?v=20261007-18"
       ],
       refreshSelectors: ["#refreshClassmatesButton", "#refreshClassmateRequestsButton"]
     },
@@ -36,16 +39,16 @@
       pageId: "emailReplyPage",
       title: "\u90ae\u4ef6\u52a9\u624b",
       opener: "studybridgeOpenEmailReplyPage",
-      scripts: ["/email-reply-patch.js?v=20261007-16"]
+      scripts: ["/email-reply-patch.js?v=20261007-18"]
     },
     openScheduleButton: {
       pageId: "schedulePage",
       title: "\u65f6\u95f4\u8868",
       opener: "studybridgeOpenSchedulePage",
       scripts: [
-        "/schedule-patch.js?v=20261007-16",
-        "/schedule-dashboard-patch.js?v=20261007-16",
-        "/schedule-notification-patch.js?v=20261007-16"
+        "/schedule-patch.js?v=20261007-18",
+        "/schedule-dashboard-patch.js?v=20261007-18",
+        "/schedule-notification-patch.js?v=20261007-18"
       ],
       refreshSelectors: ["#refreshScheduleButton"]
     }
@@ -59,22 +62,85 @@
     { id: "openStudyAreaButton", words: ["\u5b66\u4e60\u533a", "Academic Coach"] }
   ];
 
-  function $(selector, root = document) { return root.querySelector(selector); }
-  function appShellOpen() { const shell = $("#appShell"); return Boolean(shell && !shell.hidden); }
-  function workspace() { const root = $(`#${WORKSPACE_ID}`) || $(".workspace"); if (root && !root.id) root.id = WORKSPACE_ID; return root; }
-  function cleanText(value) { return String(value || "").replace(/\s+/g, " ").trim(); }
-  function escapeHtml(value) { return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;"); }
+  function $(selector, root = document) {
+    return root.querySelector(selector);
+  }
+
+  function appShellOpen() {
+    const shell = $("#appShell");
+    return Boolean(shell && !shell.hidden);
+  }
+
+  function workspace() {
+    const root = $(`#${WORKSPACE_ID}`) || $(".workspace");
+    if (root && !root.id) root.id = WORKSPACE_ID;
+    return root;
+  }
+
+  function cleanText(value) {
+    return String(value || "").replace(/\s+/g, " ").trim();
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function readProfileImageFile(input, existingValue = "") {
+    const file = input?.files?.[0];
+    if (!file) return Promise.resolve(existingValue || "");
+    if (!String(file.type || "").startsWith("image/")) {
+      return Promise.reject(new Error("请上传图片文件。"));
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      return Promise.reject(new Error("图片太大，请选择 2MB 以下图片。"));
+    }
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("图片读取失败，请重新选择。"));
+      reader.readAsDataURL(file);
+    });
+  }
 
   async function api(path, options = {}) {
-    const response = await fetch(path, { method: options.method || "GET", headers: options.body ? { "content-type": "application/json" } : undefined, body: options.body ? JSON.stringify(options.body) : undefined });
+    const response = await fetch(path, {
+      method: options.method || "GET",
+      headers: options.body ? { "content-type": "application/json" } : undefined,
+      body: options.body ? JSON.stringify(options.body) : undefined
+    });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || "Request failed.");
     return data;
   }
 
-  function setStatus(text) { const line = $("#statusLine"); if (line) line.textContent = text; }
-  function remember(pageId) { try { localStorage.setItem(PAGE_KEY, pageId); localStorage.setItem("studybridgeWorkspaceMode", "student"); } catch {} }
-  function resetScroll() { const root = workspace(); if (root) root.scrollTop = 0; try { window.scrollTo({ top: 0, left: 0, behavior: "auto" }); } catch { window.scrollTo(0, 0); } }
+  function setStatus(text) {
+    const line = $("#statusLine");
+    if (line) line.textContent = text;
+  }
+
+  function remember(pageId) {
+    try {
+      localStorage.setItem(PAGE_KEY, pageId);
+      localStorage.setItem("studybridgeWorkspaceMode", "student");
+    } catch {
+      // Page switching still works if storage is blocked.
+    }
+  }
+
+  function resetScroll() {
+    const root = workspace();
+    if (root) root.scrollTop = 0;
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+  }
 
   function prepareStudentWorkspace() {
     const root = workspace();
@@ -94,7 +160,10 @@
   function setStudyVisible(visible) {
     const root = workspace();
     if (!root) return;
-    STUDY_SELECTORS.forEach((selector) => { const element = root.querySelector(`:scope > ${selector}`); if (element) element.hidden = !visible; });
+    STUDY_SELECTORS.forEach((selector) => {
+      const element = root.querySelector(`:scope > ${selector}`);
+      if (element) element.hidden = !visible;
+    });
   }
 
   function hidePages(except = "") {
@@ -102,7 +171,12 @@
       const page = $(`#${pageId}`);
       if (!page) return;
       page.hidden = pageId !== except;
-      if (pageId === except) { page.removeAttribute("hidden"); page.style.display = ""; page.style.visibility = "visible"; page.style.opacity = "1"; }
+      if (pageId === except) {
+        page.removeAttribute("hidden");
+        page.style.display = "";
+        page.style.visibility = "visible";
+        page.style.opacity = "1";
+      }
     });
   }
 
@@ -119,6 +193,7 @@
   function showStudyArea() {
     const root = prepareStudentWorkspace();
     if (!root) return false;
+    clearVisibleLock();
     hidePages("");
     setStudyVisible(true);
     document.body.classList.remove("studybridge-secondary-page", "study-sidebar-hidden", "studybridge-nav-hotfix-page");
@@ -135,25 +210,89 @@
     const page = $(`#${pageId}`);
     if (!root || !page) return false;
     if (page.parentElement !== root) root.appendChild(page);
-    setStudyVisible(false);
-    hidePages(pageId);
-    document.body.classList.add("studybridge-secondary-page", "study-sidebar-hidden");
-    document.body.classList.remove("studybridge-nav-hotfix-page");
-    document.body.dataset.studybridgeActivePage = pageId;
+    enforceVisiblePage(pageId);
     markActive(pageId);
     remember(pageId);
     resetScroll();
     return true;
   }
 
-  function fallbackToStudy(message) { showStudyArea(); setStatus(message || "\u9875\u9762\u6ca1\u6709\u6253\u5f00\uff0c\u8bf7\u5237\u65b0\u4e00\u6b21\u3002"); }
-  function scriptKey(src) { return new URL(src.split("?")[0], window.location.href).pathname; }
+  function clearVisibleLock() {
+    visibleLockPageId = "";
+    visibleLockUntil = 0;
+    if (visibleLockTimer) {
+      clearInterval(visibleLockTimer);
+      visibleLockTimer = 0;
+    }
+  }
+
+  function enforceVisiblePage(pageId) {
+    const root = prepareStudentWorkspace();
+    const page = $(`#${pageId}`);
+    if (!root || !page) return false;
+    if (page.parentElement !== root) root.appendChild(page);
+    setStudyVisible(false);
+    PAGE_IDS.forEach((id) => {
+      const element = $(`#${id}`);
+      if (!element) return;
+      element.hidden = id !== pageId;
+      if (id === pageId) {
+        element.removeAttribute("hidden");
+        element.style.display = "";
+        element.style.visibility = "visible";
+        element.style.opacity = "1";
+      }
+    });
+    document.body.classList.add("studybridge-secondary-page", "study-sidebar-hidden");
+    document.body.classList.remove("creator-clean-mode", "admin-boundary-active", "studybridge-nav-hotfix-page");
+    document.body.dataset.studybridgeActivePage = pageId;
+    const developerPanel = $("#developerPanel");
+    if (developerPanel) developerPanel.hidden = true;
+    return true;
+  }
+
+  function lockVisiblePage(pageId, duration = 5000) {
+    visibleLockPageId = pageId;
+    visibleLockUntil = Date.now() + duration;
+    if (visibleLockTimer) return;
+    visibleLockTimer = setInterval(() => {
+      if (!visibleLockPageId || Date.now() > visibleLockUntil || !appShellOpen()) {
+        clearVisibleLock();
+        return;
+      }
+      enforceVisiblePage(visibleLockPageId);
+      markActive(visibleLockPageId);
+    }, 90);
+  }
+
+  function fallbackToStudy(message) {
+    showStudyArea();
+    setStatus(message || "\u9875\u9762\u6ca1\u6709\u6253\u5f00\uff0c\u8bf7\u5237\u65b0\u4e00\u6b21\u3002");
+  }
+
+  function scriptKey(src) {
+    return new URL(src.split("?")[0], window.location.href).pathname;
+  }
+
+  function waitForOpener(openerName, timeout = 2200) {
+    if (!openerName || typeof window[openerName] === "function") return Promise.resolve();
+    return new Promise((resolve) => {
+      const started = Date.now();
+      const timer = setInterval(() => {
+        if (typeof window[openerName] === "function" || Date.now() - started > timeout) {
+          clearInterval(timer);
+          resolve();
+        }
+      }, 60);
+    });
+  }
 
   function loadScript(src, openerName) {
     if (openerName && typeof window[openerName] === "function") return Promise.resolve();
     const key = scriptKey(src);
     if (loadedScripts.has(key)) return loadedScripts.get(key);
-    if (Array.from(document.scripts).some((script) => script.src && scriptKey(script.src) === key)) return Promise.resolve();
+    const existing = Array.from(document.scripts).find((script) => script.src && scriptKey(script.src) === key);
+    if (existing) return waitForOpener(openerName);
     const promise = new Promise((resolve) => {
       const script = document.createElement("script");
       script.async = false;
@@ -161,46 +300,77 @@
       script.addEventListener("load", resolve, { once: true });
       script.addEventListener("error", resolve, { once: true });
       document.body.appendChild(script);
-      setTimeout(resolve, 1800);
-    });
+      setTimeout(resolve, 2200);
+    }).then(() => waitForOpener(openerName));
     loadedScripts.set(key, promise);
     return promise;
   }
 
   async function runOpener(route) {
     if (!route.opener || typeof window[route.opener] !== "function") return false;
-    try { await window[route.opener](); return true; } catch (error) { console.warn("StudyBridge route opener failed:", error); return false; }
+    try {
+      await window[route.opener]();
+      return true;
+    } catch (error) {
+      console.warn("StudyBridge route opener failed:", error);
+      return false;
+    }
   }
 
-  function refreshPage(route) { (route.refreshSelectors || []).forEach((selector) => { const button = $(selector); if (button && !button.disabled) setTimeout(() => button.click(), 150); }); }
+  function refreshPage(route) {
+    (route.refreshSelectors || []).forEach((selector) => {
+      const button = $(selector);
+      if (button && !button.disabled) setTimeout(() => button.click(), 150);
+    });
+  }
 
   async function openRoute(routeId) {
     const route = routes[routeId];
     if (!route || !appShellOpen()) return;
-    if (route.pageId === WORKSPACE_ID) { showStudyArea(); return; }
+    if (route.pageId === WORKSPACE_ID) {
+      showStudyArea();
+      return;
+    }
     if (openingPage === route.pageId) return;
     openingPage = route.pageId;
     setStatus(`Opening ${route.title}...`);
+
     try {
       prepareStudentWorkspace();
       if (route.ensure) route.ensure();
       await Promise.all((route.scripts || []).map((src) => loadScript(src, route.opener)));
       if (route.ensure) route.ensure();
       await runOpener(route);
+
       for (const delay of [0, 120, 260, 520, 900]) {
         if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
         if (route.ensure) route.ensure();
         await runOpener(route);
-        if (showPage(route.pageId)) { if (route.refresh) route.refresh(); refreshPage(route); setStatus(`${route.title} opened.`); return; }
+        if (showPage(route.pageId)) {
+          lockVisiblePage(route.pageId);
+          if (route.refresh) route.refresh();
+          refreshPage(route);
+          setStatus(`${route.title} opened.`);
+          return;
+        }
       }
+
       fallbackToStudy(`${route.title} \u6ca1\u6709\u52a0\u8f7d\u51fa\u6765\uff0c\u8bf7\u5237\u65b0\u4e00\u6b21\u3002`);
-    } finally { openingPage = ""; }
+    } finally {
+      openingPage = "";
+    }
   }
 
-  function routeFromText(text) { const value = cleanText(text); if (!value || value.length > 180) return ""; return textRoutes.find((route) => route.words.some((word) => value.includes(word)))?.id || ""; }
+  function routeFromText(text) {
+    const value = cleanText(text);
+    if (!value || value.length > 180) return "";
+    return textRoutes.find((route) => route.words.some((word) => value.includes(word)))?.id || "";
+  }
 
   function routeFromEvent(event) {
-    const direct = event.target.closest?.("#openStudyAreaButton, #openProfilePageButton, #editProfileButton, #profileCard, #openSchoolCommunityButton, #openClassmatesButton, #openEmailReplyButton, #openScheduleButton");
+    const direct = event.target.closest?.(
+      "#openStudyAreaButton, #openProfilePageButton, #editProfileButton, #profileCard, #openSchoolCommunityButton, #openClassmatesButton, #openEmailReplyButton, #openScheduleButton"
+    );
     if (direct?.id && routes[direct.id]) return direct.id;
     const tagged = event.target.closest?.("[data-studybridge-route]");
     if (tagged?.dataset?.studybridgeRoute && routes[tagged.dataset.studybridgeRoute]) return tagged.dataset.studybridgeRoute;
@@ -216,7 +386,14 @@
     return "";
   }
 
-  function handleNavigation(event) { const routeId = routeFromEvent(event); if (!routeId) return; event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation(); openRoute(routeId); }
+  function handleNavigation(event) {
+    const routeId = routeFromEvent(event);
+    if (!routeId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    openRoute(routeId);
+  }
 
   function decorateSidebar() {
     const sidebar = $(".sidebar");
@@ -242,9 +419,36 @@
     page.className = "stable-profile-page";
     page.hidden = true;
     page.innerHTML = `
-      <header class="topbar stable-page-head"><div><p class="eyebrow">Profile</p><h2>\u4e2a\u4eba\u8d44\u6599</h2><span id="stableProfileStatus">\u5b66\u6821\u3001\u4e13\u4e1a\u548c SB ID \u4f1a\u8ddf\u7740\u8d26\u53f7\u4fdd\u5b58\u3002</span></div><button class="ghost-button" id="backFromStableProfileButton" type="button">\u8fd4\u56de\u5b66\u4e60\u533a</button></header>
-      <div class="stable-profile-layout"><section class="stable-profile-card"><div class="stable-profile-cover" id="stableProfileCover"><div class="stable-profile-avatar" id="stableProfileAvatar">SB</div></div><h3 id="stableProfileName">StudyBridge user</h3><p id="stableProfileSummary">\u8fd8\u6ca1\u6709\u586b\u5199\u5b66\u6821\u548c\u4e13\u4e1a\u3002</p><div class="stable-profile-facts" id="stableProfileFacts"></div></section>
-      <form class="stable-profile-form" id="stableProfileForm"><label><span>\u59d3\u540d</span><input id="stableProfileNameInput" autocomplete="name" /></label><label><span>\u5b66\u6821</span><input id="stableProfileSchoolInput" placeholder="University of Toronto" /></label><label><span>\u4e13\u4e1a</span><input id="stableProfileMajorInput" placeholder="Finance / Computer Science" /></label><label><span>SB ID</span><input id="stableProfileSbIdInput" autocomplete="off" spellcheck="false" placeholder="adam2026" /></label><label><span>\u5934\u50cf\u56fe\u7247\u94fe\u63a5</span><input id="stableProfileAvatarInput" placeholder="https://..." /></label><label><span>\u80cc\u666f\u56fe\u7247\u94fe\u63a5</span><input id="stableProfileBackgroundInput" placeholder="https://..." /></label><button class="primary-button" type="submit">\u4fdd\u5b58\u8d44\u6599</button><p class="form-message" id="stableProfileMessage"></p></form></div>`;
+      <header class="topbar stable-page-head">
+        <div>
+          <p class="eyebrow">Profile</p>
+          <h2>\u4e2a\u4eba\u8d44\u6599</h2>
+          <span id="stableProfileStatus">\u5b66\u6821\u3001\u4e13\u4e1a\u548c SB ID \u4f1a\u8ddf\u7740\u8d26\u53f7\u4fdd\u5b58\u3002</span>
+        </div>
+        <button class="ghost-button" id="backFromStableProfileButton" type="button">\u8fd4\u56de\u5b66\u4e60\u533a</button>
+      </header>
+      <div class="stable-profile-layout">
+        <section class="stable-profile-card">
+          <div class="stable-profile-cover" id="stableProfileCover"><div class="stable-profile-avatar" id="stableProfileAvatar">SB</div></div>
+          <h3 id="stableProfileName">StudyBridge user</h3>
+          <p id="stableProfileSummary">\u8fd8\u6ca1\u6709\u586b\u5199\u5b66\u6821\u548c\u4e13\u4e1a\u3002</p>
+          <div class="stable-profile-facts" id="stableProfileFacts"></div>
+        </section>
+        <form class="stable-profile-form" id="stableProfileForm">
+          <label><span>\u59d3\u540d</span><input id="stableProfileNameInput" autocomplete="name" /></label>
+          <label><span>\u5b66\u6821</span><input id="stableProfileSchoolInput" placeholder="University of Toronto" /></label>
+          <label><span>\u4e13\u4e1a</span><input id="stableProfileMajorInput" placeholder="Finance / Computer Science" /></label>
+          <label><span>SB ID</span><input id="stableProfileSbIdInput" autocomplete="off" spellcheck="false" placeholder="adam2026" /></label>
+          <label><span>头像图片上传</span><input id="stableProfileAvatarFile" type="file" accept="image/*" /></label>
+          <input id="stableProfileAvatarInput" type="hidden" />
+          <label><span>背景图片上传</span><input id="stableProfileBackgroundFile" type="file" accept="image/*" /></label>
+          <input id="stableProfileBackgroundInput" type="hidden" />
+          <p class="stable-profile-help">选择图片后点击保存；不选择会保留当前图片。</p>
+          <button class="primary-button" type="submit">\u4fdd\u5b58\u8d44\u6599</button>
+          <p class="form-message" id="stableProfileMessage"></p>
+        </form>
+      </div>
+    `;
     root.appendChild(page);
     page.querySelector("#backFromStableProfileButton")?.addEventListener("click", () => openRoute("openStudyAreaButton"));
     page.querySelector("#stableProfileForm")?.addEventListener("submit", saveProfilePage);
@@ -260,36 +464,137 @@
     const sbId = profile.sbId || "";
     const avatar = $("#stableProfileAvatar");
     const cover = $("#stableProfileCover");
-    if (avatar) { avatar.textContent = profile.avatarUrl ? "" : (name.trim().slice(0, 1).toUpperCase() || "S"); avatar.style.backgroundImage = profile.avatarUrl ? `url("${profile.avatarUrl}")` : ""; }
+    if (avatar) {
+      avatar.textContent = profile.avatarUrl ? "" : (name.trim().slice(0, 1).toUpperCase() || "S");
+      avatar.style.backgroundImage = profile.avatarUrl ? `url("${profile.avatarUrl}")` : "";
+    }
     if (cover) cover.style.backgroundImage = profile.backgroundUrl ? `url("${profile.backgroundUrl}")` : "";
-    const title = $("#stableProfileName"); if (title) title.textContent = name;
-    const summary = $("#stableProfileSummary"); if (summary) summary.textContent = [school, major].filter(Boolean).join(" \u00b7 ") || "\u8fd8\u6ca1\u6709\u586b\u5199\u5b66\u6821\u548c\u4e13\u4e1a\u3002";
+    const title = $("#stableProfileName");
+    if (title) title.textContent = name;
+    const summary = $("#stableProfileSummary");
+    if (summary) summary.textContent = [school, major].filter(Boolean).join(" \u00b7 ") || "\u8fd8\u6ca1\u6709\u586b\u5199\u5b66\u6821\u548c\u4e13\u4e1a\u3002";
     const facts = $("#stableProfileFacts");
-    if (facts) facts.innerHTML = [school ? `<span><b>\u5b66\u6821</b>${escapeHtml(school)}</span>` : "", major ? `<span><b>\u4e13\u4e1a</b>${escapeHtml(major)}</span>` : "", sbId ? `<span><b>SB ID:</b>${escapeHtml(sbId)}</span>` : ""].filter(Boolean).join("");
-    const values = { stableProfileNameInput: name, stableProfileSchoolInput: school, stableProfileMajorInput: major, stableProfileSbIdInput: sbId, stableProfileAvatarInput: profile.avatarUrl || "", stableProfileBackgroundInput: profile.backgroundUrl || "" };
-    Object.entries(values).forEach(([id, value]) => { const input = $(`#${id}`); if (input && document.activeElement !== input) input.value = value; });
+    if (facts) {
+      facts.innerHTML = [
+        school ? `<span><b>\u5b66\u6821</b>${escapeHtml(school)}</span>` : "",
+        major ? `<span><b>\u4e13\u4e1a</b>${escapeHtml(major)}</span>` : "",
+        sbId ? `<span><b>SB ID:</b>${escapeHtml(sbId)}</span>` : ""
+      ].filter(Boolean).join("");
+    }
+    const values = {
+      stableProfileNameInput: name,
+      stableProfileSchoolInput: school,
+      stableProfileMajorInput: major,
+      stableProfileSbIdInput: sbId,
+      stableProfileAvatarInput: profile.avatarUrl || "",
+      stableProfileBackgroundInput: profile.backgroundUrl || ""
+    };
+    Object.entries(values).forEach(([id, value]) => {
+      const input = $(`#${id}`);
+      if (input && document.activeElement !== input) input.value = value;
+    });
   }
 
-  async function refreshProfilePage() { try { const result = await api("/api/me"); applyProfile(result.user); } catch (error) { const message = $("#stableProfileMessage"); if (message) message.textContent = error.message; } }
-  async function saveProfilePage(event) { event.preventDefault(); const message = $("#stableProfileMessage"); if (message) message.textContent = "\u6b63\u5728\u4fdd\u5b58..."; try { const result = await api("/api/me/profile", { method: "PUT", body: { name: $("#stableProfileNameInput")?.value || "", school: $("#stableProfileSchoolInput")?.value || "", major: $("#stableProfileMajorInput")?.value || "", sbId: $("#stableProfileSbIdInput")?.value || "", avatarUrl: $("#stableProfileAvatarInput")?.value || "", backgroundUrl: $("#stableProfileBackgroundInput")?.value || "" } }); applyProfile(result.user); if (message) message.textContent = "\u5df2\u4fdd\u5b58\u3002"; } catch (error) { if (message) message.textContent = error.message; } }
+  async function refreshProfilePage() {
+    try {
+      const result = await api("/api/me");
+      applyProfile(result.user);
+    } catch (error) {
+      const message = $("#stableProfileMessage");
+      if (message) message.textContent = error.message;
+    }
+  }
+
+  async function saveProfilePage(event) {
+    event.preventDefault();
+    const message = $("#stableProfileMessage");
+    if (message) message.textContent = "\u6b63\u5728\u4fdd\u5b58...";
+    try {
+      const result = await api("/api/me/profile", {
+        method: "PUT",
+        body: {
+          name: $("#stableProfileNameInput")?.value || "",
+          school: $("#stableProfileSchoolInput")?.value || "",
+          major: $("#stableProfileMajorInput")?.value || "",
+          sbId: $("#stableProfileSbIdInput")?.value || "",
+          avatarUrl: await readProfileImageFile($("#stableProfileAvatarFile"), $("#stableProfileAvatarInput")?.value || ""),
+          backgroundUrl: await readProfileImageFile($("#stableProfileBackgroundFile"), $("#stableProfileBackgroundInput")?.value || "")
+        }
+      });
+      applyProfile(result.user);
+      if (message) message.textContent = "\u5df2\u4fdd\u5b58\u3002";
+    } catch (error) {
+      if (message) message.textContent = error.message;
+    }
+  }
 
   function installStyle() {
     if ($("#studybridge-student-core-router-style")) return;
     const style = document.createElement("style");
     style.id = "studybridge-student-core-router-style";
-    style.textContent = `.sidebar [data-studybridge-route]{cursor:pointer!important;pointer-events:auto!important}body.studybridge-secondary-page:not(.creator-clean-mode) #workspacePage{display:block!important;overflow-y:auto!important;overflow-x:hidden!important;min-height:100vh!important;background:#f4f6f9!important}body.studybridge-secondary-page:not(.creator-clean-mode) #workspacePage>.topbar,body.studybridge-secondary-page:not(.creator-clean-mode) #workspacePage>#developerPanel,body.studybridge-secondary-page:not(.creator-clean-mode) #workspacePage>#scheduleDashboard,body.studybridge-secondary-page:not(.creator-clean-mode) #workspacePage>#chatArea,body.studybridge-secondary-page:not(.creator-clean-mode) #workspacePage>#quickPrompts,body.studybridge-secondary-page:not(.creator-clean-mode) #workspacePage>#chatForm{display:none!important}body.studybridge-secondary-page:not(.creator-clean-mode) #profilePage:not([hidden]),body.studybridge-secondary-page:not(.creator-clean-mode) #schoolCommunityPage:not([hidden]),body.studybridge-secondary-page:not(.creator-clean-mode) #classmatesPage:not([hidden]),body.studybridge-secondary-page:not(.creator-clean-mode) #emailReplyPage:not([hidden]),body.studybridge-secondary-page:not(.creator-clean-mode) #schedulePage:not([hidden]){display:block!important;visibility:visible!important;opacity:1!important}.stable-profile-page{min-height:100%;background:#f4f6f9}.stable-profile-layout{display:grid;grid-template-columns:minmax(260px,360px) minmax(320px,1fr);gap:18px;padding:24px}.stable-profile-card,.stable-profile-form{border:1px solid var(--line);border-radius:8px;background:#fff;box-shadow:0 10px 28px rgba(25,36,58,.05)}.stable-profile-card{padding:16px}.stable-profile-cover{display:flex;align-items:end;min-height:150px;margin:-16px -16px 18px;padding:16px;border-radius:8px 8px 0 0;background:linear-gradient(135deg,#1f3a5f,#60a87f);background-position:center;background-size:cover}.stable-profile-avatar{display:grid;place-items:center;width:72px;height:72px;border:4px solid #fff;border-radius:8px;background:linear-gradient(145deg,#1f3a5f,#2f7d62);background-position:center;background-size:cover;color:#fff;font-size:28px;font-weight:900}.stable-profile-form{display:grid;gap:12px;align-content:start;padding:18px}.stable-profile-form label{display:grid;gap:6px;color:var(--navy);font-size:13px;font-weight:800}@media(max-width:860px){.stable-profile-layout{grid-template-columns:1fr;padding:16px}}`;
+    style.textContent = `
+      .sidebar [data-studybridge-route] { cursor: pointer !important; pointer-events: auto !important; }
+      body.studybridge-secondary-page:not(.creator-clean-mode) #workspacePage { display: block !important; overflow-y: auto !important; overflow-x: hidden !important; min-height: 100vh !important; background: #f4f6f9 !important; }
+      body.studybridge-secondary-page:not(.creator-clean-mode) #workspacePage > .topbar,
+      body.studybridge-secondary-page:not(.creator-clean-mode) #workspacePage > #developerPanel,
+      body.studybridge-secondary-page:not(.creator-clean-mode) #workspacePage > #scheduleDashboard,
+      body.studybridge-secondary-page:not(.creator-clean-mode) #workspacePage > #chatArea,
+      body.studybridge-secondary-page:not(.creator-clean-mode) #workspacePage > #quickPrompts,
+      body.studybridge-secondary-page:not(.creator-clean-mode) #workspacePage > #chatForm { display: none !important; }
+      body.studybridge-secondary-page:not(.creator-clean-mode) #profilePage:not([hidden]),
+      body.studybridge-secondary-page:not(.creator-clean-mode) #schoolCommunityPage:not([hidden]),
+      body.studybridge-secondary-page:not(.creator-clean-mode) #classmatesPage:not([hidden]),
+      body.studybridge-secondary-page:not(.creator-clean-mode) #emailReplyPage:not([hidden]),
+      body.studybridge-secondary-page:not(.creator-clean-mode) #schedulePage:not([hidden]) { display: block !important; visibility: visible !important; opacity: 1 !important; }
+      .stable-profile-page { min-height: 100%; background: #f4f6f9; }
+      .stable-profile-layout { display: grid; grid-template-columns: minmax(260px, 360px) minmax(320px, 1fr); gap: 18px; padding: 24px; }
+      .stable-profile-card, .stable-profile-form { border: 1px solid var(--line); border-radius: 8px; background: #fff; box-shadow: 0 10px 28px rgba(25, 36, 58, 0.05); }
+      .stable-profile-card { padding: 16px; }
+      .stable-profile-cover { display: flex; align-items: end; min-height: 150px; margin: -16px -16px 18px; padding: 16px; border-radius: 8px 8px 0 0; background: linear-gradient(135deg, #1f3a5f, #60a87f); background-position: center; background-size: cover; }
+      .stable-profile-avatar { display: grid; place-items: center; width: 72px; height: 72px; border: 4px solid #fff; border-radius: 8px; background: linear-gradient(145deg, #1f3a5f, #2f7d62); background-position: center; background-size: cover; color: #fff; font-size: 28px; font-weight: 900; }
+      .stable-profile-form { display: grid; gap: 12px; align-content: start; padding: 18px; }
+      .stable-profile-form label { display: grid; gap: 6px; color: var(--navy); font-size: 13px; font-weight: 800; }
+      @media (max-width: 860px) { .stable-profile-layout { grid-template-columns: 1fr; padding: 16px; } }
+    `;
     document.head.appendChild(style);
   }
 
-  function restoreLastPage() { let pageId = ""; try { pageId = localStorage.getItem(PAGE_KEY) || ""; } catch {} const routeId = Object.keys(routes).find((id) => routes[id].pageId === pageId); if (routeId && pageId !== WORKSPACE_ID) openRoute(routeId); }
-  function boot() { workspace(); installStyle(); decorateSidebar(); }
+  function restoreLastPage() {
+    let pageId = "";
+    try {
+      pageId = localStorage.getItem(PAGE_KEY) || "";
+    } catch {
+      pageId = "";
+    }
+    const routeId = Object.keys(routes).find((id) => routes[id].pageId === pageId);
+    if (routeId && pageId !== WORKSPACE_ID) openRoute(routeId);
+  }
+
+  function boot() {
+    workspace();
+    installStyle();
+    decorateSidebar();
+  }
 
   window.addEventListener("click", handleNavigation, true);
-  window.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") handleNavigation(event); }, true);
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") handleNavigation(event);
+  }, true);
   window.studybridgeOpenCorePage = openRoute;
-  window.studybridgeOpenStudentPage = (pageId) => { const routeId = Object.keys(routes).find((id) => routes[id].pageId === pageId); if (routeId) openRoute(routeId); };
+  window.studybridgeOpenStudentPage = (pageId) => {
+    const routeId = Object.keys(routes).find((id) => routes[id].pageId === pageId);
+    if (routeId) openRoute(routeId);
+  };
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => { boot(); setTimeout(restoreLastPage, 350); }, { once: true });
-  else { boot(); setTimeout(restoreLastPage, 350); }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => {
+      boot();
+      setTimeout(restoreLastPage, 350);
+    }, { once: true });
+  } else {
+    boot();
+    setTimeout(restoreLastPage, 350);
+  }
+
   new MutationObserver(() => requestAnimationFrame(decorateSidebar)).observe(document.body, { childList: true, subtree: true });
 })();

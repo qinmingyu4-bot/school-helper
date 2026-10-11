@@ -1,3 +1,3 @@
 (() => {
-  window.__studybridgeNavigationHotfix = "disabled-20261007-16";
+  window.__studybridgeNavigationHotfix = "disabled-20261007-15";
 })();

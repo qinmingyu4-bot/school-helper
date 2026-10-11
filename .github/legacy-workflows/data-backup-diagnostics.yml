@@ -1,9 +1,6 @@
 name: Apply StudyBridge data backup diagnostics
 
 on:
-  push:
-    paths:
-      - ".github/workflows/data-backup-diagnostics.yml"
   workflow_dispatch:
 
 permissions:

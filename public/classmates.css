@@ -182,9 +182,6 @@
   .classmates-workspace .chat-panel { height: clamp(420px, 65dvh, 680px); }
 }
 @container (max-width: 440px) {
-  .classmates-workspace .page-header { padding: 20px 16px; align-items: center; gap: 12px; }
-  .classmates-workspace .page-header h1 { font-size: 26px; }
-  .classmates-workspace .page-header > button { padding: 10px; font-size: 12px; }
   .classmates-workspace .classmates-layout { padding: 16px 12px; }
   .dm-header { padding: 12px; gap: 10px; }
   .dm-peer h2 { font-size: 16px; }

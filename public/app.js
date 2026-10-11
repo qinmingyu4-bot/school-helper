@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.57";
+  const VERSION = "1.1.58";
   const studyModes = window.StudyBridgeStudyModes;
   const scheduleImport = window.StudyBridgeScheduleImport;
   const STUDENT_PAGES = ["community", "classmates", "schedule", "study", "tools", "profile"];
@@ -406,7 +406,7 @@
   function pageHeader(kicker, title, subtitle, back = true) {
     return `
       <header class="page-header">
-        <div><span>${esc(kicker)}</span><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></div>
+        <div><h1 title="${esc(subtitle || title)}" aria-describedby="pageDescription">${esc(title)}</h1><p id="pageDescription">${esc(subtitle)}</p></div>
         ${back && state.page !== "study" ? `<button data-page="study">返回学习区</button>` : ""}
       </header>
     `;
@@ -429,7 +429,7 @@
   function studyPage() {
     const course = state.courses.find((item) => item.id === state.activeCourseId);
     return `
-      <header class="page-header"><div><h1>${esc(course?.name || "请选择课程")}</h1></div></header>
+      <header class="page-header"><div><h1 title="${esc(course?.name || "请选择课程")}">${esc(course?.name || "请选择课程")}</h1></div></header>
       ${upcomingBanner()}
       <section class="chat-area">
         <div class="messages" id="messages">

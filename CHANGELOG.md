@@ -2,6 +2,8 @@
 
 ## 2026-10-10
 
+- Reorganized creator-console invitations and users into responsive full-width lists, labeled invitation fields, separated row actions and user statistics, and wrapped long account details without overlap.
+- Corrected creator-console AI status details and distinguished an unconfigured AI service.
 - Released StudyBridge Cloud `1.1.51` with the reviewed Study Area scrolling and compact fixed-bar improvements; updated the entry script version to refresh browser caches.
 - Reduced the Study Area composer height with a compact input row and quick prompts, moved upload guidance to the attachment tooltip, and added breathing room to deadline notifications.
 - Dismissed signed-in notification toasts without rebuilding the page, preserving draft questions and focus while typing.

@@ -669,19 +669,32 @@
 
   function adminPage() {
     const overview = state.admin;
+    const invites = overview?.invites || [];
+    const users = overview?.users || [];
+    const roleLabel = (role) => ["admin", "co-admin"].includes(String(role).toLowerCase()) ? "管理员" : "普通用户";
     return `
       ${pageHeader("CREATOR CONSOLE", "开发者端", "管理邀请码、用户、系统状态和密码重置申请。", false)}
       ${adminStatusHtml()}
-      <section class="two-col">
-        <article class="card">
-          <h2>邀请码</h2>
-          <input id="inviteLabel" placeholder="备注：例如 Kevin / ECO101 小组">
-          <div class="inline-fields"><input id="inviteMax" type="number" value="1" min="1"><select id="inviteRole"><option value="student">普通用户</option><option value="admin">Co-admin</option></select><button class="primary" data-action="generate-invite">生成邀请码</button></div>
-          ${(overview?.invites || []).map((invite) => `<div class="invite-row"><b>${esc(invite.code)}</b><small>${esc(invite.role)} · ${esc(invite.label || "")} · ${invite.uses || 0}/${invite.maxUses || 1} used</small><button data-copy="${esc(invite.code)}">复制</button><button data-action="toggle-invite" data-id="${esc(invite.id)}" data-active="${invite.active ? "false" : "true"}">${invite.active ? "停用" : "启用"}</button></div>`).join("")}
+      <section class="admin-management">
+        <article class="admin-section" aria-labelledby="adminInvitesTitle">
+          <div class="section-title"><h2 id="adminInvitesTitle">邀请码</h2><small>共 ${invites.length} 个</small></div>
+          <div class="admin-invite-form">
+            <label class="admin-invite-label" for="inviteLabel">备注<input id="inviteLabel" placeholder="例如 Kevin / ECO101 小组"></label>
+            <label for="inviteMax">使用次数<input id="inviteMax" type="number" value="1" min="1"></label>
+            <label for="inviteRole">用户角色<select id="inviteRole"><option value="student">普通用户</option><option value="admin">Co-admin</option></select></label>
+            <button class="primary" data-action="generate-invite">生成邀请码</button>
+          </div>
+          <div class="admin-list">${invites.length ? invites.map((invite) => `<div class="invite-row">
+            <div class="admin-record-details"><b class="admin-invite-code">${esc(invite.code)}</b><div class="admin-record-meta"><span>${roleLabel(invite.role)}</span><span>已使用 ${invite.uses || 0} / ${invite.maxUses || 1} 次</span><span class="admin-invite-status ${invite.active ? "is-active" : "is-disabled"}">${invite.active ? "已启用" : "已停用"}</span></div>${invite.label ? `<p class="admin-record-note">${esc(invite.label)}</p>` : ""}</div>
+            <div class="admin-row-actions"><button data-copy="${esc(invite.code)}" aria-label="复制邀请码 ${esc(invite.code)}">复制</button><button data-action="toggle-invite" data-id="${esc(invite.id)}" data-active="${invite.active ? "false" : "true"}">${invite.active ? "停用" : "启用"}</button></div>
+          </div>`).join("") : `<p class="muted admin-empty">暂无邀请码。</p>`}</div>
         </article>
-        <article class="card">
-          <h2>用户</h2>
-          ${(overview?.users || []).map((user) => `<div class="user-row"><b>${esc(user.name)}</b><small>${esc(user.email)} · ${esc(user.role)}${user.inviteCode ? ` · 邀请码 ${esc(user.inviteCode)}` : ""}</small><span>${user.stats?.courses || 0} courses</span><span>${user.stats?.documents || 0} docs</span><span>${user.stats?.messages || 0} chats</span></div>`).join("")}
+        <article class="admin-section" aria-labelledby="adminUsersTitle">
+          <div class="section-title"><h2 id="adminUsersTitle">用户</h2><small>共 ${users.length} 人</small></div>
+          <div class="admin-list">${users.length ? users.map((user) => `<div class="user-row">
+            <div class="admin-record-details"><b>${esc(user.name)}</b><p class="admin-record-note">${esc(user.email)}</p><div class="admin-record-meta"><span>${roleLabel(user.role)}</span>${user.inviteCode ? `<span>邀请码 <span class="admin-invite-code">${esc(user.inviteCode)}</span></span>` : ""}</div></div>
+            <dl class="admin-user-stats"><div><dt>课程</dt><dd>${user.stats?.courses || 0}</dd></div><div><dt>文档</dt><dd>${user.stats?.documents || 0}</dd></div><div><dt>聊天</dt><dd>${user.stats?.messages || 0}</dd></div></dl>
+          </div>`).join("") : `<p class="muted admin-empty">暂无用户。</p>`}</div>
         </article>
       </section>
       <section class="card"><h2>密码重置申请</h2>${(overview?.resetRequests || []).length ? overview.resetRequests.map((req) => `<div class="mini-row"><b>${esc(req.email)}</b><small>${esc(req.status)}</small><button data-action="reset-password" data-id="${esc(req.id)}">生成临时密码</button></div>`).join("") : `<p class="muted">还没有密码重置申请。</p>`}</section>
@@ -694,7 +707,7 @@
       ["当前版本", s.version?.app || VERSION, `Node ${s.version?.node || ""}`],
       ["最后部署时间", formatDate(s.deploy?.lastCodeUpdateAt), "按服务器文件时间显示。"],
       ["数据库模式", s.database?.mode || "local", s.database?.ready ? "数据库可读取。" : "需要检查数据库。"],
-      ["AI 是否正常", s.ai?.ok ? "正常" : "异常", s.ai?.model ? `Current model ${s.ai.model}` : "等待检测。"],
+      ["AI 是否正常", s.ai?.configured === false ? "未配置" : s.ai?.ok ? "正常" : "异常", s.ai?.detail || (s.ai?.simpleModel ? `当前模型 ${s.ai.simpleModel}` : "等待检测。")],
       ["Google 登录", s.google?.enabled ? "已配置" : "未配置", "普通邮箱注册仍可用。"],
       ["邮箱验证码", s.email?.verificationRequired ? "已启用" : "非必需", s.email?.sendingConfigured ? "可发送邮件。" : "当前不强制邮箱发信。"],
       ["服务器自动同步", s.autoSync?.configured ? "已检测到" : "未确认", "用于从 GitHub 自动拉取更新。"],

@@ -1,8 +1,9 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.53";
+  const VERSION = "1.1.54";
   const studyModes = window.StudyBridgeStudyModes;
+  const scheduleImport = window.StudyBridgeScheduleImport;
   const STUDENT_PAGES = ["community", "classmates", "email", "schedule", "study", "tools", "profile"];
   const ADMIN_PAGES = ["admin"];
   const SCHEDULE_COURSE = "Schedule & Deadlines";
@@ -38,6 +39,10 @@
     messages: [],
     allDocs: [],
     scheduleItems: [],
+    scheduleDrafts: [],
+    scheduleSource: "",
+    scheduleImportBusy: false,
+    scheduleImportStatus: "",
     communityChannel: "all",
     community: null,
     classmates: null,
@@ -172,11 +177,12 @@
     if (Number.isNaN(date.getTime())) return "";
     const diff = date.getTime() - Date.now();
     if (diff <= 0) return "已到期";
-    const hours = Math.floor(diff / 3600000);
+    const minutes = Math.max(1, Math.ceil(diff / 60000));
+    const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
     const restHours = hours % 24;
     if (days > 0) return `${days}天${restHours}小时`;
-    return `${Math.max(1, restHours)}小时`;
+    return hours ? `${hours}小时${minutes % 60}分钟` : `${minutes}分钟`;
   }
 
   function formatInlineText(text) {
@@ -434,7 +440,7 @@
     return `
       <section class="deadline-banner" data-page="schedule">
         <div><span>最近要做</span><b>${esc(due.title)}</b><p>${esc(due.course || "")} | ${esc(formatDate(due.startsAt))} | ${esc(due.location || "")}</p></div>
-        <strong>${esc(dueText(due.startsAt))}<small>后 due</small></strong>
+        <strong><span data-countdown="${esc(due.startsAt)}">${esc(dueText(due.startsAt))}</span><small>${scheduleImport.kind(due.kind) === "DDL" ? "后截止" : "后开始"}</small></strong>
       </section>
     `;
   }
@@ -679,20 +685,33 @@
 
   function schedulePage() {
     const items = state.scheduleItems || [];
-    const pending = items.filter((item) => !item.completedAt);
+    const pending = items.filter((item) => !item.completedAt).sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
     const done = items.filter((item) => item.completedAt);
     return `
       ${pageHeader("SCHEDULE", "时间表", "上传 syllabus 或手动添加作业、考试、课程提醒。")}
-      <section class="two-col">
+      <section class="two-col schedule-layout">
+        <div class="schedule-inputs">
+        <article class="card schedule-upload">
+          <h2>上传文件，AI 提取时间</h2>
+          <p class="muted">支持 PDF、Word、PPT、Excel、TXT、MD、CSV、JSON。PDF 最大 8 MB，其他文件最大 12 MB。</p>
+          <p class="muted">1. 上传文件 → 2. 核对 DDL / LEC / TUT → 3. 确认后生成倒计时</p>
+          <label>课程表 / Syllabus<input id="scheduleFile" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md,.csv,.json" ${state.scheduleImportBusy || state.scheduleDrafts.length ? "disabled" : ""}></label>
+          <button class="primary" data-action="extract-schedule" ${state.scheduleImportBusy || state.scheduleDrafts.length ? "disabled" : ""}>${state.scheduleImportBusy ? "处理中…" : "上传并提取"}</button>
+          <p role="status" aria-live="polite">${esc(state.scheduleImportStatus)}</p>
+          <small>所有时间按 ${esc(Intl.DateTimeFormat().resolvedOptions().timeZone)} 显示。缺失或不确定的时间需要补全；每周课程仅在学期日期明确时展开。</small>
+        </article>
+        ${scheduleReviewHtml()}
         <article class="card">
           <h2>添加提醒</h2>
-          <input id="scheduleTitle" placeholder="例如 ECO101 Essay 1">
+          <label>类型<select id="scheduleKind"><option>DDL</option><option>LEC</option><option>TUT</option></select></label>
+          <input id="scheduleTitle" aria-label="提醒标题" placeholder="例如 ECO101 Essay 1">
           <input id="scheduleCourse" placeholder="课程，例如 ECO101">
           <input id="scheduleTime" type="datetime-local">
           <input id="scheduleLocation" placeholder="提交位置，例如 Quercus / Room 101">
           <textarea id="scheduleNotes" placeholder="补充要求、rubric 或备注"></textarea>
           <button class="primary" data-action="add-schedule">添加提醒</button>
         </article>
+        </div>
         <article class="card">
           <h2>全部提醒</h2>
           ${pending.length ? pending.map((item) => scheduleItemHtml(item)).join("") : `<p class="empty">暂无未完成提醒。</p>`}
@@ -706,12 +725,85 @@
   function scheduleItemHtml(item) {
     return `
       <div class="schedule-item">
-        <span>${esc(item.kind || "DDL")}</span>
+        <span>${esc(scheduleImport.kind(item.kind) || item.kind || "DDL")}</span>
         <div><b>${esc(item.title)}</b><small>${esc(item.course || "")} | ${esc(formatDate(item.startsAt))} | ${esc(item.location || "")}</small></div>
-        <strong>${esc(dueText(item.startsAt))}</strong>
+        <strong data-countdown="${esc(item.startsAt)}">${esc(dueText(item.startsAt))}</strong>
         <button data-action="complete-schedule" data-course="${esc(item.courseId)}" data-doc="${esc(item.docId)}">已完成</button>
       </div>
     `;
+  }
+
+  function scheduleReviewHtml() {
+    if (!state.scheduleDrafts.length) return "";
+    return `<article class="card schedule-review"><h2>核对提取结果（${state.scheduleDrafts.length} 条）</h2>
+      <p>${esc(state.scheduleSource)} · 尚未加入时间表。请核对时间及班号，只勾选你需要的项目。</p>
+      <fieldset ${state.scheduleImportBusy ? "disabled" : ""}>
+      ${state.scheduleDrafts.map((item, index) => `<section class="schedule-draft" data-draft="${index}">
+        <label class="schedule-select"><input type="checkbox" data-draft-field="selected" ${item.selected ? "checked" : ""}>加入时间表</label>
+        <div class="inline-fields"><label>类型<select data-draft-field="kind">${["DDL", "LEC", "TUT"].map((kind) => `<option ${item.kind === kind ? "selected" : ""}>${kind}</option>`).join("")}</select></label>
+        <label>日期与时间<input type="datetime-local" data-draft-field="startsAt" value="${esc(item.startsAt)}"></label></div>
+        <label>标题<input data-draft-field="title" value="${esc(item.title)}" maxlength="160"></label>
+        <div class="inline-fields"><label>课程<input data-draft-field="course" value="${esc(item.course)}"></label><label>地点 / 链接<input data-draft-field="location" value="${esc(item.location)}"></label></div>
+        <label>备注<textarea data-draft-field="notes">${esc(item.notes)}</textarea></label>
+        ${item.evidence ? `<p class="muted">原文：${esc(item.evidence)}</p>` : ""}
+        ${item.warning ? `<p class="schedule-warning">需核对：${esc(item.warning)}</p>` : ""}
+      </section>`).join("")}
+      <div class="inline-fields"><button class="primary" data-action="confirm-schedule">确认并添加所选项目</button><button data-action="cancel-schedule">取消导入</button></div>
+      </fieldset></article>`;
+  }
+
+  async function extractScheduleFile() {
+    if (state.scheduleImportBusy || state.scheduleDrafts.length) return;
+    const file = $("scheduleFile")?.files?.[0];
+    if (!file) throw new Error("请先选择一个文件。");
+    validateUploadFile(file);
+    if (/\.pdf$/i.test(file.name) && file.size > 8 * 1024 * 1024) throw new Error("PDF 最大支持 8 MB。");
+    state.scheduleImportBusy = true;
+    state.scheduleImportStatus = "正在读取文件并提取 DDL / LEC / TUT…";
+    render();
+    try {
+      const [payload] = await readFiles([file]);
+      const result = await api("/api/schedule/extract", { method: "POST", body: { ...payload, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone } });
+      state.scheduleDrafts = result.items;
+      state.scheduleSource = result.fileName;
+      state.scheduleImportStatus = result.items.length ? `提取到 ${result.items.length} 条，请在下方核对并确认。` : "未找到可提取的时间点。请尝试更清晰的文件或分批上传，也可以手动添加。";
+    } catch (error) { state.scheduleImportStatus = error.message; }
+    finally { state.scheduleImportBusy = false; render(); }
+  }
+
+  async function confirmScheduleImport() {
+    if (state.scheduleImportBusy) return;
+    const selected = state.scheduleDrafts.filter((item) => item.selected);
+    if (!selected.length) throw new Error("请至少勾选一个项目。");
+    if (selected.some((item) => !item.title.trim() || !scheduleImport.validTime(item.startsAt))) throw new Error("请为所选项目补全有效的标题、日期和时间。");
+    state.scheduleImportBusy = true;
+    state.scheduleImportStatus = "正在保存已确认的项目…";
+    render();
+    let saved = 0, duplicates = 0;
+    try {
+      await loadScheduleItems(true, true);
+      const seen = new Set(state.scheduleItems.map(scheduleImport.fingerprint));
+      const course = await ensureScheduleCourse();
+      for (const item of selected) {
+        const key = scheduleImport.fingerprint(item);
+        if (seen.has(key)) { duplicates++; }
+        else {
+          const payload = { ...item, startsAt: new Date(item.startsAt).toISOString(), completedAt: "", source: state.scheduleSource };
+          delete payload.selected;
+          await api(`/api/courses/${course.id}/documents`, { method: "POST", body: { title: `${SCHEDULE_PREFIX} ${item.title}`, type: "Schedule", text: JSON.stringify(payload) } });
+          seen.add(key);
+          saved++;
+        }
+        state.scheduleDrafts = state.scheduleDrafts.filter((draft) => draft !== item);
+      }
+      state.scheduleDrafts = [];
+      state.scheduleImportStatus = `已添加 ${saved} 条倒计时提醒${duplicates ? `，跳过 ${duplicates} 条重复项目` : ""}。`;
+    } catch (error) { state.scheduleImportStatus = `已保存 ${saved} 条，其余项目仍待确认。${error.message}`; }
+    finally {
+      await loadScheduleItems().catch(() => {});
+      state.scheduleImportBusy = false;
+      render();
+    }
   }
 
   function toolsPage() {
@@ -826,7 +918,7 @@
       courseId: course.id,
       title: data.title || String(doc.title || "").replace(SCHEDULE_PREFIX, "").trim() || "Schedule item",
       kind: data.kind || "DDL",
-      course: data.course || course.name,
+      course: data.course || (course.name === SCHEDULE_COURSE ? "" : course.name),
       startsAt: data.startsAt || doc.createdAt,
       location: data.location || "",
       notes: data.notes || "",
@@ -855,14 +947,17 @@
     await loadScheduleItems(false);
   }
 
-  async function loadScheduleItems(refreshCourses = true) {
+  async function loadScheduleItems(refreshCourses = true, strict = false) {
     if (refreshCourses) {
       const coursesData = await api("/api/courses");
       state.courses = coursesData.courses || [];
     }
     const allDocs = [];
     for (const course of state.courses) {
-      const data = await api(`/api/courses/${course.id}/documents`).catch(() => ({ documents: [] }));
+      const data = await api(`/api/courses/${course.id}/documents`).catch((error) => {
+        if (strict) throw error;
+        return { documents: [] };
+      });
       allDocs.push({ course, documents: data.documents || [] });
     }
     state.allDocs = allDocs;
@@ -1362,11 +1457,26 @@
         return;
       }
       if (action === "add-schedule") {
+        if (button.disabled) return;
+        const startsAt = $("scheduleTime")?.value || "";
+        const title = $("scheduleTitle")?.value.trim() || "";
+        if (!title || !scheduleImport.validTime(startsAt)) throw new Error("请填写标题和有效日期、时间。");
+        button.disabled = true;
+        try {
         const course = await ensureScheduleCourse();
-        const payload = { title: $("scheduleTitle")?.value || "Deadline", kind: "DDL", course: $("scheduleCourse")?.value || "", startsAt: $("scheduleTime")?.value || new Date().toISOString(), location: $("scheduleLocation")?.value || "", notes: $("scheduleNotes")?.value || "", completedAt: "" };
+        const payload = { title, kind: $("scheduleKind")?.value || "DDL", course: $("scheduleCourse")?.value || "", startsAt: new Date(startsAt).toISOString(), location: $("scheduleLocation")?.value || "", notes: $("scheduleNotes")?.value || "", completedAt: "" };
         await api(`/api/courses/${course.id}/documents`, { method: "POST", body: { title: `${SCHEDULE_PREFIX} ${payload.title}`, type: "Schedule", text: JSON.stringify(payload) } });
         await loadPage("schedule");
+        } finally { button.disabled = false; }
         return;
+      }
+      if (action === "extract-schedule") { await extractScheduleFile(); return; }
+      if (action === "confirm-schedule") { await confirmScheduleImport(); return; }
+      if (action === "cancel-schedule") {
+        if (state.scheduleImportBusy) return;
+        state.scheduleDrafts = [];
+        state.scheduleImportStatus = "已取消，未添加待确认项目。";
+        render(); return;
       }
       if (action === "complete-schedule") {
         const item = state.scheduleItems.find((entry) => entry.docId === button.dataset.doc && entry.courseId === button.dataset.course);
@@ -1542,6 +1652,19 @@
       }
     }
   });
+
+  document.addEventListener("input", (event) => {
+    const field = event.target.dataset?.draftField;
+    if (!field) return;
+    const item = state.scheduleDrafts[Number(event.target.closest("[data-draft]")?.dataset.draft)];
+    if (item) item[field] = field === "selected" ? event.target.checked : event.target.value;
+  });
+
+  setInterval(() => {
+    root.querySelectorAll("[data-countdown]").forEach((element) => {
+      element.textContent = dueText(element.dataset.countdown);
+    });
+  }, 15000);
 
   document.addEventListener("submit", async (event) => {
     if (!event.target.matches(".dm-compose")) return;

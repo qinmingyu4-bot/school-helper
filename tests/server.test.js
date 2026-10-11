@@ -185,6 +185,14 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
     assert.equal((await request(`/api/courses/${courseId}/documents`, { cookie: alice.cookie })).data.documents.length, 5);
   });
 
+  await t.test("schedule extraction authentication, unreadable files, and unconfigured AI", async () => {
+    const body = { fileName: "schedule.txt", fileData: Buffer.from("Essay due Nov 12, 2026 at 23:59").toString("base64") };
+    assert.equal((await request("/api/schedule/extract", { method: "POST", body })).status, 401);
+    assert.equal((await request("/api/schedule/extract", { method: "POST", cookie: alice.cookie, body: { ...body, fileName: "schedule.exe" } })).status, 400);
+    assert.equal((await request("/api/schedule/extract", { method: "POST", cookie: alice.cookie, body: { ...body, fileData: Buffer.from(" ").toString("base64") } })).status, 422);
+    assert.equal((await request("/api/schedule/extract", { method: "POST", cookie: alice.cookie, body })).status, 503);
+  });
+
   await t.test("community and accepted classmate messaging", async () => {
     const post = await request("/api/community/posts", {
       method: "POST", cookie: alice.cookie, body: { channel: "all", content: "Health check community post" }
@@ -323,6 +331,28 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
     await start({ fakeAi: true });
     const login = await request("/api/auth/login", { method: "POST", body: { email: "alice@example.test", password: "HealthCheck-Password-123!" } });
     const cookie = login.cookie;
+    const beforeExtraction = await request("/api/courses", { cookie });
+    for (const extension of ["txt", "csv", "md", "docx", "pptx", "xlsx"]) {
+      const zip = new AdmZip();
+      const entries = { docx: "word/document.xml", pptx: "ppt/slides/slide1.xml", xlsx: "xl/worksheets/sheet1.xml" };
+      if (entries[extension]) zip.addFile(entries[extension], Buffer.from(extension === "xlsx" ? '<worksheet><row><c r="A1" t="inlineStr"><is><t>Essay due Nov 12, 2026 at 23:59</t></is></c></row></worksheet>' : "<document><p>Essay due Nov 12, 2026 at 23:59</p></document>"));
+      const buffer = entries[extension] ? zip.toBuffer() : Buffer.from("Essay due Nov 12, 2026 at 23:59");
+      const result = await request("/api/schedule/extract", { method: "POST", cookie, body: { fileName: `schedule.${extension}`, fileData: buffer.toString("base64"), timeZone: "America/Toronto" } });
+      assert.equal(result.status, 200);
+      if (result.status === 200) {
+        assert.deepEqual(result.data.items.map((item) => item.kind), ["DDL", "LEC", "TUT"]);
+        assert.equal(result.data.items[2].startsAt, "");
+        assert.ok(result.data.items[0].evidence);
+      }
+    }
+    assert.deepEqual((await request("/api/courses", { cookie })).data, beforeExtraction.data, "extraction must not create a planner or reminders");
+    const pdf = await fs.readFile(path.join(root, "tests/fixtures/schedule.pdf"));
+    assert.equal((await request("/api/schedule/extract", { method: "POST", cookie, body: { fileName: "schedule.pdf", fileData: pdf.toString("base64") } })).status, 200);
+    const sourceBody = { fileName: "schedule.txt", fileData: Buffer.from("Essay due Nov 12, 2026 at 23:59").toString("base64") };
+    assert.equal((await request("/api/schedule/extract", { method: "POST", cookie, body: { ...sourceBody, timeZone: "Invalid/Zone" } })).status, 400);
+    assert.equal((await request("/api/schedule/extract", { method: "POST", cookie, body: { ...sourceBody, fileData: Buffer.from("x".repeat(100001)).toString("base64") } })).status, 400);
+    const invalid = await request("/api/schedule/extract", { method: "POST", cookie, body: { fileName: "schedule.txt", fileData: Buffer.from("MALFORMED_SCHEDULE").toString("base64") } });
+    assert.equal(invalid.status, 502);
     const course = await request("/api/courses", { method: "POST", cookie, body: { name: "Mode workflows" } });
     const id = course.data.course.id;
     await request(`/api/courses/${id}/documents`, { method: "POST", cookie, body: { title: "Mode source", text: "Mode-specific course evidence" } });

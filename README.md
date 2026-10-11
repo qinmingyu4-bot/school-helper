@@ -50,6 +50,26 @@ switching modes leaves drafts, attachments, and the current reading position int
 Course materials, account learning preferences, and the latest explicit request
 continue to guide the AI response.
 
+## Schedule imports
+
+The Schedule page accepts PDF (up to 8 MB), Word, PowerPoint, Excel, TXT, MD,
+CSV, and JSON (up to 12 MB). An authenticated AI extraction request reads only
+the selected file and returns editable DDL, LEC, and TUT drafts. It does not
+create a course, document, chat message, or reminder until the student confirms
+selected rows. Missing dates/times remain blank for review; original evidence
+and ambiguity notes appear beside each draft. Weekly meetings expand only when
+the source specifies semester boundaries and meeting times.
+
+Confirmation saves reminders in the existing per-user planner, skips duplicates,
+and preserves remaining drafts if saving fails. Countdown labels refresh every
+15 seconds while the page is open, without replacing the student's draft inputs.
+Dates are displayed in the browser's time zone and saved as UTC instants.
+AI extraction requires the server's existing `OPENAI_API_KEY` and uses
+`OPENAI_COMPLEX_MODEL`. Scanned PDFs without readable text need conversion first;
+legacy DOC/PPT/XLS extraction is best-effort and displays a review warning.
+Documents over 100,000 extracted characters must be split rather than truncated.
+Drafts stay in memory while navigating but are discarded on page reload.
+
 ## Health Checks
 
 ```bash

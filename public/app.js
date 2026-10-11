@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.62";
+  const VERSION = "1.1.63";
   const studyModes = window.StudyBridgeStudyModes;
   const scheduleImport = window.StudyBridgeScheduleImport;
   const STUDENT_PAGES = ["community", "classmates", "schedule", "study", "tools", "profile"];
@@ -307,7 +307,7 @@
         </div>`
       : "";
     return `
-      <aside class="sidebar">
+      <aside class="sidebar" data-sidebar-context="${esc(`${state.user.id}:${state.mode}:${state.page}`)}">
         <header class="side-head">
           <div class="brand-mark">SB</div>
           <div><strong>StudyBridge</strong><span>${esc(state.user.name)} | ${esc(state.user.email)}</span></div>
@@ -1580,6 +1580,12 @@
   }
 
   function render() {
+    const previousSidebar = root.querySelector(".sidebar");
+    const previousSidebarContext = previousSidebar?.dataset.sidebarContext;
+    const previousSidebarScroll = previousSidebar?.scrollTop || 0;
+    const sidebarUsesPageScroll = previousSidebar
+      && previousSidebar.scrollHeight <= previousSidebar.clientHeight;
+    const previousPageScroll = { x: window.scrollX, y: window.scrollY };
     for (const id of ["emailOriginal", "emailGoal", "emailTone", "emailOutput"]) {
       if ($(id)) emailDraft[id] = $(id).value;
     }
@@ -1616,6 +1622,12 @@
     }
     if ($("emailOriginal") && emailDraft.output) $("toolOutput").innerHTML = emailDraft.output;
     if (state.toast && state.user) root.insertAdjacentHTML("beforeend", `<div class="toast">${esc(state.toast)}</div>`);
+    const sidebar = root.querySelector(".sidebar");
+    if (sidebar && sidebar.dataset.sidebarContext === previousSidebarContext) {
+      // Mobile sidebars scroll with the page instead of their own container.
+      sidebar.scrollTop = previousSidebarScroll;
+      if (sidebarUsesPageScroll) window.scrollTo(previousPageScroll.x, previousPageScroll.y);
+    }
     const chat = root.querySelector(".study-workspace .chat-area");
     if (chat) {
       const showLatest = !previousChat || previousCourseId !== state.activeCourseId

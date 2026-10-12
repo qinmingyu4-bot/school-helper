@@ -2,6 +2,8 @@
 
 ## 2026-10-11
 
+- Updated to `1.1.66`: reduced Study Area AI reply text from 16px to 15px on desktop and from 15px to 14px on mobile, with proportionally smaller headings. Retained paragraph spacing, padding, visible reply boundaries, and the existing font families. All 42 automated tests and asset checks passed; verified readable layouts without overlap or overflow at 1440px, 1100px, 390px, and 320px.
+
 - Updated to `1.1.65`: render Study Area AI replies with semantic Markdown headings, lists, quotes, code blocks, and source links. Fixed double-converted links that exposed HTML attributes; historical and streamed replies use the same formatter.
 - Increased paragraph and section spacing and responsive reply padding, with 16px desktop and 15px mobile text. Retained visible AI reply boundaries, compact user bubbles, pinned bars, and existing composer dimensions; wide tables and code scroll within the reply.
 - Bundled pinned `markdown-it` 15.0.2 locally with its dependency licenses and a reproducible vendor script. Raw HTML, unsafe link protocols, and remote tracking images are not rendered.

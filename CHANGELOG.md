@@ -2,6 +2,8 @@
 
 ## 2026-10-11
 
+- Prepared the user-approved `1.1.66` production release through the existing main-branch deployment workflow, including the tested `1.1.59`-`1.1.66` updates. Recorded feature commits, verification, and the previous `1.1.58` rollback target in the version archive; private local data and credentials remain excluded.
+
 - Updated to `1.1.66`: reduced Study Area AI reply text from 16px to 15px on desktop and from 15px to 14px on mobile, with proportionally smaller headings. Retained paragraph spacing, padding, visible reply boundaries, and the existing font families. All 42 automated tests and asset checks passed; verified readable layouts without overlap or overflow at 1440px, 1100px, 390px, and 320px.
 
 - Updated to `1.1.65`: render Study Area AI replies with semantic Markdown headings, lists, quotes, code blocks, and source links. Fixed double-converted links that exposed HTML attributes; historical and streamed replies use the same formatter.

@@ -10,6 +10,30 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.66 - 2026-10-11
+
+Purpose:
+- Release the tested Study Area sidebar visibility, reply boundaries, and self-hosted fonts.
+- Preserve sidebar positions when switching courses and stream AI replies with animated status indicators and cancellation.
+- Render safe Markdown headings, lists, quotations, code, tables, and source links with clearer spacing.
+- Use smaller 15px desktop and 14px mobile AI reply text with proportionate headings.
+
+Feature commits:
+- `abdb261`: scope study sidebar controls to the Study Area.
+- `1e01b10`, `6cd86db`: conversation layout and visible AI boundaries.
+- `52bcb0b`: bundled product fonts.
+- `f9d86bd`: sidebar scroll preservation.
+- `434e893`: streamed replies and activity states.
+- `2af1a1e`, `f76e20d`: Markdown rendering and smaller reply fonts.
+
+Validation:
+- All 42 automated tests, JavaScript/entry-asset checks, and zero-vulnerability dependency audit.
+- Desktop/mobile typography, streaming/cancellation, learning-mode, draft, and scroll checks.
+- Production deployment uses the existing main-branch workflow; private local data is excluded.
+
+Rollback target:
+- `1bb3322` (previous production version `1.1.58`).
+
 ### 1.1.51 - 2026-10-10
 
 Purpose:

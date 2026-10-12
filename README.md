@@ -15,6 +15,7 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, in
 - Incremental Study Area replies with animated activity states and a stop-generation control
 - Self-hosted Inter Variable and Noto Sans SC interface fonts, with bundled licenses and source notes in `public/fonts/SOURCES.md`
 - Seven Study Area modes with mode-specific question shortcuts and AI workflows: preview, guided learning, review, assignment help, mock exams, cheatsheets, and exam cramming
+- Categorized Tools directory with separate Docs, Sheets, Slides, and Email Assistant workspaces; collapsible AI assistance and in-session draft preservation while switching tools
 - Local JSON database for development or small private deployments
 - Optional DynamoDB storage for AWS production
 - Full-window classmate chats with live messages, persistent unread counts, latest-message sorting, and clickable peer avatars and public profiles

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.66";
+  const VERSION = "1.1.67";
   const studyModes = window.StudyBridgeStudyModes;
   const scheduleImport = window.StudyBridgeScheduleImport;
   const STUDENT_PAGES = ["community", "classmates", "schedule", "study", "tools", "profile"];
@@ -17,6 +17,13 @@
 
   const root = document.getElementById("root");
   const emailDraft = {};
+  const toolDrafts = {};
+  const toolCatalog = [
+    { id: "docs", title: "SB Docs", icon: "D", category: "创作", description: "写作、笔记与报告", detail: "在文档中自由编辑，需要时再打开 AI 辅助。", render: () => toolEditorHtml("docs") },
+    { id: "sheets", title: "SB Sheets", icon: "S", category: "创作", description: "表格、数据与计划", detail: "整理数据和课程计划，AI 可以帮你梳理结构。", render: () => toolEditorHtml("sheets") },
+    { id: "slides", title: "SB Slides", icon: "P", category: "创作", description: "演示内容与大纲", detail: "编辑演示标题与要点，逐步整理你的讲稿。", render: () => toolEditorHtml("slides") },
+    { id: "email", title: "邮件助手", icon: "@", category: "沟通", description: "理解邮件，起草回复", detail: "粘贴原文，说明回复意图，再生成可以修改的英文回复。", standalone: true, render: emailPage }
+  ];
   const studyReplies = new Map();
   let nextStudyReplyId = 0;
   const replyPhases = {
@@ -166,6 +173,8 @@
     if (state.mode !== "admin" && page === "email") {
       page = "tools";
       state.tool = "email";
+      state.toolsHome = false;
+      localStorage.setItem("studybridge.toolsView", "workspace");
       localStorage.setItem("studybridge.tool", "email");
     }
     if (state.mode === "admin") page = "admin";
@@ -826,15 +835,24 @@
 
   function emailPage() {
     return `
-      <section class="two-col">
-        <article class="card">
-          <h2>收到的邮件</h2>
-          <textarea id="emailOriginal" placeholder="把老师、TA、学校办公室或同学发来的邮件粘贴在这里"></textarea>
-          <label>你想怎么回复<textarea id="emailGoal" placeholder="例如：我想礼貌申请延期 / 确认 meeting time / 解释我会晚交"></textarea></label>
-          <div class="inline-fields"><select id="emailTone"><option>专业、自然</option><option>更礼貌正式</option><option>简短直接</option></select><select id="emailOutput"><option>中文解读 + 英文回复</option><option>只要英文回复</option></select></div>
-          <button class="primary" data-action="draft-email">生成回复</button>
+      <section class="tool-email-layout">
+        <article class="tool-panel tool-email-input">
+          <div class="tool-panel-heading"><h2>邮件内容</h2><p>先放入原文，再告诉我们你想如何回复。</p></div>
+          <label>收到的邮件<textarea id="emailOriginal" placeholder="粘贴老师、TA、学校办公室或同学的邮件"></textarea></label>
+          <label>回复意图<textarea id="emailGoal" placeholder="例如：礼貌申请延期，或确认 meeting 时间"></textarea></label>
+          <details class="tool-email-options" id="emailOptions" ${emailDraft.optionsOpen ? "open" : ""}>
+          <summary>回复设置<span>语气与输出内容</span></summary>
+          <div class="tool-form-options">
+            <label>回复语气<select id="emailTone"><option>专业、自然</option><option>更礼貌正式</option><option>简短直接</option></select></label>
+            <label>输出内容<select id="emailOutput"><option>中文解读 + 英文回复</option><option>只要英文回复</option></select></label>
+          </div>
+          </details>
+          <button class="primary" data-action="draft-email" ${emailDraft.busy ? "disabled" : ""}>生成回复</button>
         </article>
-        <article class="card"><div class="section-title"><div><span>DRAFT</span><h2>建议回复</h2></div><button data-action="copy-output">复制</button></div><div id="toolOutput" class="output-box">生成后会显示：邮件重点、需要注意的地方，以及一版可以修改后发送的英文回复。</div></article>
+        <article class="tool-panel tool-result-panel">
+          <div class="tool-panel-heading tool-result-heading"><div><h2>建议回复</h2><p>检查内容后，复制并修改使用。</p></div><button data-action="copy-output">复制</button></div>
+          <div id="toolOutput" class="output-box tool-result" aria-live="polite"><div class="tool-empty-result"><strong>回复会显示在这里</strong><p>生成后可查看邮件重点、注意事项和英文回复草稿。</p></div></div>
+        </article>
       </section>
     `;
   }
@@ -972,18 +990,90 @@
   }
 
   function toolsPage() {
+    const tool = toolCatalog.find((item) => item.id === state.tool) || toolCatalog[0];
+    const home = state.toolsHome !== false;
     return `
-      ${pageHeader("STUDY TOOLS", "工具", state.tool === "email" ? "粘贴邮件内容，StudyBridge 会帮你看懂并起草回复。" : "手动写文档、做表格和演示，或使用邮件助手起草回复。")}
-      <section class="tools-tabs" aria-label="工具选择">
-        ${["docs", "sheets", "slides", "email"].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" aria-pressed="${(state.tool || "docs") === tool}" data-action="tool-mode" data-tool="${tool}">${tool === "email" ? "邮件助手" : `SB ${tool[0].toUpperCase()}${tool.slice(1)}`}</button>`).join("")}
+      ${pageHeader("STUDY TOOLS", "工具", "选择工具，进入自己的工作区。")}
+      <section class="tools-space">
+        ${home ? `
+          <div class="tools-directory-heading"><h2>工具箱</h2><p>把写作、整理和沟通放在一起。选择一个工具开始。</p></div>
+          ${[...new Set(toolCatalog.map((item) => item.category))].map((category) => `
+            <section class="tool-category" aria-label="${esc(category)}">
+              <h3>${esc(category)}</h3>
+              <div class="tool-directory-grid">${toolCatalog.filter((item) => item.category === category).map((item) => `
+                <button class="tool-launcher" data-action="tool-mode" data-tool="${item.id}">
+                  <span class="tool-launcher-icon" aria-hidden="true">${item.icon}</span>
+                  <span class="tool-launcher-copy"><strong>${item.title}</strong><span>${item.description}</span></span>
+                  <span class="tool-launcher-arrow" aria-hidden="true">↗</span>
+                </button>`).join("")}</div>
+            </section>`).join("")}
+        ` : `
+          <div class="tool-workbar">
+            <button data-action="tools-home">← 全部工具</button>
+            <label class="tool-picker"><span class="tool-sr-only">切换工具</span><select id="toolPicker">${toolCatalog.map((item) => `<option value="${item.id}" ${item.id === tool.id ? "selected" : ""}>${item.title}</option>`).join("")}</select></label>
+            ${!tool.standalone ? `<button class="tool-ai-toggle" data-action="toggle-tool-ai" aria-expanded="${state.toolAiOpen !== false}">${state.toolAiOpen === false ? "打开 AI 辅助" : "收起 AI 辅助"}</button>` : ""}
+          </div>
+          <div class="tool-workspace-intro"><h2>${tool.title}</h2><p>${tool.detail}</p></div>
+          ${tool.standalone ? tool.render() : `
+            <section class="tool-editor-layout ${state.toolAiOpen === false ? "ai-collapsed" : ""}" data-tool-editor="${tool.id}">
+              <article class="tool-panel tool-canvas">${tool.render()}</article>
+              <aside class="tool-panel tool-ai-panel" ${state.toolAiOpen === false ? "hidden" : ""}>
+                <div class="tool-panel-heading"><h2>AI 辅助</h2><p>生成建议后，再放入左侧编辑区。</p></div>
+                <label>你需要什么帮助？<textarea id="toolPrompt" placeholder="润色文档、整理表格结构或生成演示大纲"></textarea></label>
+                <button class="primary" data-action="generate-tool" ${toolDrafts[tool.id]?.busy ? "disabled" : ""}>生成建议</button>
+                <div class="tool-result-heading"><h3>建议内容</h3><button data-action="copy-output">复制</button></div>
+                <div id="toolOutput" class="output-box tool-result" aria-live="polite">AI 的建议会显示在这里。</div>
+              </aside>
+            </section>`}
+        `}
       </section>
-      ${state.tool === "email" ? emailPage() : `<section class="two-col">
-        <article class="card">
-          ${toolEditorHtml(state.tool || "docs")}
-        </article>
-        <article class="card"><div class="section-title"><div><span>AI ASSIST</span><h2>辅助生成</h2></div><button data-action="copy-output">复制</button></div><textarea id="toolPrompt" placeholder="让 AI 帮你润色、生成结构、整理表格或做 PPT 大纲"></textarea><button class="primary" data-action="generate-tool">调用 AI</button><div id="toolOutput" class="output-box">AI 输出会显示在这里，你可以再复制回左侧手动编辑。</div></article>
-      </section>`}
     `;
+  }
+
+  function captureToolDraft() {
+    const editor = root.querySelector("[data-tool-editor]");
+    if (!editor) return;
+    const draft = toolDrafts[editor.dataset.toolEditor] ||= {};
+    const doc = editor.querySelector(".doc-editor");
+    if (doc) draft.doc = doc.innerText;
+    const cells = editor.querySelectorAll(".sheet td");
+    if (cells.length) draft.cells = Array.from(cells, (cell) => cell.textContent);
+    for (const selector of [".slide-title", ".slide-body", "#toolPrompt"]) {
+      const input = editor.querySelector(selector);
+      if (input) draft[selector] = input.value;
+    }
+  }
+
+  function restoreToolDraft() {
+    const editor = root.querySelector("[data-tool-editor]");
+    if (!editor) return;
+    const draft = toolDrafts[editor.dataset.toolEditor];
+    if (!draft) return;
+    if (draft.doc !== undefined) editor.querySelector(".doc-editor").innerText = draft.doc;
+    if (draft.cells) editor.querySelectorAll(".sheet td").forEach((cell, index) => { cell.textContent = draft.cells[index] || ""; });
+    for (const selector of [".slide-title", ".slide-body", "#toolPrompt"]) {
+      if (editor.querySelector(selector) && draft[selector] !== undefined) editor.querySelector(selector).value = draft[selector];
+    }
+    if (draft.output && $("toolOutput")) $("toolOutput").innerHTML = draft.output;
+  }
+
+  function selectTool(tool) {
+    if (!toolCatalog.some((item) => item.id === tool)) return;
+    state.tool = tool;
+    state.toolsHome = false;
+    localStorage.setItem("studybridge.tool", tool);
+    localStorage.setItem("studybridge.toolsView", "workspace");
+    render();
+  }
+
+  async function toolCourseId() {
+    if (!state.courses.length) {
+      const data = await api("/api/courses");
+      state.courses = data.courses || [];
+    }
+    const id = state.activeCourseId || state.courses[0]?.id;
+    if (!id) throw new Error("请先在学习区新增一门课程，用来保存 AI 对话。");
+    return id;
   }
 
   function toolEditorHtml(tool) {
@@ -1611,14 +1701,28 @@
         return;
       }
       if (action === "draft-email") {
-        const prompt = `请帮我处理这封邮件。\n邮件原文：${$("emailOriginal")?.value || ""}\n我想怎么回复：${$("emailGoal")?.value || ""}\n语气：${$("emailTone")?.value || ""}\n输出：${$("emailOutput")?.value || ""}`;
-        const output = $("toolOutput");
-        output.textContent = "正在生成...";
-        const course = state.activeCourseId || (state.courses[0]?.id);
-        if (!course) throw new Error("请先在学习区新增一门课程，用来保存 AI 对话。");
-        const data = await api(`/api/courses/${course}/chat`, { method: "POST", body: { message: prompt, mode: "email" } });
-        emailDraft.output = formatText((data.messages || []).at(-1)?.content || "");
-        if ($("emailOriginal")) $("toolOutput").innerHTML = emailDraft.output;
+        if (emailDraft.busy) return;
+        const original = $("emailOriginal")?.value.trim() || "";
+        if (!original) throw new Error("请先粘贴收到的邮件。");
+        const prompt = `请帮我处理这封邮件。\n邮件原文：${original}\n我想怎么回复：${$("emailGoal")?.value || ""}\n语气：${$("emailTone")?.value || ""}\n输出：${$("emailOutput")?.value || ""}`;
+        emailDraft.busy = true;
+        button.disabled = true;
+        emailDraft.output = "正在生成...";
+        $("toolOutput").textContent = emailDraft.output;
+        try {
+          const course = await toolCourseId();
+          const data = await api(`/api/courses/${course}/chat`, { method: "POST", body: { message: prompt, mode: "email" } });
+          emailDraft.output = formatText((data.messages || []).at(-1)?.content || "");
+        } catch (error) {
+          emailDraft.output = esc(error.message || "生成失败，请重试。");
+          throw error;
+        } finally {
+          emailDraft.busy = false;
+          if ($("emailOriginal")) {
+            $("toolOutput").innerHTML = emailDraft.output;
+            root.querySelector('[data-action="draft-email"]').disabled = false;
+          }
+        }
         return;
       }
       if (action === "add-schedule") {
@@ -1652,19 +1756,44 @@
         await loadPage("schedule");
         return;
       }
-      if (action === "tool-mode") {
-        state.tool = button.dataset.tool || "docs";
-        localStorage.setItem("studybridge.tool", state.tool);
+      if (action === "tools-home") {
+        state.toolsHome = true;
+        localStorage.setItem("studybridge.toolsView", "home");
         render();
         return;
       }
+      if (action === "toggle-tool-ai") {
+        state.toolAiOpen = state.toolAiOpen === false;
+        render();
+        return;
+      }
+      if (action === "tool-mode") {
+        selectTool(button.dataset.tool || "docs");
+        return;
+      }
       if (action === "generate-tool") {
-        const output = $("toolOutput");
-        output.textContent = "正在生成...";
-        const course = state.activeCourseId || state.courses[0]?.id;
-        if (!course) throw new Error("请先在学习区新增一门课程，用来保存 AI 对话。");
-        const data = await api(`/api/courses/${course}/chat`, { method: "POST", body: { message: $("toolPrompt")?.value || "请帮我生成学习文档。", mode: `tool-${state.tool || "docs"}` } });
-        output.innerHTML = formatText((data.messages || []).at(-1)?.content || "");
+        const tool = state.tool || "docs";
+        const draft = toolDrafts[tool] ||= {};
+        if (draft.busy) return;
+        const prompt = $("toolPrompt")?.value || "请帮我生成学习文档。";
+        draft.busy = true;
+        button.disabled = true;
+        draft.output = "正在生成...";
+        $("toolOutput").textContent = draft.output;
+        try {
+          const course = await toolCourseId();
+          const data = await api(`/api/courses/${course}/chat`, { method: "POST", body: { message: prompt, mode: `tool-${tool}` } });
+          draft.output = formatText((data.messages || []).at(-1)?.content || "");
+        } catch (error) {
+          draft.output = esc(error.message || "生成失败，请重试。");
+          throw error;
+        } finally {
+          draft.busy = false;
+          if (state.tool === tool && root.querySelector("[data-tool-editor]")) {
+            if ($("toolOutput")) $("toolOutput").innerHTML = draft.output;
+            root.querySelector('[data-action="generate-tool"]').disabled = false;
+          }
+        }
         return;
       }
       if (action === "copy-output") {
@@ -1730,6 +1859,7 @@
   }
 
   function render() {
+    captureToolDraft();
     const previousSidebar = root.querySelector(".sidebar");
     const previousSidebarContext = previousSidebar?.dataset.sidebarContext;
     const previousSidebarScroll = previousSidebar?.scrollTop || 0;
@@ -1767,6 +1897,7 @@
         `)
         : `<main class="auth-shell"><section class="auth-card"><h1>StudyBridge</h1><p class="notice">${message}</p><button onclick="location.reload()">刷新</button></section></main>`;
     }
+    restoreToolDraft();
     if (state.busy) root.insertAdjacentHTML("beforeend", `<div class="busy">Loading...</div>`);
     for (const id of ["emailOriginal", "emailGoal", "emailTone", "emailOutput"]) {
       if ($(id) && emailDraft[id] !== undefined) $(id).value = emailDraft[id];
@@ -1808,8 +1939,9 @@
         return;
       }
       state.user = data.user;
+      state.toolsHome = localStorage.getItem("studybridge.toolsView") !== "workspace";
       const savedTool = localStorage.getItem("studybridge.tool");
-      state.tool = ["docs", "sheets", "slides", "email"].includes(savedTool) ? savedTool : "docs";
+      state.tool = toolCatalog.some((item) => item.id === savedTool) ? savedTool : "docs";
       state.mode = isAdmin() && localStorage.getItem("studybridge.mode") === "admin" ? "admin" : "student";
       const urlPage = new URL(location.href).searchParams.get("page");
       const savedPage = localStorage.getItem("studybridge.page");
@@ -1843,6 +1975,7 @@
   });
 
   document.addEventListener("change", (event) => {
+    if (event.target?.id === "toolPicker") { selectTool(event.target.value); return; }
     if (event.target?.id === "scheduleFile") {
       const name = $("scheduleFileName");
       if (name) name.textContent = event.target.files?.[0]?.name || "选择课程文件";
@@ -1878,6 +2011,7 @@
   });
 
   document.addEventListener("toggle", (event) => {
+    if (event.target?.id === "emailOptions") emailDraft.optionsOpen = event.target.open;
     if (event.target?.id === "scheduleManual") state.scheduleManualOpen = event.target.open;
   }, true);
 

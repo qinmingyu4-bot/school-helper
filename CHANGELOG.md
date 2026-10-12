@@ -2,6 +2,10 @@
 
 ## 2026-10-11
 
+- Updated to `1.1.67`: replaced the fixed Tools tab row with a categorized, responsive tool directory and separate workspaces. Added a compact tool switcher, return-to-directory control, and collapsible AI assistance so editors can use the full content width.
+- Reworked Email Assistant spacing, source/goal fields, collapsible labeled reply settings, and a wider reply area. Preserved in-session drafts for Docs, Sheets, Slides, and email across tool switches and copying; isolated delayed AI results to their originating tool, prevented duplicate generation, and loaded existing courses for generation after a direct Tools visit.
+- Verified directory/workspace navigation, editing, AI collapse, draft retention, generation/copy, empty email validation, refresh selection, legacy redirects, delayed response isolation, and layouts at 1440px, 1100px, 390px, and 320px. All 42 automated tests passed.
+
 - Prepared the user-approved `1.1.66` production release through the existing main-branch deployment workflow, including the tested `1.1.59`-`1.1.66` updates. Recorded feature commits, verification, and the previous `1.1.58` rollback target in the version archive; private local data and credentials remain excluded.
 
 - Updated to `1.1.66`: reduced Study Area AI reply text from 16px to 15px on desktop and from 15px to 14px on mobile, with proportionally smaller headings. Retained paragraph spacing, padding, visible reply boundaries, and the existing font families. All 42 automated tests and asset checks passed; verified readable layouts without overlap or overflow at 1440px, 1100px, 390px, and 320px.

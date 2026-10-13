@@ -10,6 +10,22 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.68 - 2026-10-12
+
+Purpose:
+- Add admin-only recent online times with relative labels and exact-time tooltips.
+- Persist server-timed activity separately from profiles; throttle writes and stop heartbeats for hidden or five-minute-idle tabs.
+- Preserve legacy accounts without inventing historical activity, and refresh labels without clearing form drafts.
+- Release activity commit `9f0635e` (ported from tested `db2f239`) on the stable production base. Do not include the unreleased `1.1.67` Tools redesign.
+
+Validation:
+- All 47 automated tests and JavaScript/entry-asset checks.
+- Isolated desktop/mobile preview, live label refresh, and retained invitation drafts.
+- Existing production databases and credentials are excluded from the release.
+
+Rollback target:
+- `0e628ad` (previous production version `1.1.66`).
+
 ### 1.1.66 - 2026-10-11
 
 Purpose:

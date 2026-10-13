@@ -2,6 +2,8 @@
 
 ## 2026-10-12
 
+- Prepared the user-approved `1.1.68` AWS release with recent user activity only, based on the stable `1.1.66` production branch. The unreleased `1.1.67` Tools workspace redesign remains on its original test branch. Updated entry asset versions and recorded the previous production rollback target.
+
 - Added admin-only recent online timestamps with relative minute/hour/day labels and exact-time tooltips. Successful logins and visible, recently active browser sessions update a server-timed record at most once per minute; hidden or five-minute-idle tabs stop heartbeats. Existing users without recorded activity show no history rather than a guessed timestamp.
 - Stored activity separately from profiles in both local and DynamoDB databases to preserve concurrent profile edits. The creator console refreshes activity labels without replacing forms or user input; ordinary users cannot view other users' activity or supply another user's timestamp.
 - All 47 automated tests passed, including activity persistence, throttling, conditional DynamoDB writes, permission boundaries, legacy accounts, and relative-time/idle-tab behavior. Verified responsive admin labels with isolated preview data.

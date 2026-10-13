@@ -6,6 +6,52 @@ const { test } = require("node:test");
 const { StudyBridgeDatabase } = require("../lib/database");
 const { DynamoStore } = require("../lib/aws-dynamodb");
 
+test("local activity is throttled, persistent and isolated from concurrent profile changes", async (t) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "studybridge-activity-"));
+  t.after(() => fs.rm(directory, { recursive: true, force: true }));
+  const db = new StudyBridgeDatabase();
+  db.dynamo = null;
+  db.local.file = path.join(directory, "database.json");
+  await db.createUser({ id: "alice", email: "alice@example.test", name: "Alice" });
+  const time = Date.parse("2026-10-12T12:00:00Z");
+  const first = await db.recordUserActivity("alice", time);
+  const saved = await fs.readFile(db.local.file, "utf8");
+  assert.deepEqual(await db.recordUserActivity("alice", time + 59999), first);
+  assert.equal(await fs.readFile(db.local.file, "utf8"), saved);
+  await Promise.all([db.recordUserActivity("alice", time + 60000), db.updateUser("alice", { name: "New name" })]);
+  assert.equal((await db.getUser("alice")).name, "New name");
+  await db.recordUserActivity("alice", time);
+  db.local.state = null;
+  assert.equal((await db.listUserActivity())[0].lastSeenAt, new Date(time + 60000).toISOString());
+});
+
+test("DynamoDB activity uses a separate conditional record and preserves a newer heartbeat", async () => {
+  const db = new StudyBridgeDatabase();
+  const time = Date.parse("2026-10-12T12:00:00Z");
+  let stored = null;
+  let writes = 0;
+  db.dynamo = {
+    get: async (pk, sk) => { assert.equal(pk, "USER#alice"); assert.equal(sk, "ACTIVITY"); return stored; },
+    transactPut: async ([record]) => {
+      assert.equal(record.type, "userActivity");
+      assert.equal(record.sk, "ACTIVITY");
+      writes++;
+      if (record.expectedData) {
+        stored = { userId: "alice", lastSeenAt: new Date(time + 120000).toISOString() };
+        throw Object.assign(new Error("Stale write"), { code: "TransactionCanceledException", cancellationReasons: [{ Code: "ConditionalCheckFailed" }] });
+      }
+      assert.equal(record.createOnly, true);
+      stored = record.data;
+    },
+    scanType: async (type) => { assert.equal(type, "userActivity"); return [stored]; }
+  };
+  await db.recordUserActivity("alice", time);
+  await db.recordUserActivity("alice", time + 59999);
+  assert.equal(writes, 1);
+  assert.equal((await db.recordUserActivity("alice", time + 60000)).lastSeenAt, new Date(time + 120000).toISOString());
+  assert.deepEqual(await db.listUserActivity(), [stored]);
+});
+
 test("legacy local invitations are claimed once without creating rejected accounts", async (t) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "studybridge-invite-"));
   t.after(() => fs.rm(directory, { recursive: true, force: true }));

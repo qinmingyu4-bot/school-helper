@@ -9,6 +9,7 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, in
 - Creator/admin account controlled by `ADMIN_EMAILS`
 - Creator console for creating, copying, enabling, and disabling invite codes
 - Creator overview of registered students and their course/document/chat counts
+- Admin-only recent online timestamps with relative labels and exact-time tooltips
 - HttpOnly session cookie
 - Per-student courses, course documents, preferences, and chat history
 - Backend AI calls using `OPENAI_API_KEY`
@@ -41,6 +42,15 @@ OWNER_INVITE_CODE=your-private-creator-code
 ```
 
 Register with that email and owner invite code. After login, the creator console appears inside the app.
+
+Recent online times begin with successful logins and authenticated browser activity.
+Visible tabs report at most once per minute while recently active; hidden tabs and
+tabs idle for five minutes stop reporting. The admin list refreshes times once per
+minute without replacing draft inputs. Times are approximate activity indicators,
+not proof of a live connection. Older accounts show no record until their next
+login or activity; historical online times are not inferred from account creation.
+Only admins can view this metadata. No keystrokes, page history, or IP addresses
+are stored by this feature.
 
 ## Study Area
 

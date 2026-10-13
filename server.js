@@ -2119,6 +2119,13 @@ async function routeApi(req, res) {
     return sendJson(res, 200, { ok: true }, { "set-cookie": clearSessionCookie() });
   }
 
+  if (url.pathname === "/api/me/activity" && method === "POST") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    await db.recordUserActivity(user.id);
+    return sendJson(res, 200, { ok: true });
+  }
+
   if (url.pathname === "/api/me" && method === "GET") {
     const user = await requireUser(req, res);
     if (!user) return;
@@ -2262,7 +2269,8 @@ if (openCommunityLikeMatch && method === "PATCH") {
   if (url.pathname === "/api/admin/overview" && method === "GET") {
     const admin = await requireAdmin(req, res);
     if (!admin) return;
-    const [users, invites] = await Promise.all([db.listUsers(), db.listInvites()]);
+    const [users, invites, activity] = await Promise.all([db.listUsers(), db.listInvites(), db.listUserActivity()]);
+    const lastSeenByUser = new Map(activity.map((item) => [item.userId, item.lastSeenAt]));
     const usersWithStats = await Promise.all(
       users.map(async (user) => ({
         id: user.id,
@@ -2271,6 +2279,7 @@ if (openCommunityLikeMatch && method === "PATCH") {
         role: withEffectiveRole(user).role,
         inviteCode: user.inviteCode || "",
         createdAt: user.createdAt,
+        lastSeenAt: lastSeenByUser.get(user.id) || null,
         stats: await db.getUserStats(user.id)
       }))
     );

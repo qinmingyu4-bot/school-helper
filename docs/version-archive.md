@@ -10,6 +10,22 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.70 - 2026-10-13
+
+Purpose:
+- Release complete saved course-text retrieval and durable chat attachments across all seven learning modes.
+- Preserve full newly extracted text, retrieve relevant passages for larger collections, and keep saved attachment text/images available for follow-up questions and restarts.
+- Release feature commit `f4f3b53`; preserve existing account/course isolation and production data.
+
+Validation:
+- All 54 automated tests, 92-file source checks, and targeted late-source retrieval checks passed before release preparation.
+- Production deployment and public service checks are verified separately after the main push.
+- Historical discarded text and filename-only chat attachments require re-upload; OCR is not included.
+
+Rollback target:
+- `b4f25ad` (previous production version `1.1.69`).
+
+
 ### 1.1.69 - 2026-10-12
 
 Purpose:

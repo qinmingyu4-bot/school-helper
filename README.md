@@ -62,6 +62,26 @@ switching modes leaves drafts, attachments, and the current reading position int
 Course materials, account learning preferences, and the latest explicit request
 continue to guide the AI response.
 
+All seven modes search the complete extracted text of every material in the
+current course and every chat attachment saved in that course. Small collections
+are supplied in full; larger collections use question- and recent-conversation-
+matched passages within a 60,000-character material budget. Broad reviews also
+sample source endings and middles. Replies should cite source filenames and must
+not claim exhaustive coverage when only selected passages were supplied.
+New uploads no longer discard text after 12,000/9,000 characters. Unsupported or
+scanned files still require readable text; this does not add OCR.
+
+Chat attachment text and image data survive later turns, mode changes, and server
+restarts independently of the latest conversation window. Images named in the
+question are prioritized, followed by recent images, up to eight images and a
+32 MiB data-URL budget per request. Material content is private to the account and
+course and is not included in ordinary chat-history responses. Deleting a course
+also deletes its saved attachments. DynamoDB stores large source bodies in
+versioned chunks and reads all query pages instead of stopping at the first page.
+Existing saved document text remains compatible, but text previously discarded
+and old chat attachments previously saved only as filenames cannot be recovered;
+upload those originals again to enable complete-source follow-ups.
+
 Study replies use an authenticated POST to `/api/courses/:id/chat` with
 `stream: true`. The server forwards only answer text, not internal reasoning,
 through SSE `status`, `start`, `delta`, `done`, and `error` events. Activity states

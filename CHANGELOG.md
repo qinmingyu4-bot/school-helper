@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-13
+
+- All seven Study Area modes now reference complete saved course text and durable chat attachments. Removed the first-eight-document and 1,800/9,000/12,000-character truncation paths; retrieve relevant passages across the entire corpus for larger collections, while retaining full smaller collections and source filenames.
+- Persist extracted attachment text and vision inputs per account/course for later questions, mode changes, and restarts. Chunk large DynamoDB materials, paginate queries, keep attachment payloads out of chat-history responses, and remove saved material when its course is deleted. Mark interrupted replies as incomplete in subsequent prompts.
+- Previously discarded text and historical filename-only chat attachments require re-upload; unreadable/scanned files still need readable text. Changes are prepared on a task branch for review, without a production deployment.
+- All 54 automated tests and the 92-file source checks passed. Coverage includes all seven modes, late material in the 50th source, Chinese queries, retained images, stream-upload follow-ups, restart persistence, course isolation, Unicode chunk reconstruction, deletion, and paginated DynamoDB queries.
+
 ## 2026-10-12
 
 - Updated to `1.1.69`: fixed desktop creator-console scrolling with a viewport-height, independently scrollable admin workspace. Invitation, user, and reset sections remain reachable with the wheel while the sidebar stays in place. Same-page renders preserve the admin scroll position; mobile document scrolling and student chat layouts retain their existing behavior.

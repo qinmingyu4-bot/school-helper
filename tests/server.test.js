@@ -429,6 +429,53 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
     assert.ok(pdfChat.data.messages[1].content.includes("Essay due November 12, 2026 at 23:59"), "chat PDF extraction must retain document text too");
   });
 
+  await t.test("all seven modes use late course content and durable chat attachments after restart", async () => {
+    await stop();
+    await start({ fakeAi: true });
+    const login = await request("/api/auth/login", { method: "POST", body: { email: "alice@example.test", password: "HealthCheck-Password-123!" } });
+    const cookie = login.cookie;
+    const course = await request("/api/courses", { method: "POST", cookie, body: { name: "Complete sources" } });
+    const id = course.data.course.id;
+    const route = `/api/courses/${id}`;
+    const text = "background ".repeat(2000) + " LATE_COURSE_EVIDENCE";
+    await request(`${route}/documents`, { method: "POST", cookie, body: { title: "Long lecture", text } });
+    for (let i = 0; i < 9; i++) await request(`${route}/documents`, { method: "POST", cookie, body: { title: `Extra ${i}`, text: `SOURCE_${i}` } });
+    const attachmentText = "attachment background ".repeat(700) + " LATE_ATTACHMENT_EVIDENCE";
+    const uploaded = await request(`${route}/chat`, { method: "POST", cookie, body: { message: "Read these sources", attachments: [
+      { name: "之前的讲义.txt", mime: "text/plain", text: attachmentText },
+      { name: "diagram.png", kind: "image", mime: "image/png", dataUrl: "data:image/png;base64,aGVsbG8=" }
+    ] } });
+    assert.equal(uploaded.status, 201);
+    await stop();
+    await start({ fakeAi: true });
+    const modes = require("../public/study-modes");
+    for (const mode of Object.keys(modes.modes)) {
+      const reply = await request(`${route}/chat`, { method: "POST", cookie, body: { mode, message: "Continue using the previous attachment and the end of the course lecture" } });
+      assert.equal(reply.status, 201);
+      const content = JSON.parse(reply.data.messages[1].content).messages[1].content;
+      const prompt = content[0].text;
+      assert.ok(prompt.includes("LATE_COURSE_EVIDENCE"), mode);
+      assert.ok(prompt.includes("LATE_ATTACHMENT_EVIDENCE"), mode);
+      assert.ok(prompt.includes("之前的讲义.txt"), mode);
+      for (let i = 0; i < 9; i++) assert.ok(prompt.includes(`SOURCE_${i}`), mode);
+      assert.equal(content[1].image_url.url, "data:image/png;base64,aGVsbG8=");
+    }
+    const response = await fetch(base + `${route}/chat`, { method: "POST", headers: { "content-type": "application/json", cookie }, body: JSON.stringify({ mode: "review", stream: true, message: "Continue the previous attachment", attachments: [{ name: "stream.txt", text: "STREAM_SAVED_EVIDENCE" }] }) });
+    let answer = "";
+    await readEvents(response, ({ event, data }) => {
+      const packet = JSON.parse(data);
+      if (event === "delta") answer += packet.text;
+      assert.notEqual(event, "error");
+    });
+    assert.ok(answer.includes("LATE_ATTACHMENT_EVIDENCE") && answer.includes("LATE_COURSE_EVIDENCE"));
+    const afterStream = await request(`${route}/chat`, { method: "POST", cookie, body: { message: "Use stream.txt again" } });
+    assert.ok(afterStream.data.messages[1].content.includes("STREAM_SAVED_EVIDENCE"));
+    const other = await request("/api/courses", { method: "POST", cookie, body: { name: "Isolated" } });
+    const isolated = await request(`/api/courses/${other.data.course.id}/chat`, { method: "POST", cookie, body: { message: "Continue the previous attachment" } });
+    assert.ok(!isolated.data.messages[1].content.includes("LATE_ATTACHMENT_EVIDENCE"));
+    assert.ok(!(await request(`${route}/messages`, { cookie })).data.messages.some((item) => item.attachments || item.dataUrl), "attachment payloads must not leak into history responses");
+  });
+
   const streamingCookie = (await request("/api/auth/login", { method: "POST", body: { email: "alice@example.test", password: "HealthCheck-Password-123!" } })).cookie;
   async function streamCourse(name) {
     return (await request("/api/courses", { method: "POST", cookie: streamingCookie, body: { name } })).data.course.id;

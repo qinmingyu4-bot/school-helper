@@ -2,6 +2,10 @@
 
 ## 2026-10-13
 
+- Updated to `1.1.72`: added a permanent General Chat entry beside courses in the Study Area, with everyday-question shortcuts, a neutral welcome, and no academic mode selector or course-material controls. It works without creating any course and remembers the selected conversation per account.
+- Reused authenticated, account-scoped message and attachment storage for separate durable general history, JSON/streaming answers, cancellation, Markdown, and newest-message scrolling. General questions do not inherit other courses' materials or study workflows; course lists/counts remain unchanged, and general messages are included in DynamoDB user statistics. Protected the virtual entry from course deletion and document writes.
+- Cleared the previous conversation while switching spaces so loading does not temporarily display another course's history. All 62 automated tests and 96-file source checks passed, including account/course isolation, restart persistence, attachment follow-ups, mode enforcement, and streamed replies. Verified 1440px, 1100px, 390px, and 320px layouts, no-course entry, selection persistence, existing study modes, sidebar positions, and streaming/cancellation regressions.
+
 - Released `1.1.71`: preserve task model selection through web search, preview retries, and Chat Completions fallback. Complex tasks always use the configured Sol model instead of a 15% lottery; ordinary tasks remain on Luna even with large saved course materials or long old replies. Retain task complexity across short follow-up questions.
 - Verified the pre-release AWS runtime was already configured with `gpt-6-luna` and `gpt-6.1-sol`. Updated defaults and removed legacy percentage/web-model overrides. Added admin-only runtime web-routing and last-completed-model/API diagnostics without storing question text. Updated the frontend version marker to match the release.
 - All 59 tests and the 94-file source checks passed, including JSON/streaming web routes, deprecated overrides, compatibility fallback, repeated complex requests, ordinary questions with long saved context, and follow-up routing.

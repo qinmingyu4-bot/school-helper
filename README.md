@@ -100,6 +100,14 @@ self-hosted, pinned markdown-it renderer; tables and code scroll locally. Raw HT
 unsafe link schemes, and remote tracking images are not rendered. The browser
 bundle and dependency licenses are regenerated with `npm run vendor:markdown`.
 
+The Study Area also has a permanent General Chat entry beside courses for everyday
+questions. It works without creating a course, keeps account-scoped history and
+attachments separately, and does not use academic mode instructions or other
+courses' materials. Course lists/counts and saved course conversations are unchanged.
+The selected conversation is remembered per account in the browser. General Chat
+supports the same streaming, cancellation, Markdown, and latest-message scrolling;
+its course-material controls are hidden and files attach through the composer.
+
 Streaming requests time out after three minutes. If placing a reverse proxy in
 front of the app, disable response buffering for the chat endpoint and allow an
 idle timeout longer than the server's ten-second SSE heartbeat. Keep API keys on

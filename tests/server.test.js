@@ -431,6 +431,46 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
     assert.ok(pdfChat.data.messages[1].content.includes("Essay due November 12, 2026 at 23:59"), "chat PDF extraction must retain document text too");
   });
 
+  await t.test("general chat is permanent, isolated, durable, and independent of course workflows", async () => {
+    await stop();
+    await start({ fakeAi: true });
+    const cookie = (await request("/api/auth/login", { method: "POST", body: { email: "alice@example.test", password: "HealthCheck-Password-123!" } })).cookie;
+    const before = (await request("/api/courses", { cookie })).data;
+    const route = "/api/courses/general";
+    assert.equal((await request(`${route}/messages`)).status, 401);
+    assert.deepEqual((await request(`${route}/messages`, { cookie })).data.messages, []);
+    assert.equal((await request(route, { method: "DELETE", cookie })).status, 403);
+    assert.equal((await request(`${route}/documents`, { method: "POST", cookie, body: { text: "blocked" } })).status, 403);
+    const reply = await request(`${route}/chat`, { method: "POST", cookie, body: {
+      message: "How do I cook dinner?", mode: "preview",
+      attachments: [{ name: "ingredients.txt", mime: "text/plain", dataUrl: "data:text/plain;base64," + Buffer.from("GENERAL_INGREDIENTS tomato and egg").toString("base64") }]
+    } });
+    assert.equal(reply.status, 201);
+    assert.ok(reply.data.messages.every((row) => row.courseId === "general" && row.mode === "general"));
+    const payload = JSON.parse(reply.data.messages[1].content);
+    assert.ok(payload.messages[0].content.includes("standalone general-purpose conversation"));
+    assert.ok(!payload.messages[0].content.includes("Selected study mode:"));
+    assert.ok(reply.data.messages[1].content.includes("GENERAL_INGREDIENTS"));
+    assert.ok(!reply.data.messages[1].content.includes("Mode-specific course evidence"));
+    assert.deepEqual((await request("/api/courses", { cookie })).data, before);
+    assert.deepEqual((await request(`${route}/messages`, { cookie: bob.cookie })).data.messages, []);
+    await stop();
+    await start({ fakeAi: true });
+    assert.equal((await request(`${route}/messages`, { cookie })).data.messages.length, 2);
+    const followup = await request(`${route}/chat`, { method: "POST", cookie, body: { message: "Continue using my ingredients" } });
+    assert.ok(followup.data.messages[1].content.includes("GENERAL_INGREDIENTS"));
+    const response = await fetch(`${base}${route}/chat`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ message: "Suggest a simple dinner", stream: true }) });
+    const events = [];
+    assert.equal(response.status, 200);
+    await readEvents(response, ({ event, data }) => { events.push({ event, data: JSON.parse(data) }); });
+    assert.ok(events.filter((row) => row.event === "delta").length > 1);
+    const done = events.find((row) => row.event === "done");
+    assert.ok(done && done.data.messages.every((row) => row.courseId === "general"));
+    assert.equal((await request(`${route}/messages`, { cookie })).data.messages.length, 6);
+    assert.deepEqual((await request(`${route}/messages`, { cookie: bob.cookie })).data.messages, []);
+    assert.deepEqual((await request("/api/courses", { cookie })).data, before);
+  });
+
   await t.test("all seven modes use late course content and durable chat attachments after restart", async () => {
     await stop();
     await start({ fakeAi: true });

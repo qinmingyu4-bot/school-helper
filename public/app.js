@@ -1,7 +1,9 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.71";
+  const VERSION = "1.1.72";
+  const chatSpaces = window.StudyBridgeChatSpaces;
+  const isGeneralChat = () => state.activeCourseId === chatSpaces.general.id;
   const studyModes = window.StudyBridgeStudyModes;
   const scheduleImport = window.StudyBridgeScheduleImport;
   const userActivity = window.StudyBridgeUserActivity;
@@ -359,8 +361,11 @@
   function studySidebarHtml() {
     return `
       <section class="side-section" data-doc-dropzone="true">
-        <div class="section-title"><b>课程</b><button data-action="add-course">新增</button></div>
+        <div class="section-title"><b>对话与课程</b><button data-action="add-course">新增</button></div>
         <div class="course-list">
+          <button class="course-item ${isGeneralChat() ? "active" : ""}" data-action="select-course" data-id="${chatSpaces.general.id}">
+            <b>${chatSpaces.general.name}</b><small>${chatSpaces.general.term}</small>
+          </button>
           ${state.courses.length ? state.courses.map((course) => `
             <button class="course-item ${course.id === state.activeCourseId ? "active" : ""}" data-action="select-course" data-id="${esc(course.id)}">
               <b>${esc(course.name)}</b><small>${esc(course.term || "Current term")}</small>
@@ -369,7 +374,7 @@
           `).join("") : `<p class="muted">还没有课程。可以新增课程后开始保存资料。</p>`}
         </div>
       </section>
-      <section class="side-section">
+      ${isGeneralChat() ? "" : `<section class="side-section">
         <div class="section-title"><b>课程资料</b><span>${state.docs.length}</span></div>
         <textarea id="docText" placeholder="粘贴 syllabus、lecture notes、rubric、deadline 或样卷文字"></textarea>
         <div class="inline-fields">
@@ -381,7 +386,7 @@
           <button data-action="upload-doc">上传文件</button>
         </div>
         ${state.docs.length ? state.docs.map((doc) => `<div class="mini-row"><b>${esc(doc.title)}</b><small>${esc(doc.type || "Note")}</small></div>`).join("") : `<p class="muted">还没有云端课程资料。</p>`}
-      </section>
+      </section>`}
       <section class="side-section">
         <div class="section-title"><b>Learning Style</b><span>Saved</span></div>
         ${prefBox("englishTerms", "保留 English terms")}
@@ -439,13 +444,13 @@
   }
 
   function studyPage() {
-    const course = state.courses.find((item) => item.id === state.activeCourseId);
+    const course = isGeneralChat() ? chatSpaces.general : state.courses.find((item) => item.id === state.activeCourseId);
     return `
       <header class="page-header"><div><h1 title="${esc(course?.name || "请选择课程")}">${esc(course?.name || "请选择课程")}</h1></div></header>
       ${upcomingBanner()}
       <section class="chat-area">
         <div class="messages" id="messages">
-          ${state.messages.length ? state.messages.map(messageHtml).join("") : `<div class="message ai"><b>AI</b><div>欢迎回来。先保存课程资料，然后问我预习、复习、deadline、作业要求或模拟考试。</div></div>`}
+          ${state.messages.length ? state.messages.map(messageHtml).join("") : `<div class="message ai"><b>AI</b><div>${isGeneralChat() ? "你好，有什么想问的？" : "欢迎回来。先保存课程资料，然后问我预习、复习、deadline、作业要求或模拟考试。"}</div></div>`}
         </div>
       </section>
       ${composerHtml()}
@@ -466,12 +471,14 @@
   const studyModeStorageKey = () => `studybridge.studyMode.${state.user.id}.${state.activeCourseId}`;
 
   function loadStudyMode() {
+    if (isGeneralChat()) { state.studyMode = "general"; return; }
     let saved = "";
     try { saved = localStorage.getItem(studyModeStorageKey()); } catch { /* Storage may be disabled. */ }
     state.studyMode = studyModes.getMode(saved) ? saved : studyModes.defaultMode;
   }
 
   function quickPromptsHtml() {
+    if (isGeneralChat()) return chatSpaces.prompts.map(([label, prompt]) => `<button data-action="quick-prompt" data-prompt="${esc(prompt)}" title="${esc(prompt)}">${esc(label)}</button>`).join("");
     const selected = studyModes.getMode(state.studyMode) || studyModes.getMode(studyModes.defaultMode);
     return [...selected.prompts, ...studyModes.globalPrompts]
       .map(([label, prompt]) => `<button data-action="quick-prompt" data-prompt="${esc(prompt)}" title="${esc(prompt)}">${esc(label)}</button>`).join("");
@@ -480,11 +487,11 @@
   function composerHtml() {
     return `
       <footer class="composer" data-chat-dropzone="true">
-        <div class="study-toolbar">
-          <select id="studyMode" aria-label="学习模式" title="学习模式">
+        <div class="study-toolbar${isGeneralChat() ? " general-toolbar" : ""}">
+          ${isGeneralChat() ? "" : `<select id="studyMode" aria-label="学习模式" title="学习模式">
             ${Object.entries(studyModes.modes).map(([id, mode]) => `<option value="${id}" ${state.studyMode === id ? "selected" : ""}>${esc(mode.label)}</option>`).join("")}
-          </select>
-          <div class="quick-prompts" aria-label="学习快捷指令">${quickPromptsHtml()}</div>
+          </select>`}
+          <div class="quick-prompts" aria-label="${isGeneralChat() ? "自由问答快捷问题" : "学习快捷指令"}">${quickPromptsHtml()}</div>
         </div>
         <div class="compose-row">
           <button class="attach" data-action="pick-chat-file" aria-label="上传附件" title="上传附件，也可将 PDF、Word、PPT、Excel 或图片拖到输入区">+</button>
@@ -1100,15 +1107,18 @@
   async function loadStudy() {
     const coursesData = await api("/api/courses");
     state.courses = coursesData.courses || [];
-    if (!state.activeCourseId || !state.courses.some((c) => c.id === state.activeCourseId)) {
-      state.activeCourseId = state.courses[0]?.id || "";
+    if (!state.activeCourseId) {
+      try { state.activeCourseId = localStorage.getItem(`studybridge.chatSpace.${state.user.id}`) || ""; } catch { /* Storage may be disabled. */ }
+    }
+    if (!isGeneralChat() && !state.courses.some((c) => c.id === state.activeCourseId)) {
+      state.activeCourseId = state.courses[0]?.id || chatSpaces.general.id;
     }
     loadStudyMode();
     if (state.activeCourseId) {
       const courseId = state.activeCourseId;
       const replyAtLoad = activeStudyReply();
       const [docsData, messagesData] = await Promise.all([
-        api(`/api/courses/${courseId}/documents`),
+        isGeneralChat() ? Promise.resolve({ documents: [] }) : api(`/api/courses/${courseId}/documents`),
         api(`/api/courses/${courseId}/messages`)
       ]);
       if (courseId !== state.activeCourseId) return;
@@ -1364,6 +1374,7 @@
   }
 
   async function uploadCourseFiles(files) {
+    if (isGeneralChat()) throw new Error("请在对话输入区上传附件，或选择课程后上传课程资料。");
     if (!state.activeCourseId) throw new Error("请先选择或新增课程。");
     const payloads = await readFiles(files);
     if (!payloads.length) throw new Error("请先选择要上传的文件。");
@@ -1452,7 +1463,9 @@
         return;
       }
       if (action === "select-course") {
+        if (state.activeCourseId !== button.dataset.id) { state.messages = []; state.docs = []; }
         state.activeCourseId = button.dataset.id;
+        try { localStorage.setItem(`studybridge.chatSpace.${state.user.id}`, state.activeCourseId); } catch { /* Storage may be disabled. */ }
         await loadPage("study");
         return;
       }

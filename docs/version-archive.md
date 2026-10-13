@@ -10,6 +10,21 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.74 - 2026-10-13
+
+Purpose:
+- Release course Cheatsheet PDF creation, content/layout revisions, private previews/downloads and native PDF-viewer printing.
+- Include General Chat (`49cd5ba`, 1.1.72) and real document/image tools (`400abbc`, 1.1.73). Video remains disabled.
+- Add bounded print controls, page/font/margin validation and one automatic layout repair.
+
+Validation:
+- All 78 tests, 105-file source/asset checks and zero-vulnerability dependency audit passed.
+- Desktop/mobile course guidance, uploads, revisions, reload and print-link checks passed at four viewport widths.
+- Production rollout/health and assets are checked separately after the authorized main push.
+
+Rollback target:
+- `ceaa4ba` (previous production version `1.1.71`).
+
 ### 1.1.71 - 2026-10-13
 
 Purpose:

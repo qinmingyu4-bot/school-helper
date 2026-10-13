@@ -12,6 +12,26 @@ but `STUDYBRIDGE_VIDEO_ENABLED` defaults to false. The UI is disabled and direct
 API requests are rejected before any provider call. Enable it only after an
 explicitly approved launch, account access verification, and pricing review.
 
+## Cheatsheet Printing
+
+In Study Area, select a course and Cheatsheet mode, discuss the desired content,
+then choose Make PDF. The workspace copies the current request and unsent sources,
+and includes owned course materials and the latest 16 course messages as reference.
+Requests/settings/history are separate per course. Revisions retain earlier files.
+
+Users control A4/Letter, portrait/landscape, single/double-sided printing, one to
+four physical sheets, one to three columns, minimum 8-14 pt text and 5-20 mm margins.
+Double-sided output has two PDF pages per sheet. The server checks every page's
+dimensions, selectable text, minimum font size, text bounds and neutral vector/text
+colors for monochrome output. It does not independently infer column structure or
+check embedded raster image colors. Failed layout checks trigger at most one
+automatic regeneration, which may incur an additional provider charge.
+
+The preview/print icon opens the authenticated PDF in the browser's PDF viewer;
+use its Print command to print the actual PDF, not the chat or preview image.
+Choose matching paper, actual-size scaling, and duplex settings in the printer
+dialog. The application cannot override the user's printer settings.
+
 ## Provider Configuration
 
 The server uses its existing private `OPENAI_API_KEY`. Document generation uses
@@ -71,7 +91,7 @@ test material-backed files remain readable. Binary files do not inflate the main
 JSON database. DynamoDB mode uses the existing chunked material store.
 
 Every preview/download requires the owning account's session. Responses use
-private/no-store caching and content-disposition headers; only PNG/MP4 preview
+private/no-store caching and content-disposition headers; only PDF/PNG/MP4 preview
 requests can be inline. Delete removes that job's files without touching other
 accounts or versions. Cancel/failure removes partial saved output.
 

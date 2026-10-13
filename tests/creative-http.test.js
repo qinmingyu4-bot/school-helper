@@ -51,6 +51,9 @@ test("creative HTTP jobs, private downloads, revisions, cancellation and video g
   assert.ok(Buffer.from(await download.arrayBuffer()).subarray(0, 5).equals(Buffer.from("%PDF-")));
   assert.equal((await request(route)).status, 401);
   assert.equal((await request(route, { cookie: foreign })).status, 404);
+  const printView = await request(route + "?inline=1", { cookie });
+  assert.equal(printView.headers.get("content-type"), "application/pdf");
+  assert.match(printView.headers.get("content-disposition"), /^inline;/);
   const preview = job.files.find((file) => file.extension === "png");
   const inline = await request(`/api/creative/${job.id}/files/${preview.id}?inline=1`, { cookie });
   assert.equal(inline.headers.get("content-type"), "image/png"); assert.match(inline.headers.get("content-disposition"), /^inline;/);

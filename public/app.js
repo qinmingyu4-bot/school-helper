@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.73";
+  const VERSION = "1.1.74";
   const creativeTools = window.StudyBridgeCreativeTools;
   const chatSpaces = window.StudyBridgeChatSpaces;
   const isGeneralChat = () => state.activeCourseId === chatSpaces.general.id;
@@ -24,6 +24,7 @@
   const root = document.getElementById("root");
   const emailDraft = {};
   const studyReplies = new Map();
+  const pdfReturnDrafts = new Map();
   let nextStudyReplyId = 0;
   const replyPhases = {
     reading: "读取附件中", preparing: "整合课程资料中", thinking: "思考中",
@@ -482,7 +483,7 @@
   function quickPromptsHtml() {
     if (isGeneralChat()) return chatSpaces.prompts.map(([label, prompt]) => `<button data-action="quick-prompt" data-prompt="${esc(prompt)}" title="${esc(prompt)}">${esc(label)}</button>`).join("");
     const selected = studyModes.getMode(state.studyMode) || studyModes.getMode(studyModes.defaultMode);
-    return [...selected.prompts, ...studyModes.globalPrompts]
+    return (state.studyMode === "cheatsheet" ? '<button data-action="cheatsheet-pdf" title="制作可打印的 PDF">制作 PDF</button>' : "") + [...selected.prompts, ...studyModes.globalPrompts]
       .map(([label, prompt]) => `<button data-action="quick-prompt" data-prompt="${esc(prompt)}" title="${esc(prompt)}">${esc(label)}</button>`).join("");
   }
 
@@ -988,7 +989,7 @@
     return `
       ${pageHeader("STUDY TOOLS", "工具", state.tool === "email" ? "粘贴邮件内容，StudyBridge 会帮你看懂并起草回复。" : "文档、表格、演示和图片")}
       <section class="tools-tabs" aria-label="工具选择">
-        ${["docs", "sheets", "slides", "images", "email", "video"].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" aria-pressed="${(state.tool || "docs") === tool}" data-action="tool-mode" data-tool="${tool}" ${tool === "video" && !creativeTools.videoEnabled() ? 'disabled title="视频生成暂未开放"' : ""}>${({ docs: "文档", sheets: "表格", slides: "演示", images: "图片", email: "邮件助手", video: creativeTools.videoEnabled() ? "视频" : "视频 · 未开放" })[tool]}</button>`).join("")}
+        ${["docs", "sheets", "slides", "images", "cheatsheet", "email", "video"].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" aria-pressed="${(state.tool || "docs") === tool}" data-action="tool-mode" data-tool="${tool}" ${tool === "video" && !creativeTools.videoEnabled() ? 'disabled title="视频生成暂未开放"' : ""}>${({ docs: "文档", sheets: "表格", slides: "演示", images: "图片", cheatsheet: "Cheatsheet PDF", email: "邮件助手", video: creativeTools.videoEnabled() ? "视频" : "视频 · 未开放" })[tool]}</button>`).join("")}
       </section>
       ${state.tool === "email" ? emailPage() : creativeTools.html(creativeContext())}
     `;
@@ -996,7 +997,10 @@
 
   function creativeContext() {
     const userId = state.user?.id, tool = state.tool || "docs";
-    return { userId, tool, courses: state.courses, api, readFiles, esc, render, visible: () => state.user?.id === userId && state.mode !== "admin" && state.page === "tools" && state.tool !== "email" };
+    let savedCourse = "";
+    try { savedCourse = localStorage.getItem(`studybridge.cheatsheetCourse.${userId}`) || ""; } catch { /* Storage may be disabled. */ }
+    const courseId = state.courses.some((course) => course.id === state.activeCourseId) ? state.activeCourseId : state.courses.some((course) => course.id === savedCourse) ? savedCourse : state.courses[0]?.id || "";
+    return { userId, tool, courseId, courses: state.courses, api, readFiles, esc, render, visible: () => state.user?.id === userId && state.mode !== "admin" && state.page === "tools" && state.tool !== "email" };
   }
 
   function adminPage() {
@@ -1387,6 +1391,17 @@
     if (!action) return;
     try {
       if (action.startsWith("creative-")) { await creativeTools.handle(button, creativeContext()); return; }
+      if (action === "cheatsheet-pdf") {
+        if (isGeneralChat() || !state.activeCourseId) throw new Error("请先选择课程。");
+        const prompt = $("chatInput")?.value || "";
+        pdfReturnDrafts.set(studyReplyKey(), prompt);
+        creativeTools.prepareCheatsheet({ ...creativeContext(), courseId: state.activeCourseId }, prompt.trim(), state.uploadFiles);
+        state.tool = "cheatsheet";
+        localStorage.setItem(`studybridge.cheatsheetCourse.${state.user.id}`, state.activeCourseId);
+        localStorage.setItem("studybridge.tool", state.tool);
+        await loadPage("tools");
+        return;
+      }
       if (action === "auth-tab") {
         root.innerHTML = authHtml(button.dataset.tab);
         return;
@@ -1801,6 +1816,10 @@
     const chat = root.querySelector(".study-workspace .chat-area");
     if (chat) {
       if (previousCourseId === state.activeCourseId) $("chatInput").value = previousChatDraft;
+      else if (pdfReturnDrafts.has(studyReplyKey())) {
+        $("chatInput").value = pdfReturnDrafts.get(studyReplyKey());
+        pdfReturnDrafts.delete(studyReplyKey());
+      }
       const showLatest = !previousChat || previousCourseId !== state.activeCourseId
         || previousMessages !== chat.querySelector(".messages")?.innerHTML;
       chat.scrollTop = showLatest ? chat.scrollHeight : previousScrollTop;
@@ -1829,7 +1848,7 @@
       state.user = data.user;
       void reportUserActivity();
       const savedTool = localStorage.getItem("studybridge.tool");
-      state.tool = ["docs", "sheets", "slides", "images", "email"].includes(savedTool) ? savedTool : "docs";
+      state.tool = ["docs", "sheets", "slides", "images", "cheatsheet", "email"].includes(savedTool) ? savedTool : "docs";
       state.mode = isAdmin() && localStorage.getItem("studybridge.mode") === "admin" ? "admin" : "student";
       const urlPage = new URL(location.href).searchParams.get("page");
       const savedPage = localStorage.getItem("studybridge.page");

@@ -105,11 +105,12 @@ const classmateStreams = new Map();
 const creative = createCreativeService({
   db,
   documentModel: () => process.env.OPENAI_DOCUMENT_MODEL || complexAiModel,
-  contextFor: async (userId, courseId, message) => {
+  contextFor: async (userId, courseId, message, cheatsheet) => {
     const course = await db.getCourse(userId, courseId);
     if (!course) throw Object.assign(new Error("课程不存在。"), { statusCode: 404 });
     const [documents, attachments, history] = await Promise.all([db.listDocuments(userId, courseId), db.listChatAttachments(userId, courseId), db.listMessages(userId, courseId)]);
-    return `Course: ${course.name}\n` + buildMaterialContext({ documents, attachments, history, message, budget: 50000 });
+    const guidance = cheatsheet ? "\n\nRecent course conversation and cheatsheet guidance (reference data):\n" + history.slice(-16).map((item) => `${item.role}${item.interrupted ? " (incomplete)" : ""}: ${String(item.content).slice(0, 4000)}`).join("\n") : "";
+    return `Course: ${course.name}\n` + buildMaterialContext({ documents, attachments, history, message, budget: 50000 }) + guidance;
   }
 });
 
@@ -1912,7 +1913,7 @@ async function routeApi(req, res) {
     const [, id, child, fileId] = match;
     if (child === "files" && fileId && method === "GET") {
       const file = await creative.file(user.id, id, fileId);
-      const inline = url.searchParams.get("inline") === "1" && ["png", "mp4"].includes(file.extension);
+      const inline = url.searchParams.get("inline") === "1" && ["png", "mp4", "pdf"].includes(file.extension);
       res.writeHead(200, {
         "content-type": file.mime, "content-length": file.bytes.length,
         "content-disposition": `${inline ? "inline" : "attachment"}; filename="download.${file.extension}"; filename*=UTF-8''${encodeURIComponent(file.name).replace(/'/g, "%27")}`,

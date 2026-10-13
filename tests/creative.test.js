@@ -27,6 +27,7 @@ async function setup(t, options = {}) {
   delete process.env.STUDYBRIDGE_VIDEO_ENABLED;
   const db = new StudyBridgeDatabase(); db.dynamo = null;
   const calls = [], payloads = new Map();
+  let responseCount = 0;
   let wait = options.wait || false;
   const request = async (url, init) => {
     calls.push({ url, init });
@@ -38,12 +39,14 @@ async function setup(t, options = {}) {
     if (init.method === "DELETE") return Response.json({ deleted: true });
     if (route === "files") return Response.json({ id: "file_source" });
     if (route === "responses") {
+      responseCount++;
       const body = JSON.parse(init.body);
       assert.equal(body.model, "test-document-model");
       assert.equal(body.tools[0].type, "code_interpreter");
       assert.equal(body.store, false);
       const format = body.input[1].content.match(/Required primary format: (\w+)/)[1];
-      const files = [{ filename: `artifact.${format}`, bytes: format === "pdf" ? pdf : office(format) }, { filename: "preview.pdf", bytes: pdf }, { filename: "preview-1.png", bytes: png }];
+      const generatedPdf = options.printPdf ? await fs.readFile(path.join(__dirname, "fixtures", options.repairFirst && responseCount === 1 ? "cheatsheet-small.pdf" : options.printPdf)) : pdf;
+      const files = [{ filename: `artifact.${format}`, bytes: format === "pdf" ? generatedPdf : office(format) }, { filename: "preview.pdf", bytes: generatedPdf }, { filename: "preview-1.png", bytes: png }];
       if (options.incomplete) files.splice(1);
       const annotations = files.map((file, i) => { const file_id = `cfile_${i}`; payloads.set(file_id, file.bytes); return { type: "container_file_citation", container_id: "cntr_test", file_id, filename: file.filename }; });
       return Response.json({ status: "completed", output: [{ type: "code_interpreter_call", container_id: "cntr_test" }, { type: "message", content: [{ type: "output_text", text: "Generated fixture. [File](sandbox:/mnt/data/artifact.docx)", annotations }] }] });
@@ -206,4 +209,18 @@ test("DynamoDB creative records and files isolate users and delete only the requ
   assert.deepEqual(await db.readCreativeFile("bob", "one", "file"), png);
   assert.deepEqual(await db.readCreativeFile("alice", "two", "file"), png);
   assert.equal(rows.get("USER#alice|CREATIVE_QUOTA").timestamps.length, 1);
+});
+
+test("course cheatsheet jobs enforce PDF settings, retain context and repair print failures once", async (t) => {
+  const { service, calls } = await setup(t, { printPdf: "cheatsheet-a4.pdf", repairFirst: true });
+  await assert.rejects(service.create({ id: "alice" }, { kind: "document", format: "docx", prompt: "Cheat", courseId: "owned", cheatsheet: {} }));
+  await assert.rejects(service.create({ id: "alice" }, { kind: "document", format: "pdf", prompt: "Cheat", cheatsheet: {} }));
+  const job = await done(service, await service.create({ id: "alice" }, { kind: "document", format: "pdf", prompt: "Only formulas", courseId: "owned", cheatsheet: {} }));
+  assert.equal(job.status, "ready");
+  assert.equal(job.printCheck.pages, 1);
+  assert.equal(job.cheatsheet.columns, 2);
+  const responses = calls.filter((call) => call.url.endsWith("/responses"));
+  assert.equal(responses.length, 2);
+  assert.match(JSON.parse(responses[0].init.body).input[0].content, /Mandatory cheatsheet print contract/);
+  assert.match(JSON.parse(responses[1].init.body).input[1].content, /Correct the previous print-validation failure/);
 });

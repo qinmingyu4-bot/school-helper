@@ -10,6 +10,19 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.69 - 2026-10-12
+
+Purpose:
+- Repair scrolling in the newly released creator console with a desktop-only, independently scrollable content region.
+- Retain admin scroll position during same-page renders while preserving mobile page scrolling and existing student chat containers.
+
+Validation:
+- Verified wheel scrolling into the user list, same-page position retention, mobile page scrolling, and student/admin mode transitions with isolated preview data.
+- Existing user activity and invitation behavior remain unchanged.
+
+Rollback target:
+- `3264260` (previous production version `1.1.68`).
+
 ### 1.1.68 - 2026-10-12
 
 Purpose:

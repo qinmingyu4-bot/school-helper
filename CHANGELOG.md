@@ -2,6 +2,8 @@
 
 ## 2026-10-12
 
+- Updated to `1.1.69`: fixed desktop creator-console scrolling with a viewport-height, independently scrollable admin workspace. Invitation, user, and reset sections remain reachable with the wheel while the sidebar stays in place. Same-page renders preserve the admin scroll position; mobile document scrolling and student chat layouts retain their existing behavior.
+
 - Prepared the user-approved `1.1.68` AWS release with recent user activity only, based on the stable `1.1.66` production branch. The unreleased `1.1.67` Tools workspace redesign remains on its original test branch. Updated entry asset versions and recorded the previous production rollback target.
 
 - Added admin-only recent online timestamps with relative minute/hour/day labels and exact-time tooltips. Successful logins and visible, recently active browser sessions update a server-timed record at most once per minute; hidden or five-minute-idle tabs stop heartbeats. Existing users without recorded activity show no history rather than a guessed timestamp.

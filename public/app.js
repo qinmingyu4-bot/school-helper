@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.68";
+  const VERSION = "1.1.69";
   const studyModes = window.StudyBridgeStudyModes;
   const scheduleImport = window.StudyBridgeScheduleImport;
   const userActivity = window.StudyBridgeUserActivity;
@@ -404,10 +404,11 @@
 
   function shellHtml(content) {
     const fullChat = state.mode !== "admin" && state.page === "classmates" && state.classmateChatOpen;
+    const admin = state.mode === "admin";
     return `
-      <div class="app-shell${fullChat ? " classmate-chat-shell" : ""}">
+      <div class="app-shell${fullChat ? " classmate-chat-shell" : ""}${admin ? " admin-shell" : ""}">
         ${fullChat ? "" : sidebarHtml()}
-        <main class="workspace${state.mode !== "admin" && state.page === "study" ? " study-workspace" : ""}${state.mode !== "admin" && state.page === "classmates" ? " classmates-workspace" : ""}${fullChat ? " classmate-chat-workspace" : ""}" id="workspace" data-course-id="${esc(state.activeCourseId)}">
+        <main class="workspace${state.mode !== "admin" && state.page === "study" ? " study-workspace" : ""}${state.mode !== "admin" && state.page === "classmates" ? " classmates-workspace" : ""}${fullChat ? " classmate-chat-workspace" : ""}${admin ? " admin-workspace" : ""}" id="workspace" data-course-id="${esc(state.activeCourseId)}">
           ${content}
         </main>
       </div>
@@ -1733,6 +1734,8 @@
   }
 
   function render() {
+    const previousAdminWorkspace = root.querySelector(".admin-workspace");
+    const previousAdminScroll = previousAdminWorkspace?.scrollTop || 0;
     const previousSidebar = root.querySelector(".sidebar");
     const previousSidebarContext = previousSidebar?.dataset.sidebarContext;
     const previousSidebarScroll = previousSidebar?.scrollTop || 0;
@@ -1781,6 +1784,10 @@
       // Mobile sidebars scroll with the page instead of their own container.
       sidebar.scrollTop = previousSidebarScroll;
       if (sidebarUsesPageScroll) window.scrollTo(previousPageScroll.x, previousPageScroll.y);
+    }
+    const adminWorkspace = root.querySelector(".admin-workspace");
+    if (previousAdminWorkspace && adminWorkspace && sidebar?.dataset.sidebarContext === previousSidebarContext) {
+      adminWorkspace.scrollTop = previousAdminScroll;
     }
     const chat = root.querySelector(".study-workspace .chat-area");
     if (chat) {

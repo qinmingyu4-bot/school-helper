@@ -31,6 +31,7 @@ const { buildMaterialContext, selectImages } = require("./lib/study-context");
 const { selectAiModel } = require("./lib/ai-routing");
 const scheduleImport = require("./public/schedule-import");
 const { readEvents } = require("./public/chat-stream");
+const { createCreativeService } = require("./lib/creative-service");
 
 let nodemailer = null;
 try {
@@ -101,6 +102,16 @@ const googleClientSecret = String(process.env.GOOGLE_CLIENT_SECRET || "").trim()
 let cachedAiHealth = null;
 let lastAiRequest = null;
 const classmateStreams = new Map();
+const creative = createCreativeService({
+  db,
+  documentModel: () => process.env.OPENAI_DOCUMENT_MODEL || complexAiModel,
+  contextFor: async (userId, courseId, message) => {
+    const course = await db.getCourse(userId, courseId);
+    if (!course) throw Object.assign(new Error("课程不存在。"), { statusCode: 404 });
+    const [documents, attachments, history] = await Promise.all([db.listDocuments(userId, courseId), db.listChatAttachments(userId, courseId), db.listMessages(userId, courseId)]);
+    return `Course: ${course.name}\n` + buildMaterialContext({ documents, attachments, history, message, budget: 50000 });
+  }
+});
 
 function notifyClassmates(userIds, chatId) {
   for (const userId of userIds) {
@@ -1889,6 +1900,34 @@ async function signInWithGoogle(req, res, url) {
 async function routeApi(req, res) {
   const url = new URL(req.url, "http://localhost");
   const method = req.method || "GET";
+
+  if (url.pathname === "/api/creative" || url.pathname.startsWith("/api/creative/")) {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    if (url.pathname === "/api/creative/capabilities" && method === "GET") return sendJson(res, 200, creative.capabilities());
+    if (url.pathname === "/api/creative" && method === "GET") return sendJson(res, 200, { jobs: await creative.list(user.id) });
+    if (url.pathname === "/api/creative" && method === "POST") return sendJson(res, 202, { job: await creative.create(user, await readJson(req)) });
+    const match = url.pathname.match(/^\/api\/creative\/([\w-]+)(?:\/(cancel|files)(?:\/([\w-]+))?)?$/);
+    if (!match) return sendError(res, 404, "Task not found.");
+    const [, id, child, fileId] = match;
+    if (child === "files" && fileId && method === "GET") {
+      const file = await creative.file(user.id, id, fileId);
+      const inline = url.searchParams.get("inline") === "1" && ["png", "mp4"].includes(file.extension);
+      res.writeHead(200, {
+        "content-type": file.mime, "content-length": file.bytes.length,
+        "content-disposition": `${inline ? "inline" : "attachment"}; filename="download.${file.extension}"; filename*=UTF-8''${encodeURIComponent(file.name).replace(/'/g, "%27")}`,
+        "cache-control": "private, no-store", "x-content-type-options": "nosniff", "content-security-policy": "default-src 'none'"
+      });
+      return res.end(file.bytes);
+    }
+    if (child === "cancel" && method === "POST") return sendJson(res, 200, { job: await creative.cancel(user.id, id) });
+    if (!child && method === "GET") {
+      const job = await creative.get(user.id, id);
+      return job ? sendJson(res, 200, { job: creative.publicJob(job) }) : sendError(res, 404, "Task not found.");
+    }
+    if (!child && method === "DELETE") { await creative.remove(user.id, id); return sendJson(res, 200, { ok: true }); }
+    return sendError(res, 404, "Task not found.");
+  }
 
   if (url.pathname === "/api/health") {
     return sendJson(res, 200, { ok: true, db: process.env.STUDYBRIDGE_DB || "local" });

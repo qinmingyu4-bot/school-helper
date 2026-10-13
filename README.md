@@ -108,6 +108,14 @@ The selected conversation is remembered per account in the browser. General Chat
 supports the same streaming, cancellation, Markdown, and latest-message scrolling;
 its course-material controls are hidden and files attach through the composer.
 
+Tools now creates downloadable Word/PDF, Excel, PowerPoint and PNG images with
+preview, source uploads, optional owned-course context, revision history and
+cancellation. Document files use hosted Code Interpreter rather than executing
+model-generated code on the app server; image revisions use the actual prior image.
+Video infrastructure is present but closed by default at both UI/API levels.
+See [Creative Tools](docs/creative-tools.md) for model configuration, quality
+limits, billing/concurrency controls, authenticated file storage and backup needs.
+
 Streaming requests time out after three minutes. If placing a reverse proxy in
 front of the app, disable response buffering for the chat endpoint and allow an
 idle timeout longer than the server's ten-second SSE heartbeat. Keep API keys on

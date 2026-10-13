@@ -82,6 +82,7 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
     }
     assert.equal((await request("/api/health")).data.ok, true);
     assert.equal((await request("/api/me")).status, 401);
+    assert.equal((await request("/api/creative")).status, 401);
     assert.equal((await request("/api/auth/login", { method: "POST", raw: "{" })).status, 400);
     assert.equal((await request("/api/auth/login", { method: "POST", raw: "null" })).status, 400);
     assert.equal((await request("/%ZZ")).status, 400);
@@ -429,6 +430,16 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
     const pdfChat = await request(`/api/courses/${id}/chat`, { method: "POST", cookie, body: { message: "Read this schedule PDF", attachments: [{ name: "schedule-full.pdf", mime: "application/pdf", dataUrl: `data:application/pdf;base64,${fullPdf.toString("base64")}` }] } });
     assert.equal(pdfChat.status, 201);
     assert.ok(pdfChat.data.messages[1].content.includes("Essay due November 12, 2026 at 23:59"), "chat PDF extraction must retain document text too");
+  });
+
+  await t.test("creative APIs authenticate, gate video, and reject foreign jobs without provider calls", async () => {
+    const cookie = (await request("/api/auth/login", { method: "POST", body: { email: "alice@example.test", password: "HealthCheck-Password-123!" } })).cookie;
+    assert.equal((await request("/api/creative/capabilities", { cookie })).data.video, false);
+    assert.deepEqual((await request("/api/creative", { cookie })).data.jobs, []);
+    assert.equal((await request("/api/creative", { method: "POST", cookie, body: { kind: "video", prompt: "Video" } })).status, 403);
+    assert.equal((await request("/api/creative/missing", { cookie: bob.cookie })).status, 404);
+    assert.equal((await request("/api/creative/missing/files/missing", { cookie: bob.cookie })).status, 404);
+    assert.equal((await request("/api/creative", { method: "POST", cookie, body: { kind: "invalid", prompt: "bad" } })).status, 400);
   });
 
   await t.test("general chat is permanent, isolated, durable, and independent of course workflows", async () => {

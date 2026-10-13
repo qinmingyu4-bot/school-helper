@@ -1,7 +1,8 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.72";
+  const VERSION = "1.1.73";
+  const creativeTools = window.StudyBridgeCreativeTools;
   const chatSpaces = window.StudyBridgeChatSpaces;
   const isGeneralChat = () => state.activeCourseId === chatSpaces.general.id;
   const studyModes = window.StudyBridgeStudyModes;
@@ -181,6 +182,7 @@
       state.classmateProfileOpen = false;
     }
     if (page !== "classmates") stopClassmatesLive();
+    if (page !== "tools") creativeTools.stop();
     localStorage.setItem("studybridge.page", page);
     history.replaceState(null, "", `${location.pathname}?page=${encodeURIComponent(page)}&v=${VERSION}`);
   }
@@ -984,27 +986,17 @@
 
   function toolsPage() {
     return `
-      ${pageHeader("STUDY TOOLS", "工具", state.tool === "email" ? "粘贴邮件内容，StudyBridge 会帮你看懂并起草回复。" : "手动写文档、做表格和演示，或使用邮件助手起草回复。")}
+      ${pageHeader("STUDY TOOLS", "工具", state.tool === "email" ? "粘贴邮件内容，StudyBridge 会帮你看懂并起草回复。" : "文档、表格、演示和图片")}
       <section class="tools-tabs" aria-label="工具选择">
-        ${["docs", "sheets", "slides", "email"].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" aria-pressed="${(state.tool || "docs") === tool}" data-action="tool-mode" data-tool="${tool}">${tool === "email" ? "邮件助手" : `SB ${tool[0].toUpperCase()}${tool.slice(1)}`}</button>`).join("")}
+        ${["docs", "sheets", "slides", "images", "email", "video"].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" aria-pressed="${(state.tool || "docs") === tool}" data-action="tool-mode" data-tool="${tool}" ${tool === "video" && !creativeTools.videoEnabled() ? 'disabled title="视频生成暂未开放"' : ""}>${({ docs: "文档", sheets: "表格", slides: "演示", images: "图片", email: "邮件助手", video: creativeTools.videoEnabled() ? "视频" : "视频 · 未开放" })[tool]}</button>`).join("")}
       </section>
-      ${state.tool === "email" ? emailPage() : `<section class="two-col">
-        <article class="card">
-          ${toolEditorHtml(state.tool || "docs")}
-        </article>
-        <article class="card"><div class="section-title"><div><span>AI ASSIST</span><h2>辅助生成</h2></div><button data-action="copy-output">复制</button></div><textarea id="toolPrompt" placeholder="让 AI 帮你润色、生成结构、整理表格或做 PPT 大纲"></textarea><button class="primary" data-action="generate-tool">调用 AI</button><div id="toolOutput" class="output-box">AI 输出会显示在这里，你可以再复制回左侧手动编辑。</div></article>
-      </section>`}
+      ${state.tool === "email" ? emailPage() : creativeTools.html(creativeContext())}
     `;
   }
 
-  function toolEditorHtml(tool) {
-    if (tool === "sheets") {
-      return `<h2>SB Sheets</h2><div class="sheet-wrap"><table class="sheet">${Array.from({ length: 8 }).map((_, r) => `<tr>${Array.from({ length: 5 }).map((__, c) => `<td contenteditable="true">${r === 0 ? esc(String.fromCharCode(65 + c)) : ""}</td>`).join("")}</tr>`).join("")}</table></div>`;
-    }
-    if (tool === "slides") {
-      return `<h2>SB Slides</h2><input class="slide-title" placeholder="Slide title"><textarea class="slide-body" placeholder="Bullet points / speaker notes"></textarea><div class="slide-preview">Presentation canvas</div>`;
-    }
-    return `<h2>SB Docs</h2><div class="doc-editor" contenteditable="true" spellcheck="true">Start writing your essay, report, or reading response here...</div>`;
+  function creativeContext() {
+    const userId = state.user?.id, tool = state.tool || "docs";
+    return { userId, tool, courses: state.courses, api, readFiles, esc, render, visible: () => state.user?.id === userId && state.mode !== "admin" && state.page === "tools" && state.tool !== "email" };
   }
 
   function adminPage() {
@@ -1190,6 +1182,11 @@
         }
       }
       if (page === "schedule") await loadScheduleItems();
+      if (page === "tools" && state.tool !== "email") {
+        const data = await api("/api/courses");
+        state.courses = data.courses || [];
+        await creativeTools.load(creativeContext());
+      }
       if (page === "admin") {
         state.admin = await api("/api/admin/overview");
         state.status = await api("/api/admin/system-status").catch(() => state.status);
@@ -1389,6 +1386,7 @@
     const action = button.dataset.action;
     if (!action) return;
     try {
+      if (action.startsWith("creative-")) { await creativeTools.handle(button, creativeContext()); return; }
       if (action === "auth-tab") {
         root.innerHTML = authHtml(button.dataset.tab);
         return;
@@ -1672,18 +1670,12 @@
         return;
       }
       if (action === "tool-mode") {
+        if (button.dataset.tool === "video" && !creativeTools.videoEnabled()) return;
+        creativeTools.capture();
         state.tool = button.dataset.tool || "docs";
         localStorage.setItem("studybridge.tool", state.tool);
         render();
-        return;
-      }
-      if (action === "generate-tool") {
-        const output = $("toolOutput");
-        output.textContent = "正在生成...";
-        const course = state.activeCourseId || state.courses[0]?.id;
-        if (!course) throw new Error("请先在学习区新增一门课程，用来保存 AI 对话。");
-        const data = await api(`/api/courses/${course}/chat`, { method: "POST", body: { message: $("toolPrompt")?.value || "请帮我生成学习文档。", mode: `tool-${state.tool || "docs"}` } });
-        output.innerHTML = formatText((data.messages || []).at(-1)?.content || "");
+        if (state.tool !== "email") { await creativeTools.load(creativeContext()); render(); }
         return;
       }
       if (action === "copy-output") {
@@ -1749,6 +1741,7 @@
   }
 
   function render() {
+    creativeTools.capture();
     const previousAdminWorkspace = root.querySelector(".admin-workspace");
     const previousAdminScroll = previousAdminWorkspace?.scrollTop || 0;
     const previousSidebar = root.querySelector(".sidebar");
@@ -1793,6 +1786,7 @@
       if ($(id) && emailDraft[id] !== undefined) $(id).value = emailDraft[id];
     }
     if ($("emailOriginal") && emailDraft.output) $("toolOutput").innerHTML = emailDraft.output;
+    creativeTools.restoreFocus();
     if (state.toast && state.user) root.insertAdjacentHTML("beforeend", `<div class="toast">${esc(state.toast)}</div>`);
     const sidebar = root.querySelector(".sidebar");
     if (sidebar && sidebar.dataset.sidebarContext === previousSidebarContext) {
@@ -1835,7 +1829,7 @@
       state.user = data.user;
       void reportUserActivity();
       const savedTool = localStorage.getItem("studybridge.tool");
-      state.tool = ["docs", "sheets", "slides", "email"].includes(savedTool) ? savedTool : "docs";
+      state.tool = ["docs", "sheets", "slides", "images", "email"].includes(savedTool) ? savedTool : "docs";
       state.mode = isAdmin() && localStorage.getItem("studybridge.mode") === "admin" ? "admin" : "student";
       const urlPage = new URL(location.href).searchParams.get("page");
       const savedPage = localStorage.getItem("studybridge.page");

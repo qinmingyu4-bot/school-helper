@@ -167,6 +167,33 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
     assert.equal((await request("/api/me/profile", { method: "PUT", cookie: bob.cookie, body: { name: "Bob", sbId: "bob", school: "Health University" } })).status, 200);
   });
 
+  await t.test("last activity is admin-only, server-timed and persistent without fabricating legacy history", async () => {
+    let overview = (await request("/api/admin/overview", { cookie: admin.cookie })).data;
+    assert.ok(Number.isFinite(Date.parse(overview.users.find((user) => user.id === alice.data.user.id).lastSeenAt)));
+    await stop();
+    const file = path.join(directory, "database.json");
+    const saved = JSON.parse(await fs.readFile(file, "utf8"));
+    saved.userActivity[alice.data.user.id].lastSeenAt = "2020-01-01T00:00:00.000Z";
+    delete saved.userActivity[bob.data.user.id];
+    await fs.writeFile(file, JSON.stringify(saved));
+    await start();
+    overview = (await request("/api/admin/overview", { cookie: admin.cookie })).data;
+    assert.equal(overview.users.find((user) => user.id === bob.data.user.id).lastSeenAt, null);
+    assert.equal((await request("/api/me/activity", { method: "POST" })).status, 401);
+    const before = Date.now();
+    assert.equal((await request("/api/me/activity", { method: "POST", cookie: alice.cookie, body: { userId: bob.data.user.id, lastSeenAt: "2099-01-01" } })).status, 200);
+    overview = (await request("/api/admin/overview", { cookie: admin.cookie })).data;
+    const lastSeen = overview.users.find((user) => user.id === alice.data.user.id).lastSeenAt;
+    assert.ok(Date.parse(lastSeen) >= before && Date.parse(lastSeen) <= Date.now());
+    assert.equal(overview.users.find((user) => user.id === bob.data.user.id).lastSeenAt, null);
+    assert.equal((await request("/api/me", { cookie: alice.cookie })).data.user.lastSeenAt, undefined);
+    assert.equal((await request("/api/admin/overview", { cookie: alice.cookie })).status, 403);
+    await request("/api/me/activity", { method: "POST", cookie: alice.cookie });
+    await stop();
+    await start();
+    assert.equal((await request("/api/admin/overview", { cookie: admin.cookie })).data.users.find((user) => user.id === alice.data.user.id).lastSeenAt, lastSeen);
+  });
+
   await t.test("course isolation and document extraction", async () => {
     const course = await request("/api/courses", { method: "POST", cookie: alice.cookie, body: { name: "Calculus" } });
     assert.equal(course.status, 201);

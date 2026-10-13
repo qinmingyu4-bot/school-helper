@@ -4,6 +4,9 @@
   const VERSION = "1.1.67";
   const studyModes = window.StudyBridgeStudyModes;
   const scheduleImport = window.StudyBridgeScheduleImport;
+  const userActivity = window.StudyBridgeUserActivity;
+  let lastInteractionAt = Date.now();
+  let activityReport = { userId: "", time: 0, pending: false };
   const STUDENT_PAGES = ["community", "classmates", "schedule", "study", "tools", "profile"];
   const ADMIN_PAGES = ["admin"];
   const SCHEDULE_COURSE = "Schedule & Deadlines";
@@ -1110,7 +1113,7 @@
         <article class="admin-section" aria-labelledby="adminUsersTitle">
           <div class="section-title"><h2 id="adminUsersTitle">用户</h2><small>共 ${users.length} 人</small></div>
           <div class="admin-list">${users.length ? users.map((user) => `<div class="user-row">
-            <div class="admin-record-details"><b>${esc(user.name)}</b><p class="admin-record-note">${esc(user.email)}</p><div class="admin-record-meta"><span>${roleLabel(user.role)}</span>${user.inviteCode ? `<span>邀请码 <span class="admin-invite-code">${esc(user.inviteCode)}</span></span>` : ""}</div></div>
+            <div class="admin-record-details"><b>${esc(user.name)}</b><p class="admin-record-note">${esc(user.email)}</p><div class="admin-record-meta"><span>${roleLabel(user.role)}</span>${user.inviteCode ? `<span>邀请码 <span class="admin-invite-code">${esc(user.inviteCode)}</span></span>` : ""}</div><p class="admin-record-note">最近在线：<time data-last-seen-user="${esc(user.id)}" ${user.lastSeenAt ? `datetime="${esc(user.lastSeenAt)}" title="${esc(new Date(user.lastSeenAt).toLocaleString())}"` : ""}>${userActivity.relativeTime(user.lastSeenAt)}</time></p></div>
             <dl class="admin-user-stats"><div><dt>课程</dt><dd>${user.stats?.courses || 0}</dd></div><div><dt>文档</dt><dd>${user.stats?.documents || 0}</dd></div><div><dt>聊天</dt><dd>${user.stats?.messages || 0}</dd></div></dl>
           </div>`).join("") : `<p class="muted admin-empty">暂无用户。</p>`}</div>
         </article>
@@ -1939,6 +1942,7 @@
         return;
       }
       state.user = data.user;
+      void reportUserActivity();
       state.toolsHome = localStorage.getItem("studybridge.toolsView") !== "workspace";
       const savedTool = localStorage.getItem("studybridge.tool");
       state.tool = toolCatalog.some((item) => item.id === savedTool) ? savedTool : "docs";
@@ -2015,7 +2019,55 @@
     if (event.target?.id === "scheduleManual") state.scheduleManualOpen = event.target.open;
   }, true);
 
+  async function reportUserActivity() {
+    const userId = state.user?.id;
+    if (!userId) return;
+    if (activityReport.userId !== userId) activityReport = { userId, time: 0, pending: false };
+    const report = activityReport;
+    if (report.pending || !userActivity.shouldReport({ visible: !document.hidden, lastInteractionAt, lastReportedAt: report.time })) return;
+    report.pending = true;
+    report.time = Date.now();
+    try {
+      await api("/api/me/activity", { method: "POST" });
+      report.time = Date.now();
+    } catch { /* Presence failures must not interrupt studying. */ }
+    finally { report.pending = false; }
+  }
+
+  function updateAdminActivityLabels() {
+    const users = new Map((state.admin?.users || []).map((user) => [user.id, user]));
+    root.querySelectorAll("[data-last-seen-user]").forEach((element) => {
+      const value = users.get(element.dataset.lastSeenUser)?.lastSeenAt;
+      element.textContent = userActivity.relativeTime(value);
+      if (value) {
+        element.dateTime = value;
+        element.title = new Date(value).toLocaleString();
+      }
+    });
+  }
+
+  for (const event of ["pointerdown", "keydown", "scroll"]) {
+    document.addEventListener(event, () => { lastInteractionAt = Date.now(); void reportUserActivity(); }, { passive: true, capture: true });
+  }
+  setInterval(() => void reportUserActivity(), 15000);
+  let adminActivityRefreshing = false;
+  setInterval(async () => {
+    if (document.hidden || !state.user || state.page !== "admin" || adminActivityRefreshing) return;
+    const userId = state.user.id;
+    adminActivityRefreshing = true;
+    try {
+      const overview = await api("/api/admin/overview");
+      if (state.user?.id === userId && state.page === "admin") {
+        const latest = new Map(overview.users.map((user) => [user.id, user.lastSeenAt]));
+        for (const user of state.admin?.users || []) user.lastSeenAt = latest.get(user.id) || null;
+        updateAdminActivityLabels();
+      }
+    } catch { /* Retain the last successful status during connection failures. */ }
+    finally { adminActivityRefreshing = false; }
+  }, 60000);
+
   setInterval(() => {
+    updateAdminActivityLabels();
     root.querySelectorAll("[data-countdown]").forEach((element) => {
       element.textContent = dueText(element.dataset.countdown);
     });
@@ -2028,7 +2080,11 @@
   });
 
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) void syncClassmatesLive();
+    if (!document.hidden) {
+      lastInteractionAt = Date.now();
+      void reportUserActivity();
+      void syncClassmatesLive();
+    }
   });
   window.addEventListener("online", () => void syncClassmatesLive());
   window.addEventListener("pagehide", stopClassmatesLive);

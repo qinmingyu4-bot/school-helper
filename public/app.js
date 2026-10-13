@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.69";
+  const VERSION = "1.1.71";
   const studyModes = window.StudyBridgeStudyModes;
   const scheduleImport = window.StudyBridgeScheduleImport;
   const userActivity = window.StudyBridgeUserActivity;
@@ -1057,7 +1057,9 @@
       ["最后部署时间", formatDate(s.deploy?.lastCodeUpdateAt), "按服务器文件时间显示。"],
       ["数据库模式", s.database?.mode || "local", s.database?.ready ? "数据库可读取。" : "需要检查数据库。"],
       ["普通任务模型", s.ai?.simpleModel || "待检测", "普通任务的模型配置。"],
-      ["复杂任务模型", s.ai?.complexModel || "待检测", `复杂任务分流比例：${s.ai?.complexRoutePercent ?? 0}%。`],
+      ["复杂任务模型", s.ai?.complexModel || "待检测", s.ai?.routing === "task-complexity" ? "复杂任务固定使用此模型。" : `复杂任务分流比例：${s.ai?.complexRoutePercent ?? 0}%。`],
+      ["联网模型分流", s.ai?.webSearchEnabled ? "沿用任务模型" : "联网已关闭", "联网、兼容重试和回退均保留普通／复杂任务的模型选择。"],
+      ["最近完成的 AI 请求", s.ai?.lastRequest?.model || "暂无记录", s.ai?.lastRequest ? `${s.ai.lastRequest.api} · ${formatDate(s.ai.lastRequest.completedAt)}` : "仅记录本次服务启动后的模型和接口，不记录问题内容。"],
       ["AI 连通检测", s.ai?.configured === false ? "未配置" : s.ai?.ok ? "正常" : "异常", `仅检测普通任务模型。${s.ai?.detail || "等待检测。"}`],
       ["Google 登录", s.google?.enabled ? "已配置" : "未配置", "普通邮箱注册仍可用。"],
       ["邮箱验证码", s.email?.verificationRequired ? "已启用" : "非必需", s.email?.sendingConfigured ? "可发送邮件。" : "当前不强制邮箱发信。"],

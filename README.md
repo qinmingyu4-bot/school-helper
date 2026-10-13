@@ -156,8 +156,18 @@ OWNER_INVITE_CODE=your-private-creator-code
 OPENAI_API_KEY=your-openai-api-key
 OPENAI_SIMPLE_MODEL=gpt-6-luna
 OPENAI_COMPLEX_MODEL=gpt-6.1-sol
-OPENAI_SOL_ROUTE_PERCENT=15
 ```
+
+AI routing is deterministic: ordinary questions use Luna; complex academic modes,
+reasoning/coding tasks, long questions, and newly uploaded long attachments use
+Sol. Brief follow-ups inherit the earlier task. The amount of saved course text or
+old assistant output does not independently escalate a new ordinary question.
+Responses web search, its preview compatibility retry, and Chat Completions
+fallback all use the selected task model. Legacy `OPENAI_SOL_ROUTE_PERCENT`,
+`STUDYBRIDGE_SOL_ROUTE_PERCENT`, `OPENAI_WEB_MODEL`, and `STUDYBRIDGE_WEB_MODEL`
+settings no longer override this policy. The admin status panel shows runtime
+model configuration, web routing, and the last completed request's model/API;
+it does not record question text in that diagnostic.
 
 For AWS DynamoDB:
 

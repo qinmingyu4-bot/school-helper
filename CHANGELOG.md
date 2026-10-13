@@ -2,6 +2,10 @@
 
 ## 2026-10-13
 
+- Released `1.1.71`: preserve task model selection through web search, preview retries, and Chat Completions fallback. Complex tasks always use the configured Sol model instead of a 15% lottery; ordinary tasks remain on Luna even with large saved course materials or long old replies. Retain task complexity across short follow-up questions.
+- Verified the pre-release AWS runtime was already configured with `gpt-6-luna` and `gpt-6.1-sol`. Updated defaults and removed legacy percentage/web-model overrides. Added admin-only runtime web-routing and last-completed-model/API diagnostics without storing question text. Updated the frontend version marker to match the release.
+- All 59 tests and the 94-file source checks passed, including JSON/streaming web routes, deprecated overrides, compatibility fallback, repeated complex requests, ordinary questions with long saved context, and follow-up routing.
+
 - All seven Study Area modes now reference complete saved course text and durable chat attachments. Removed the first-eight-document and 1,800/9,000/12,000-character truncation paths; retrieve relevant passages across the entire corpus for larger collections, while retaining full smaller collections and source filenames.
 - Persist extracted attachment text and vision inputs per account/course for later questions, mode changes, and restarts. Chunk large DynamoDB materials, paginate queries, keep attachment payloads out of chat-history responses, and remove saved material when its course is deleted. Mark interrupted replies as incomplete in subsequent prompts.
 - Previously discarded text and historical filename-only chat attachments require re-upload; unreadable/scanned files still need readable text. Prepared the user-authorized 1.1.70 main-branch AWS release.

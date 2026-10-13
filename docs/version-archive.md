@@ -10,6 +10,21 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.71 - 2026-10-13
+
+Purpose:
+- Fix web search bypassing task model routing; ordinary questions use Luna and complex tasks use Sol deterministically.
+- Preserve the selected model through retries and fallback; avoid escalation solely because saved course data or old replies are long.
+- Add admin diagnostics for runtime routing and the last completed model/API request without recording question contents.
+
+Validation:
+- Confirmed pre-release AWS configuration: `gpt-6-luna`, `gpt-6.1-sol`, legacy 15% complex routing, and healthy Luna connectivity.
+- All 59 tests and 94-file source checks passed before the user-authorized production deployment.
+- Post-deployment runtime checks are performed separately after the main push.
+
+Rollback target:
+- `3376b97` (previous production version `1.1.70`).
+
 ### 1.1.70 - 2026-10-13
 
 Purpose:

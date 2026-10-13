@@ -33,7 +33,7 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
         OWNER_INVITE_CODE: "health-owner-invite", REQUIRE_INVITE_CODE: "true",
         OPENAI_SIMPLE_MODEL: "gpt-6-luna", OPENAI_COMPLEX_MODEL: "gpt-6.1-sol", OPENAI_SOL_ROUTE_PERCENT: "15",
         REQUIRE_EMAIL_VERIFICATION: "false", OPENAI_API_KEY: fakeAi ? "test-only-key" : "",
-        OPENAI_WEB_SEARCH: String(webSearch), GOOGLE_CLIENT_ID: "",
+        OPENAI_WEB_SEARCH: String(webSearch), OPENAI_WEB_MODEL: "must-not-override-task-model", GOOGLE_CLIENT_ID: "",
         GOOGLE_CLIENT_SECRET: "", SMTP_HOST: "", SMTP_USER: "", SMTP_PASS: ""
       },
       stdio: ["ignore", "pipe", "pipe"]
@@ -99,7 +99,9 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
     assert.equal(status.status, 200);
     assert.equal(status.data.ai.simpleModel, "gpt-6-luna");
     assert.equal(status.data.ai.complexModel, "gpt-6.1-sol");
-    assert.equal(status.data.ai.complexRoutePercent, 15);
+    assert.equal(status.data.ai.complexRoutePercent, 100);
+    assert.equal(status.data.ai.routing, "task-complexity");
+    assert.equal(status.data.ai.webModelRouting, "selected-task-model");
     assert.equal(status.data.ai.configured, false);
     assert.equal(status.data.ai.ok, false);
   });
@@ -480,10 +482,10 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
   async function streamCourse(name) {
     return (await request("/api/courses", { method: "POST", cookie: streamingCookie, body: { name } })).data.course.id;
   }
-  async function streamReply(id, message, { onPacket = () => {}, signal } = {}) {
+  async function streamReply(id, message, { onPacket = () => {}, signal, mode = "cheatsheet" } = {}) {
     const response = await fetch(`${base}/api/courses/${id}/chat`, {
       method: "POST", headers: { cookie: streamingCookie, "content-type": "application/json" }, signal,
-      body: JSON.stringify({ message, mode: "cheatsheet", stream: true })
+      body: JSON.stringify({ message, mode, stream: true })
     });
     assert.equal(response.status, 200);
     assert.match(response.headers.get("content-type"), /text\/event-stream/);
@@ -504,6 +506,33 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
     assert.equal((await request(`/api/courses/${id}/chat`, { method: "POST", cookie: bob.cookie, body })).status, 404);
     assert.equal((await request(`/api/courses/${id}/chat`, { method: "POST", cookie: streamingCookie, body: { stream: true } })).status, 400);
     assert.deepEqual((await request(`/api/courses/${id}/messages`, { cookie: streamingCookie })).data.messages, []);
+  });
+
+  await t.test("web, JSON, streaming and fallback preserve the selected task model", async () => {
+    await stop();
+    await start({ fakeAi: true, webSearch: true });
+    for (const [message, expected] of [["你好", "gpt-6-luna"], ["请推导这个公式", "gpt-6.1-sol"]]) {
+      const id = await streamCourse(`Routing ${expected}`);
+      await request(`/api/courses/${id}/documents`, { method: "POST", cookie: streamingCookie, body: { title: "Long material", text: "background ".repeat(1000) } });
+      const reply = await request(`/api/courses/${id}/chat`, { method: "POST", cookie: streamingCookie, body: { message, mode: "guided" } });
+      assert.equal(reply.status, 201);
+      assert.equal(reply.data.model, expected);
+      assert.equal(JSON.parse(reply.data.messages[1].content).model, expected);
+      const streamId = await streamCourse(`Stream routing ${expected}`);
+      const packets = await streamReply(streamId, message, { mode: "guided" });
+      const done = packets.at(-1);
+      assert.equal(done.event, "done");
+      assert.equal(done.model, expected);
+      assert.equal(JSON.parse(done.messages[1].content.split("\n\n")[1]).model, expected);
+      const fallbackId = await streamCourse(`Fallback ${expected}`);
+      const fallback = await streamReply(fallbackId, `STREAM_EARLY_FAIL ${message}`, { mode: "guided" });
+      const final = fallback.at(-1);
+      assert.equal(final.event, "done");
+      const outbound = JSON.parse(final.messages[1].content.split("\n\n")[1]);
+      assert.ok(outbound.messages, "both web tools failed, so Chat Completions must be used");
+      assert.equal(outbound.model, expected);
+      assert.equal(final.model, expected);
+    }
   });
 
   await t.test("both AI APIs deliver incremental text before completion and persist one final reply", async () => {

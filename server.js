@@ -22,6 +22,7 @@ const {
 const { StudyBridgeDatabase } = require("./lib/database");
 const studyModes = require("./public/study-modes");
 const { buildMaterialContext, selectImages } = require("./lib/study-context");
+const { selectAiModel } = require("./lib/ai-routing");
 const scheduleImport = require("./public/schedule-import");
 const { readEvents } = require("./public/chat-stream");
 
@@ -84,22 +85,15 @@ const legacyOpenAiModel = String(process.env.OPENAI_MODEL || "").trim();
 const simpleAiModel =
   String(process.env.OPENAI_SIMPLE_MODEL || process.env.STUDYBRIDGE_SIMPLE_MODEL || "").trim() ||
   legacyOpenAiModel ||
-  "gpt-4o-mini";
+  "gpt-6-luna";
 const complexAiModel =
   String(process.env.OPENAI_COMPLEX_MODEL || process.env.STUDYBRIDGE_COMPLEX_MODEL || "").trim() ||
-  "gpt-4o";
+  "gpt-6.1-sol";
 const webSearchEnabled = process.env.OPENAI_WEB_SEARCH !== "false";
-const webSearchModel =
-  String(process.env.OPENAI_WEB_MODEL || process.env.STUDYBRIDGE_WEB_MODEL || "").trim() ||
-  complexAiModel ||
-  simpleAiModel;
-const solRoutePercent = Math.max(
-  0,
-  Math.min(100, Number(process.env.OPENAI_SOL_ROUTE_PERCENT || process.env.STUDYBRIDGE_SOL_ROUTE_PERCENT || 15))
-);
 const googleClientId = String(process.env.GOOGLE_CLIENT_ID || "").trim();
 const googleClientSecret = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();
 let cachedAiHealth = null;
+let lastAiRequest = null;
 const classmateStreams = new Map();
 
 function notifyClassmates(userIds, chatId) {
@@ -1172,60 +1166,8 @@ function buildPreferenceInstruction(preferences = {}) {
   return lines.join("\n");
 }
 
-function chooseAiModel({ documents = [], history = [], mode = "", message = "" }) {
-  const lowerMessage = String(message || "").toLowerCase();
-  const totalDocumentText = documents.reduce((total, doc) => total + String(doc.text || "").length, 0);
-  const recentConversationText = history.reduce((total, item) => total + String(item.content || "").length, 0);
-  const complexModes = new Set(["exam", "assignment", "cheatsheet", "cram", "review"]);
-  const complexKeywords = [
-    "final",
-    "midterm",
-    "exam",
-    "quiz",
-    "assignment",
-    "essay",
-    "research paper",
-    "rubric",
-    "deadline",
-    "proof",
-    "derive",
-    "calculus",
-    "statistics",
-    "economics",
-    "accounting",
-    "finance",
-    "programming",
-    "code",
-    "debug",
-    "case study",
-    "lab report",
-    "thesis",
-    "dissertation",
-    "复习",
-    "期末",
-    "期中",
-    "考试",
-    "作业",
-    "论文",
-    "证明",
-    "推导",
-    "代码",
-    "案例",
-    "实验报告",
-    "详细",
-    "深入"
-  ];
-
-  const isComplex =
-    complexModes.has(String(mode || "").toLowerCase()) ||
-    String(message || "").length > 900 ||
-    totalDocumentText > 9000 ||
-    recentConversationText > 7000 ||
-    complexKeywords.some((keyword) => lowerMessage.includes(keyword.toLowerCase()));
-
-  if (!isComplex || solRoutePercent <= 0) return simpleAiModel;
-  if (solRoutePercent >= 100) return complexAiModel;
-  return crypto.randomInt(100) < solRoutePercent ? complexAiModel : simpleAiModel;
+function chooseAiModel(context) {
+  return selectAiModel(context, { simpleModel: simpleAiModel, complexModel: complexAiModel });
 }
 
 function extractResponsesText(payload) {
@@ -1344,10 +1286,15 @@ async function callAiWithResponses(messages, model, toolType = "web_search", str
       ...(stream ? { stream: true } : {})
     })
   });
-  if (response.ok && stream) return readAiEvents(response, "responses", stream);
+  if (response.ok && stream) {
+    const content = await readAiEvents(response, "responses", stream);
+    lastAiRequest = { model, api: "Responses", completedAt: new Date().toISOString() };
+    return content;
+  }
   const text = await response.text();
   if (!response.ok) throw new Error(`AI web request failed: ${text}`);
   const payload = JSON.parse(text);
+  lastAiRequest = { model, api: "Responses", completedAt: new Date().toISOString() };
   return extractResponsesText(payload) || "AI \u6ca1\u6709\u8fd4\u56de\u5185\u5bb9\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5\u3002";
 }
 
@@ -1368,10 +1315,15 @@ async function callAiWithChatCompletions(messages, model, stream = null) {
       }))
     })
   });
-  if (response.ok && stream) return readAiEvents(response, "chat", stream);
+  if (response.ok && stream) {
+    const content = await readAiEvents(response, "chat", stream);
+    lastAiRequest = { model, api: "Chat Completions", completedAt: new Date().toISOString() };
+    return content;
+  }
   const text = await response.text();
   if (!response.ok) throw new Error(`AI request failed: ${text}`);
   const payload = JSON.parse(text);
+  lastAiRequest = { model, api: "Chat Completions", completedAt: new Date().toISOString() };
   return payload.choices?.[0]?.message?.content || "AI \u6ca1\u6709\u8fd4\u56de\u5185\u5bb9\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5\u3002";
 }
 
@@ -1382,13 +1334,13 @@ async function callAi(messages, model = simpleAiModel, stream = null) {
 
   if (webSearchEnabled) {
     try {
-      return await callAiWithResponses(messages, webSearchModel || model, "web_search", stream);
+      return await callAiWithResponses(messages, model, "web_search", stream);
     } catch (error) {
       if (stream?.signal.aborted || error.delivered) throw error;
       const message = String(error?.message || error);
       if (message.includes("web_search")) {
         try {
-          return await callAiWithResponses(messages, webSearchModel || model, "web_search_preview", stream);
+          return await callAiWithResponses(messages, model, "web_search_preview", stream);
         } catch (previewError) {
           if (stream?.signal.aborted || previewError.delivered) throw previewError;
           console.warn(`StudyBridge preview web route failed, falling back to chat completions: ${previewError?.message || previewError}`);
@@ -1410,7 +1362,7 @@ async function studyAnswerContext({ user, course, message, mode, attachments }) 
     getWeatherContextForQuestion(message, user),
     db.listChatAttachments(user.id, course.id)
   ]);
-  const model = chooseAiModel({ documents, history, mode, message: `${message} ${chatAttachmentLabel(attachments)}` });
+  const model = chooseAiModel({ history, mode, message, attachments });
   console.log(`StudyBridge AI route: ${model} | mode=${mode} | docs=${documents.length} | schedule=${scheduleItems.length} | attachments=${attachments.length}`);
   return { model, prompt: buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message, attachments: savedAttachments }) };
 }
@@ -1794,7 +1746,10 @@ async function aiHealthStatus() {
     ...health,
     simpleModel: simpleAiModel,
     complexModel: complexAiModel,
-    complexRoutePercent: solRoutePercent,
+    complexRoutePercent: 100,
+    routing: "task-complexity",
+    webSearchEnabled,
+    webModelRouting: "selected-task-model",
     checkedAt: new Date().toISOString()
   };
   cachedAiHealth = { checkedAtMs: Date.now(), payload };
@@ -2309,7 +2264,7 @@ if (openCommunityLikeMatch && method === "PATCH") {
       },
       database: await databaseStatusClean(),
       backup: await localBackupStatusClean(),
-      ai,
+      ai: { ...ai, lastRequest: lastAiRequest },
       google: {
         enabled: googleAuthEnabled(),
         clientIdConfigured: Boolean(googleClientId),

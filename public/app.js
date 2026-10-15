@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.74";
+  const VERSION = "1.1.75";
   const creativeTools = window.StudyBridgeCreativeTools;
   const chatSpaces = window.StudyBridgeChatSpaces;
   const isGeneralChat = () => state.activeCourseId === chatSpaces.general.id;

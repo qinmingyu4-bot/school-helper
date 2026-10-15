@@ -10,6 +10,22 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.75 - 2026-10-15
+
+Purpose:
+- Release detailed, concept-based academic explanations and Sol routing for short image-solving questions and follow-ups (`7f29be1`).
+- Retain private question-image previews in user messages across refresh/login, with enlargement and legacy attachment backfill (`31ee951`).
+- Honor independent English-answer/Chinese-explanation preferences, with accurate auto-save state and send-time synchronization (`21825d6`).
+- Accept Ctrl+V screenshots with pending thumbnails while preserving ordinary/mixed text paste (`263efba`).
+
+Validation:
+- All 91 automated tests and 109-file checks passed on the feature branch.
+- Local browser checks covered real image clipboard data, persisted image history, checkbox auto-save and actual English/Chinese model replies.
+- Repeated release checks passed: all 91 tests, 109-file source/asset checks and zero-vulnerability dependency audit. Deployed assets, real answers, saved preferences, images and Ctrl+V are verified on AWS after rollout.
+
+Rollback target:
+- `084340b` (previous production version `1.1.74`).
+
 ### 1.1.74 - 2026-10-13
 
 Purpose:

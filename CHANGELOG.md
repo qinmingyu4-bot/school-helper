@@ -2,6 +2,8 @@
 
 ## 2026-10-15
 
+- Prepare the user-authorized `1.1.75` main-branch AWS release of detailed study explanations (`7f29be1`), durable image message previews (`31ee951`), independent Learning Style preferences and synchronized saving (`21825d6`), and Ctrl+V screenshots with pending image previews (`263efba`). Bump entry asset versions and record `084340b` (`1.1.74`) as the rollback target. Production deployment and live behavior are verified after the main push.
+
 - Support Ctrl+V screenshot/image pasting in the Study Area question input across General Chat and all course modes. Add clipboard images to the existing attachment flow, give repeated screenshots distinct identities, preserve mixed-paste text/caret/focus, and leave ordinary text pasting and other fields unchanged.
 - Show removable image thumbnails before sending, release preview object URLs when attachments leave the composer, and validate entire file batches before adding them. Sent screenshots retain the existing private, durable image-message previews.
 - All 91 tests and 109-file checks passed. Local browser verification used actual PNG clipboard data and Ctrl+V to check repeated pastes, removals, ordinary/mixed text, loaded thumbnails, sending and refresh persistence. Prepared on the task branch; not deployed to AWS.

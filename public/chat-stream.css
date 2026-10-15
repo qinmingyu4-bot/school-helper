@@ -28,6 +28,8 @@
 @media (prefers-reduced-motion: reduce) { .reply-spinner { animation: none; } }
 
 .chat-attachments { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 10px; max-width: 100%; }
+.upload-pill { max-width: min(360px, 100%); box-sizing: border-box; }
+.upload-image-preview { flex: 0 0 56px; width: 56px; height: 44px; object-fit: contain; border-radius: 4px; background: #f6f8f9; }
 .chat-image { display: flex; flex-direction: column; gap: 6px; width: min(240px, 100%); min-width: 0; padding: 6px; border: 1px solid #cfddd8; border-radius: 10px; background: #fff; color: #243b4c; text-align: left; cursor: zoom-in; }
 .chat-image img { display: block; width: 100%; height: 160px; object-fit: contain; border-radius: 5px; background: #f6f8f9; }
 .chat-image span { font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }

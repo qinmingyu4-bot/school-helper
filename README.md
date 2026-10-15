@@ -116,6 +116,16 @@ the owner's session and disable caching. Existing retained attachment groups are
 matched to their original message IDs when displaying older history; filename-only
 uploads whose bytes were never saved still require re-upload.
 
+Paste a screenshot with Ctrl+V while the Study Area question input is focused
+(including General Chat and every course mode). Clipboard image files become
+pending attachments with thumbnails and remove buttons; they upload only when
+the question is sent and use the same persistent image history as selected files.
+Repeated screenshots receive distinct identities. Ordinary text paste stays
+native; image-plus-text paste inserts the plain text at the current selection and
+retains input focus. Other text fields are unaffected. The existing 12 MB
+per-file limit applies, and invalid batches do not partially add attachments.
+This uses the user-initiated paste event, without polling the system clipboard.
+
 Study replies use an authenticated POST to `/api/courses/:id/chat` with
 `stream: true`. The server forwards only answer text, not internal reasoning,
 through SSE `status`, `start`, `delta`, `done`, and `error` events. Activity states

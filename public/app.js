@@ -27,6 +27,7 @@
   const root = document.getElementById("root");
   const emailDraft = {};
   const studyReplies = new Map();
+  const uploadPreviewUrls = new Map();
   const pdfReturnDrafts = new Map();
   let nextStudyReplyId = 0;
   const replyPhases = {
@@ -544,9 +545,9 @@
           <div class="quick-prompts" aria-label="${isGeneralChat() ? "自由问答快捷问题" : "学习快捷指令"}">${quickPromptsHtml()}</div>
         </div>
         <div class="compose-row">
-          <button class="attach" data-action="pick-chat-file" aria-label="上传附件" title="上传附件，也可将 PDF、Word、PPT、Excel 或图片拖到输入区">+</button>
+          <button class="attach" data-action="pick-chat-file" aria-label="上传附件" title="上传附件；也可拖放文件，或在输入框按 Ctrl+V 粘贴截图">+</button>
           <input id="chatFile" class="hidden" type="file" multiple accept="${SUPPORTED_UPLOAD_ACCEPT},*/*">
-          <textarea id="chatInput" rows="1" placeholder="输入问题..." aria-label="问题"></textarea>
+          <textarea id="chatInput" rows="1" placeholder="输入问题，可 Ctrl+V 粘贴截图..." aria-label="问题"></textarea>
           <button class="send" data-action="${activeStudyReply() ? "stop-chat" : "send-chat"}" ${state.busy ? "disabled" : ""} ${activeStudyReply() ? 'title="停止生成" aria-label="停止生成"' : 'aria-label="发送"'}>${activeStudyReply() ? '<svg aria-hidden="true"><use href="/classmates-icons.svg#stop"></use></svg>' : "发送"}</button>
         </div>
         ${selectedUploadFilesHtml()}
@@ -555,6 +556,9 @@
   }
 
   function selectedUploadFilesHtml() {
+    for (const [file, url] of uploadPreviewUrls) {
+      if (!state.uploadFiles.includes(file)) { URL.revokeObjectURL(url); uploadPreviewUrls.delete(file); }
+    }
     if (!state.uploadFiles.length) {
       return "";
     }
@@ -562,6 +566,7 @@
       <div class="upload-list">
         ${state.uploadFiles.map((file, index) => `
           <span class="upload-pill">
+            ${uploadImagePreview(file)}
             <b>${esc(file.name)}</b>
             <small>${esc(formatFileSize(file.size))}</small>
             <button data-action="remove-chat-file" data-index="${index}" aria-label="移除 ${esc(file.name)}">×</button>
@@ -569,6 +574,12 @@
         `).join("")}
       </div>
     `;
+  }
+
+  function uploadImagePreview(file) {
+    if (!/^image\/(png|jpeg|webp|gif|avif|bmp)$/i.test(file.type)) return "";
+    if (!uploadPreviewUrls.has(file)) uploadPreviewUrls.set(file, URL.createObjectURL(file));
+    return `<img class="upload-image-preview" src="${esc(uploadPreviewUrls.get(file))}" alt="待发送图片：${esc(file.name)}">`;
   }
 
   function messageHtml(message) {
@@ -1446,9 +1457,9 @@
   function addChatFiles(files) {
     const incoming = Array.from(files || []).filter(Boolean);
     if (!incoming.length) return false;
+    incoming.forEach(validateUploadFile);
     const seen = new Set(state.uploadFiles.map((file) => `${file.name}:${file.size}:${file.lastModified}`));
     for (const file of incoming) {
-      validateUploadFile(file);
       const key = `${file.name}:${file.size}:${file.lastModified}`;
       if (!seen.has(key)) {
         state.uploadFiles.push(file);
@@ -1535,6 +1546,8 @@
         return;
       }
       if (action === "logout") {
+        for (const url of uploadPreviewUrls.values()) URL.revokeObjectURL(url);
+        uploadPreviewUrls.clear();
         clearTimeout(learningStyleTimer);
         learningStyleEditor?.saver.dispose();
         learningStyleEditor = null;
@@ -2081,6 +2094,28 @@
   window.addEventListener("online", () => void syncClassmatesLive());
   window.addEventListener("pagehide", stopClassmatesLive);
   window.addEventListener("pageshow", startClassmatesLive);
+
+  document.addEventListener("paste", (event) => {
+    if (!state.user || state.page !== "study" || event.target?.id !== "chatInput") return;
+    const files = window.StudyBridgeChatAttachments.clipboardImages(event.clipboardData);
+    if (!files.length) return; // Let the browser paste ordinary text normally.
+    event.preventDefault();
+    const input = event.target;
+    let start = input.selectionStart, end = input.selectionEnd;
+    try {
+      addChatFiles(files);
+      const text = event.clipboardData.getData("text/plain");
+      if (text) input.setRangeText(text, start, end, "end");
+      start = input.selectionStart;
+      end = input.selectionEnd;
+    } catch (error) {
+      setToast(error.message || "截图读取失败，请重试或选择图片文件。");
+    }
+    render();
+    const restored = $("chatInput");
+    restored?.focus();
+    restored?.setSelectionRange(start, end);
+  });
 
   document.addEventListener("dragover", (event) => {
     if (!state.user || state.page !== "study") return;

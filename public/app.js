@@ -8,6 +8,9 @@
   const studyModes = window.StudyBridgeStudyModes;
   const scheduleImport = window.StudyBridgeScheduleImport;
   const userActivity = window.StudyBridgeUserActivity;
+  const learningStyle = window.StudyBridgeLearningStyle;
+  let learningStyleEditor = null;
+  let learningStyleTimer = 0;
   let lastInteractionAt = Date.now();
   let activityReport = { userId: "", time: 0, pending: false };
   const STUDENT_PAGES = ["community", "classmates", "schedule", "study", "tools", "profile"];
@@ -391,19 +394,63 @@
         ${state.docs.length ? state.docs.map((doc) => `<div class="mini-row"><b>${esc(doc.title)}</b><small>${esc(doc.type || "Note")}</small></div>`).join("") : `<p class="muted">还没有云端课程资料。</p>`}
       </section>`}
       <section class="side-section">
-        <div class="section-title"><b>Learning Style</b><span>Saved</span></div>
+        <div class="section-title"><b>Learning Style</b><span data-learning-style-status role="status">${learningStyleStatus()}</span></div>
         ${prefBox("englishTerms", "保留 English terms")}
         ${prefBox("englishAnswers", "英文作答 / 英文草稿")}
         ${prefBox("chineseExplanations", "中文拆解 reasoning")}
-        <textarea id="customInstruction" placeholder="默认：中文问中文答，英文问英文答。需要双语时可写：请用 English answer + 中文 reasoning。">${esc(state.user.preferences?.customInstruction || "")}</textarea>
+        <p class="muted" data-learning-style-summary>${esc(learningStyle.summary(getLearningStyleEditor().saver.snapshot().draft))}</p>
+        <textarea id="customInstruction" maxlength="500" placeholder="补充要求，例如：先给英文考试答案，再用中文解释每一步。自定义说明优先于勾选项。">${esc(getLearningStyleEditor().saver.snapshot().draft.customInstruction)}</textarea>
+        <p class="muted">修改后自动保存；发送前会确认保存。明确的本次要求优先。</p>
         <button data-action="save-prefs">保存偏好</button>
       </section>
     `;
   }
 
   function prefBox(key, label) {
-    const checked = key === "englishTerms" ? (state.user.preferences?.[key] !== false ? "checked" : "") : (state.user.preferences?.[key] === true ? "checked" : "");
+    const checked = getLearningStyleEditor().saver.snapshot().draft[key] ? "checked" : "";
     return `<label class="check"><input id="${key}" type="checkbox" ${checked}>${esc(label)}</label>`;
+  }
+
+  function getLearningStyleEditor() {
+    if (!learningStyleEditor || learningStyleEditor.userId !== state.user.id) {
+      learningStyleEditor?.saver.dispose();
+      clearTimeout(learningStyleTimer);
+      const userId = state.user.id;
+      const saver = learningStyle.createSaver({ initial: state.user.preferences,
+        save: async (preferences) => {
+          if (state.user?.id !== userId) throw new Error("登录状态已变更，请重新登录。");
+          const data = await api("/api/me/preferences", { method: "PUT", body: preferences });
+          if (state.user?.id === userId) state.user = data.user;
+          return data.user.preferences;
+        },
+        onChange: () => {
+          if (state.user?.id !== userId) return;
+          const badge = root.querySelector("[data-learning-style-status]");
+          if (badge) badge.textContent = learningStyleStatus();
+          const summary = root.querySelector("[data-learning-style-summary]");
+          if (summary) summary.textContent = learningStyle.summary(learningStyleEditor.saver.snapshot().draft);
+        }
+      });
+      learningStyleEditor = { userId, saver };
+    }
+    return learningStyleEditor;
+  }
+
+  function learningStyleStatus() {
+    return { saved: "已保存", unsaved: "未保存", saving: "保存中…", error: "保存失败" }[getLearningStyleEditor().saver.snapshot().status];
+  }
+
+  function captureLearningStyle() {
+    const editor = getLearningStyleEditor();
+    if ($("englishTerms")) editor.saver.setDraft({ englishTerms: $("englishTerms").checked, englishAnswers: $("englishAnswers").checked,
+      chineseExplanations: $("chineseExplanations").checked, customInstruction: $("customInstruction").value });
+    return editor;
+  }
+
+  function scheduleLearningStyleSave() {
+    const editor = captureLearningStyle();
+    clearTimeout(learningStyleTimer);
+    learningStyleTimer = setTimeout(() => void editor.saver.flush().catch(() => {}), 400);
   }
 
   function adminSideHint() {
@@ -613,6 +660,7 @@
     const text = input?.value || "";
     const files = [...state.uploadFiles];
     if (!text.trim() && !files.length) throw new Error("请输入问题或上传文件。");
+    const preferenceEditor = captureLearningStyle();
     const previewUrls = [];
     const previews = files.map((file) => {
       const image = /^image\/(png|jpeg|webp|gif|avif|bmp)$/i.test(file.type);
@@ -633,13 +681,17 @@
     render();
     try {
       const attachments = await readFiles(files);
+      clearTimeout(learningStyleTimer);
+      try { await preferenceEditor.saver.flush(); }
+      catch { throw new Error("偏好保存失败，尚未发送问题。请点击保存偏好后重试。"); }
+      reply.learningStyle = preferenceEditor.saver.snapshot().draft;
       reply.controller.signal.throwIfAborted();
       reply.assistant.phase = "preparing";
       scheduleStudyReply(reply);
       const response = await fetch(`/api/courses/${reply.courseId}/chat`, {
         method: "POST", credentials: "same-origin", signal: reply.controller.signal,
         headers: { "content-type": "application/json", accept: "text/event-stream" },
-        body: JSON.stringify({ message: text, mode: reply.mode, attachments, stream: true })
+        body: JSON.stringify({ message: text, mode: reply.mode, attachments, learningStyle: reply.learningStyle, stream: true })
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -1483,6 +1535,9 @@
         return;
       }
       if (action === "logout") {
+        clearTimeout(learningStyleTimer);
+        learningStyleEditor?.saver.dispose();
+        learningStyleEditor = null;
         for (const reply of studyReplies.values()) reply.controller.abort();
         await api("/api/auth/logout", { method: "POST" }).catch(() => null);
         localStorage.removeItem("studybridge.page");
@@ -1542,8 +1597,8 @@
         return;
       }
       if (action === "save-prefs") {
-        const data = await api("/api/me/preferences", { method: "PUT", body: { englishTerms: $("englishTerms")?.checked, englishAnswers: $("englishAnswers")?.checked, chineseExplanations: $("chineseExplanations")?.checked, customInstruction: $("customInstruction")?.value || "" } });
-        state.user = data.user;
+        clearTimeout(learningStyleTimer);
+        await captureLearningStyle().saver.flush();
         setToast("偏好已保存。");
         render();
         return;
@@ -1916,6 +1971,7 @@
   });
 
   document.addEventListener("change", (event) => {
+    if (["englishTerms", "englishAnswers", "chineseExplanations"].includes(event.target?.id)) { scheduleLearningStyleSave(); return; }
     if (event.target?.id === "scheduleFile") {
       const name = $("scheduleFileName");
       if (name) name.textContent = event.target.files?.[0]?.name || "选择课程文件";
@@ -1942,6 +1998,7 @@
   });
 
   document.addEventListener("input", (event) => {
+    if (event.target?.id === "customInstruction") { scheduleLearningStyleSave(); return; }
     const manualField = event.target.dataset?.manualField;
     if (manualField) { state.scheduleManualDraft[manualField] = event.target.value; return; }
     const field = event.target.dataset?.draftField;

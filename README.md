@@ -62,6 +62,23 @@ switching modes leaves drafts, attachments, and the current reading position int
 Course materials, account learning preferences, and the latest explicit request
 continue to guide the AI response.
 
+Learning Style checkboxes are independent saved preferences. English answers
+select English final answers/drafts; Chinese explanations select Chinese teaching
+and supporting explanations. Enabling both produces an English answer followed by
+a complementary Chinese explanation for worked academic problems, even with an
+empty custom instruction. English terms preserves useful academic keywords in
+Chinese explanations. The latest explicit language/format request takes priority,
+followed by custom instructions, checkboxes, then the question's language; simply
+asking “怎么做” does not cancel the saved English-answer setting. Hint-only and
+interactive quiz modes still withhold final answers when appropriate.
+
+Checkboxes and custom instructions auto-save, with visible unsaved/saving/saved/
+failure states and a summary of the selected style. Saves are serialized to retain
+rapid edits. Sending waits for the latest preferences to save and includes that
+normalized snapshot in the chat request; a failed save preserves the draft and
+stops the question from being sent with stale preferences. Other clients that omit
+the snapshot use the server's saved account preferences.
+
 For academic problem-solving, a short request such as “怎么做” now defaults to a
 worked teaching explanation: introduce the necessary concept, interpret the given
 facts/diagram, explain the important steps, and state the conclusion and a useful

@@ -9,7 +9,7 @@ const AdmZip = require("adm-zip");
 const { readEvents } = require("../public/chat-stream");
 
 const root = path.resolve(__dirname, "..");
-test("account, course, upload, and persistence health check", { timeout: 40000 }, async (t) => {
+test("account, course, upload, and persistence health check", { timeout: 60000 }, async (t) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "studybridge-server-"));
   let child;
   let base;
@@ -578,6 +578,44 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
     await checkImage();
     await request(`/api/courses/${id}`, { method: "DELETE", cookie });
     assert.equal((await fetch(base + imageUrl, { headers: { cookie } })).status, 404);
+  });
+
+  await t.test("saved learning style reaches every mode, follow-ups and streams without ignoring combined checkboxes", async () => {
+    const cookie = (await request("/api/auth/login", { method: "POST", body: { email: "alice@example.test", password: "HealthCheck-Password-123!" } })).cookie;
+    const previous = (await request("/api/me", { cookie })).data.user.preferences;
+    const bobPreferences = (await request("/api/me", { cookie: bob.cookie })).data.user.preferences;
+    const selected = { englishTerms: true, englishAnswers: true, chineseExplanations: true, customInstruction: "" };
+    const saved = await request("/api/me/preferences", { method: "PUT", cookie, body: selected });
+    assert.equal(saved.status, 200);
+    assert.deepEqual(saved.data.user.preferences, selected);
+    await stop();
+    await start({ fakeAi: true });
+    assert.deepEqual((await request("/api/me", { cookie })).data.user.preferences, selected);
+    const id = (await request("/api/courses", { method: "POST", cookie, body: { name: "Learning Style" } })).data.course.id;
+    for (const mode of Object.keys(require("../public/study-modes").modes)) {
+      const result = await request(`/api/courses/${id}/chat`, { method: "POST", cookie, body: { mode, message: "怎么做" } });
+      assert.equal(result.status, 201);
+      const system = JSON.parse(result.data.messages[1].content).messages[0].content;
+      assert.match(system, /English answer ON/);
+      assert.match(system, /Chinese explanation ON/);
+      assert.match(system, /Combined checkboxes/);
+      assert.match(system, /question merely written in Chinese/);
+      assert.ok(!system.includes("old default toggles"));
+    }
+    const override = { ...selected, chineseExplanations: false };
+    const response = await fetch(`${base}/api/courses/${id}/chat`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ message: "继续讲这道题", mode: "guided", stream: true, learningStyle: override }) });
+    const packets = [];
+    await readEvents(response, ({ event, data }) => packets.push({ event, ...JSON.parse(data) }));
+    const done = packets.find((packet) => packet.event === "done");
+    assert.ok(done);
+    const answer = done.messages[1].content;
+    const system = JSON.parse(answer.slice(answer.indexOf("{"))).messages[0].content;
+    assert.match(system, /English answer ON/);
+    assert.match(system, /Chinese explanation OFF/);
+    assert.ok(!system.includes("Combined checkboxes"));
+    assert.deepEqual((await request("/api/me", { cookie })).data.user.preferences, selected, "per-request snapshot must not silently rewrite the saved profile");
+    assert.deepEqual((await request("/api/me", { cookie: bob.cookie })).data.user.preferences, bobPreferences);
+    await request("/api/me/preferences", { method: "PUT", cookie, body: previous });
   });
 
   const streamingCookie = (await request("/api/auth/login", { method: "POST", body: { email: "alice@example.test", password: "HealthCheck-Password-123!" } })).cookie;

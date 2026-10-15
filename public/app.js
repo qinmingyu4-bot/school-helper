@@ -526,7 +526,25 @@
 
   function messageHtml(message) {
     const mine = message.role === "user";
-    return `<div class="message ${mine ? "user" : "ai"}" ${message.clientReplyId ? `data-reply-id="${esc(message.clientReplyId)}" aria-busy="${Boolean(message.pending)}"` : ""}><b>${mine ? "你" : "AI"}</b><div>${mine ? formatText(message.content) : replyBodyHtml(message)}</div></div>`;
+    return `<div class="message ${mine ? "user" : "ai"}" ${message.clientReplyId ? `data-reply-id="${esc(message.clientReplyId)}" aria-busy="${Boolean(message.pending)}"` : ""}><b>${mine ? "你" : "AI"}</b><div>${mine ? userMessageBody(message) : replyBodyHtml(message)}</div></div>`;
+  }
+
+  function userMessageBody(message) {
+    return formatText(message.displayText ?? message.content) + window.StudyBridgeChatAttachments.render(message.attachments);
+  }
+
+  function showChatImage(url, name) {
+    if (!window.StudyBridgeChatAttachments.isPreviewUrl(url)) return;
+    const dialog = document.createElement("dialog");
+    dialog.className = "chat-image-dialog";
+    dialog.setAttribute("aria-label", "图片预览");
+    dialog.innerHTML = `<header><strong>${esc(name || "图片")}</strong><button type="button" aria-label="关闭图片预览">关闭</button></header><img src="${esc(url)}" alt="${esc(name || "图片")}"><p role="status"></p>`;
+    dialog.querySelector("button").addEventListener("click", () => dialog.close());
+    dialog.querySelector("img").addEventListener("error", () => { dialog.querySelector("p").textContent = "图片暂时无法加载，请重新登录或稍后重试。"; });
+    dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
+    dialog.addEventListener("close", () => dialog.remove());
+    document.body.append(dialog);
+    dialog.showModal();
   }
 
   function replyBodyHtml(message) {
@@ -544,6 +562,11 @@
     if (!message || !chat) return;
     const followLatest = chat.scrollHeight - chat.clientHeight - chat.scrollTop < 48
       || (!reply.hasDisplayedText && Boolean(reply.assistant.content));
+    const question = root.querySelector(`[data-reply-id="${reply.user.clientReplyId}"] > div`);
+    if (question && reply.userNeedsRender) {
+      question.innerHTML = userMessageBody(reply.user);
+      reply.userNeedsRender = false;
+    }
     message.setAttribute("aria-busy", String(Boolean(reply.assistant.pending)));
     const body = message.querySelector(":scope > div");
     let content = body.querySelector(".reply-content");
@@ -590,10 +613,17 @@
     const text = input?.value || "";
     const files = [...state.uploadFiles];
     if (!text.trim() && !files.length) throw new Error("请输入问题或上传文件。");
+    const previewUrls = [];
+    const previews = files.map((file) => {
+      const image = /^image\/(png|jpeg|webp|gif|avif|bmp)$/i.test(file.type);
+      const url = image ? URL.createObjectURL(file) : null;
+      if (url) previewUrls.push(url);
+      return { name: file.name, kind: image ? "image" : "file", ...(url ? { url } : {}) };
+    });
     const reply = {
       key: studyReplyKey(), courseId: state.activeCourseId, mode: state.studyMode,
       controller: new AbortController(), frame: 0, started: false,
-      user: { role: "user", content: text || "请分析我上传的文件。" },
+      user: { role: "user", content: text || "请分析我上传的文件。", clientReplyId: `question-${nextStudyReplyId + 1}`, attachments: previews },
       assistant: { role: "assistant", content: "", clientReplyId: `reply-${++nextStudyReplyId}`, pending: true, phase: files.length ? "reading" : "preparing" }
     };
     studyReplies.set(reply.key, reply);
@@ -621,6 +651,7 @@
         const data = await response.json();
         if (data.messages?.length !== 2) throw new Error("没有收到完整回复，请重试。");
         Object.assign(reply.user, data.messages[0]);
+        reply.userNeedsRender = true;
         Object.assign(reply.assistant, data.messages[1]);
         reply.started = true;
         completed = true;
@@ -629,6 +660,7 @@
           const packet = JSON.parse(data);
           if (event === "start") {
             Object.assign(reply.user, packet.message);
+            reply.userNeedsRender = true;
             reply.started = true;
           }
           if (event === "status" && replyPhases[packet.phase]) reply.assistant.phase = packet.phase;
@@ -637,7 +669,7 @@
             reply.assistant.phase = "writing";
           }
           if (event === "done" || event === "error") {
-            if (packet.messages?.[0]) { Object.assign(reply.user, packet.messages[0]); reply.started = true; }
+            if (packet.messages?.[0]) { Object.assign(reply.user, packet.messages[0]); reply.userNeedsRender = true; reply.started = true; }
             if (packet.messages?.[1]) Object.assign(reply.assistant, packet.messages[1]);
             if (event === "error") throw new Error(packet.error || "回复已中断，请重试。");
             completed = true;
@@ -667,6 +699,7 @@
       cancelAnimationFrame(reply.frame);
       reply.frame = 0;
       updateStudyReply(reply);
+      previewUrls.forEach((url) => URL.revokeObjectURL(url));
       // Before the server accepts a request there may be no reply bubble to patch.
       if (!reply.started && studyReplyKey() === reply.key) render();
     }
@@ -1390,6 +1423,7 @@
     const action = button.dataset.action;
     if (!action) return;
     try {
+      if (action === "view-chat-image") { showChatImage(button.dataset.imageUrl, button.dataset.imageName); return; }
       if (action.startsWith("creative-")) { await creativeTools.handle(button, creativeContext()); return; }
       if (action === "cheatsheet-pdf") {
         if (isGeneralChat() || !state.activeCourseId) throw new Error("请先选择课程。");

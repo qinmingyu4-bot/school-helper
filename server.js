@@ -827,6 +827,30 @@ function chatAttachmentLabel(attachments = []) {
   return "\n\nAttachments:\n" + attachments.map((item) => `- ${item.name} (${item.kind}${item.mime ? `, ${item.mime}` : ""})`).join("\n");
 }
 
+function chatAttachmentMetadata(courseId, reference, attachments) {
+  return attachments.map((item, index) => ({
+    name: item.name, kind: item.kind, mime: item.mime, size: item.size,
+    ...(item.kind === "image" && /^data:image\/(png|jpeg|webp|gif|avif|bmp);base64,/i.test(item.dataUrl || "")
+      ? { url: `/api/courses/${encodeURIComponent(courseId)}/attachments/${encodeURIComponent(reference)}?index=${index}` } : {})
+  }));
+}
+
+async function chatMessagesForDisplay(userId, courseId) {
+  const messages = await db.listMessages(userId, courseId);
+  const missing = messages.filter((item) => item.role === "user" && !item.attachments && String(item.content).includes("\n\nAttachments:\n"));
+  if (!missing.length) return messages;
+  // Older retained uploads already encode their originating message ID.
+  const groups = await db.listChatAttachmentGroups(userId, courseId);
+  return messages.map((item) => {
+    if (!missing.includes(item)) return item;
+    const group = groups.find((entry) => entry.id.endsWith(`#${item.id}`));
+    if (!group) return item;
+    const label = chatAttachmentLabel(group.attachments);
+    return { ...item, displayText: item.content.endsWith(label) ? item.content.slice(0, -label.length) : item.content,
+      attachments: chatAttachmentMetadata(courseId, group.id, group.attachments) };
+  });
+}
+
 function buildUserPromptContent(text, attachments = []) {
   const context = formatAttachmentContext(attachments);
   const promptText = context ? `${text}\n\nAttached files:\n${context}` : text;
@@ -1411,8 +1435,8 @@ async function streamCourseChat(req, res, context) {
   const timeout = setTimeout(() => controller.abort(new Error("AI reply timed out.")), 180000);
   try {
     const messageId = createId("msg");
-    await db.saveChatAttachments(user.id, course.id, messageId, attachments);
-    userMessage = await db.createMessage({ id: messageId, userId: user.id, courseId: course.id, role: "user", content: `${message}${chatAttachmentLabel(attachments)}`, mode });
+    const attachmentRef = await db.saveChatAttachments(user.id, course.id, messageId, attachments);
+    userMessage = await db.createMessage({ id: messageId, userId: user.id, courseId: course.id, role: "user", content: `${message}${chatAttachmentLabel(attachments)}`, displayText: message, ...(attachmentRef ? { attachments: chatAttachmentMetadata(course.id, attachmentRef, attachments) } : {}), mode });
     send("start", { message: userMessage });
     controller.signal.throwIfAborted();
     const { prompt, model } = await studyAnswerContext(context);
@@ -2716,7 +2740,26 @@ if (directMessageMatch && method === "POST") {
     }
 
     if (child === "messages" && method === "GET") {
-      return sendJson(res, 200, { messages: await db.listMessages(user.id, courseId) });
+      return sendJson(res, 200, { messages: await chatMessagesForDisplay(user.id, courseId) });
+    }
+    if (child === "attachments" && childId && method === "GET") {
+      let reference;
+      try { reference = decodeURIComponent(childId); } catch { return sendError(res, 400, "Invalid attachment reference."); }
+      const index = url.searchParams.get("index");
+      if (!reference.startsWith("CHAT#") || reference.length > 200 || !/^\d{1,2}$/.test(index || "")) return sendError(res, 404, "Attachment not found.");
+      let attachments;
+      try { attachments = await db.readMaterial(user.id, courseId, reference); } catch { return sendError(res, 404, "Attachment not found."); }
+      const attachment = Array.isArray(attachments) ? attachments[Number(index)] : null;
+      const match = attachment?.kind === "image" && String(attachment.dataUrl || "").match(/^data:(image\/(?:png|jpeg|webp|gif|avif|bmp));base64,([A-Za-z0-9+/=\r\n]+)$/i);
+      if (!match) return sendError(res, 404, "Image preview is unavailable.");
+      const bytes = Buffer.from(match[2], "base64");
+      res.writeHead(200, {
+        "content-type": match[1].toLowerCase(), "content-length": bytes.length,
+        "cache-control": "private, no-store", "x-content-type-options": "nosniff",
+        "content-security-policy": "default-src 'none'; sandbox",
+        "content-disposition": `inline; filename*=UTF-8''${encodeURIComponent(attachment.name)}`
+      });
+      return res.end(bytes);
     }
     if (child === "chat" && method === "POST") {
       const body = await readJson(req);
@@ -2728,8 +2771,8 @@ if (directMessageMatch && method === "POST") {
       const context = { user, course, message, mode, attachments };
       if (body.stream === true) return streamCourseChat(req, res, context);
       const messageId = createId("msg");
-      await db.saveChatAttachments(user.id, courseId, messageId, attachments);
-      const userMessage = await db.createMessage({ id: messageId, userId: user.id, courseId, role: "user", content: `${message}${chatAttachmentLabel(attachments)}`, mode });
+      const attachmentRef = await db.saveChatAttachments(user.id, courseId, messageId, attachments);
+      const userMessage = await db.createMessage({ id: messageId, userId: user.id, courseId, role: "user", content: `${message}${chatAttachmentLabel(attachments)}`, displayText: message, ...(attachmentRef ? { attachments: chatAttachmentMetadata(course.id, attachmentRef, attachments) } : {}), mode });
       const { prompt, model: selectedModel } = await studyAnswerContext(context);
       const aiContent = await callAi(prompt, selectedModel);
       const assistantMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId, role: "assistant", content: aiContent, mode });

@@ -90,6 +90,15 @@ Existing saved document text remains compatible, but text previously discarded
 and old chat attachments previously saved only as filenames cannot be recovered;
 upload those originals again to enable complete-source follow-ups.
 
+User messages display uploaded image thumbnails and filenames alongside the
+question, with click-to-enlarge previews and keyboard dismissal. Local previews
+appear immediately on send; saved previews survive reload and a new login.
+Chat-history responses contain attachment metadata and account/course-scoped
+image URLs, not image data or extracted attachment text. Image responses require
+the owner's session and disable caching. Existing retained attachment groups are
+matched to their original message IDs when displaying older history; filename-only
+uploads whose bytes were never saved still require re-upload.
+
 Study replies use an authenticated POST to `/api/courses/:id/chat` with
 `stream: true`. The server forwards only answer text, not internal reasoning,
 through SSE `status`, `start`, `delta`, `done`, and `error` events. Activity states

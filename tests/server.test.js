@@ -526,7 +526,58 @@ test("account, course, upload, and persistence health check", { timeout: 40000 }
     const other = await request("/api/courses", { method: "POST", cookie, body: { name: "Isolated" } });
     const isolated = await request(`/api/courses/${other.data.course.id}/chat`, { method: "POST", cookie, body: { message: "Continue the previous attachment" } });
     assert.ok(!isolated.data.messages[1].content.includes("LATE_ATTACHMENT_EVIDENCE"));
-    assert.ok(!(await request(`${route}/messages`, { cookie })).data.messages.some((item) => item.attachments || item.dataUrl), "attachment payloads must not leak into history responses");
+    for (const item of (await request(`${route}/messages`, { cookie })).data.messages) {
+      assert.equal(item.dataUrl, undefined);
+      for (const attachment of item.attachments || []) {
+        assert.equal(attachment.dataUrl, undefined);
+        assert.equal(attachment.text, undefined);
+      }
+    }
+  });
+
+  await t.test("image history retains private previews through streams, restart and legacy backfill", async () => {
+    const cookie = (await request("/api/auth/login", { method: "POST", body: { email: "alice@example.test", password: "HealthCheck-Password-123!" } })).cookie;
+    const id = (await request("/api/courses", { method: "POST", cookie, body: { name: "Picture history" } })).data.course.id;
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aOZkAAAAASUVORK5CYII=", "base64");
+    const response = await fetch(base + `/api/courses/${id}/chat`, { method: "POST", headers: { "content-type": "application/json", cookie }, body: JSON.stringify({ message: "怎么做", stream: true, attachments: [{ name: "题目.png", kind: "image", mime: "image/png", dataUrl: `data:image/png;base64,${png.toString("base64")}` }] }) });
+    const packets = [];
+    await readEvents(response, ({ event, data }) => packets.push({ event, ...JSON.parse(data) }));
+    const startPacket = packets.find((packet) => packet.event === "start");
+    const done = packets.find((packet) => packet.event === "done");
+    assert.ok(done);
+    assert.equal(startPacket.message.displayText, "怎么做");
+    assert.equal(startPacket.message.attachments[0].name, "题目.png");
+    assert.equal(startPacket.message.attachments[0].dataUrl, undefined);
+    const imageUrl = startPacket.message.attachments[0].url;
+    async function checkImage() {
+      const result = await fetch(base + imageUrl, { headers: { cookie } });
+      assert.equal(result.status, 200);
+      assert.equal(result.headers.get("content-type"), "image/png");
+      assert.match(result.headers.get("cache-control"), /no-store/);
+      assert.deepEqual(Buffer.from(await result.arrayBuffer()), png);
+    }
+    await checkImage();
+    assert.equal((await fetch(base + imageUrl)).status, 401);
+    assert.equal((await fetch(base + imageUrl, { headers: { cookie: bob.cookie } })).status, 404);
+    assert.equal((await fetch(base + imageUrl.replace("index=0", "index=99"), { headers: { cookie } })).status, 404);
+    await stop();
+    await start({ fakeAi: true });
+    assert.equal((await request(`/api/courses/${id}/messages`, { cookie })).data.messages[0].attachments[0].url, imageUrl);
+    await checkImage();
+    // Pre-preview releases saved the bytes and message association, but no card metadata.
+    await stop();
+    const file = path.join(directory, "database.json");
+    const state = JSON.parse(await fs.readFile(file, "utf8"));
+    delete state.messages[startPacket.message.id].attachments;
+    delete state.messages[startPacket.message.id].displayText;
+    await fs.writeFile(file, JSON.stringify(state));
+    await start({ fakeAi: true });
+    const restored = (await request(`/api/courses/${id}/messages`, { cookie })).data.messages[0];
+    assert.equal(restored.displayText, "怎么做");
+    assert.equal(restored.attachments[0].url, imageUrl);
+    await checkImage();
+    await request(`/api/courses/${id}`, { method: "DELETE", cookie });
+    assert.equal((await fetch(base + imageUrl, { headers: { cookie } })).status, 404);
   });
 
   const streamingCookie = (await request("/api/auth/login", { method: "POST", body: { email: "alice@example.test", password: "HealthCheck-Password-123!" } })).cookie;

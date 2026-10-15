@@ -2,6 +2,10 @@
 
 ## 2026-10-15
 
+- Display uploaded question images and filenames in the student's own message bubbles, including immediate local previews, lazy-loaded saved previews, and click-to-enlarge dialogs. Refresh and re-login retain the original question image for comparison with its answer; other attachments show filename cards.
+- Serve saved images through authenticated account/course-scoped endpoints with no-store responses and safe raster MIME types. History carries metadata only. Backfill previews for older retained uploads using their originating message IDs without rewriting historical messages; deleting a course removes access to its images.
+- All 83 tests and 107-file source checks passed, including stream metadata, image bytes, restart persistence, legacy backfill, invalid/external preview URLs, unauthorized access, and deletion. Verified the reported picture through the actual input uploader, refresh, enlargement, and logout/login in an isolated local browser. Not deployed to AWS.
+
 - Improve academic problem explanations across all seven learning modes: short solve requests now ask for concept definitions, interpretation of given facts and diagrams, justified steps, a concrete calculation when helpful, and a clear conclusion/takeaway. Preserve explicit brevity, hint-only, interactive quiz, cheatsheet and cram limits, language preferences, and general-chat separation.
 - Route current/retained problem images with short solve requests to Sol, including follow-up questions, while preserving Luna for photo descriptions and everyday questions. Remove the blanket preference for concise solution steps.
 - All 80 automated tests and 105-file checks passed. A live, same-model comparison using the reported slope-field image verified that the revised prompt explains axes, segment slopes, the negative derivative, the H=50 substitution, and why solving H(t) is unnecessary. Prepared on a task branch; not deployed to AWS.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-15
+
+- Improve academic problem explanations across all seven learning modes: short solve requests now ask for concept definitions, interpretation of given facts and diagrams, justified steps, a concrete calculation when helpful, and a clear conclusion/takeaway. Preserve explicit brevity, hint-only, interactive quiz, cheatsheet and cram limits, language preferences, and general-chat separation.
+- Route current/retained problem images with short solve requests to Sol, including follow-up questions, while preserving Luna for photo descriptions and everyday questions. Remove the blanket preference for concise solution steps.
+- All 80 automated tests and 105-file checks passed. A live, same-model comparison using the reported slope-field image verified that the revised prompt explains axes, segment slopes, the negative derivative, the H=50 substitution, and why solving H(t) is unnecessary. Prepared on a task branch; not deployed to AWS.
+
 ## 2026-10-13
 
 - Updated to `1.1.74`: connected course Cheatsheet conversations to a real PDF workspace. Carry over the current request/uploads and recent course guidance; adjust content, A4/Letter paper, orientation, single/double-sided sheets, columns, minimum text size, margins and monochrome output. Preserve course-scoped drafts/history and earlier versions; offer previews, downloads and authenticated native PDF-viewer printing.

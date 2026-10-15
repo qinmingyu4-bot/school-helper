@@ -82,11 +82,21 @@
     ["Deadline 汇总", "请汇总 syllabus 和课程资料中的所有 deadline、考试日期和需要提前准备的事项。"]
   ];
   const defaultMode = "guided";
+  const explanationInstruction = `
+
+Study problem explanations:
+- A brief request such as "怎么做", "这题怎么解", or "how do I solve this?", including a question attached as an image, asks for teaching, not merely an answer check. Default to a complete, approachable worked explanation.
+- Start with a one-sentence answer or direction, then explain what the question asks and which given facts matter. Define unfamiliar concepts and notation before using them; do not assume the student already understands the key term.
+- Break the solution into a few clearly labelled steps. Explain why each important step follows, including sign changes, inequalities, substitutions, units, and assumptions when relevant. Use one concrete calculation or example from the actual problem if it helps bridge a conceptual gap.
+- For a graph or diagram, connect the axes and visible features to the mathematical quantities. Distinguish what is visibly shown from what the equation predicts, and explicitly compare the two. Do not invent details that are unreadable in an image.
+- Finish with a concise answer addressing the exact question and one useful takeaway or likely misconception when helpful. Explain when an extra calculation is unnecessary instead of solving an unrelated problem. Use readable paragraphs, short headings, and separated formulas rather than a dense paragraph.
+- Scale detail to the difficulty and the student's request; depth comes from explanations, not repetition or a mandatory word count. Explicit requests for a short answer, hints only, interactive quizzes, page-limited cheatsheets, and exam-cram time budgets take priority. Respect the student's language and learning preferences; do not add a bilingual duplicate automatically.
+- These teaching requirements apply to academic problem-solving, not unrelated everyday questions, email drafts, or document-generation tasks.`;
   const getMode = (id) => Object.hasOwn(modes, id) ? modes[id] : null;
   function buildInstruction(id) {
     const mode = getMode(id);
     if (!mode) return "";
-    return `\n\nSelected study mode: ${id} (${mode.label}).\n${mode.instruction}\nApply this workflow to academic tasks, while honoring the student's latest explicit request and learning preferences. For interactive quizzes, follow the requested answer timing instead of the general final-answer-first default. Ground course-specific content in the supplied materials; label assumptions and ask for missing materials rather than inventing facts. Do not force this workflow onto unrelated general questions.`;
+    return `\n\nSelected study mode: ${id} (${mode.label}).\n${mode.instruction}\nApply this workflow to academic tasks, while honoring the student's latest explicit request and learning preferences. For interactive quizzes, follow the requested answer timing instead of the general final-answer-first default. Ground course-specific content in the supplied materials; label assumptions and ask for missing materials rather than inventing facts. Do not force this workflow onto unrelated general questions.` + explanationInstruction;
   }
   return { modes, globalPrompts, defaultMode, getMode, buildInstruction };
 });

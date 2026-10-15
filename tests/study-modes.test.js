@@ -30,3 +30,15 @@ test("non-study and inherited keys do not acquire academic workflows", () => {
     assert.equal(config.buildInstruction(id), "");
   }
 });
+
+test("all learning modes teach short problem requests while preserving explicit limits", () => {
+  for (const mode of Object.keys(config.modes)) {
+    const instruction = config.buildInstruction(mode);
+    assert.ok(instruction.includes('"怎么做"'));
+    assert.ok(instruction.includes("Define unfamiliar concepts and notation"));
+    assert.ok(instruction.includes("explicitly compare the two"));
+    assert.ok(instruction.includes("short answer, hints only, interactive quizzes"));
+    assert.ok(instruction.includes("page-limited cheatsheets"));
+    assert.ok(instruction.includes("not unrelated everyday questions"));
+  }
+});

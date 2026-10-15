@@ -3,6 +3,16 @@ const { test } = require("node:test");
 const { selectAiModel } = require("../lib/ai-routing");
 const models = { simpleModel: "gpt-6-luna", complexModel: "gpt-6.1-sol" };
 
+test("short help requests about current or retained problem images use Sol", () => {
+  const image = { kind: "image", name: "problem.png" };
+  assert.equal(selectAiModel({ mode: "guided", message: "怎么做", attachments: [image] }, models), models.complexModel);
+  assert.equal(selectAiModel({ mode: "guided", message: "这题怎么解", savedAttachments: [image] }, models), models.complexModel);
+  assert.equal(selectAiModel({ mode: "guided", message: "How do I solve this?", attachments: [image] }, models), models.complexModel);
+  assert.equal(selectAiModel({ mode: "guided", message: "为什么这一步成立", savedAttachments: [image], history: [{ role: "user", mode: "guided", content: "怎么做" }] }, models), models.complexModel);
+  assert.equal(selectAiModel({ mode: "guided", message: "描述这张照片", attachments: [image] }, models), models.simpleModel);
+  assert.equal(selectAiModel({ mode: "guided", message: "番茄炒鸡蛋怎么做", savedAttachments: [image] }, models), models.simpleModel);
+});
+
 test("complex tasks always choose Sol instead of a random percentage", () => {
   for (let i = 0; i < 100; i++) {
     assert.equal(selectAiModel({ message: "请推导利润最大化的一阶条件", mode: "guided" }, models), models.complexModel);

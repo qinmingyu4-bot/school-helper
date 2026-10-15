@@ -62,6 +62,14 @@ switching modes leaves drafts, attachments, and the current reading position int
 Course materials, account learning preferences, and the latest explicit request
 continue to guide the AI response.
 
+For academic problem-solving, a short request such as “怎么做” now defaults to a
+worked teaching explanation: introduce the necessary concept, interpret the given
+facts/diagram, explain the important steps, and state the conclusion and a useful
+takeaway. Explicit short-answer, hints-only, quiz, cheatsheet, and cram constraints
+still take priority. Current or retained problem images paired with a solve/help
+request select the complex model; ordinary photo descriptions and everyday
+questions remain eligible for Luna.
+
 All seven modes search the complete extracted text of every material in the
 current course and every chat attachment saved in that course. Small collections
 are supplied in full; larger collections use question- and recent-conversation-

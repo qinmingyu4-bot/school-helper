@@ -837,29 +837,42 @@
 
   function communityPage() {
     const data = state.community;
+    const posts = data?.posts || [];
+    const channel = state.communityChannel;
+    const channelName = channel === "school" ? profile().school || "学校社区" : channel === "major" ? profile().major || "专业社区" : "全部社区";
+    const conversationIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l-3 3V11.5A7.5 7.5 0 0 1 9.5 4h3a7.5 7.5 0 0 1 7.5 7.5Z"/><path d="M7 10h8M7 14h5"/></svg>`;
     return `
-      ${pageHeader("COMMUNITY", "社区", "所有人都能看全部社区，也可以切到你的学校或专业频道。")}
-      <section class="card">
-        <div class="tabs">
-          ${["all", "school", "major"].map((channel) => `<button class="${state.communityChannel === channel ? "active" : ""}" data-action="community-channel" data-channel="${channel}">${channel === "all" ? "全部社区" : channel === "school" ? "学校社区" : "专业社区"}</button>`).join("")}
-        </div>
-        <div class="inline-fields">
-          <input id="postTopic" placeholder="主题，例如 ECO101 / 选课 / 作业">
-          <label class="check"><input id="postAnon" type="checkbox">匿名</label>
-        </div>
-        <textarea id="postContent" placeholder="写下你想问或分享的内容"></textarea>
-        <button class="primary" data-action="community-post">发布</button>
-      </section>
-      <section class="list">
-        ${(data?.posts || []).length ? data.posts.map((post) => `
-          <article class="card post">
-            <div><b>${esc(post.topic)}</b><span>${esc(post.channelLabel || "")}</span></div>
-            <div class="formatted-text">${formatText(post.content)}</div>
-            <small>${esc(post.authorName)} · ${esc(formatDate(post.createdAt))}</small>
-            <button data-action="community-like" data-id="${esc(post.id)}">赞 ${post.likeCount || 0}</button>
-          </article>
-        `).join("") : `<p class="empty">这个频道还没有内容。</p>`}
-      </section>
+      ${pageHeader("COMMUNITY", "社区", "与同学交流想法，一起找到答案。")}
+      <div class="community-layout">
+        <section class="community-discussions" aria-labelledby="communityFeedTitle">
+          <div class="community-intro"><span class="community-kicker">一起学习 · 一起交流</span><h2>在这里，遇见同路的同学</h2><p>聊聊选课、分享经验，或把卡住你的问题交给大家。</p></div>
+          <nav class="community-tabs" aria-label="社区频道">
+            ${["all", "school", "major"].map((item) => `<button type="button" class="${channel === item ? "active" : ""}" aria-pressed="${channel === item}" data-action="community-channel" data-channel="${item}">${item === "all" ? "全部社区" : item === "school" ? "学校社区" : "专业社区"}</button>`).join("")}
+          </nav>
+          <div class="community-feed-heading"><h3 id="communityFeedTitle">${esc(channelName)}</h3><span>${posts.length} 条讨论</span></div>
+          <div class="community-feed">
+            ${posts.length ? posts.map((post) => `
+              <article class="community-post">
+                <div class="community-post-meta"><span class="community-avatar" aria-hidden="true">${esc((post.authorName || "同").slice(0, 1))}</span><div><b>${esc(post.authorName)}</b><time datetime="${esc(post.createdAt)}">${esc(formatDate(post.createdAt))}</time></div><span class="community-channel-badge">${esc(post.channelLabel || "全部社区")}</span></div>
+                <h4>${esc(post.topic)}</h4>
+                <div class="formatted-text">${formatText(post.content)}</div>
+                <footer><button type="button" class="community-like ${post.likedByMe ? "is-liked" : ""}" aria-pressed="${Boolean(post.likedByMe)}" aria-label="${post.likedByMe ? "取消赞同" : "赞同"}" data-action="community-like" data-id="${esc(post.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11H3V10h4Zm0 0 5-7c2 0 3 1 2 4l-1 3h5a2 2 0 0 1 2 2l-1 7a2 2 0 0 1-2 2H7"/></svg>赞同 <span>${post.likeCount || 0}</span></button></footer>
+              </article>`).join("") : `<div class="community-empty"><span class="community-empty-icon">${conversationIcon}</span><h4>第一条讨论，从你开始</h4><p>这里还没有讨论。一个问题、一点经验，<br>都可能成为帮助同学的开始。</p><div class="community-topic-hints"><span>选课交流</span><span>作业求助</span><span>学习搭子</span></div><button type="button" data-action="community-compose">发起第一条讨论 <span aria-hidden="true">↗</span></button></div>`}
+          </div>
+        </section>
+        <aside class="community-compose-column" aria-labelledby="communityComposeTitle">
+          <section class="community-composer-card">
+            <div class="community-compose-heading"><span>${conversationIcon}</span><div><h3 id="communityComposeTitle">发起讨论</h3><p>让交流从一个想法开始</p></div></div>
+            <div class="community-destination"><span>发布到</span><strong>${esc(channelName)}</strong></div>
+            <label for="postTopic">讨论主题</label>
+            <input id="postTopic" maxlength="40" placeholder="例如 ECO101 / 选课建议">
+            <label for="postContent">想和大家聊什么？</label>
+            <textarea id="postContent" maxlength="1600" placeholder="写下你的问题，或分享一段学习经验……"></textarea>
+            <div class="community-compose-footer"><label class="community-anonymous"><input id="postAnon" type="checkbox">匿名发布</label><button type="button" class="primary" data-action="community-post">发布讨论 <span aria-hidden="true">↗</span></button></div>
+          </section>
+          <p class="community-guidance">友善交流，尊重每一种声音。<br>分享时请留意自己和他人的隐私。</p>
+        </aside>
+      </div>
     `;
   }
 
@@ -1666,6 +1679,11 @@
         state.user = data.user;
         setToast("资料已保存。");
         await loadPage("profile");
+        return;
+      }
+      if (action === "community-compose") {
+        $("postTopic")?.focus();
+        $("postTopic")?.scrollIntoView({ behavior: "smooth", block: "center" });
         return;
       }
       if (action === "community-channel") {

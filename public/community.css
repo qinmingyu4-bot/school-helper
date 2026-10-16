@@ -1,0 +1,78 @@
+.community-layout {
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  padding: 36px 32px 56px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 350px;
+  align-items: start;
+  gap: 32px;
+}
+.community-layout > *, .community-post-meta > div { min-width: 0; }
+.community-intro { margin-bottom: 28px; }
+.community-kicker { color: var(--green); font-size: 12px; font-weight: 600; letter-spacing: .08em; }
+.community-intro h2 { margin: 10px 0; font-size: clamp(21px, 2vw, 27px); line-height: 1.5; letter-spacing: -.025em; }
+.community-intro p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.8; }
+.community-tabs { display: flex; gap: 6px; padding: 5px; border: 1px solid #dae4eb; border-radius: 12px; background: #e8eff3; }
+.community-tabs button { flex: 1; padding: 11px 8px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--muted); font-size: 14px; white-space: nowrap; }
+.community-tabs button.active { background: white; color: #216653; border-color: #d7e5df; box-shadow: 0 2px 5px #173b3210; }
+.community-tabs button:hover { color: #216653; }
+.community-feed-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; margin: 26px 0 14px; }
+.community-feed-heading h3 { margin: 0; font-size: 16px; overflow-wrap: anywhere; }
+.community-feed-heading > span { flex-shrink: 0; color: var(--muted); font-size: 12px; }
+.community-feed { display: grid; gap: 16px; }
+.community-empty, .community-post, .community-composer-card { border: 1px solid #dce5ed; border-radius: 16px; background: #fff; box-shadow: 0 6px 24px #18384c04; }
+.community-empty { padding: 48px 20px; text-align: center; background: radial-gradient(ellipse at 50% 0, #eff8f4, transparent 65%), #fff; }
+.community-empty-icon { display: grid; place-items: center; width: 64px; height: 64px; margin: 0 auto 20px; border-radius: 20px; background: #e4f1ea; color: #377a64; transform: rotate(-6deg); }
+.community-empty-icon svg { width: 30px; height: 30px; }
+.community-empty h4 { margin: 0 0 10px; font-size: 18px; }
+.community-empty p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.9; }
+.community-topic-hints { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 22px 0; }
+.community-topic-hints span { padding: 5px 10px; border-radius: 6px; background: #f2f6f8; color: var(--muted); font-size: 12px; }
+.community-empty > button { border-color: #c7ded3; color: #286d57; background: #f8fcfa; font-size: 13px; }
+.community-compose-column { position: sticky; top: 24px; }
+.community-composer-card { display: grid; gap: 10px; padding: 24px; }
+.community-compose-heading { display: flex; align-items: center; gap: 12px; }
+.community-compose-heading > span { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: 12px; color: #2c8067; background: #edf6f1; }
+.community-compose-heading svg { width: 23px; height: 23px; }
+.community-compose-heading h3 { margin: 0; font-size: 18px; }
+.community-compose-heading p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+.community-destination { display: flex; align-items: baseline; gap: 12px; margin: 10px 0 8px; padding: 12px; border-radius: 8px; background: #f3f7f9; font-size: 12px; }
+.community-destination > span { color: var(--muted); flex-shrink: 0; }
+.community-destination strong { font-weight: 600; overflow-wrap: anywhere; }
+.community-composer-card > label { margin-top: 6px; color: var(--ink); font-size: 13px; }
+.community-composer-card input, .community-composer-card textarea { font-size: 13px; border-color: #dce5ed; line-height: 1.7; }
+.community-composer-card input::placeholder, .community-composer-card textarea::placeholder { color: #8292a5; }
+.community-composer-card textarea { min-height: 176px; }
+.community-layout input:focus-visible, .community-layout textarea:focus-visible, .community-layout button:focus-visible { outline: 2px solid #2c8067; outline-offset: 3px; }
+.community-compose-footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 8px; padding-top: 18px; border-top: 1px solid #edf1f5; }
+.community-anonymous { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; cursor: pointer; }
+.community-anonymous input { width: 15px; height: 15px; margin: 0; accent-color: var(--green); }
+.community-compose-footer button { padding: 10px 14px; font-size: 13px; }
+.community-guidance { margin: 16px 12px 0; color: var(--muted); font-size: 12px; line-height: 1.9; }
+.community-post { padding: 24px; overflow-wrap: anywhere; }
+.community-post-meta { display: flex; align-items: center; gap: 10px; }
+.community-avatar { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; color: #326f5b; background: #eaf3ee; font-weight: 600; font-size: 14px; }
+.community-post-meta b { display: block; font-size: 13px; }
+.community-post-meta time { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
+.community-channel-badge { max-width: 42%; margin-left: auto; padding: 5px 8px; border-radius: 6px; background: #f2f6f8; color: var(--muted); font-size: 11px; }
+.community-post h4 { margin: 20px 0 10px; font-size: 17px; line-height: 1.6; }
+.community-post .formatted-text { color: #40546c; font-size: 14px; line-height: 1.9; }
+.community-post footer { margin-top: 20px; padding-top: 14px; border-top: 1px solid #edf1f5; }
+.community-like { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; color: var(--muted); font-size: 12px; border-color: transparent; background: #f5f8fa; }
+.community-like svg { width: 16px; height: 16px; }
+.community-like.is-liked { color: #216653; background: #eaf5ef; }
+@media (max-width: 1100px) {
+  .community-layout { grid-template-columns: minmax(0, 1fr) 310px; gap: 20px; padding: 28px 24px 44px; }
+  .community-composer-card { padding: 20px; }
+}
+@media (max-width: 760px) {
+  .community-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; padding: 24px 16px 36px; }
+  .community-compose-column { position: static; }
+  .community-intro { margin-bottom: 22px; }
+  .community-empty { padding: 32px 16px; }
+  .community-post { padding: 20px; }
+}
+@media (min-width: 901px) and (max-width: 1040px) {
+  .community-layout { grid-template-columns: minmax(0, 1fr); }
+  .community-compose-column { position: static; }
+}

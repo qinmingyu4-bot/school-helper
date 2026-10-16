@@ -2,6 +2,10 @@
 
 ## 2026-10-16
 
+- Redesign Community with a centered, spacious discussion feed on the left and a separate sticky composer on the right. Stack discussions above composing on phones and in narrow workspaces; add channel navigation, school/major destination labels, author/channel metadata, visible like states, and an illustrated empty state linking to the composer.
+- Add scoped community styling, accessible input labels and focus indicators, and input limits matching the posting API. Preserve existing publishing, anonymous posting, channel filtering and like/unlike endpoints; refresh the app asset cache key.
+- Verified local Chrome layouts at 1440px, 1100px, 980px, 390px and 320px without horizontal overflow, plus empty-state focus, channel switching, regular/anonymous posting, and like/unlike. All 24 server integration checks and 115-file syntax/entry-asset checks passed. Prepared on `design/community-layout` for review; not deployed to AWS.
+
 - Prepare user-authorized `1.1.78` main/AWS release combining formula rendering (`e023e4c`) with clearer default study explanations. Preserve `fabeba9` (`1.1.77`) as the rollback target; deployment and live verification follow the main push.
 - Teach each academic part in goal/method/reason/worked-calculation/answer order, including beginner-relevant intermediate steps, coefficient/exponent changes, substitutions, derivative rules and limit/bound evaluation. Keep conceptual explanations relevant and honor explicit answer-only, brevity, hints, quizzes, print constraints and time budgets.
 - Apply Learning Style without reducing explanation depth. Bilingual solutions now teach each part in Chinese before its English answer, rather than listing all final answers first. Recognize image tutoring requests including `teach me`, `walk me through this` and `教我` as complex tasks while preserving ordinary Luna routing.

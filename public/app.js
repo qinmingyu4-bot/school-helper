@@ -338,12 +338,12 @@
             <div class="cover" style="${p.backgroundUrl ? `background-image:url('${esc(p.backgroundUrl)}')` : ""}">
               ${p.avatarUrl ? `<img src="${esc(p.avatarUrl)}" alt="">` : `<b>${esc(initials(state.user.name))}</b>`}
             </div>
-            <div>
+            <div class="profile-card-info">
               <h3>${esc(state.user.name)}</h3>
               <p>${esc([p.school, p.major].filter(Boolean).join(" · ") || "完善学校和专业")}</p>
               <strong>SB ID: ${esc(profileSbId() || "未设置")}</strong>
             </div>
-            <span>打开</span>
+            <span class="profile-card-arrow" aria-hidden="true">↗</span>
           </button>
           <nav class="side-nav">${userNav}</nav>
         ` : ""}
@@ -772,30 +772,45 @@
     const p = profile();
     return `
       ${pageHeader("PERSONAL PROFILE", "个人资料", "头像、背景、学校、专业和 SB ID 都在这里管理。")}
-      <section class="two-col">
+      <section class="profile-layout">
+        <div class="profile-overview">
         <article class="profile-preview card">
           <div class="cover large" style="${p.backgroundUrl ? `background-image:url('${esc(p.backgroundUrl)}')` : ""}">
             ${p.avatarUrl ? `<img src="${esc(p.avatarUrl)}" alt="">` : `<b>${esc(initials(state.user.name))}</b>`}
           </div>
-          <h2>${esc(state.user.name)}</h2>
-          <p>${esc([p.school, p.major].filter(Boolean).join(" · ") || "还没有填写学校和专业")}</p>
-          <strong>SB ID: ${esc(profileSbId() || "未设置")}</strong>
-          ${schoolInfoHtml(p.school)}
+          <div class="profile-identity">
+            <h2>${esc(state.user.name)}</h2>
+            <p>${esc(p.school || "还没有填写学校")}</p>
+            <p class="profile-major">${esc(p.major || "还没有填写专业")}</p>
+            <span class="profile-id">SB ID <strong>${esc(profileSbId() || "未设置")}</strong></span>
+          </div>
         </article>
-        <article class="card">
-          <h2>编辑资料</h2>
+        ${schoolInfoHtml(p.school)}
+        </div>
+        <article class="card profile-editor">
+          <header class="profile-editor-heading"><h2>编辑资料</h2><p>让同学更容易认识你。</p></header>
+          <section class="profile-form-section">
+          <h3>基本信息</h3>
+          <div class="profile-fields">
           <label>姓名<input id="profileName" value="${esc(state.user.name)}"></label>
           <label>学校<input id="profileSchool" list="schoolOptions" value="${esc(p.school || "")}"></label>
           <datalist id="schoolOptions">${schoolOptions().map((item) => `<option value="${esc(item)}"></option>`).join("")}</datalist>
           <label>专业<input id="profileMajor" list="majorOptions" value="${esc(p.major || "")}"></label>
           <datalist id="majorOptions">${["Finance", "Economics", "Business", "Computer Science", "Engineering", "Nursing", "Mathematics", "Statistics", "Psychology", "Biology"].map((item) => `<option value="${item}"></option>`).join("")}</datalist>
           <label>SB ID<input id="profileSbId" value="${esc(profileSbId())}" placeholder="例如 adam2026"></label>
-          <label>头像图片上传<input id="profileAvatarFile" type="file" accept="image/*"></label>
+          </div>
+          </section>
+          <section class="profile-form-section">
+          <h3>头像与封面</h3>
+          <div class="profile-uploads">
+          <label>头像<input id="profileAvatarFile" type="file" accept="image/*"></label>
           <input id="profileAvatar" type="hidden" value="${esc(p.avatarUrl || "")}">
-          <label>背景图片上传<input id="profileCoverFile" type="file" accept="image/*"></label>
+          <label>封面<input id="profileCoverFile" type="file" accept="image/*"></label>
           <input id="profileCover" type="hidden" value="${esc(p.backgroundUrl || "")}">
-          <p class="muted small">&#36873;&#25321;&#22270;&#29255;&#21518;&#28857;&#20987;&#20445;&#23384;&#65307;&#19981;&#36873;&#20250;&#20445;&#30041;&#24403;&#21069;&#22270;&#29255;&#12290;</p>
-          <button class="primary wide" data-action="save-profile">保存资料</button>
+          </div>
+          <p class="profile-upload-note">选择图片后保存，未选择的图片会保留。</p>
+          </section>
+          <footer class="profile-editor-footer"><button class="primary" data-action="save-profile">保存资料</button></footer>
         </article>
       </section>
     `;

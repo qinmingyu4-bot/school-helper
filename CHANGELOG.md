@@ -2,6 +2,9 @@
 
 ## 2026-10-15
 
+- Redesign the sidebar profile entry as a compact avatar-and-identity row with a subtle cover accent and navigation arrow. Rebalance the personal profile page with a larger avatar, separate school overview, grouped two-column basic fields, styled image upload controls and a distinct save footer. Stack fields on phones and cards on narrower workspaces; retain existing profile/upload saving behavior.
+- Verified the layout at 1440px, 1100px, 390px and 320px, including long names/schools, profile saving, avatar upload and keeping the saved avatar on later edits. All 111 JavaScript/entry-asset checks passed. Prepared on `design/profile-layout` for review; not deployed to AWS.
+
 - Prepare user-authorized `1.1.76` AWS release: connect course Cheatsheet PDF generation/revisions to saved Learning Style, synchronize pending preference saves, and supply selected historical course images as vision inputs and Python reference files.
 - Persist private workspace sources per PDF version; carry source copies, previous artifact, selected image names and bounded earlier requests into continuous revisions across refresh/restart. Re-read current course materials and account preferences for each submitted revision, inherit print settings, and reject cross-course/foreign parents. Keep source data out of public job/download responses and clean it up on failure/deletion.
 - Add regression coverage for actual HTTP request contracts, late course text, named old images, two successive revisions, changed preferences, restart persistence, deleting an earlier version, original workspace image retention and private-source permissions. Production deployment/live verification follows the main push; rollback target is `d3c2202` (`1.1.75`).

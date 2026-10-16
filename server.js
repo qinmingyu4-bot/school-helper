@@ -258,7 +258,7 @@ function communitySchoolKey(school) {
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 90);
 }
@@ -270,19 +270,15 @@ function communityChannelKey(type, value = "") {
   return "all";
 }
 
-function communityChannelForUser(user, requestedType = "all") {
+function communityChannelForUser(user, requestedType = "all", requestedValue) {
   const channelType = String(requestedType || "all").toLowerCase();
-  if (channelType === "school") {
-    const school = String(user.profile?.school || "").trim();
-    const schoolKey = communitySchoolKey(school);
-    if (!schoolKey) throw new Error("Please fill in your school in Profile first.");
-    return { type: "school", label: school, key: communityChannelKey("school", school) };
-  }
-  if (channelType === "major") {
-    const major = String(user.profile?.major || "").trim();
-    const majorKey = communitySchoolKey(major);
-    if (!majorKey) throw new Error("Please fill in your major in Profile first.");
-    return { type: "major", label: major, key: communityChannelKey("major", major) };
+  if (channelType === "school" || channelType === "major") {
+    const value = requestedValue == null ? user.profile?.[channelType] || "" : requestedValue;
+    if (typeof value !== "string" || value.trim().length > 90 || !communitySchoolKey(value)) {
+      throw new Error(channelType === "school" ? "请选择或输入有效的学校名称（最多 90 字）。" : "请选择或输入有效的专业名称（最多 90 字）。");
+    }
+    const label = value.trim();
+    return { type: channelType, label, key: communityChannelKey(channelType, label) };
   }
   return { type: "all", label: "StudyBridge", key: "all" };
 }
@@ -2138,12 +2134,18 @@ async function routeApi(req, res) {
     }
   }
 
+  if (url.pathname === "/api/community/channels" && method === "GET") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    return sendJson(res, 200, await db.listCommunityChannels());
+  }
+
   if (url.pathname === "/api/community" && method === "GET") {
   const user = await requireUser(req, res);
   if (!user) return;
   let channel;
   try {
-    channel = communityChannelForUser(user, url.searchParams.get("channel") || "all");
+    channel = communityChannelForUser(user, url.searchParams.get("channel") || "all", url.searchParams.get("value"));
   } catch (error) {
     return sendError(res, 400, error.message);
   }
@@ -2162,7 +2164,7 @@ if (url.pathname === "/api/community/posts" && method === "POST") {
   const body = await readJson(req);
   let channel;
   try {
-    channel = communityChannelForUser(user, body.channel || "all");
+    channel = communityChannelForUser(user, body.channel || "all", body.channelValue);
   } catch (error) {
     return sendError(res, 400, error.message);
   }
@@ -2195,7 +2197,7 @@ if (openCommunityLikeMatch && method === "PATCH") {
   if (!user) return;
   let channel;
   try {
-    channel = communityChannelForUser(user, url.searchParams.get("channel") || "all");
+    channel = communityChannelForUser(user, url.searchParams.get("channel") || "all", url.searchParams.get("value"));
   } catch (error) {
     return sendError(res, 400, error.message);
   }

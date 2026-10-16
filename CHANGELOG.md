@@ -2,6 +2,10 @@
 
 ## 2026-10-16
 
+- Let students browse school and major communities beyond their profile defaults with searchable suggested channel names, free-text entry, and one-click return to their own school/major. Discover published channel labels without exposing profile directories; keep browsing choices separate from saved personal details.
+- Pass the selected destination through feed, publishing and liking APIs; retain profile-based defaults for existing clients and support Chinese channel names. Preserve composer drafts during channel changes, expose loading/retry states, and reject stale channel responses. Keep DynamoDB likes in the post's actual channel and allow liking school/major posts from the combined feed.
+- All 107 automated tests and 116-file syntax/asset checks passed, including cross-profile filtering/posting, invalid input, anonymous posts, restart persistence, DynamoDB like storage and channel-load races. Local Chrome verification covered school/major defaults, switching to another school/major, returning to defaults, posting to the selected school, draft retention, and the 390px selector layout. Updated `design/community-layout`; not deployed to AWS.
+
 - Redesign Community with a centered, spacious discussion feed on the left and a separate sticky composer on the right. Stack discussions above composing on phones and in narrow workspaces; add channel navigation, school/major destination labels, author/channel metadata, visible like states, and an illustrated empty state linking to the composer.
 - Add scoped community styling, accessible input labels and focus indicators, and input limits matching the posting API. Preserve existing publishing, anonymous posting, channel filtering and like/unlike endpoints; refresh the app asset cache key.
 - Verified local Chrome layouts at 1440px, 1100px, 980px, 390px and 320px without horizontal overflow, plus empty-state focus, channel switching, regular/anonymous posting, and like/unlike. All 24 server integration checks and 115-file syntax/entry-asset checks passed. Prepared on `design/community-layout` for review; not deployed to AWS.

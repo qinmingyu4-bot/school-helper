@@ -41,6 +41,7 @@
   let classmatesSyncing = false;
   let classmatesSyncQueued = false;
   let classmatesGeneration = 0;
+  let pageLoadGeneration = 0;
   let classmateListScroll = 0;
   let classmateListDraft = "";
   let classmateRequestsOpen = false;
@@ -67,6 +68,10 @@
     scheduleManualDraft: {},
     communityChannel: "all",
     community: null,
+    communitySelections: { school: null, major: null },
+    communityChoices: null,
+    communityError: "",
+    communityDraft: { topic: "", content: "", anonymous: false },
     classmates: null,
     activeClassmateId: "",
     classmateChatOpen: false,
@@ -835,11 +840,24 @@
     ];
   }
 
+  function communityValue() {
+    return state.communityChannel === "all" ? "" : state.communitySelections[state.communityChannel] ?? profile()[state.communityChannel] ?? "";
+  }
+
+  function communityQuery() {
+    const query = new URLSearchParams({ channel: state.communityChannel });
+    if (state.communityChannel !== "all") query.set("value", communityValue());
+    return query.toString();
+  }
+
   function communityPage() {
     const data = state.community;
     const posts = data?.posts || [];
     const channel = state.communityChannel;
-    const channelName = channel === "school" ? profile().school || "学校社区" : channel === "major" ? profile().major || "专业社区" : "全部社区";
+    const channelName = channel === "all" ? "全部社区" : communityValue() || (channel === "school" ? "请选择学校" : "请选择专业");
+    const canPost = !state.busy && !state.communityError && (channel === "all" || Boolean(communityValue().trim()));
+    const kind = channel === "school" ? "学校" : "专业";
+    const choices = [...new Set([profile()[channel], communityValue(), ...(channel === "school" ? schoolOptions() : ["Finance", "Economics", "Business", "Computer Science", "Engineering", "Nursing", "Mathematics", "Statistics", "Psychology", "Biology"]), ...(state.communityChoices?.[channel === "school" ? "schools" : "majors"] || [])].filter(Boolean))];
     const conversationIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l-3 3V11.5A7.5 7.5 0 0 1 9.5 4h3a7.5 7.5 0 0 1 7.5 7.5Z"/><path d="M7 10h8M7 14h5"/></svg>`;
     return `
       ${pageHeader("COMMUNITY", "社区", "与同学交流想法，一起找到答案。")}
@@ -849,9 +867,10 @@
           <nav class="community-tabs" aria-label="社区频道">
             ${["all", "school", "major"].map((item) => `<button type="button" class="${channel === item ? "active" : ""}" aria-pressed="${channel === item}" data-action="community-channel" data-channel="${item}">${item === "all" ? "全部社区" : item === "school" ? "学校社区" : "专业社区"}</button>`).join("")}
           </nav>
+          ${channel !== "all" ? `<div class="community-channel-picker"><label for="communityChannelValue">选择${kind}</label><div class="community-picker-row"><input id="communityChannelValue" list="communityChannelChoices" maxlength="90" value="${esc(communityValue())}" placeholder="选择或输入${kind}名称"><datalist id="communityChannelChoices">${choices.map((item) => `<option value="${esc(item)}"></option>`).join("")}</datalist><button type="button" data-action="community-select">查看</button></div><div class="community-picker-hint"><span>可从列表选择，也可以输入其他${kind}名称。</span>${profile()[channel] ? `<button type="button" data-action="community-default">我的${kind}</button>` : ""}</div></div>` : ""}
           <div class="community-feed-heading"><h3 id="communityFeedTitle">${esc(channelName)}</h3><span>${posts.length} 条讨论</span></div>
           <div class="community-feed">
-            ${posts.length ? posts.map((post) => `
+            ${state.busy ? `<p class="community-feed-status" role="status">正在加载讨论…</p>` : state.communityError ? `<div class="community-feed-status" role="alert"><p>${esc(state.communityError)}</p><button type="button" data-action="community-retry">重新加载</button></div>` : channel !== "all" && !communityValue().trim() ? `<p class="community-feed-status">先选择或输入一个${kind}，看看大家在聊什么。</p>` : posts.length ? posts.map((post) => `
               <article class="community-post">
                 <div class="community-post-meta"><span class="community-avatar" aria-hidden="true">${esc((post.authorName || "同").slice(0, 1))}</span><div><b>${esc(post.authorName)}</b><time datetime="${esc(post.createdAt)}">${esc(formatDate(post.createdAt))}</time></div><span class="community-channel-badge">${esc(post.channelLabel || "全部社区")}</span></div>
                 <h4>${esc(post.topic)}</h4>
@@ -865,10 +884,10 @@
             <div class="community-compose-heading"><span>${conversationIcon}</span><div><h3 id="communityComposeTitle">发起讨论</h3><p>让交流从一个想法开始</p></div></div>
             <div class="community-destination"><span>发布到</span><strong>${esc(channelName)}</strong></div>
             <label for="postTopic">讨论主题</label>
-            <input id="postTopic" maxlength="40" placeholder="例如 ECO101 / 选课建议">
+            <input id="postTopic" maxlength="40" value="${esc(state.communityDraft.topic)}" placeholder="例如 ECO101 / 选课建议">
             <label for="postContent">想和大家聊什么？</label>
-            <textarea id="postContent" maxlength="1600" placeholder="写下你的问题，或分享一段学习经验……"></textarea>
-            <div class="community-compose-footer"><label class="community-anonymous"><input id="postAnon" type="checkbox">匿名发布</label><button type="button" class="primary" data-action="community-post">发布讨论 <span aria-hidden="true">↗</span></button></div>
+            <textarea id="postContent" maxlength="1600" placeholder="写下你的问题，或分享一段学习经验……">${esc(state.communityDraft.content)}</textarea>
+            <div class="community-compose-footer"><label class="community-anonymous"><input id="postAnon" type="checkbox" ${state.communityDraft.anonymous ? "checked" : ""}>匿名发布</label><button type="button" class="primary" data-action="community-post" ${canPost ? "" : "disabled"}>发布讨论 <span aria-hidden="true">↗</span></button></div>
           </section>
           <p class="community-guidance">友善交流，尊重每一种声音。<br>分享时请留意自己和他人的隐私。</p>
         </aside>
@@ -1285,13 +1304,25 @@
   }
 
   async function loadPage(page) {
+    const pageGeneration = ++pageLoadGeneration;
     const generation = ++classmatesGeneration;
     setPage(page);
     state.busy = true;
+    if (page === "community") { state.community = null; state.communityError = ""; }
     render();
     try {
       if (page === "study") await loadStudy();
-      if (page === "community") state.community = await api(`/api/community?channel=${encodeURIComponent(state.communityChannel)}`);
+      if (page === "community") {
+        const query = communityQuery();
+        const hasSelection = state.communityChannel === "all" || Boolean(communityValue().trim());
+        const [data, choices] = await Promise.all([
+          hasSelection ? api(`/api/community?${query}`) : Promise.resolve(null),
+          state.communityChoices || api("/api/community/channels").catch(() => null)
+        ]);
+        if (pageGeneration !== pageLoadGeneration) return;
+        state.community = data;
+        state.communityChoices = choices;
+      }
       if (page === "classmates") {
         const data = await api("/api/classmates");
         if (generation !== classmatesGeneration) return;
@@ -1322,9 +1353,14 @@
         state.status = await api("/api/admin/system-status").catch(() => state.status);
       }
     } catch (error) {
+      if (page === "community") {
+        if (pageGeneration !== pageLoadGeneration) return;
+        state.communityError = error.message;
+      }
       setToast(error.message);
     } finally {
-      if (page !== "classmates" || generation === classmatesGeneration) {
+      if ((page !== "classmates" || generation === classmatesGeneration)
+        && (page !== "community" || pageGeneration === pageLoadGeneration)) {
         state.busy = false;
         render();
         if (state.page === "classmates") void syncClassmatesLive();
@@ -1686,18 +1722,32 @@
         $("postTopic")?.scrollIntoView({ behavior: "smooth", block: "center" });
         return;
       }
+      if (action === "community-select" || action === "community-default") {
+        const value = action === "community-default" ? profile()[state.communityChannel] : $("communityChannelValue")?.value.trim();
+        if (!value) throw new Error("请先选择或输入频道名称。");
+        state.communitySelections[state.communityChannel] = value;
+        await loadPage("community");
+        return;
+      }
+      if (action === "community-retry") {
+        await loadPage("community");
+        return;
+      }
       if (action === "community-channel") {
         state.communityChannel = button.dataset.channel || "all";
         await loadPage("community");
         return;
       }
       if (action === "community-post") {
-        await api("/api/community/posts", { method: "POST", body: { channel: state.communityChannel, topic: $("postTopic")?.value || "Question", content: $("postContent")?.value || "", anonymous: $("postAnon")?.checked } });
+        if (state.busy || state.communityError) return;
+        await api("/api/community/posts", { method: "POST", body: { channel: state.communityChannel, channelValue: communityValue(), topic: $("postTopic")?.value || "Question", content: $("postContent")?.value || "", anonymous: $("postAnon")?.checked } });
+        state.communityDraft = { topic: "", content: "", anonymous: false };
+        state.communityChoices = null;
         await loadPage("community");
         return;
       }
       if (action === "community-like") {
-        await api(`/api/community/posts/${button.dataset.id}/like?channel=${encodeURIComponent(state.communityChannel)}`, { method: "PATCH" });
+        await api(`/api/community/posts/${button.dataset.id}/like?${communityQuery()}`, { method: "PATCH" });
         await loadPage("community");
         return;
       }
@@ -2021,6 +2071,7 @@
   });
 
   document.addEventListener("change", (event) => {
+    if (event.target?.id === "postAnon") { state.communityDraft.anonymous = event.target.checked; return; }
     if (["englishTerms", "englishAnswers", "chineseExplanations"].includes(event.target?.id)) { scheduleLearningStyleSave(); return; }
     if (event.target?.id === "scheduleFile") {
       const name = $("scheduleFileName");
@@ -2048,6 +2099,8 @@
   });
 
   document.addEventListener("input", (event) => {
+    if (event.target?.id === "postTopic") { state.communityDraft.topic = event.target.value; return; }
+    if (event.target?.id === "postContent") { state.communityDraft.content = event.target.value; return; }
     if (event.target?.id === "customInstruction") { scheduleLearningStyleSave(); return; }
     const manualField = event.target.dataset?.manualField;
     if (manualField) { state.scheduleManualDraft[manualField] = event.target.value; return; }
@@ -2055,6 +2108,13 @@
     if (!field) return;
     const item = state.scheduleDrafts[Number(event.target.closest("[data-draft]")?.dataset.draft)];
     if (item) item[field] = field === "selected" ? event.target.checked : event.target.value;
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.target?.id === "communityChannelValue" && event.key === "Enter") {
+      event.preventDefault();
+      root.querySelector('[data-action="community-select"]')?.click();
+    }
   });
 
   document.addEventListener("toggle", (event) => {

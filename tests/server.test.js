@@ -234,6 +234,45 @@ test("account, course, upload, and persistence health check", { timeout: 60000 }
     assert.equal((await request("/api/schedule/extract", { method: "POST", cookie: alice.cookie, body })).status, 503);
   });
 
+  await t.test("community channels allow browsing and posting beyond profile defaults", async () => {
+    const before = (await request("/api/me", { cookie: alice.cookie })).data.user.profile;
+    assert.equal((await request("/api/community/channels")).status, 401);
+    for (const [type, name] of [["school", "University of Waterloo"], ["major", "Psychology"], ["school", "北京大学"], ["major", "计算机科学"]]) {
+      const query = `channel=${type}&value=${encodeURIComponent(name)}`;
+      const created = await request("/api/community/posts", {
+        method: "POST", cookie: alice.cookie,
+        body: { channel: type, channelValue: name, topic: "Other channel", content: `A discussion in ${name}`, anonymous: true }
+      });
+      assert.equal(created.status, 201);
+      assert.equal(created.data.post.channelLabel, name);
+      assert.equal(created.data.post.authorName, "匿名同学");
+      const feed = await request(`/api/community?${query}`, { cookie: bob.cookie });
+      assert.equal(feed.status, 200);
+      assert.equal(feed.data.channel.label, name);
+      assert.ok(feed.data.posts.some((post) => post.id === created.data.post.id));
+      const different = await request(`/api/community?channel=${type}&value=Other`, { cookie: bob.cookie });
+      assert.ok(!different.data.posts.some((post) => post.id === created.data.post.id));
+      const like = `/api/community/posts/${created.data.post.id}/like`;
+      assert.equal((await request(`${like}?channel=${type}&value=Other`, { method: "PATCH", cookie: bob.cookie })).status, 404);
+      assert.equal((await request(`${like}?${query}`, { method: "PATCH", cookie: bob.cookie })).data.post.likeCount, 1);
+      assert.equal((await request(`${like}?channel=all`, { method: "PATCH", cookie: bob.cookie })).data.post.likeCount, 0);
+    }
+    const catalog = (await request("/api/community/channels", { cookie: bob.cookie })).data;
+    assert.ok(catalog.schools.includes("University of Waterloo"));
+    assert.ok(catalog.schools.includes("北京大学"));
+    assert.ok(catalog.majors.includes("Psychology"));
+    assert.ok(catalog.majors.includes("计算机科学"));
+    assert.equal((await request("/api/community?channel=school&value=", { cookie: alice.cookie })).status, 400);
+    assert.equal((await request(`/api/community?channel=major&value=${"a".repeat(91)}`, { cookie: alice.cookie })).status, 400);
+    assert.equal((await request("/api/community/posts", { method: "POST", cookie: alice.cookie, body: { channel: "major", channelValue: {}, content: "Invalid channel" } })).status, 400);
+    assert.deepEqual((await request("/api/me", { cookie: alice.cookie })).data.user.profile, before);
+    const defaultSchool = await request("/api/community?channel=school", { cookie: alice.cookie });
+    assert.equal(defaultSchool.data.channel.label, before.school);
+    await stop();
+    await start();
+    assert.ok((await request("/api/community/channels", { cookie: bob.cookie })).data.majors.includes("Psychology"));
+  });
+
   await t.test("community and accepted classmate messaging", async () => {
     const post = await request("/api/community/posts", {
       method: "POST", cookie: alice.cookie, body: { channel: "all", content: "Health check community post" }

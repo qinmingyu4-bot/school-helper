@@ -6,6 +6,27 @@ const { test } = require("node:test");
 const { StudyBridgeDatabase } = require("../lib/database");
 const { DynamoStore } = require("../lib/aws-dynamodb");
 
+test("DynamoDB community likes stay in the selected channel and directory uses published labels", async () => {
+  const db = new StudyBridgeDatabase();
+  let record = { id: "post", channelType: "major", channelKey: "major:psychology", channelLabel: "Psychology", schoolKey: "university-of-toronto", createdAt: "2026-10-16T12:00:00.000Z", likes: [] };
+  let writes = 0;
+  db.dynamo = {
+    query: async (pk, prefix) => { assert.equal(pk, "COMMUNITY#major:psychology"); assert.equal(prefix, "POST#"); return [record]; },
+    scanType: async (type) => { assert.equal(type, "communityPost"); return [record]; },
+    put: async (pk, sk, type, value) => {
+      assert.equal(pk, "COMMUNITY#major:psychology");
+      assert.equal(sk, `POST#${record.createdAt}#post`);
+      assert.equal(type, "communityPost");
+      record = value;
+      writes++;
+    }
+  };
+  assert.equal((await db.toggleCommunityPostLike("major:psychology", "post", "bob")).likeCount, 1);
+  assert.equal((await db.toggleCommunityPostLike("all", "post", "bob")).likeCount, 0);
+  assert.equal(writes, 2);
+  assert.deepEqual(await db.listCommunityChannels(), { schools: [], majors: ["Psychology"] });
+});
+
 test("local activity is throttled, persistent and isolated from concurrent profile changes", async (t) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "studybridge-activity-"));
   t.after(() => fs.rm(directory, { recursive: true, force: true }));

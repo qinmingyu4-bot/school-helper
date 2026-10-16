@@ -2,6 +2,8 @@
 
 ## 2026-10-15
 
+- Prepare the user-authorized `1.1.77` AWS release of the approved profile layout (`2246406`). Update package/frontend versions and entry asset cache keys; retain `27807cc` (`1.1.76`) as the rollback target. Deployment and live profile verification follow the main push.
+
 - Redesign the sidebar profile entry as a compact avatar-and-identity row with a subtle cover accent and navigation arrow. Rebalance the personal profile page with a larger avatar, separate school overview, grouped two-column basic fields, styled image upload controls and a distinct save footer. Stack fields on phones and cards on narrower workspaces; retain existing profile/upload saving behavior.
 - Verified the layout at 1440px, 1100px, 390px and 320px, including long names/schools, profile saving, avatar upload and keeping the saved avatar on later edits. All 111 JavaScript/entry-asset checks passed. Prepared on `design/profile-layout` for review; not deployed to AWS.
 

@@ -152,6 +152,14 @@ No stored messages are rewritten. Untrusted math cannot load external images,
 create links or HTML attributes; incomplete/unsupported formulas fall back to
 escaped text. Regenerate pinned math assets with `npm run vendor:math`.
 
+Academic explanations default to a method overview, why the method applies,
+reproducible intermediate calculations and a final answer, one part at a time.
+Learning Style chooses the answer/explanation languages without shortening the
+teaching: English answers plus Chinese explanations teach each part in Chinese
+before its concise English exam answer. Explicit brevity, answer-only, hints,
+quiz answer timing and print/time budgets still take priority. Image requests
+such as `teach me` and `教我` use the complex-task model, including retained images.
+
 The Study Area also has a permanent General Chat entry beside courses for everyday
 questions. It works without creating a course, keeps account-scoped history and
 attachments separately, and does not use academic mode instructions or other

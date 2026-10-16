@@ -20,6 +20,14 @@ test("complex tasks always choose Sol instead of a random percentage", () => {
   }
 });
 
+test("image tutoring requests use Sol for teach-me wording and preserve ordinary photo questions", () => {
+  const savedAttachments = [{ kind: "image", name: "calculus-question.png" }];
+  for (const message of ["teach me", "Teach me please", "walk me through this", "explain this", "教我", "带我学这题", "讲解一下"]) assert.equal(selectAiModel({ mode: "guided", message, savedAttachments }, models), models.complexModel, message);
+  assert.equal(selectAiModel({ mode: "guided", message: "teach me", attachments: savedAttachments }, models), models.complexModel);
+  assert.equal(selectAiModel({ mode: "guided", message: "describe the photo", savedAttachments }, models), models.simpleModel);
+  assert.equal(selectAiModel({ mode: "guided", message: "谢谢", savedAttachments }, models), models.simpleModel);
+});
+
 test("ordinary questions stay on Luna despite long course material, history, or a study mode", () => {
   const context = { documents: [{ text: "x".repeat(100000) }], history: [{ role: "assistant", content: "x".repeat(10000) }] };
   assert.equal(selectAiModel({ ...context, message: "你好", mode: "review" }, models), models.simpleModel);

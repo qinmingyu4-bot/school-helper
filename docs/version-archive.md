@@ -10,6 +10,19 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.78 - 2026-10-16
+
+Purpose:
+- Combine mathematical typesetting and historical root-call rendering (`e023e4c`) with method-first study explanations and intermediate calculations.
+- Preserve Learning Style languages, teach each part before its final answer, and route short image tutoring requests to Sol. Honor explicit brevity, hints, quizzes and output/time constraints.
+
+Validation:
+- Automated checks exercise all seven actual model prompts, Learning Style combinations, streaming, retained image tutoring routes, formula rendering and untrusted input. Deployment and real-browser answer verification follow the main push.
+- All 102 tests, 115-file source/asset checks and dependency audit passed before the release push.
+
+Rollback target:
+- `fabeba9` (previous production version `1.1.77`).
+
 ### 1.1.76 - 2026-10-15
 
 Purpose:

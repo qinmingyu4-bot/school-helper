@@ -503,9 +503,13 @@ test("account, course, upload, and persistence health check", { timeout: 60000 }
     await start({ fakeAi: true });
     const modes = require("../public/study-modes");
     for (const mode of Object.keys(modes.modes)) {
-      const reply = await request(`${route}/chat`, { method: "POST", cookie, body: { mode, message: "Continue using the previous attachment and the end of the course lecture" } });
+      const reply = await request(`${route}/chat`, { method: "POST", cookie, body: { mode, message: "teach me using the previous attachment and the end of the course lecture" } });
       assert.equal(reply.status, 201);
-      const content = JSON.parse(reply.data.messages[1].content).messages[1].content;
+      const providerRequest = JSON.parse(reply.data.messages[1].content);
+      assert.equal(providerRequest.model, "gpt-6.1-sol", mode);
+      assert.ok(providerRequest.messages[0].content.includes("intermediate steps a beginner needs"), mode);
+      assert.ok(providerRequest.messages[0].content.includes("Teach the method and reasons before"), mode);
+      const content = providerRequest.messages[1].content;
       const prompt = content[0].text;
       assert.ok(prompt.includes("LATE_COURSE_EVIDENCE"), mode);
       assert.ok(prompt.includes("LATE_ATTACHMENT_EVIDENCE"), mode);
@@ -599,6 +603,10 @@ test("account, course, upload, and persistence health check", { timeout: 60000 }
       assert.match(system, /English answer ON/);
       assert.match(system, /Chinese explanation ON/);
       assert.match(system, /Combined checkboxes/);
+      assert.ok(system.includes("teach first in 中文讲解"));
+      assert.ok(system.includes("Language choices do not reduce teaching depth"));
+      assert.ok(system.includes("do not front-load all final answers"));
+      assert.ok(system.includes("State the relevant rule or general formula before substituting"));
       assert.ok(system.includes(String.raw`\sqrt{x}`));
       assert.ok(system.includes("StudyBridge renders mathematical notation"));
       assert.ok(!system.includes("StudyBridge chat uses plain text"));
@@ -616,6 +624,7 @@ test("account, course, upload, and persistence health check", { timeout: 60000 }
     const system = JSON.parse(answer.slice(answer.indexOf("{"))).messages[0].content;
     assert.match(system, /English answer ON/);
     assert.match(system, /Chinese explanation OFF/);
+    assert.ok(system.includes("Chinese explanation OFF does not remove the worked explanation"));
     assert.ok(!system.includes("Combined checkboxes"));
     assert.deepEqual((await request("/api/me", { cookie })).data.user.preferences, selected, "per-request snapshot must not silently rewrite the saved profile");
     assert.deepEqual((await request("/api/me", { cookie: bob.cookie })).data.user.preferences, bobPreferences);

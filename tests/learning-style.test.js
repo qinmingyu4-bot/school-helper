@@ -11,6 +11,12 @@ test("all checkbox combinations retain independent answer, explanation and term 
     assert.ok(instruction.includes(englishAnswers ? "English answer ON" : "English answer OFF"));
     assert.ok(instruction.includes(chineseExplanations ? "Chinese explanation ON" : "Chinese explanation OFF"));
     assert.equal(instruction.includes("Both sections are required"), englishAnswers && chineseExplanations);
+    assert.ok(instruction.includes("Language choices do not reduce teaching depth"));
+    assert.ok(instruction.includes("English answer ON does not mean answer-only"));
+    if (englishAnswers && chineseExplanations) {
+      assert.ok(instruction.includes("teach first in 中文讲解"));
+      assert.ok(instruction.includes("each part's Chinese teaching explanation"));
+    }
     assert.ok(!instruction.includes("old default toggles"));
   }
   assert.match(summary({ englishAnswers: true, chineseExplanations: true }), /英文作答.*中文讲解/);

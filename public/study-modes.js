@@ -68,7 +68,7 @@
     },
     cram: {
       label: "考前急救",
-      instruction: "Triage preparation under time pressure. Work within the student's time budget, prioritizing high-yield material supported by the course sources, minimum prerequisite knowledge, recognizable problem patterns, and the first step for each pattern. Keep explanations brief and immediately actionable. For mistakes, identify the first incorrect step and how to avoid it. Do not claim to know what will appear on the actual exam.",
+      instruction: "Triage preparation under time pressure. Work within the student's time budget, prioritizing high-yield material supported by the course sources, minimum prerequisite knowledge, recognizable problem patterns, and the first step for each pattern. Cover fewer high-priority concepts when time is short, while preserving the essential rule, reason and calculation steps within each worked example. For mistakes, identify the first incorrect step and how to avoid it. Do not claim to know what will appear on the actual exam.",
       prompts: [
         ["45 分钟急救", "我只有 45 分钟就要考试了，请安排紧急考前复习：先讲最低必要知识，然后直接教我怎么做题。"],
         ["只教做题", "请不要展开太多知识点，直接教我这类题考试时怎么下手。"],
@@ -85,18 +85,21 @@
   const explanationInstruction = `
 
 Study problem explanations:
-- A brief request such as "怎么做", "这题怎么解", or "how do I solve this?", including a question attached as an image, asks for teaching, not merely an answer check. Default to a complete, approachable worked explanation.
-- Start with a one-sentence answer or direction, then explain what the question asks and which given facts matter. Define unfamiliar concepts and notation before using them; do not assume the student already understands the key term.
-- Break the solution into a few clearly labelled steps. Explain why each important step follows, including sign changes, inequalities, substitutions, units, and assumptions when relevant. Use one concrete calculation or example from the actual problem if it helps bridge a conceptual gap.
+- A brief request such as "怎么做", "这题怎么解", "teach me", or "how do I solve this?", including a question attached as an image, asks for teaching, not merely an answer check. Default to a complete, approachable worked explanation, even when the student did not explicitly request steps.
+- Start with a one-sentence method overview, then explain what the question asks and which given facts matter. Teach the method and reasons before presenting the completed answer. Define unfamiliar concepts and notation before using them; do not assume the student already understands the key term.
+- For each part, use a clear learning sequence: goal and given facts; method and why it applies; worked calculation or argument; final answer and a quick check. For a multipart problem, finish teaching one part before moving to the next; do not front-load a list of all final answers.
+- Show the intermediate steps a beginner needs to reproduce the calculation. State the relevant rule or general formula before substituting the actual values. Explain where new coefficients, exponents, bounds and signs come from; show substitutions and simplifications instead of jumping from the question to an antiderivative, derivative or final formula. Explain why each important step follows, including sign changes, inequalities, substitutions, units, and assumptions when relevant.
+- For calculus examples, demonstrate the power-rule exponent/coefficient change, chain-rule inner derivative, squaring a radius or derivative, and upper-minus-lower evaluation when they occur. For improper integrals, explain the endpoint limit and why the limit exists or diverges. Apply only the rules actually needed by the problem; if only an integral setup is requested, explain and construct it without evaluating it unnecessarily.
+- For conceptual or non-numeric questions, make the reasoning bridge between the evidence, principle and conclusion explicit instead of forcing a calculation. A step label or a formula alone is not a teaching explanation. Avoid filler, repetitive translations and a mandatory word count.
 - For a graph or diagram, connect the axes and visible features to the mathematical quantities. Distinguish what is visibly shown from what the equation predicts, and explicitly compare the two. Do not invent details that are unreadable in an image.
 - Finish with a concise answer addressing the exact question and one useful takeaway or likely misconception when helpful. Explain when an extra calculation is unnecessary instead of solving an unrelated problem. Use readable paragraphs, short headings, and separated formulas rather than a dense paragraph.
-- Scale detail to the difficulty and the student's request; depth comes from explanations, not repetition or a mandatory word count. Explicit requests for a short answer, hints only, interactive quizzes, page-limited cheatsheets, and exam-cram time budgets take priority. Respect the resolved Learning Style language choices, including English answers with Chinese explanations when those options are enabled; avoid redundant full translations.
+- Scale detail to the difficulty and the student's request. Explicit requests for a short answer, hints only, interactive quizzes, page-limited cheatsheets, and exam-cram time budgets take priority. A short format should retain the essential method and justification that fit the request; answer-only requests may omit the explanation. Do not reveal withheld quiz solutions or hints-only answers. Respect the resolved Learning Style language choices, including English answers with Chinese explanations when those options are enabled; language settings never mean skipping the teaching steps.
 - These teaching requirements apply to academic problem-solving, not unrelated everyday questions, email drafts, or document-generation tasks.`;
   const getMode = (id) => Object.hasOwn(modes, id) ? modes[id] : null;
   function buildInstruction(id) {
     const mode = getMode(id);
     if (!mode) return "";
-    return `\n\nSelected study mode: ${id} (${mode.label}).\n${mode.instruction}\nApply this workflow to academic tasks, while honoring the student's latest explicit request and learning preferences. For interactive quizzes, follow the requested answer timing instead of the general final-answer-first default. Ground course-specific content in the supplied materials; label assumptions and ask for missing materials rather than inventing facts. Do not force this workflow onto unrelated general questions.` + explanationInstruction;
+    return `\n\nSelected study mode: ${id} (${mode.label}).\n${mode.instruction}\nApply this workflow to academic tasks, while honoring the student's latest explicit request and learning preferences. For interactive quizzes, follow the requested answer timing and withhold solutions until permitted. Ground course-specific content in the supplied materials; label assumptions and ask for missing materials rather than inventing facts. Do not force this workflow onto unrelated general questions.` + explanationInstruction;
   }
   return { modes, globalPrompts, defaultMode, getMode, buildInstruction };
 });

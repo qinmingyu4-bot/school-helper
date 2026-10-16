@@ -2,9 +2,13 @@
 
 ## 2026-10-16
 
+- Prepare user-authorized `1.1.78` main/AWS release combining formula rendering (`e023e4c`) with clearer default study explanations. Preserve `fabeba9` (`1.1.77`) as the rollback target; deployment and live verification follow the main push.
+- Teach each academic part in goal/method/reason/worked-calculation/answer order, including beginner-relevant intermediate steps, coefficient/exponent changes, substitutions, derivative rules and limit/bound evaluation. Keep conceptual explanations relevant and honor explicit answer-only, brevity, hints, quizzes, print constraints and time budgets.
+- Apply Learning Style without reducing explanation depth. Bilingual solutions now teach each part in Chinese before its English answer, rather than listing all final answers first. Recognize image tutoring requests including `teach me`, `walk me through this` and `教我` as complex tasks while preserving ordinary Luna routing.
+- All 102 automated tests, 115-file syntax/asset checks and a zero-vulnerability dependency audit passed, including all seven provider prompt contracts, style combinations, saved-image model routing and streaming snapshots. Live AWS behavior is verified after deployment.
 - Replace the chat's plain-text math instructions with a shared typeset-notation contract across Learning Style and all study modes. Render inline/display roots, fractions, powers, integrals and limits through pinned, self-hosted KaTeX and local WOFF2 fonts.
 - Render balanced arithmetic `sqrt(...)` / `cbrt(...)` calls in older reply prose as real radicals, including nested fractions and grouped fractional powers, without modifying saved history, code or URLs. Keep incomplete/unsupported expressions readable, block trusted HTML/URL commands, bound expansion and formula length, and allow long formulas to scroll locally on phones.
-- Add regressions for the reported arc-length expression, nested radicals, streaming prefixes, currencies/code/links, malicious math and identical Node/browser rendering. Prepared on `fix/math-typesetting`; production deployment is not part of this change.
+- Add regressions for the reported arc-length expression, nested radicals, streaming prefixes, currencies/code/links, malicious math and identical Node/browser rendering. Originally prepared on `fix/math-typesetting`; included in the authorized `1.1.78` release above.
 - All 100 automated tests, 115-file source/asset checks and a zero-vulnerability dependency audit passed. Local Chrome verification at desktop and 390px confirmed historical radicals, a real-model streamed arc-length answer, correctly loaded local math fonts, safe code text and persistence after refresh.
 
 ## 2026-10-15

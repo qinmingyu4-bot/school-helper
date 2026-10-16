@@ -42,3 +42,11 @@ test("all learning modes teach short problem requests while preserving explicit 
     assert.ok(instruction.includes("not unrelated everyday questions"));
   }
 });
+
+test("every study mode teaches method, reasons and reproducible work before final answers", () => {
+  for (const mode of Object.keys(config.modes)) {
+    const instruction = config.buildInstruction(mode);
+    for (const requirement of ["teach me", "method and why it applies", "intermediate steps a beginner needs", "coefficients, exponents, bounds and signs", "chain-rule inner derivative", "upper-minus-lower", "endpoint limit", "finish teaching one part", "language settings never mean skipping", "answer-only requests", "withheld quiz solutions"]) assert.ok(instruction.includes(requirement), `${mode}: ${requirement}`);
+    assert.ok(!instruction.includes("final-answer-first default"));
+  }
+});

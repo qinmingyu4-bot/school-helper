@@ -2,6 +2,8 @@
 
 ## 2026-10-16
 
+- Prepare user-authorized `1.1.79` main/AWS release of the Community redesign and school/major channel selection (`73b1702`, `c039cc8`). Refresh package/frontend versions and entry asset cache keys; retain `6a8023a` (`1.1.78`) as the rollback target. Deployment and live verification follow the main push.
+
 - Let students browse school and major communities beyond their profile defaults with searchable suggested channel names, free-text entry, and one-click return to their own school/major. Discover published channel labels without exposing profile directories; keep browsing choices separate from saved personal details.
 - Pass the selected destination through feed, publishing and liking APIs; retain profile-based defaults for existing clients and support Chinese channel names. Preserve composer drafts during channel changes, expose loading/retry states, and reject stale channel responses. Keep DynamoDB likes in the post's actual channel and allow liking school/major posts from the combined feed.
 - All 107 automated tests and 116-file syntax/asset checks passed, including cross-profile filtering/posting, invalid input, anonymous posts, restart persistence, DynamoDB like storage and channel-load races. Local Chrome verification covered school/major defaults, switching to another school/major, returning to defaults, posting to the selected school, draft retention, and the 390px selector layout. Updated `design/community-layout`; not deployed to AWS.

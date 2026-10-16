@@ -599,6 +599,10 @@ test("account, course, upload, and persistence health check", { timeout: 60000 }
       assert.match(system, /English answer ON/);
       assert.match(system, /Chinese explanation ON/);
       assert.match(system, /Combined checkboxes/);
+      assert.ok(system.includes(String.raw`\sqrt{x}`));
+      assert.ok(system.includes("StudyBridge renders mathematical notation"));
+      assert.ok(!system.includes("StudyBridge chat uses plain text"));
+      assert.ok(!system.includes("Use readable plain-text math"));
       assert.match(system, /question merely written in Chinese/);
       assert.ok(!system.includes("old default toggles"));
     }

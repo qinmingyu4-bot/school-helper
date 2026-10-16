@@ -143,6 +143,14 @@ responsive reading spacing. Historical and live streamed answers use the same
 self-hosted, pinned markdown-it renderer; tables and code scroll locally. Raw HTML,
 unsafe link schemes, and remote tracking images are not rendered. The browser
 bundle and dependency licenses are regenerated with `npm run vendor:markdown`.
+Mathematical notation uses self-hosted KaTeX with local WOFF2 fonts: inline
+`\( ... \)` / `$...$` and display `\[ ... \]` / `$$...$$` render roots, fractions,
+powers, integral bounds and limits in historical and streaming replies. Balanced
+arithmetic `sqrt(...)` / `cbrt(...)` calls in older prose also render as radicals;
+code, URLs, currency and unsupported expressions retain their literal text.
+No stored messages are rewritten. Untrusted math cannot load external images,
+create links or HTML attributes; incomplete/unsupported formulas fall back to
+escaped text. Regenerate pinned math assets with `npm run vendor:math`.
 
 The Study Area also has a permanent General Chat entry beside courses for everyday
 questions. It works without creating a course, keeps account-scoped history and

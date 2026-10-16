@@ -1,10 +1,11 @@
 (function (root, factory) {
-  if (typeof module === "object" && module.exports) module.exports = factory(require("markdown-it"));
-  else root.StudyBridgeMarkdown = factory(root.markdownit);
-})(typeof globalThis !== "undefined" ? globalThis : this, function (MarkdownIt) {
+  if (typeof module === "object" && module.exports) module.exports = factory(require("markdown-it"), require("./math"));
+  else root.StudyBridgeMarkdown = factory(root.markdownit, root.StudyBridgeMath);
+})(typeof globalThis !== "undefined" ? globalThis : this, function (MarkdownIt, math) {
   "use strict";
 
   const markdown = new MarkdownIt({ html: false, linkify: true, breaks: true });
+  math.install(markdown);
   markdown.validateLink = (href) => /^(https?:\/\/|mailto:)/i.test(href);
   markdown.renderer.rules.link_open = (tokens, index, options, env, renderer) => {
     tokens[index].attrSet("target", "_blank");

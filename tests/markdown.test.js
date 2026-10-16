@@ -55,8 +55,11 @@ test("self-hosted browser bundle matches the pinned package and renderer output"
   assert.deepEqual(fs.readFileSync(bundle), fs.readFileSync(require.resolve("markdown-it/browser")));
   const browser = { atob };
   vm.runInNewContext(fs.readFileSync(bundle, "utf8"), browser);
+  const mathVersion = require("katex/package.json").version;
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, `../public/vendor/katex-${mathVersion}/katex.min.js`), "utf8"), browser);
+  vm.runInNewContext(fs.readFileSync(require.resolve("../public/math"), "utf8"), browser);
   vm.runInNewContext(fs.readFileSync(require.resolve("../public/markdown"), "utf8"), browser);
-  const source = '### 中文标题\n\n1. English terms\n2. **重点**\n\n> 引用\n\n[来源](https://example.test/a)';
+  const source = '### 中文标题\n\n1. English terms\n2. **重点**\n\n> 引用\n\n[来源](https://example.test/a)\n\n\\[P=2+\\int_1^2\\sqrt{1+\\frac{1}{9(x-1)^{4/3}}}\\,dx\\]\n\n旧公式：sqrt(1 + 1/[9(x − 1)^(4/3)])';
   assert.equal(browser.StudyBridgeMarkdown.render(source), markdown.render(source));
   assert.ok(fs.readFileSync(path.join(__dirname, "../public/vendor/markdown-it-LICENSE.txt"), "utf8").includes("Redistribution and use"));
 });

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-16
+
+- Replace the chat's plain-text math instructions with a shared typeset-notation contract across Learning Style and all study modes. Render inline/display roots, fractions, powers, integrals and limits through pinned, self-hosted KaTeX and local WOFF2 fonts.
+- Render balanced arithmetic `sqrt(...)` / `cbrt(...)` calls in older reply prose as real radicals, including nested fractions and grouped fractional powers, without modifying saved history, code or URLs. Keep incomplete/unsupported expressions readable, block trusted HTML/URL commands, bound expansion and formula length, and allow long formulas to scroll locally on phones.
+- Add regressions for the reported arc-length expression, nested radicals, streaming prefixes, currencies/code/links, malicious math and identical Node/browser rendering. Prepared on `fix/math-typesetting`; production deployment is not part of this change.
+- All 100 automated tests, 115-file source/asset checks and a zero-vulnerability dependency audit passed. Local Chrome verification at desktop and 390px confirmed historical radicals, a real-model streamed arc-length answer, correctly loaded local math fonts, safe code text and persistence after refresh.
+
 ## 2026-10-15
 
 - Prepare the user-authorized `1.1.77` AWS release of the approved profile layout (`2246406`). Update package/frontend versions and entry asset cache keys; retain `27807cc` (`1.1.76`) as the rollback target. Deployment and live profile verification follow the main push.

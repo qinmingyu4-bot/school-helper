@@ -19,6 +19,34 @@ then choose Make PDF. The workspace copies the current request and unsent source
 and includes owned course materials and the latest 16 course messages as reference.
 Requests/settings/history are separate per course. Revisions retain earlier files.
 
+PDF generation and every revision apply the current saved Learning Style. The
+client waits for pending preference saves before opening/submitting the PDF
+workspace, and each request snapshots the authenticated account's preferences.
+English answers with Chinese explanations produces complementary English sheet
+content and concise Chinese teaching notes within the print limits. A latest
+explicit request overrides saved style; earlier revision requests do not override
+the current language choice.
+
+Each generation reloads current course text, durable chat attachments and recent
+course guidance. Selected historical PNG/JPEG/WebP/GIF images are provided as
+actual vision inputs and uploaded to the hosted Python environment. Named images
+and previously selected image names guide follow-up retrieval. Up to eight image
+inputs are selected per generation; large text collections use relevant passages.
+Unsupported retained image formats produce a clear error requesting a supported
+format rather than silently omitting them.
+
+Cheatsheet workspace source uploads are copied to private job storage and inherited
+by the next version along with the latest PDF. Every revision gets its own source
+copies, so it can continue after a restart or deletion of an earlier version.
+Bounded earlier requests preserve the original and recent revision requirements
+(36,000 characters); the latest PDF remains the content baseline. Revisions retain
+the original owned course and inherit print settings unless explicitly changed.
+Limits: 16 retained workspace sources and 28 MB total sources, selected historical
+images and previous artifact. These source files are never exposed as public
+downloads/job metadata and are removed with the job or after generation failure.
+Existing older PDFs remain revisable; workspace originals discarded by earlier
+versions need re-upload, while already-retained course chat images remain usable.
+
 Users control A4/Letter, portrait/landscape, single/double-sided printing, one to
 four physical sheets, one to three columns, minimum 8-14 pt text and 5-20 mm margins.
 Double-sided output has two PDF pages per sheet. The server checks every page's

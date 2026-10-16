@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.75";
+  const VERSION = "1.1.76";
   const creativeTools = window.StudyBridgeCreativeTools;
   const chatSpaces = window.StudyBridgeChatSpaces;
   const isGeneralChat = () => state.activeCourseId === chatSpaces.general.id;
@@ -1096,7 +1096,9 @@
     let savedCourse = "";
     try { savedCourse = localStorage.getItem(`studybridge.cheatsheetCourse.${userId}`) || ""; } catch { /* Storage may be disabled. */ }
     const courseId = state.courses.some((course) => course.id === state.activeCourseId) ? state.activeCourseId : state.courses.some((course) => course.id === savedCourse) ? savedCourse : state.courses[0]?.id || "";
-    return { userId, tool, courseId, courses: state.courses, api, readFiles, esc, render, visible: () => state.user?.id === userId && state.mode !== "admin" && state.page === "tools" && state.tool !== "email" };
+    return { userId, tool, courseId, courses: state.courses, api, readFiles, esc, render,
+      beforeGenerate: async () => { if (tool === "cheatsheet") { clearTimeout(learningStyleTimer); await getLearningStyleEditor().saver.flush(); } },
+      visible: () => state.user?.id === userId && state.mode !== "admin" && state.page === "tools" && state.tool !== "email" };
   }
 
   function adminPage() {
@@ -1490,6 +1492,8 @@
       if (action.startsWith("creative-")) { await creativeTools.handle(button, creativeContext()); return; }
       if (action === "cheatsheet-pdf") {
         if (isGeneralChat() || !state.activeCourseId) throw new Error("请先选择课程。");
+        clearTimeout(learningStyleTimer);
+        await captureLearningStyle().saver.flush();
         const prompt = $("chatInput")?.value || "";
         pdfReturnDrafts.set(studyReplyKey(), prompt);
         creativeTools.prepareCheatsheet({ ...creativeContext(), courseId: state.activeCourseId }, prompt.trim(), state.uploadFiles);

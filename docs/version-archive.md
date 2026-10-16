@@ -10,6 +10,20 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.76 - 2026-10-15
+
+Purpose:
+- Apply Learning Style to course Cheatsheet PDFs and revisions, with preference-save synchronization and explicit request precedence.
+- Read retained course images as real visual inputs and preserve workspace source files, selected image names, prior requests and the last artifact for continuing revisions.
+- Re-fetch current course context, inherit print settings, maintain course/account isolation, and keep source copies private across restart and version deletion.
+
+Validation:
+- Automated checks cover provider HTTP inputs, repeated revisions, changed styles, retained images/source bytes, restart and permissions. Live model/file/browser checks are recorded separately during rollout.
+- All 94 automated tests, 111-file source/asset checks and a zero-vulnerability dependency audit passed. Real Sol generated a bilingual retained-image PDF and an English-only revision with the requested H=60 example; both one-page files passed print checks and independent rendering/inspection. AWS/browser verification follows deployment.
+
+Rollback target:
+- `d3c2202` (previous production version `1.1.75`).
+
 ### 1.1.75 - 2026-10-15
 
 Purpose:

@@ -2,6 +2,11 @@
 
 ## 2026-10-15
 
+- Prepare user-authorized `1.1.76` AWS release: connect course Cheatsheet PDF generation/revisions to saved Learning Style, synchronize pending preference saves, and supply selected historical course images as vision inputs and Python reference files.
+- Persist private workspace sources per PDF version; carry source copies, previous artifact, selected image names and bounded earlier requests into continuous revisions across refresh/restart. Re-read current course materials and account preferences for each submitted revision, inherit print settings, and reject cross-course/foreign parents. Keep source data out of public job/download responses and clean it up on failure/deletion.
+- Add regression coverage for actual HTTP request contracts, late course text, named old images, two successive revisions, changed preferences, restart persistence, deleting an earlier version, original workspace image retention and private-source permissions. Production deployment/live verification follows the main push; rollback target is `d3c2202` (`1.1.75`).
+- All 94 tests, 111-file source/asset checks and dependency audit passed. Real Sol generation produced a one-page bilingual slope-field PDF from a retained image; a new service instance revised it without re-upload, switched to English-only preferences, retained the verification footer and added H=60 with slope -8/3. Independently rendered and inspected both PDFs; each passed page/font/margin/monochrome checks.
+
 - Prepare the user-authorized `1.1.75` main-branch AWS release of detailed study explanations (`7f29be1`), durable image message previews (`31ee951`), independent Learning Style preferences and synchronized saving (`21825d6`), and Ctrl+V screenshots with pending image previews (`263efba`). Bump entry asset versions and record `084340b` (`1.1.74`) as the rollback target. Production deployment and live behavior are verified after the main push.
 
 - Support Ctrl+V screenshot/image pasting in the Study Area question input across General Chat and all course modes. Add clipboard images to the existing attachment flow, give repeated screenshots distinct identities, preserve mixed-paste text/caret/focus, and leave ordinary text pasting and other fields unchanged.

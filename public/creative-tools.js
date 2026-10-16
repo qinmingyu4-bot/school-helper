@@ -67,6 +67,7 @@
     return `<section class="creative-workspace">
       <div class="creative-input">
         <div class="creative-heading"><h2>${cheat ? "Cheatsheet PDF" : image ? "图片" : video ? "视频" : ctx.tool === "sheets" ? "Excel 表格" : ctx.tool === "slides" ? "PowerPoint 演示" : "文档"}</h2>${cheat ? `<p class="creative-course-label">${esc(ctx.courses.find((course) => course.id === ctx.courseId)?.name || "未选择课程")}</p>` : ""}</div>
+        ${cheat ? '<p class="muted">使用已保存的 Learning Style、本课程资料和历史图片。生成后可点“继续修改”，无需重复上传。</p>' : ""}
         ${parent ? `<div class="creative-revision"><span>修改上一版 · ${esc(parent.format.toUpperCase())}</span><button class="creative-icon" data-action="creative-new" title="取消修改，创建新作品" aria-label="创建新作品">${icon("back")}</button></div>` : ""}
         <label for="creativePrompt">${parent ? "修改要求" : "生成要求"}</label>
         <textarea id="creativePrompt" maxlength="6000" rows="7" placeholder="${image ? "描述画面、风格和需要保留的细节" : video ? "描述场景、镜头与动作" : "填写主题、用途、语言、篇幅和格式要求"}">${esc(draft.prompt)}</textarea>
@@ -96,6 +97,7 @@
         submitting = true; refresh(ctx);
         try {
           const submitted = { ...draft, files: [...draft.files], print: { ...draft.print } };
+          await ctx.beforeGenerate?.();
           const attachments = await ctx.readFiles(submitted.files);
           const { job } = await ctx.api("/api/creative", { method: "POST", body: { kind: ctx.tool === "images" ? "image" : ctx.tool === "video" ? "video" : "document", format: submitted.format, prompt: submitted.prompt, parentId: submitted.parentId, courseId: ctx.tool === "images" || ctx.tool === "video" ? "" : submitted.courseId, size: submitted.size, quality: submitted.quality, ...(ctx.tool === "cheatsheet" ? { cheatsheet: printSettings.normalize(submitted.print) } : {}), attachments } });
           jobs.unshift(job); selectedId = job.id; draft.files = []; draft.parentId = "";

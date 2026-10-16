@@ -160,6 +160,14 @@ Video infrastructure is present but closed by default at both UI/API levels.
 See [Creative Tools](docs/creative-tools.md) for model configuration, quality
 limits, billing/concurrency controls, authenticated file storage and backup needs.
 
+The course Cheatsheet PDF workspace also follows saved Learning Style and reuses
+historical course-chat images as real image inputs. Use “继续修改” on a completed
+PDF to revise it with current preferences, current course sources, retained image
+references, prior requirements and the latest PDF. Workspace source uploads remain
+available across revisions/restarts without another upload; each version retains
+its own private source copies. See Creative Tools for source/context size limits
+and compatibility with older PDFs whose originals were not previously retained.
+
 Streaming requests time out after three minutes. If placing a reverse proxy in
 front of the app, disable response buffering for the chat endpoint and allow an
 idle timeout longer than the server's ten-second SSE heartbeat. Keep API keys on

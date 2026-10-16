@@ -12,6 +12,7 @@ test("creative HTTP jobs, private downloads, revisions, cancellation and video g
   const child = spawn(process.execPath, ["--require", "./tests/fixtures/creative-ai.js", "server.js"], {
     cwd: root, env: { ...process.env, PORT: "0", NODE_ENV: "test", STUDYBRIDGE_DB: "local", LOCAL_DB_FILE: path.join(directory, "db.json"), LOCAL_DB_BACKUP_DISABLED: "true", OWNER_INVITE_CODE: "creative-owner", REQUIRE_INVITE_CODE: "true", REQUIRE_EMAIL_VERIFICATION: "false", OPENAI_API_KEY: "test-only-key", OPENAI_DOCUMENT_MODEL: "test-document-model", STUDYBRIDGE_VIDEO_ENABLED: "false", ADMIN_EMAILS: "owner@example.test", GOOGLE_CLIENT_ID: "", GOOGLE_CLIENT_SECRET: "", SMTP_HOST: "", SMTP_USER: "", SMTP_PASS: "" }, stdio: ["ignore", "pipe", "pipe"]
   });
+  child.stderr.on("data", (chunk) => t.diagnostic(String(chunk)));
   t.after(async () => { const exited = once(child, "exit"); child.kill(); await exited; await fs.rm(directory, { recursive: true, force: true }); });
   const base = await new Promise((resolve, reject) => {
     let output = "";
@@ -66,4 +67,24 @@ test("creative HTTP jobs, private downloads, revisions, cancellation and video g
   assert.equal((await wait(slow.data.job.id, cookie)).status, "canceled");
   assert.equal((await request(`/api/creative/${job.id}`, { method: "DELETE", cookie })).status, 200);
   assert.equal((await request(route, { cookie })).status, 404);
+
+  const course = await json("/api/courses", { method: "POST", cookie, body: { name: "PDF Context HTTP" } });
+  const courseId = course.data.course.id;
+  const preferences = { englishTerms: true, englishAnswers: true, chineseExplanations: true, customInstruction: "HTTP_STYLE_MARKER" };
+  assert.equal((await request("/api/me/preferences", { method: "PUT", cookie, body: preferences })).status, 200);
+  await request(`/api/courses/${courseId}/documents`, { method: "POST", cookie, body: { title: "Course evidence", text: "HTTP_COURSE_EVIDENCE" } });
+  const image = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==";
+  assert.equal((await request(`/api/courses/${courseId}/chat`, { method: "POST", cookie, body: { message: "保存题目图片", attachments: [{ fileName: "old-picture.png", fileType: "image/png", fileData: image }] } })).status, 201);
+  const first = await json("/api/creative", { method: "POST", cookie, body: { kind: "document", format: "pdf", courseId, cheatsheet: {}, prompt: "VERIFY_CHEATSHEET_CONTEXT" } });
+  assert.equal(first.response.status, 202);
+  const generated = await wait(first.data.job.id, cookie);
+  assert.equal(generated.status, "ready", generated.error);
+  await request("/api/me/preferences", { method: "PUT", cookie, body: { ...preferences, chineseExplanations: false } });
+  const next = await json("/api/creative", { method: "POST", cookie, body: { kind: "document", parentId: first.data.job.id, prompt: "VERIFY_CHEATSHEET_REVISION" } });
+  assert.equal(next.response.status, 202);
+  const completed = await wait(next.data.job.id, cookie);
+  assert.equal(completed.status, "ready", completed.error);
+  assert.equal(completed.courseId, courseId);
+  assert.equal(completed.referenceFiles, undefined);
+  assert.equal(completed.learningStyle, undefined);
 });

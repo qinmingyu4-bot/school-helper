@@ -44,7 +44,9 @@ async function setup(t, options = {}) {
       assert.equal(body.model, "test-document-model");
       assert.equal(body.tools[0].type, "code_interpreter");
       assert.equal(body.store, false);
-      const format = body.input[1].content.match(/Required primary format: (\w+)/)[1];
+      const content = body.input[1].content;
+      const text = Array.isArray(content) ? content.filter((item) => item.type === "input_text").map((item) => item.text).join("\n") : content;
+      const format = text.match(/Required primary format: (\w+)/)[1];
       const generatedPdf = options.printPdf ? await fs.readFile(path.join(__dirname, "fixtures", options.repairFirst && responseCount === 1 ? "cheatsheet-small.pdf" : options.printPdf)) : pdf;
       const files = [{ filename: `artifact.${format}`, bytes: format === "pdf" ? generatedPdf : office(format) }, { filename: "preview.pdf", bytes: generatedPdf }, { filename: "preview-1.png", bytes: png }];
       if (options.incomplete) files.splice(1);
@@ -59,7 +61,7 @@ async function setup(t, options = {}) {
   };
   const service = createCreativeService({ db, request, documentModel: () => "test-document-model", contextFor: async (userId, courseId) => {
     if (courseId !== "owned") throw Object.assign(new Error("Course not found"), { statusCode: 404 });
-    return "OWNED_CONTEXT";
+    return options.context || "OWNED_CONTEXT";
   } });
   t.after(async () => {
     wait = false;
@@ -68,7 +70,7 @@ async function setup(t, options = {}) {
     for (const [key, value] of Object.entries(previous)) if (value === undefined) delete process.env[key]; else process.env[key] = value;
     await fs.rm(directory, { recursive: true, force: true });
   });
-  return { service, db, calls };
+  return { service, db, calls, request };
 }
 async function done(service, job) {
   for (let i = 0; i < 200; i++) {
@@ -87,6 +89,55 @@ test("creative files sanitize names and reject mismatched, macro and malformed b
   assert.throws(() => validateFile("report.docx", office("docx", true)));
   assert.throws(() => sourceFiles([{ fileName: "script.js", fileData: "data:text/javascript;base64,YQ==" }]));
   assert.throws(() => sourceFiles(Array(5).fill({})));
+});
+
+test("cheatsheet revisions retain images and full requests across restart, refresh style and isolate courses", async (t) => {
+  const context = { text: "PERSISTED_COURSE_CONTEXT", images: [{ name: "old-picture.png", kind: "image", dataUrl: `data:image/png;base64,${png.toString("base64")}` }] };
+  const { service, db, calls, request } = await setup(t, { printPdf: "cheatsheet-a4.pdf", context });
+  const style = { englishTerms: true, englishAnswers: true, chineseExplanations: true, customInstruction: "STYLE_MARKER" };
+  const workspaceImage = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aOZkAAAAASUVORK5CYII=";
+  const first = await done(service, await service.create({ id: "alice", preferences: style }, { kind: "document", format: "pdf", courseId: "owned", cheatsheet: {}, prompt: "INITIAL_REQUIREMENT_" + "x".repeat(1700) + "_KEEP_LATE_REQUIREMENT", attachments: [{ fileName: "workspace-notes.txt", fileData: `data:text/plain;base64,${Buffer.from("WORKSPACE_SOURCE").toString("base64")}` }, { fileName: "workspace-picture.png", fileData: workspaceImage }] }));
+  assert.equal(first.status, "ready", first.error);
+  let payload = JSON.parse(calls.find((call) => call.url.endsWith("/responses")).init.body);
+  assert.match(payload.input[0].content, /English answer ON/);
+  assert.match(payload.input[0].content, /Chinese explanation ON/);
+  assert.match(payload.input[0].content, /STYLE_MARKER/);
+  assert.ok(payload.input[1].content.some((item) => item.type === "input_image" && item.image_url.endsWith(png.toString("base64"))));
+  assert.equal(service.publicJob(first).referenceFiles, undefined);
+  assert.equal(service.publicJob(first).learningStyle, undefined);
+  const savedReferences = (await db.getCreativeJob("alice", first.id)).referenceFiles;
+  assert.equal(savedReferences.length, 2);
+  await assert.rejects(service.file("alice", first.id, savedReferences[0].id), (failure) => failure.statusCode === 404);
+  const reopened = createCreativeService({ db, request, documentModel: () => "test-document-model", contextFor: async (_, id, message) => { assert.equal(id, "owned"); if (message.includes("KEEP_LATE_REQUIREMENT")) assert.ok(message.includes("old-picture.png"), "previously selected image names must stay in retrieval across revisions"); return context; } });
+  calls.length = 0;
+  const second = await done(reopened, await reopened.create({ id: "alice", preferences: { ...style, chineseExplanations: false } }, { kind: "document", parentId: first.id, prompt: "SECOND_REQUIREMENT" }));
+  assert.equal(second.status, "ready", second.error);
+  assert.equal(second.courseId, "owned");
+  assert.ok(second.cheatsheet);
+  payload = JSON.parse(calls.find((call) => call.url.endsWith("/responses")).init.body);
+  const text = payload.input[1].content.filter((item) => item.type === "input_text").map((item) => item.text).join("\n");
+  assert.match(text, /KEEP_LATE_REQUIREMENT/);
+  assert.match(text, /SECOND_REQUIREMENT/);
+  assert.match(text, /PERSISTED_COURSE_CONTEXT/);
+  assert.match(payload.input[0].content, /Chinese explanation OFF/);
+  assert.equal(payload.input[1].content.filter((item) => item.type === "input_image").length, 2, "both the retained workspace image and course chat image must remain vision inputs");
+  const uploaded = calls.filter((call) => call.url.endsWith("/files") && call.init.method === "POST").map((call) => call.init.body.get("file").name);
+  assert.ok(uploaded.includes("workspace-notes.txt") && uploaded.includes("workspace-picture.png") && uploaded.includes("artifact.pdf") && uploaded.includes("old-picture.png"));
+  await service.remove("alice", first.id);
+  calls.length = 0;
+  const third = await done(reopened, await reopened.create({ id: "alice", preferences: style }, { kind: "document", parentId: second.id, prompt: "THIRD_REQUIREMENT" }));
+  assert.equal(third.status, "ready", third.error);
+  assert.match(third.revisionContext, /KEEP_LATE_REQUIREMENT/);
+  assert.match(third.revisionContext, /SECOND_REQUIREMENT/);
+  assert.ok(calls.some((call) => call.url.endsWith("/files") && call.init.method === "POST" && call.init.body.get("file").name === "workspace-notes.txt"));
+  const count = calls.length;
+  await assert.rejects(reopened.create({ id: "bob" }, { kind: "document", parentId: third.id, prompt: "Foreign version" }), (error) => error.statusCode === 404);
+  await assert.rejects(reopened.create({ id: "alice" }, { kind: "document", parentId: third.id, courseId: "different", prompt: "Wrong course" }), /课程/);
+  assert.equal(calls.length, count, "foreign revisions must not call a provider");
+  const concurrent = await Promise.allSettled([1, 2].map((i) => reopened.create({ id: "alice", preferences: style }, { kind: "document", parentId: third.id, prompt: `Concurrent revision ${i}` })));
+  assert.equal(concurrent.filter((result) => result.status === "fulfilled").length, 1);
+  assert.ok(concurrent.some((result) => result.status === "rejected" && result.reason.statusCode === 429));
+  await done(reopened, concurrent.find((result) => result.status === "fulfilled").value);
 });
 
 test("all document formats deliver checked files and previews with durable account-isolated downloads", async (t) => {

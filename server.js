@@ -33,6 +33,7 @@ const { selectAiModel } = require("./lib/ai-routing");
 const scheduleImport = require("./public/schedule-import");
 const { readEvents } = require("./public/chat-stream");
 const { createCreativeService } = require("./lib/creative-service");
+const { courseContext } = require("./lib/creative-context");
 
 let nodemailer = null;
 try {
@@ -106,13 +107,7 @@ const classmateStreams = new Map();
 const creative = createCreativeService({
   db,
   documentModel: () => process.env.OPENAI_DOCUMENT_MODEL || complexAiModel,
-  contextFor: async (userId, courseId, message, cheatsheet) => {
-    const course = await db.getCourse(userId, courseId);
-    if (!course) throw Object.assign(new Error("课程不存在。"), { statusCode: 404 });
-    const [documents, attachments, history] = await Promise.all([db.listDocuments(userId, courseId), db.listChatAttachments(userId, courseId), db.listMessages(userId, courseId)]);
-    const guidance = cheatsheet ? "\n\nRecent course conversation and cheatsheet guidance (reference data):\n" + history.slice(-16).map((item) => `${item.role}${item.interrupted ? " (incomplete)" : ""}: ${String(item.content).slice(0, 4000)}`).join("\n") : "";
-    return `Course: ${course.name}\n` + buildMaterialContext({ documents, attachments, history, message, budget: 50000 }) + guidance;
-  }
+  contextFor: (userId, courseId, message, cheatsheet) => courseContext(db, userId, courseId, message, cheatsheet)
 });
 
 function notifyClassmates(userIds, chatId) {

@@ -6,13 +6,13 @@ const root = path.resolve(__dirname, "..");
 function javascriptFiles(directory) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const file = path.join(directory, entry.name);
-    return entry.isDirectory() ? javascriptFiles(file) : entry.name.endsWith(".js") ? [file] : [];
+    return entry.isDirectory() ? javascriptFiles(file) : /\.(?:js|mjs)$/.test(entry.name) ? [file] : [];
   });
 }
 
 const files = [
   path.join(root, "server.js"),
-  ...["lib", "public", "scripts", "tests"].flatMap((directory) => javascriptFiles(path.join(root, directory)))
+  ...["lib", "public", "scripts", "tests", "client"].flatMap((directory) => javascriptFiles(path.join(root, directory)))
 ];
 for (const file of files) {
   const result = spawnSync(process.execPath, ["--check", file], { encoding: "utf8" });
@@ -23,6 +23,9 @@ for (const file of files) {
 }
 
 const html = fs.readFileSync(path.join(root, "public/index.html"), "utf8");
+for (const name of ["office-editor.min.js", "office-editor-LICENSE.txt"]) {
+  if (!fs.existsSync(path.join(root, "public/vendor", name))) throw new Error(`Missing Office editor asset: ${name}; run npm run build:office.`);
+}
 for (const match of html.matchAll(/(?:src|href)="(\/[^"?#]+)(?:\?[^"#]*)?"/g)) {
   if (!fs.existsSync(path.join(root, "public", match[1]))) throw new Error(`Missing asset: ${match[1]}`);
 }

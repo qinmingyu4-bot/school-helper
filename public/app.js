@@ -1,8 +1,9 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.79";
+  const VERSION = "1.1.80";
   const creativeTools = window.StudyBridgeCreativeTools;
+  const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
   const isGeneralChat = () => state.activeCourseId === chatSpaces.general.id;
   const studyModes = window.StudyBridgeStudyModes;
@@ -1132,9 +1133,10 @@
     return `
       ${pageHeader("STUDY TOOLS", "工具", state.tool === "email" ? "粘贴邮件内容，StudyBridge 会帮你看懂并起草回复。" : "文档、表格、演示和图片")}
       <section class="tools-tabs" aria-label="工具选择">
-        ${["docs", "sheets", "slides", "images", "cheatsheet", "email", "video"].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" aria-pressed="${(state.tool || "docs") === tool}" data-action="tool-mode" data-tool="${tool}" ${tool === "video" && !creativeTools.videoEnabled() ? 'disabled title="视频生成暂未开放"' : ""}>${({ docs: "文档", sheets: "表格", slides: "演示", images: "图片", cheatsheet: "Cheatsheet PDF", email: "邮件助手", video: creativeTools.videoEnabled() ? "视频" : "视频 · 未开放" })[tool]}</button>`).join("")}
+        ${["docs", "sheets", "slides", "images", "cheatsheet", "email", "video"].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" aria-pressed="${(state.tool || "docs") === tool}" data-action="tool-mode" data-tool="${tool}" ${tool === "video" && !creativeTools.videoEnabled() ? 'disabled title="视频生成暂未开放"' : ""}>${({ docs: "SB Docs", sheets: "SB Sheets", slides: "SB Slides", images: "图片", cheatsheet: "Cheatsheet PDF", email: "邮件助手", video: creativeTools.videoEnabled() ? "视频" : "视频 · 未开放" })[tool]}</button>`).join("")}
       </section>
-      ${state.tool === "email" ? emailPage() : creativeTools.html(creativeContext())}
+      ${officeTools.supports(state.tool || "docs") ? `<nav class="office-view-switch" aria-label="工作方式"><button data-action="office-view-edit" aria-pressed="${state.toolView !== "generate"}">自主编辑</button><button data-action="office-view-generate" aria-pressed="${state.toolView === "generate"}">AI 文件生成</button></nav>` : ""}
+      ${state.tool === "email" ? emailPage() : officeTools.supports(state.tool || "docs") && state.toolView !== "generate" ? officeTools.html(state.tool || "docs") : creativeTools.html(creativeContext())}
     `;
   }
 
@@ -1145,7 +1147,7 @@
     const courseId = state.courses.some((course) => course.id === state.activeCourseId) ? state.activeCourseId : state.courses.some((course) => course.id === savedCourse) ? savedCourse : state.courses[0]?.id || "";
     return { userId, tool, courseId, courses: state.courses, api, readFiles, esc, render,
       beforeGenerate: async () => { if (tool === "cheatsheet") { clearTimeout(learningStyleTimer); await getLearningStyleEditor().saver.flush(); } },
-      visible: () => state.user?.id === userId && state.mode !== "admin" && state.page === "tools" && state.tool !== "email" };
+      visible: () => state.user?.id === userId && state.mode !== "admin" && state.page === "tools" && state.tool !== "email" && (!officeTools.supports(state.tool || "docs") || state.toolView === "generate") };
   }
 
   function adminPage() {
@@ -1346,7 +1348,7 @@
       if (page === "tools" && state.tool !== "email") {
         const data = await api("/api/courses");
         state.courses = data.courses || [];
-        await creativeTools.load(creativeContext());
+        if (!officeTools.supports(state.tool || "docs") || state.toolView === "generate") await creativeTools.load(creativeContext());
       }
       if (page === "admin") {
         state.admin = await api("/api/admin/overview");
@@ -1876,10 +1878,20 @@
       if (action === "tool-mode") {
         if (button.dataset.tool === "video" && !creativeTools.videoEnabled()) return;
         creativeTools.capture();
+        officeTools.capture();
         state.tool = button.dataset.tool || "docs";
+        state.toolView = "edit";
         localStorage.setItem("studybridge.tool", state.tool);
         render();
-        if (state.tool !== "email") { await creativeTools.load(creativeContext()); render(); }
+        if (state.tool !== "email" && !officeTools.supports(state.tool)) { await creativeTools.load(creativeContext()); render(); }
+        return;
+      }
+      if (action === "office-view-edit" || action === "office-view-generate") {
+        officeTools.capture();
+        creativeTools.capture();
+        state.toolView = action === "office-view-generate" ? "generate" : "edit";
+        render();
+        if (state.toolView === "generate") { await creativeTools.load(creativeContext()); render(); }
         return;
       }
       if (action === "copy-output") {
@@ -1945,6 +1957,7 @@
   }
 
   function render() {
+    officeTools.capture();
     creativeTools.capture();
     const previousAdminWorkspace = root.querySelector(".admin-workspace");
     const previousAdminScroll = previousAdminWorkspace?.scrollTop || 0;
@@ -1991,6 +2004,7 @@
     }
     if ($("emailOriginal") && emailDraft.output) $("toolOutput").innerHTML = emailDraft.output;
     creativeTools.restoreFocus();
+    void officeTools.mount(creativeContext());
     if (state.toast && state.user) root.insertAdjacentHTML("beforeend", `<div class="toast">${esc(state.toast)}</div>`);
     const sidebar = root.querySelector(".sidebar");
     if (sidebar && sidebar.dataset.sidebarContext === previousSidebarContext) {

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-20
+
+- Prepared `1.1.80` with real manual SB Docs, Slides and Sheets editing alongside the existing AI file generator. Docs adds a paper canvas, rich text/font/size/color controls, paragraph line spacing including Double, headings/lists/alignment, page settings, images, undo/redo, DOCX export and printing/PDF.
+- Added editable slide pages, visual thumbnails, add/duplicate/reorder/delete, movable/resizable native text and image elements, numeric geometry, fonts/colors/backgrounds, notes, presentation mode, and Fade/Push/Wipe transitions preserved in PPTX exports. Sheets adds multi-sheet editing, formatting, formula bar, TSV paste, row/column growth, safe formula calculation, cross-sheet references, errors/cycle limits and formula-preserving XLSX exports.
+- Added private versioned cloud projects with local/DynamoDB storage, immutable chunked content, autosave, browser draft recovery, stale-save conflict handling and save-as-copy. Added Office imports with explicit conversion limitations and preserved the existing AI-generation, image and Cheatsheet workflows. AI suggestions preview writing, editable slide drafts or formulas and apply only after an explicit click.
+- Bundled and licensed the lazy-loaded Tiptap/formula editor locally; pinned export dependencies and patched advisory-bearing transitive dependencies. Added model, formula, export/import, authentication/isolation, conflict, DynamoDB chunk and AI-preview coverage. All 114 automated tests passed; browser verification covered 1600/1100/390/320px layouts, manual edits, images/drag/transitions, recalculation, AI apply, native downloads/imports, project switching, cloud reload, conflicting saves and offline draft recovery. Source/asset checks and dependency audit passed. Saved on a review branch; not deployed to AWS.
+
 ## 2026-10-16
 
 - Prepare user-authorized `1.1.79` main/AWS release of the Community redesign and school/major channel selection (`73b1702`, `c039cc8`). Refresh package/frontend versions and entry asset cache keys; retain `6a8023a` (`1.1.78`) as the rollback target. Deployment and live verification follow the main push.

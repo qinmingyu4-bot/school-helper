@@ -1,6 +1,6 @@
 {
     "name": "studybridge-cloud",
-    "version": "1.1.79",
+    "version": "1.1.80",
     "private": true,
     "description": "StudyBridge cloud app with login, database-backed student data, and AI backend.",
     "type": "commonjs",
@@ -10,16 +10,38 @@
         "test": "node --test tests/*.test.js",
         "check": "node scripts/check.js",
         "vendor:markdown": "node scripts/vendor-markdown.js",
-        "vendor:math": "node scripts/vendor-math.js"
+        "vendor:math": "node scripts/vendor-math.js",
+        "build:office": "node scripts/build-office.js"
     },
     "engines": {
         "node": ">=20"
     },
     "dependencies": {
+        "@tiptap/core": "3.32.0",
+        "@tiptap/extension-image": "3.32.0",
+        "@tiptap/extension-text-align": "3.32.0",
+        "@tiptap/extension-text-style": "3.32.0",
+        "@tiptap/pm": "3.32.0",
+        "@tiptap/starter-kit": "3.32.0",
+        "@xmldom/xmldom": "0.9.12",
         "adm-zip": "^0.6.1",
+        "docx": "9.13.0",
+        "exceljs": "4.4.0",
+        "fast-formula-parser": "1.0.19",
+        "image-size": "2.0.3",
         "katex": "0.18.2",
         "markdown-it": "15.0.2",
         "nodemailer": "^10.1.0",
-        "pdf-parse": "^1.1.1"
+        "pdf-parse": "^1.1.1",
+        "pptxgenjs": "4.0.1"
+    },
+    "devDependencies": {
+        "esbuild": "0.28.2"
+    },
+    "overrides": {
+        "image-size": "2.0.3",
+        "exceljs": {
+            "uuid": "11.1.1"
+        }
     }
 }

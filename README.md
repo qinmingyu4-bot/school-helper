@@ -16,9 +16,26 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, in
 - Incremental Study Area replies with animated activity states and a stop-generation control
 - Self-hosted Inter Variable and Noto Sans SC interface fonts, with bundled licenses and source notes in `public/fonts/SOURCES.md`
 - Seven Study Area modes with mode-specific question shortcuts and AI workflows: preview, guided learning, review, assignment help, mock exams, cheatsheets, and exam cramming
+- Manual SB Docs, SB Slides and SB Sheets editors with private cloud projects, browser draft recovery, Office import/export, and AI suggestions applied only after the student chooses
 - Local JSON database for development or small private deployments
 - Optional DynamoDB storage for AWS production
 - Full-window classmate chats with live messages, persistent unread counts, latest-message sorting, and clickable peer avatars and public profiles
+
+## Manual Office editors
+
+Tools opens Docs, Slides and Sheets in **自主编辑** mode. **AI 文件生成** retains the existing file-generation and revision workflow; Images and Cheatsheet PDF are unchanged.
+
+- **SB Docs:** a spacious paper canvas, selected-text font/size/color/bold/italic/underline controls, headings, lists, alignment, paragraph line spacing (including Double), A4/Letter, margins, images, undo/redo, DOCX export, and browser printing/PDF.
+- **SB Slides:** editable 16:9 pages with real thumbnails, add/duplicate/reorder/delete, text boxes and local images, drag/resize and numeric geometry controls, fonts/colors/backgrounds, speaker notes, Fade/Push/Wipe transitions and presentation mode. PPTX exports retain native editable text/images and transitions.
+- **SB Sheets:** multiple named worksheets, cell editing and formatting, formula bar, keyboard navigation, TSV paste, added rows/columns, arithmetic, ranges, cross-sheet references, and functions such as SUM, AVERAGE, IF, ROUND and VLOOKUP. XLSX export retains formulas and cached calculated results. Circular, unsupported or invalid formulas show errors rather than executing JavaScript.
+
+DOCX/PPTX/XLSX import creates a new editable project. Common content and formatting are converted; advanced Word pagination/styles/objects, PowerPoint masters/charts/groups/complex animations, and spreadsheet charts/merged layouts are not fully supported. Each import shows its compatibility notes. Recheck imported calculations and layout. This is an initial manual editing implementation, not full Office-format parity or real-time collaborative editing.
+
+Private projects autosave after editing pauses and can be explicitly saved, renamed, reopened or copied. The UI distinguishes browser draft recovery from confirmed cloud saves. Version checks reject stale saves; use **另存副本** when another tab/device has updated a project. Limits: 200 projects per user, 10 MB per model, 100 slides/100 elements per slide, 10 worksheets/1,000 rows/100 columns/50,000 populated cells, and 12 MB Office imports. Imported embedded pictures must be PNG/JPEG and at most 1 MB; browser-added PNG/JPEG/WebP images are resized and converted before saving.
+
+The authenticated `/api/office` routes store user-scoped metadata and immutable chunked content through the existing local/DynamoDB stores. Exports are generated from the manually edited model without an AI call. `/api/office/assist` previews writing suggestions, editable slide drafts or a formula; it never overwrites saved work automatically.
+
+The editor bundle is lazy-loaded from this server. After changing `client/office-editor.mjs`, `public/office-model.js`, `lib/office-formulas.js` or its dependencies, run `npm ci` and `npm run build:office`, then commit the rebuilt `public/vendor/office-editor.min.js` and its dependency notices. Production installs omit development dependencies and serve the committed bundle. The pinned `image-size` and ExcelJS `uuid` overrides address dependency advisories and are covered by native export tests.
 
 ## Local Run
 

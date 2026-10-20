@@ -235,6 +235,13 @@
   line-height: 1.5;
   background: #fff;
 }
+.office-ai-compose [data-ai-range] {
+  width: 145px;
+  max-width: 100%;
+  min-height: 30px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
 .office-ai-compose > button,
 .office-ai-preview-actions > button:first-child:not(:last-child) {
   background: #216d59;

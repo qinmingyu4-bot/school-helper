@@ -14,6 +14,7 @@ import Image from "@tiptap/extension-image";
 import Model from "../public/office-model.js";
 import { calculator, renameFormulaSheet } from "../lib/office-formulas.js";
 import { revisionBlocks, revisionEdits } from "../lib/office-revision.js";
+import { contentRevisionSource, contentRevisionChanges, applyContentRevision, rangeBounds, inRange } from "../lib/office-content-revision.js";
 const names = { docs: "SB Docs", slides: "SB Slides", sheets: "SB Sheets" };
 const formats = { docs: "docx", slides: "pptx", sheets: "xlsx" };
 const sessions = new Map();
@@ -113,11 +114,11 @@ class Workspace {
     this.ready = false;
     this.undo = [];
     this.redo = [];
-    this.aiOpen = false;
     this.aiPrompt = "";
     this.aiResult = null;
     this.aiBusy = false;
-    this.aiScope = "document";
+    this.aiScope = { docs: "document", slides: "slide", sheets: "sheet" }[kind];
+    this.aiRange = "";
     this.slideIndex = 0;
     this.elementId = "";
     this.sheetIndex = 0;
@@ -195,6 +196,10 @@ class Workspace {
     this.elementId = "";
     this.cell = "A1";
     this.docSelection = null;
+    this.aiResult = null;
+    this.aiSource = null;
+    this.aiError = "";
+    this.aiNotice = "";
     this.status = "尚未保存";
   }
   async open(id) {
@@ -219,6 +224,9 @@ class Workspace {
       this.docSelection = null;
       this.status = "已保存到云端";
       this.aiResult = null;
+      this.aiSource = null;
+      this.aiError = "";
+      this.aiNotice = "";
       this.draw();
       localStorage.setItem(`office.last.${this.ctx.userId}.${this.kind}`, id);
     } finally {
@@ -272,6 +280,7 @@ class Workspace {
     this.status = "未保存的修改";
     this.schedule();
     this.updateStatus();
+    if (this.kind !== "docs" && this.aiResult) this.refreshAI();
   }
   schedule() {
     clearTimeout(this.saveTimer);
@@ -401,11 +410,11 @@ class Workspace {
     this.editor?.unmount();
     const doc = this.kind === "docs",
       slide = this.kind === "slides";
-    this.host.innerHTML = `<div class="office-topbar"><strong>${names[this.kind]}</strong><input class="office-name" data-name aria-label="作品名称" value="${esc(this.current.name)}"><label class="office-project-label">打开作品<select data-project-picker>${this.projectOptions()}</select></label><span class="office-top-actions">${button("new", "新建")}${button("import", "导入 " + formats[this.kind].toUpperCase())}${button("save", "保存")}${button("copy", "另存副本")}${button("export", "导出 " + formats[this.kind].toUpperCase())}${doc ? "" : button("ai", this.aiOpen ? "收起 AI" : "AI 辅助", 'aria-expanded="' + this.aiOpen + '"')}</span></div>
-   ${doc ? this.aiHTML() : ""}
+    this.host.innerHTML = `<div class="office-topbar"><strong>${names[this.kind]}</strong><input class="office-name" data-name aria-label="作品名称" value="${esc(this.current.name)}"><label class="office-project-label">打开作品<select data-project-picker>${this.projectOptions()}</select></label><span class="office-top-actions">${button("new", "新建")}${button("import", "导入 " + formats[this.kind].toUpperCase())}${button("save", "保存")}${button("copy", "另存副本")}${button("export", "导出 " + formats[this.kind].toUpperCase())}</span></div>
+   ${this.aiHTML()}
    <div class="office-statusbar"><span data-save-status role="status"></span><span>${doc ? "<span data-doc-count></span>" : slide ? "16:9 · 可编辑文字和图片" : "支持公式与跨工作表引用"}</span></div>
    ${this.current.importWarnings?.length ? `<div class="office-import-notice" role="status">${this.current.importWarnings.map(esc).join(" ")}</div>` : ""}
-   <div class="office-layout ${!doc && this.aiOpen ? "with-ai" : ""}"><div class="office-main">${doc ? this.docsHTML() : slide ? this.slidesHTML() : this.sheetsHTML()}</div>${!doc && this.aiOpen ? this.aiHTML() : ""}</div><input data-office-image type="file" accept="image/png,image/jpeg,image/webp" hidden><input data-office-import type="file" accept=".${formats[this.kind]}" hidden>`;
+   <div class="office-layout"><div class="office-main">${doc ? this.docsHTML() : slide ? this.slidesHTML() : this.sheetsHTML()}</div></div><input data-office-image type="file" accept="image/png,image/jpeg,image/webp" hidden><input data-office-import type="file" accept=".${formats[this.kind]}" hidden>`;
     this.bind();
     if (doc) this.mountDocs();
     if (slide) this.paintSlides();
@@ -750,13 +759,26 @@ class Workspace {
     this.changed();
     this.refreshCells();
   }
+  aiConfig() {
+    return {
+      docs: { description: "你来写作，AI 按你的要求修改已有内容。", placeholder: "例如：把这段论证写得更严谨，保留我的观点和引用", scopes: [["document", "整篇文档"], ["selection", "选中文字"]], presets: [["润色表达", "润色表达，让行文更自然流畅，保留我的观点和引用。"], ["更学术严谨", "让论证和措辞更学术严谨，保留原意，不编造事实或引用。"], ["精简重复内容", "精简重复和冗余的表达，保留核心观点、数据与引用。"], ["翻译成英文", "翻译成自然、准确的学术英文，保留观点、数据和引用。"]] },
+      slides: { description: "按你的要求，直接修改已有幻灯片的内容、样式和转场。", placeholder: "例如：精简当前页的文字，突出结论，标题改为 36 号，并使用淡入转场", scopes: [["slide", "当前幻灯片"], ["presentation", "整份演示"], ["element", "选中元素"]], presets: [["精简文字", "精简现有文字，保留核心观点和引用，让文字适合现有文字框。"], ["统一样式", "统一所选范围的字体、配色和标题层级，保留文字内容和图片，不让元素超出页面。"], ["完善讲稿", "根据现有幻灯片内容，润色并完善演讲备注，不编造数据。"], ["淡入转场", "将所选幻灯片的转场设为淡入淡出，时长 0.6 秒，其他内容保持不变。"]] },
+      sheets: { description: "按你的要求，批量修改已有单元格的数据、公式和格式。", placeholder: "例如：在 C2:C10 计算每行 A 列乘 B 列的结果，将金额设为货币格式", scopes: [["sheet", "当前工作表"], ["range", "指定单元格区域"], ["cell", "当前单元格"], ["workbook", "整个工作簿"]], presets: [["整理数据", "整理现有文字数据中的多余空格和不一致格式，保留数据含义、数字与公式，不编造数据。"], ["修正公式", "检查并修正现有公式中的明显引用或计算错误，保留正确的公式和原始数据。"], ["统一格式", "根据现有内容统一表头和数据格式，表头加粗，数值采用合适的数字格式，不修改原始数据或公式。"], ["添加合计", "在现有数据下方的空单元格添加合适的 SUM 合计公式和合计标签，不覆盖现有内容。"]] }
+    }[this.kind];
+  }
+  staleMessage() {
+    return this.kind === "docs" ? "正文已更改，请重新预览，避免覆盖你刚写的内容。" : "内容已更改，请重新预览，避免覆盖你刚做的修改。";
+  }
+  aiScopeLabel() {
+    if (this.kind === "docs") return this.aiScope === "selection" ? "只修改选中文字" : "修改当前文档";
+    if (this.kind === "slides") return this.aiScope === "presentation" ? "整份演示" : `第 ${this.slideIndex + 1} 页${this.aiScope === "element" ? " · 选中元素" : ""}`;
+    return this.aiScope === "workbook" ? "整个工作簿" : `${this.sheet().name}${this.aiScope === "range" ? " · " + (this.aiRange.trim() || this.cell) : this.aiScope === "cell" ? " · " + this.cell : " · 当前工作表"}`;
+  }
   aiHTML() {
-    if (this.kind === "docs") {
-      const stale = this.aiResult && !this.revisionCurrent();
-      const edits = this.aiResult?.edits || [];
-      return `<section class="office-ai office-ai-inline" aria-label="AI 赋能"><div class="office-ai-heading"><h3>AI 赋能</h3><p>你来写作，AI 按你的要求修改已有内容。</p></div><div class="office-ai-compose"><label class="office-ai-request">想让 AI 怎样改进？<textarea data-ai-prompt rows="2" maxlength="4000" placeholder="例如：把这段论证写得更严谨，保留我的观点和引用">${esc(this.aiPrompt)}</textarea></label><label>修改范围<select data-ai-scope><option value="document" ${this.aiScope === "document" ? "selected" : ""}>整篇文档</option><option value="selection" ${this.aiScope === "selection" ? "selected" : ""}>选中文字</option></select></label>${button("ai-generate", this.aiBusy ? "正在修改…" : "预览修改", this.aiBusy ? "disabled" : "")}</div><div class="office-ai-shortcuts"><span>快捷要求</span>${["润色表达", "更学术严谨", "精简重复内容", "翻译成英文"].map((text, i) => button("ai-preset-" + i, text)).join("")}</div>${this.aiResult ? `<div class="office-ai-preview"><div class="office-ai-heading"><strong>${edits.length ? `修改预览 · ${edits.length} 处` : "AI 认为无需修改"}</strong><span>${this.aiSource?.scope === "selection" ? "只修改选中文字" : "修改当前文档"}</span></div><div data-ai-result aria-live="polite">${this.aiResultHTML()}</div><div class="office-ai-preview-actions">${edits.length ? button("ai-apply", this.aiSource?.scope === "selection" ? "应用到选中文字" : "应用到文档", stale || this.aiBusy ? "disabled" : "") : ""}${button("ai-discard", "放弃这次修改")}</div></div>` : ""}<p class="office-ai-warning" role="alert">${esc(this.aiError || (stale ? "正文已更改，请重新预览，避免覆盖你刚写的内容。" : ""))}</p><p class="office-ai-hint" role="status">${esc(this.aiNotice || "AI 只在你点击后参与；预览不会改动正文，应用后可撤销。")}</p></section>`;
-    }
-    return `<aside class="office-ai"><h3>AI 辅助</h3><p>${{ slides: "基于当前演示生成可编辑的幻灯片草稿。", sheets: "根据表格内容与所选单元格，生成公式建议。" }[this.kind]}</p><label>你想做什么？<textarea data-ai-prompt rows="5" placeholder="说明你的要求">${esc(this.aiPrompt)}</textarea></label>${button("ai-generate", this.aiBusy ? "正在生成…" : "生成建议", this.aiBusy ? "disabled" : "")}<div data-ai-result aria-live="polite">${this.aiResult ? this.aiResultHTML() : "建议会先显示在这里，由你决定是否应用。"}</div>${this.aiResult ? button("ai-apply", this.kind === "slides" ? "追加为新幻灯片" : "填入当前单元格") : ""}<p class="office-ai-warning" role="alert">${esc(this.aiError || "")}</p></aside>`;
+    const config = this.aiConfig(), stale = this.aiResult && !this.revisionCurrent();
+    const edits = this.aiResult?.edits || this.aiResult?.changes || [];
+    const applyLabel = this.kind === "docs" ? this.aiSource?.scope === "selection" ? "应用到选中文字" : "应用到文档" : this.kind === "slides" ? "应用到演示" : "应用到表格";
+    return `<section class="office-ai office-ai-inline" aria-label="AI 赋能"><div class="office-ai-heading"><h3>AI 赋能</h3><p>${config.description}</p></div><div class="office-ai-compose"><label class="office-ai-request">想让 AI 怎样改进？<textarea data-ai-prompt rows="2" maxlength="4000" placeholder="${config.placeholder}">${esc(this.aiPrompt)}</textarea></label><label>修改范围<select data-ai-scope>${config.scopes.map(([value, label]) => `<option value="${value}" ${this.aiScope === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>${this.kind === "sheets" && this.aiScope === "range" ? `<label>单元格区域<input data-ai-range aria-label="AI 修改区域" maxlength="24" placeholder="例如 A1:D10" value="${esc(this.aiRange)}"></label>` : ""}${button("ai-generate", this.aiBusy ? "正在修改…" : "预览修改", this.aiBusy ? "disabled" : "")}</div><div class="office-ai-shortcuts"><span>快捷要求</span>${config.presets.map(([label], i) => button("ai-preset-" + i, label)).join("")}</div>${this.aiResult ? `<div class="office-ai-preview"><div class="office-ai-heading"><strong>${edits.length ? `修改预览 · ${edits.length} 处` : "AI 认为无需修改"}</strong><span>${esc(this.aiSource?.label || "")}</span></div><div data-ai-result aria-live="polite">${this.aiResultHTML()}</div><div class="office-ai-preview-actions">${edits.length ? button("ai-apply", applyLabel, stale || this.aiBusy ? "disabled" : "") : ""}${button("ai-discard", "放弃这次修改")}</div></div>` : ""}<p class="office-ai-warning" role="alert">${esc(this.aiError || (stale ? this.staleMessage() : ""))}</p><p class="office-ai-hint" role="status">${esc(this.aiNotice || "AI 只在你点击后参与；预览不会改动内容，应用后可撤销。")}</p></section>`;
   }
   aiResultHTML() {
     if (this.aiResult.edits) {
@@ -765,22 +787,83 @@ class Workspace {
         return `<section class="office-ai-change"><div><small>修改前</small><pre>${esc(target?.text || "")}</pre></div><div><small>修改后</small><pre>${esc(edit.text || "（删除这段文字）")}</pre></div></section>`;
       }).join("");
     }
-    if (this.aiResult.slides)
-      return this.aiResult.slides
-        .map(
-          (s, i) =>
-            `<section><strong>${i + 1}. ${esc(s.title)}</strong><p>${esc(s.body)}</p></section>`,
-        )
-        .join("");
-    return `<pre>${esc(this.aiResult.text || "")}</pre>`;
+    const labels = { text: "文字", font: "字体", size: "字号", color: "文字色", bold: "粗体", align: "对齐", x: "水平位置 %", y: "垂直位置 %", w: "宽度 %", h: "高度 %", notes: "演讲备注", background: "背景色", transition: "转场", duration: "转场时长（秒）", value: "内容 / 公式", format: "数字格式" };
+    const values = { none: "无", fade: "淡入淡出", push: "推进", wipe: "擦除", general: "常规", number: "小数", currency: "货币", percent: "百分比", left: "左对齐", center: "居中", right: "右对齐" };
+    const describe = (set, before) => Object.entries(set).map(([key, next]) => {
+      if (key === "style") return describe(next, before ? before.style || {} : undefined);
+      const value = before ? before[key] : next;
+      const display = typeof value === "boolean" ? value ? "是" : "否" : value === "" || value == null ? "（空 / 默认）" : ["transition", "format", "align"].includes(key) ? values[value] || value : value;
+      return `${labels[key]}：${display}`;
+    }).join("\n");
+    const calc = this.kind === "sheets" && calculator(this.aiSource.preview);
+    return this.aiResult.changes.map((change) => {
+      let label, before, after = describe(change.set);
+      if (this.kind === "slides") {
+        const slide = this.aiSource.content.slides.find((s) => s.id === change.slideId);
+        before = change.elementId ? slide.elements.find((e) => e.id === change.elementId) : slide;
+        label = `第 ${Number(change.slideId.slice(1)) + 1} 页 · ${change.elementId ? (before.type === "image" ? "图片 " : "文字框 ") + (Number(change.elementId.slice(1)) + 1) : "页面与备注"}`;
+      } else {
+        const sheet = this.aiSource.content.sheets.find((s) => s.id === change.sheetId);
+        before = sheet.cells[change.cell] || { value: "", style: {} };
+        label = `${sheet.name} · ${change.cell}`;
+        if (change.set.value?.startsWith("=")) after += "\n计算结果：" + calc.display(sheet.name, change.cell);
+      }
+      return `<section class="office-ai-change"><div><small>${esc(label)} · 修改前</small><pre>${esc(describe(change.set, before))}</pre></div><div><small>${esc(label)} · 修改后</small><pre>${esc(after)}</pre></div></section>`;
+    }).join("");
   }
   refreshAI() {
     const panel = this.host?.querySelector(".office-ai");
     if (panel) panel.outerHTML = this.aiHTML();
   }
   revisionCurrent() {
-    return this.aiSource?.project === this.current && this.editor &&
-      this.aiSource.signature === JSON.stringify(this.editor.getJSON());
+    return this.aiSource?.project === this.current && this.aiSource.signature ===
+      JSON.stringify(this.kind === "docs" ? this.editor?.getJSON() : this.current.model);
+  }
+  contentTargets() {
+    if (this.kind === "slides") {
+      if (this.aiScope === "element" && !this.element()) throw Error("请先单击选中要修改的文字框或图片。");
+      return contentRevisionSource("slides", { slides: this.current.model.slides.flatMap((slide, i) => {
+        if (this.aiScope !== "presentation" && i !== this.slideIndex) return [];
+        return [{ id: "s" + i, editable: this.aiScope !== "element", notes: slide.notes, background: slide.background, transition: slide.transition, duration: slide.duration, elements: slide.elements.flatMap((el, n) => {
+          if (this.aiScope === "element" && el.id !== this.elementId) return [];
+          const { id, src, ...content } = el;
+          return [{ id: "e" + n, ...content }];
+        }) }];
+      }) });
+    }
+    return contentRevisionSource("sheets", { sheets: this.current.model.sheets.flatMap((sheet, i) => {
+      if (this.aiScope !== "workbook" && i !== this.sheetIndex) return [];
+      const input = this.aiScope === "range" ? (this.aiRange.trim() || this.cell).toUpperCase().replace(/\$/g, "") : this.cell;
+      const [from, to = from] = input.split(":");
+      if (this.aiScope === "range" && input.split(":").length > 2) throw Error("请使用有效的单元格区域，例如 A1:D10。");
+      const range = ["range", "cell"].includes(this.aiScope) ? { from, to } : { from: "A1", to: Model.col(sheet.cols) + sheet.rows };
+      rangeBounds(range, sheet.rows, sheet.cols);
+      return [{ id: "s" + i, name: sheet.name, rows: sheet.rows, cols: sheet.cols, range, cells: Object.fromEntries(Object.entries(sheet.cells).filter(([key]) => inRange(key, range, sheet.rows, sheet.cols)).map(([key, cell]) => [key, { value: cell.value, style: cell.style || {} }])) }];
+    }) });
+  }
+  applyContentChanges() {
+    if (!this.revisionCurrent()) {
+      this.aiError = this.staleMessage();
+      this.refreshAI();
+      return;
+    }
+    const changes = this.aiResult?.changes;
+    if (!changes?.length) return;
+    const next = applyContentRevision(this.kind, this.current.model, this.aiSource.content, changes);
+    this.checkpoint();
+    this.current.model = next;
+    const first = changes[0];
+    if (this.kind === "slides") {
+      this.slideIndex = Number(first.slideId.slice(1));
+      this.elementId = first.elementId ? this.slide().elements[Number(first.elementId.slice(1))].id : "";
+    } else {
+      this.sheetIndex = Number(first.sheetId.slice(1));
+      this.cell = first.cell;
+    }
+    this.aiResult = null;
+    this.aiNotice = "已应用到" + (this.kind === "slides" ? "现有幻灯片" : "现有表格") + "。可点击「撤销」恢复修改前的内容。";
+    this.changed();
+    this.draw();
   }
   revisionTargets() {
     const { doc, selection } = this.editor.state;
@@ -841,36 +924,21 @@ class Workspace {
     this.capture();
     this.aiError = "";
     this.aiNotice = "";
-    let targets;
+    let targets, content;
     try {
       if (!this.aiPrompt.trim()) throw Error("请填写 AI 辅助要求。");
       if (this.kind === "docs") targets = this.revisionTargets();
+      else content = this.contentTargets();
     } catch (error) {
       this.aiError = error.message;
       this.refreshAI();
       return;
     }
     const project = this.current;
-    const source = targets && { project, targets, scope: this.aiScope, signature: JSON.stringify(this.editor.getJSON()) };
+    const source = { project, targets, content, scope: this.aiScope, label: this.aiScopeLabel(), signature: JSON.stringify(this.kind === "docs" ? this.editor.getJSON() : project.model) };
+    const model = content && clone(project.model);
     this.aiBusy = true;
     this.aiResult = null;
-    const context =
-      this.kind === "docs"
-        ? ""
-        : this.kind === "slides"
-          ? JSON.stringify(
-              project.model.slides.map((s) => ({
-                notes: s.notes,
-                text: s.elements
-                  .filter((e) => e.type === "text")
-                  .map((e) => e.text),
-              })),
-            )
-          : JSON.stringify({
-              sheet: this.sheet().name,
-              selectedCell: this.cell,
-              cells: this.sheet().cells,
-            });
     this.refreshAI();
     try {
       const result = await this.ctx.api("/api/office/assist", {
@@ -879,13 +947,15 @@ class Workspace {
           ownerId: this.ctx.userId,
           kind: this.kind,
           prompt: this.aiPrompt,
-          context: context.slice(0, 20000),
-          ...(targets ? { operation: "revise", blocks: targets.map(({ id, text }) => ({ id, text })) } : {}),
+          operation: "revise",
+          ...(targets ? { blocks: targets.map(({ id, text }) => ({ id, text })) } : { source: content }),
         },
       });
       if (project === this.current) {
-        this.aiResult = targets ? { edits: revisionEdits(JSON.stringify(result), targets) } : result;
+        const validated = targets ? { edits: revisionEdits(JSON.stringify(result), targets) } : { changes: contentRevisionChanges(this.kind, result, content) };
+        if (content) source.preview = applyContentRevision(this.kind, model, content, validated.changes);
         this.aiSource = source;
+        this.aiResult = validated;
       }
     } catch (error) {
       if (project === this.current) this.aiError = error.message;
@@ -1105,6 +1175,7 @@ class Workspace {
         this.changed();
       }
       if (e.target.matches("[data-ai-prompt]")) this.aiPrompt = e.target.value;
+      if (e.target.matches("[data-ai-range]")) this.aiRange = e.target.value;
       if (e.target.matches("[data-notes]")) {
         this.slide().notes = e.target.value;
         this.changed();
@@ -1123,7 +1194,10 @@ class Workspace {
       }
     };
     host.onchange = (e) => {
-      if (e.target.matches("[data-ai-scope]")) this.aiScope = e.target.value;
+      if (e.target.matches("[data-ai-scope]")) {
+        this.aiScope = e.target.value;
+        this.refreshAI();
+      }
       if (e.target.matches("[data-project-picker]"))
         void this.open(e.target.value).catch((error) => {
           this.status = error.message;
@@ -1475,17 +1549,12 @@ class Workspace {
       this.schedule();
       return;
     }
-    if (action === "ai") {
-      this.aiOpen = !this.aiOpen;
-      this.draw();
-      return;
-    }
     if (action === "ai-generate") {
       await this.assist();
       return;
     }
     if (action.startsWith("ai-preset-")) {
-      this.aiPrompt = ["润色表达，让行文更自然流畅，保留我的观点和引用。", "让论证和措辞更学术严谨，保留原意，不编造事实或引用。", "精简重复和冗余的表达，保留核心观点、数据与引用。", "翻译成自然、准确的学术英文，保留观点、数据和引用。"][Number(action.slice(-1))] || "";
+      this.aiPrompt = this.aiConfig().presets[Number(action.slice(-1))]?.[1] || "";
       this.host.querySelector("[data-ai-prompt]").value = this.aiPrompt;
       this.host.querySelector("[data-ai-prompt]").focus();
       return;
@@ -1500,31 +1569,7 @@ class Workspace {
       if (!this.aiResult) return;
       if (this.kind === "docs") {
         this.applyRevision();
-      } else if (this.kind === "slides") {
-        if (
-          this.current.model.slides.length + this.aiResult.slides.length >
-          100
-        )
-          throw Error("演示最多 100 页。");
-        this.checkpoint();
-        this.current.model.slides.push(
-          ...this.aiResult.slides.map((s) => {
-            const slide = Model.blankSlide();
-            slide.elements = [
-              Model.textBox(s.title, { size: 36, y: 12, h: 20 }),
-              Model.textBox(s.body, { size: 22, y: 38, h: 50 }),
-            ];
-            return slide;
-          }),
-        );
-        this.slideIndex =
-          this.current.model.slides.length - this.aiResult.slides.length;
-        this.changed();
-        this.paintSlides();
-      } else {
-        this.checkpoint();
-        this.setCell(this.aiResult.text);
-      }
+      } else this.applyContentChanges();
       return;
     }
     if (action === "image") {
@@ -1542,8 +1587,11 @@ class Workspace {
       }
       const from = action === "undo" ? this.undo : this.redo,
         to = action === "undo" ? this.redo : this.undo;
+      const snapshot = JSON.stringify(this.current.model);
+      // Moving focus can checkpoint an unchanged model; skip those duplicates.
+      while (from.at(-1) === snapshot) from.pop();
       if (!from.length) return;
-      to.push(JSON.stringify(this.current.model));
+      to.push(snapshot);
       this.current.model = JSON.parse(from.pop());
       this.slideIndex = Math.min(
         this.slideIndex,

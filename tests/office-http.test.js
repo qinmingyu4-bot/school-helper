@@ -193,6 +193,23 @@ test(
     assert.deepEqual(unchanged.model, M.normalize("docs", M.fresh("docs")), "Preview must not mutate the project");
     const invalidRevision = await request("/api/office/assist", { method: "POST", cookie, body: { ...revisionBody, blocks: [{ id: "b0", text: "a".repeat(20001) }] } });
     assert.equal(invalidRevision.status, 400);
+    for (const kind of ["slides", "sheets"]) {
+      const previous = (await (await request("/api/office/office_http-" + kind, { cookie })).json()).project;
+      const fresh = M.fresh(kind);
+      const source = kind === "slides" ? { slides: [{ ...fresh.slides[0], id: "s0", editable: true, elements: fresh.slides[0].elements.map((el, i) => ({ ...el, id: "e" + i })) }] }
+        : { sheets: [{ ...fresh.sheets[0], id: "s0", range: { from: "A1", to: "C10" }, cells: { A1: { value: "10", style: {} }, A2: { value: "20", style: {} } } }] };
+      const body = { ownerId: user.id, kind, operation: "revise", prompt: "Revise the existing content", source };
+      assert.equal((await request("/api/office/assist", { method: "POST", cookie: foreign, body })).status, 403);
+      const response = await request("/api/office/assist", { method: "POST", cookie, body });
+      assert.equal(response.status, 200);
+      const result = await response.json();
+      assert.equal(result.changes.length, 2);
+      assert.equal(result.changes[0][kind === "slides" ? "slideId" : "sheetId"], "s0");
+      const saved = (await (await request("/api/office/office_http-" + kind, { cookie })).json()).project;
+      assert.deepEqual(saved.model, previous.model, "Content revision preview cannot mutate a saved project");
+      const badSource = await request("/api/office/assist", { method: "POST", cookie, body: { ...body, source: {} } });
+      assert.equal(badSource.status, 400);
+    }
     const bad = M.fresh("docs");
     bad.content.content = [
       { type: "image", attrs: { src: "javascript:alert(1)" } },

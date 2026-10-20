@@ -183,6 +183,16 @@ test(
         .projects.length,
       0,
     );
+    const revisionBody = { ownerId: user.id, kind: "docs", operation: "revise", prompt: "Improve my wording", blocks: [{ id: "b0", text: "My argument" }] };
+    assert.equal((await request("/api/office/assist", { method: "POST", body: revisionBody })).status, 401);
+    assert.equal((await request("/api/office/assist", { method: "POST", cookie: foreign, body: revisionBody })).status, 403);
+    const revision = await request("/api/office/assist", { method: "POST", cookie, body: revisionBody });
+    assert.equal(revision.status, 200);
+    assert.deepEqual(await revision.json(), { edits: [{ id: "b0", text: "Revised: My argument" }] });
+    const unchanged = (await (await request("/api/office/office_http-docs", { cookie })).json()).project;
+    assert.deepEqual(unchanged.model, M.normalize("docs", M.fresh("docs")), "Preview must not mutate the project");
+    const invalidRevision = await request("/api/office/assist", { method: "POST", cookie, body: { ...revisionBody, blocks: [{ id: "b0", text: "a".repeat(20001) }] } });
+    assert.equal(invalidRevision.status, 400);
     const bad = M.fresh("docs");
     bad.content.content = [
       { type: "image", attrs: { src: "javascript:alert(1)" } },

@@ -199,6 +199,109 @@
 .office-ai .office-ai-warning {
   color: #b43c3c;
 }
+.office-ai-inline {
+  border-left: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 16px;
+  gap: 10px;
+  background: linear-gradient(110deg, #f0f8f5, #f8fbff);
+}
+.office-ai-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 14px;
+}
+.office-ai-heading > span {
+  color: #58708f;
+  font-size: 12px;
+}
+.office-ai-inline h3 {
+  color: #17634f;
+  font-size: 15px;
+}
+.office-ai-compose {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+}
+.office-ai-request {
+  flex: 1 1 340px;
+  min-width: 0;
+}
+.office-ai-inline textarea {
+  min-height: 64px;
+  line-height: 1.5;
+  background: #fff;
+}
+.office-ai-compose > button,
+.office-ai-preview-actions > button:first-child:not(:last-child) {
+  background: #216d59;
+  color: #fff;
+  border-color: #216d59;
+}
+.office-ai-shortcuts,
+.office-ai-preview-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.office-ai-shortcuts > span {
+  font-size: 11px;
+  color: #58708f;
+  margin-right: 4px;
+}
+.office-ai-shortcuts button {
+  border-color: #d9e8e2;
+  border-radius: 16px;
+  font-weight: 500;
+  background: #ffffffb3;
+  padding: 4px 10px;
+  min-height: 28px;
+}
+.office-ai-inline .office-ai-warning:empty {
+  display: none;
+}
+.office-ai-preview {
+  background: #fff;
+  padding: 14px;
+  border: 1px solid #d2e4dc;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.office-ai-preview [data-ai-result] {
+  max-height: 320px;
+  overflow: auto;
+}
+.office-ai .office-ai-change {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5ece8;
+}
+.office-ai-change > div {
+  min-width: 0;
+  padding: 10px;
+  background: #f8fafc;
+  border-radius: 4px;
+}
+.office-ai-change > div:last-child {
+  background: #eff8f2;
+}
+.office-ai-change small {
+  display: block;
+  color: #58708f;
+  margin-bottom: 6px;
+}
+.office-ai-inline button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
 .office-slides-layout {
   display: grid;
   grid-template-columns: 120px minmax(0, 1fr) 170px;
@@ -557,6 +660,15 @@
   }
 }
 @container (max-width: 500px) {
+  .office-ai-inline {
+    padding: 12px;
+  }
+  .office-ai-compose > label:first-child {
+    flex-basis: 100%;
+  }
+  .office-ai .office-ai-change {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .office-topbar {
     padding: 10px;
   }

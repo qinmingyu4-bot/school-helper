@@ -3,7 +3,10 @@ global.fetch = async (url, options) => {
   if (String(url).startsWith("https://api.openai.com/v1/chat/completions")) {
     const body = JSON.parse(options.body);
     const system = String(body.messages[0].content);
-    const content = system.includes("manual slides editor")
+    const user = String(body.messages.at(-1).content);
+    const content = system.includes('"edits"')
+      ? JSON.stringify({ edits: JSON.parse(user.split("Current editing context:\n")[1]).blocks.map((block) => ({ id: block.id, text: "Revised: " + block.text })) })
+      : system.includes("manual slides editor")
       ? JSON.stringify({
           slides: [
             {

@@ -50,7 +50,8 @@ test("DynamoDB chunks full Unicode materials and images, isolates users/courses 
   const doc = await db.createDocument({ id: "long", userId: "alice", courseId: "math", title: "Long", text });
   assert.equal(doc.text, text);
   assert.equal((await db.listDocuments("alice", "math"))[0].text, text);
-  const attachments = [{ name: "图.png", kind: "image", dataUrl: "data:image/png;base64," + "a".repeat(500000) }, { name: "notes", kind: "text", text }];
+  const originalPdf = { name: "paper.pdf", kind: "pdf", dataUrl: "data:application/pdf;base64," + Buffer.from("%PDF-1.7\n" + "source".repeat(80000)).toString("base64") };
+  const attachments = [{ name: "图.png", kind: "image", dataUrl: "data:image/png;base64," + "a".repeat(500000) }, originalPdf, { name: "notes", kind: "text", text }];
   await db.saveChatAttachments("alice", "math", "msg", attachments);
   assert.deepEqual(await db.listChatAttachments("alice", "math"), attachments);
   assert.deepEqual(await db.listChatAttachments("bob", "math"), []);
@@ -59,6 +60,11 @@ test("DynamoDB chunks full Unicode materials and images, isolates users/courses 
   assert.equal((await db.listDocuments("alice", "math"))[0].text, text);
   await db.updateDocument("alice", "math", "long", { text: "replacement" });
   assert.equal((await db.listDocuments("alice", "math"))[0].text, "replacement");
+  await db.writeMaterial("alice", "math", "DOCFILE#long#PDF", originalPdf);
+  assert.deepEqual(await db.readMaterial("alice", "math", "DOCFILE#long#PDF"), originalPdf);
+  await db.deleteDocument("alice", "math", "long");
+  await assert.rejects(db.readMaterial("alice", "math", "DOCFILE#long#PDF"));
+  assert.deepEqual(await db.listChatAttachments("alice", "math"), attachments, "Deleting a course source must preserve separately uploaded chat files");
   await db.deleteCourse("alice", "math");
   assert.equal(db.dynamo.rows.size, 0);
 });

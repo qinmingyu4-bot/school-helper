@@ -9,7 +9,8 @@ const AdmZip = require("adm-zip");
 const { readEvents } = require("../public/chat-stream");
 
 const root = path.resolve(__dirname, "..");
-test("account, course, upload, and persistence health check", { timeout: 60000 }, async (t) => {
+// Streaming fixtures echo the full teaching/file context with deliberate latency.
+test("account, course, upload, and persistence health check", { timeout: 90000 }, async (t) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "studybridge-server-"));
   let child;
   let base;

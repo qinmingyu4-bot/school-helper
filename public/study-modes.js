@@ -18,9 +18,9 @@
     },
     guided: {
       label: "带着学习",
-      instruction: "Teach progressively: introduce a manageable concept, show a worked example, and check understanding before moving on. Scaffold difficult steps and adapt to the student's answers. When they request an interactive check, ask a small number of questions and wait for their response instead of supplying all answers immediately.",
+      instruction: "Teach progressively within each requested problem and subpart: introduce the concept, show its worked calculation, and provide the answer. Complete the requested scope in the same response rather than stopping after the first example. Place optional understanding checks after the requested explanations. Scaffold difficult steps and adapt to the student's answers. Only when they explicitly request an interactive check or one-at-a-time teaching, ask a small number of questions and wait for their response instead of supplying all answers immediately.",
       prompts: [
-        ["一步步教", "请带着我学习这部分内容，按概念、例子、检查理解的顺序来。"],
+        ["一步步教", "请按题号顺序完整讲解这次上传资料中的全部题目和每个小问。每个小问先讲概念和方法，再演算并给出答案；检查理解放在全部讲解之后，不要只讲第一小问就停下来等我回答。如果资料不是题目，请完整讲解其中的主要内容。"],
         ["举例讲解", "请用一个北美课堂常见例子解释这部分内容。"],
         ["检查理解", "请问我几个问题来检查我是否真的理解了。"],
         ["中英对照", "请用中文解释核心逻辑，并给我关键英文术语和考试表达。"]

@@ -172,12 +172,34 @@ create links or HTML attributes; incomplete/unsupported formulas fall back to
 escaped text. Regenerate pinned math assets with `npm run vendor:math`.
 
 Academic explanations default to a method overview, why the method applies,
-reproducible intermediate calculations and a final answer, one part at a time.
+reproducible intermediate calculations and a final answer for each part in order.
 Learning Style chooses the answer/explanation languages without shortening the
 teaching: English answers plus Chinese explanations teach each part in Chinese
 before its concise English exam answer. Explicit brevity, answer-only, hints,
 quiz answer timing and print/time budgets still take priority. Image requests
 such as `teach me` and `教我` use the complex-task model, including retained images.
+
+For uploaded problem sets, a general teaching request covers all numbered problems
+and subparts in the same response, with an initial inventory and a final coverage
+summary. The guided “一步步教” shortcut explicitly requests complete coverage;
+understanding checks do not stop the explanation after the first example. Explicit
+single-question, hints-only, one-at-a-time and quiz requests still take precedence.
+Short PDF tutoring tasks and retained multipart course sources select the complex
+model even below the generic long-attachment threshold. The immediate upload's text
+has priority over older background when retrieval is needed, and recent long replies
+retain their completion summary for follow-up questions.
+
+New chat and course-material PDF uploads retain their original bytes privately and
+send bounded original PDF inputs to the model alongside extracted text, so graphs,
+table layout and mathematical notation remain available across refresh/restart and
+follow-ups. Native file parts survive Responses/Chat Completions fallback. Course
+PDF originals live in private chunked material storage, are absent from document/
+message display JSON, and are removed on source deletion or source-text replacement.
+Per-request selection prioritizes immediate/named files within eight visual files
+and 32 MB of encoded input; excluded sources have text-only context and must not be
+claimed as visually inspected. Older uploads saved before original-PDF retention
+need re-uploading to restore their missing graphics. Native PDF schema follows the
+[official OpenAI file-input guide](https://developers.openai.com/api/docs/guides/file-inputs).
 
 The Study Area also has a permanent General Chat entry beside courses for everyday
 questions. It works without creating a course, keeps account-scoped history and

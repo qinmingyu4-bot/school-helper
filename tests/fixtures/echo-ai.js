@@ -8,6 +8,11 @@ globalThis.fetch = async (url, options) => {
     throw new Error(`Unexpected external request in AI test: ${url}`);
   }
   const body = JSON.parse(options.body);
+  if (!body.stream && JSON.stringify(body.messages || body.input).includes("NONSTREAM_INCOMPLETE")) {
+    const incomplete = String(url).endsWith("/responses") ? { status: "incomplete", output_text: "Unfinished provider answer" }
+      : { choices: [{ finish_reason: "length", message: { content: "Unfinished provider answer" } }] };
+    return new Response(JSON.stringify(incomplete), { status: 200 });
+  }
   if (body.stream) {
     const responses = String(url).endsWith("/responses");
     const last = (body.messages || body.input).at(-1).content;

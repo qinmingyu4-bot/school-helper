@@ -10,6 +10,18 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.84 - 2026-10-20
+
+Purpose:
+- Release complete uploaded problem-set coverage and native PDF inputs (`eeb84ef`). Complete all requested questions/subparts before optional comprehension checks, preserve explicit limited-scope requests, prioritize current attachments and use the complex model for PDF tutoring.
+- Retain original PDFs privately so graphs, tables and formulas remain available to the model, including later requests and streaming fallback. Existing legacy PDFs must be re-uploaded to retain their originals.
+
+Validation:
+- All 126 automated tests, 135-file source/asset checks and the zero-vulnerability production audit passed. A real streamed request using the reported AP Calculus PDF covered all 24 parts, with graph-based question 4 checked against the original. Desktop/mobile rendering passed. GitHub's production workflow and public runtime/assets are verified after the authorized main push.
+
+Rollback target:
+- `74fcb6a` (previous production version `1.1.83`).
+
 ### 1.1.83 - 2026-10-20
 
 Purpose:

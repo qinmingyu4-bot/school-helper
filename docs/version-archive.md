@@ -10,6 +10,18 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.83 - 2026-10-20
+
+Purpose:
+- Release the manual SB Docs, Slides and Sheets workspaces (`41db172`) with direct AI revisions to existing Docs (`20cff47`) and Slides/Sheets content (`a91d419`). Include private versioned storage, browser recovery, native Office import/export and the separate complete-file AI generator.
+- Update pinned markdown-it and its self-hosted browser bundle to `15.0.3`, removing the vulnerable `15.0.2` asset and resolving the release-blocking dependency audit.
+
+Validation:
+- After the dependency upgrade, all 120 automated tests, 132-file source/asset checks, a zero-vulnerability production audit, desktop/mobile browser editing/revision checks and native downloads passed. Real-provider revisions passed on the feature branch. GitHub's production check/deploy workflow and public runtime/assets are verified after the authorized main push.
+
+Rollback target:
+- `204b67c` (previous production version `1.1.79`).
+
 ### 1.1.78 - 2026-10-16
 
 Purpose:

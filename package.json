@@ -1,6 +1,6 @@
 {
     "name": "studybridge-cloud",
-    "version": "1.1.82",
+    "version": "1.1.83",
     "private": true,
     "description": "StudyBridge cloud app with login, database-backed student data, and AI backend.",
     "type": "commonjs",
@@ -30,7 +30,7 @@
         "fast-formula-parser": "1.0.19",
         "image-size": "2.0.3",
         "katex": "0.18.2",
-        "markdown-it": "15.0.2",
+        "markdown-it": "15.0.3",
         "nodemailer": "^10.1.0",
         "pdf-parse": "^1.1.1",
         "pptxgenjs": "4.0.1"

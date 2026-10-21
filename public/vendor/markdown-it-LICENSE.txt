@@ -1,4 +1,4 @@
-markdown-it 15.0.2
+markdown-it 15.0.3
 Copyright (c) 2014 Vitaly Puzrin, Alex Kocharin.
 
 Permission is hereby granted, free of charge, to any person

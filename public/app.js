@@ -1895,7 +1895,7 @@
         return;
       }
       if (action === "copy-output") {
-        await navigator.clipboard.writeText($("toolOutput")?.innerText || "");
+        await window.StudyBridgeClipboard.copyText($("toolOutput")?.innerText || "");
         setToast("已复制。");
         render();
         return;
@@ -2072,9 +2072,14 @@
     const copyTarget = event.target.closest("[data-copy]");
     if (copyTarget) {
       event.preventDefault();
-      await navigator.clipboard.writeText(copyTarget.dataset.copy || "");
-      setToast("已复制。");
-      render();
+      try {
+        await window.StudyBridgeClipboard.copyText(copyTarget.dataset.copy || "");
+        setToast("邀请码已复制。");
+      } catch (error) {
+        setToast(error.message || "复制失败，请直接选中邀请码手动复制。");
+      }
+      root.querySelector(".toast")?.remove();
+      root.insertAdjacentHTML("beforeend", `<div class="toast" role="status" aria-live="polite">${esc(state.toast)}</div>`);
       return;
     }
     const actionTarget = event.target.closest("[data-action]");

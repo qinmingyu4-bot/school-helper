@@ -2,6 +2,8 @@
 
 ## 2026-10-26
 
+- Prepare the authorized `1.1.88` AWS release: compact course materials/preferences (`b6ad697`), rename 自定义要求 (`5b21033`), and add Enter-to-send with Shift+Enter/IME safeguards (`9c1d643`). Preserve production data and credentials; record `b8e34fe` (1.1.87) as the rollback target. Recheck source/assets, full tests, actual browser save/upload/keyboard behavior and the high-severity production audit gate before deployment; one existing moderate Nodemailer advisory remains outside this UI-only release.
+
 - Study Area and General Chat now send with Enter and retain Shift+Enter for a newline. Ignore IME composition/legacy key code 229, held-key repeats, modified Enter, empty submissions and active replies; reuse the existing send action and error handling.
 
 - Renamed the Study Area learning-preference instruction label from 补充要求 to 自定义要求, without changing its saved value or behavior.

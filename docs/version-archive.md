@@ -10,6 +10,20 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.88 - 2026-10-26
+
+Purpose:
+- Compact course-material and learning-preference controls (`b6ad697`), label the instruction field 自定义要求 (`5b21033`), and send chat with Enter (`9c1d643`).
+- Preserve Shift+Enter newlines, IME confirmation, empty-message guards, uploads, preference autosave and Settings synchronization.
+
+Validation:
+- Source/entry asset checks and isolated-account browser checks passed at 1440/1100/390/320px, including real note/file saves, preferences/reload, Enter sending and IME safeguards.
+- Run the full tests and production high-severity audit gate before the main push, then verify GitHub deployment, runtime health and online assets.
+- One existing moderate Nodemailer advisory remains; no dependency changes are part of this release.
+
+Rollback target:
+- `b8e34fe` (previous production version `1.1.87`).
+
 ### 1.1.86 - 2026-10-26
 
 Purpose:

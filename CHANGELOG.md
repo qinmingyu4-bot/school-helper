@@ -2,6 +2,9 @@
 
 ## 2026-10-26
 
+- Updated to `1.1.88`: compacted Study Area course materials and learning preferences. Aligned note/title/file controls with accessible save/upload icons, reduced textarea heights, styled the native file picker, and bounded long material lists. Replaced repeated bilingual preference explanations with concise checkbox labels, a labeled optional instruction field and a compact save/retry action. Preserved account-level autosave and Settings synchronization.
+- All 141 tests and 141-file source/asset checks passed. Real isolated-account browser checks verified note save, file upload, preference save/reload, 1440/1100/390/320px layouts and overflow; the complete Settings browser regression also passed. Prepared on `codex/study-sidebar-layout` for local review; not deployed to AWS.
+
 - Prepare the user-authorized `1.1.87` AWS release of the complete settings center and six optional muted themes (`49c47c1`), retaining the original blue/green default and the already released invitation clipboard fix (`e331ddd`). Refresh package/frontend/cache versions and preserve `e331ddd` as the rollback target. Production data and credentials are excluded; deployment and live verification follow the main push.
 - Merged release validation passed all 141 tests, 141-file source/asset checks, settings browser checks and the configured high-severity production dependency audit gate. The audit reports one existing moderate Nodemailer advisory; no dependency changes are included in this interface release.
 

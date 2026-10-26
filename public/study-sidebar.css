@@ -1,0 +1,24 @@
+.study-materials, .study-preferences { gap: 12px; font-size: 13px; }
+.study-materials .section-title, .study-preferences .section-title { font-size: 14px; }
+.study-materials .section-title span, .study-preferences .section-title span { font-size: 11px; font-weight: 500; }
+.study-materials textarea, .study-preferences textarea { min-height: 88px; padding: 10px 12px; font-size: 13px; line-height: 1.6; }
+.study-material-row { display: grid; grid-template-columns: minmax(0, 1fr) 36px; align-items: center; gap: 8px; }
+.study-material-row input { min-width: 0; height: 36px; padding: 8px 10px; font-size: 12px; }
+.study-side-icon { display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 8px; flex: 0 0 36px; border-radius: 6px; }
+.study-side-icon svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.study-side-icon:focus-visible, .study-file-row input:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.study-file-row { padding-top: 12px; border-top: 1px solid var(--line); }
+.study-file-row input { padding: 0; border: 0; border-radius: 0; line-height: 36px; color: var(--muted); background: transparent; }
+.study-file-row input::file-selector-button { height: 34px; margin-right: 8px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--soft); color: var(--ink); font: inherit; cursor: pointer; }
+.study-material-list { display: grid; gap: 6px; max-height: 220px; overflow-y: auto; overflow-wrap: anywhere; }
+.study-material-list .mini-row { min-width: 0; padding: 8px 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
+.study-material-list .mini-row b { min-width: 0; font-size: 12px; font-weight: 500; }
+.study-material-list .mini-row small { flex-shrink: 0; font-size: 11px; }
+.study-material-list p { margin: 0; padding: 2px 0; font-size: 12px; }
+.study-preference-options { display: grid; gap: 0; }
+.study-preference-options .check { min-height: 34px; margin: 0; font-size: 13px; font-weight: 400; }
+.study-preference-options input { width: 15px; height: 15px; margin: 0 2px 0 0; accent-color: var(--green); flex-shrink: 0; }
+.study-instruction-label { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; }
+.study-instruction-label span { color: var(--muted); font-size: 11px; font-weight: 400; }
+.study-preference-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.study-preference-footer small { font-size: 11px; }

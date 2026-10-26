@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.87";
+  const VERSION = "1.1.88";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -419,28 +419,30 @@
           `).join("") : `<p class="muted">还没有课程。可以新增课程后开始保存资料。</p>`}
         </div>
       </section>
-      ${isGeneralChat() ? "" : `<section class="side-section">
+      ${isGeneralChat() ? "" : `<section class="side-section study-materials">
         <div class="section-title"><b>课程资料</b><span>${state.docs.length}</span></div>
-        <textarea id="docText" placeholder="粘贴 syllabus、lecture notes、rubric、deadline 或样卷文字"></textarea>
-        <div class="inline-fields">
-          <input id="docTitle" placeholder="资料标题">
-          <button data-action="save-doc">保存</button>
+        <textarea id="docText" aria-label="课程资料内容" rows="3" placeholder="粘贴课程大纲、笔记或作业要求"></textarea>
+        <div class="study-material-row">
+          <input id="docTitle" aria-label="资料标题" placeholder="资料标题（选填）">
+          <button class="study-side-icon" data-action="save-doc" title="保存课程资料" aria-label="保存课程资料"><svg aria-hidden="true"><use href="/classmates-icons.svg#save"></use></svg></button>
         </div>
-        <div class="inline-fields">
-          <input id="docFile" type="file" accept="${SUPPORTED_UPLOAD_ACCEPT}" multiple>
-          <button data-action="upload-doc">上传文件</button>
+        <div class="study-material-row study-file-row">
+          <input id="docFile" type="file" aria-label="选择课程资料文件" accept="${SUPPORTED_UPLOAD_ACCEPT}" multiple>
+          <button class="study-side-icon" data-action="upload-doc" title="上传所选文件" aria-label="上传所选文件"><svg aria-hidden="true"><use href="/classmates-icons.svg#upload"></use></svg></button>
         </div>
-        ${state.docs.length ? state.docs.map((doc) => `<div class="mini-row"><b>${esc(doc.title)}</b><small>${esc(doc.type || "Note")}</small></div>`).join("") : `<p class="muted">还没有云端课程资料。</p>`}
+        <div class="study-material-list">${state.docs.length ? state.docs.map((doc) => `<div class="mini-row"><b>${esc(doc.title)}</b><small>${esc(doc.type || "Note")}</small></div>`).join("") : `<p class="muted">暂无课程资料</p>`}</div>
       </section>`}
-      <section class="side-section">
-        <div class="section-title"><b>Learning Style</b><span data-learning-style-status role="status">${learningStyleStatus()}</span></div>
-        ${prefBox("englishTerms", "保留 English terms")}
-        ${prefBox("englishAnswers", "英文作答 / 英文草稿")}
-        ${prefBox("chineseExplanations", "中文拆解 reasoning")}
-        <p class="muted" data-learning-style-summary>${esc(learningStyle.summary(getLearningStyleEditor().saver.snapshot().draft))}</p>
-        <textarea id="customInstruction" maxlength="500" placeholder="补充要求，例如：先给英文考试答案，再用中文解释每一步。自定义说明优先于勾选项。">${esc(getLearningStyleEditor().saver.snapshot().draft.customInstruction)}</textarea>
-        <p class="muted">修改后自动保存；发送前会确认保存。明确的本次要求优先。</p>
-        <button data-action="save-prefs">保存偏好</button>
+      <section class="side-section study-preferences">
+        <div class="section-title"><b>学习偏好</b><span data-learning-style-status role="status">${learningStyleStatus()}</span></div>
+        <div class="study-preference-options">
+          ${prefBox("englishTerms", "保留英文术语")}
+          ${prefBox("englishAnswers", "英文作答 / 草稿")}
+          ${prefBox("chineseExplanations", "中文解释解题思路")}
+        </div>
+        <p hidden data-learning-style-summary>${esc(learningStyle.summary(getLearningStyleEditor().saver.snapshot().draft))}</p>
+        <label class="study-instruction-label" for="customInstruction">补充要求<span>选填</span></label>
+        <textarea id="customInstruction" maxlength="500" rows="3" placeholder="例如：先给英文答案，再用中文解释">${esc(getLearningStyleEditor().saver.snapshot().draft.customInstruction)}</textarea>
+        <div class="study-preference-footer"><small class="muted">本次提问的要求优先</small><button class="study-side-icon" data-action="save-prefs" title="保存偏好" aria-label="保存偏好"><svg aria-hidden="true"><use href="/classmates-icons.svg#save"></use></svg></button></div>
       </section>
     `;
   }

@@ -73,6 +73,21 @@ are stored by this feature.
 
 ## Study Area
 
+### Settings and appearance
+
+**设置 (Settings)** occupies the former logout position beside StudyBridge at the
+top of the sidebar. Open it to choose the existing blue/green default or one of
+six white-based, muted alternatives: 烟紫灰, 石墨灰, 雾蓝灰, 灰玫瑰, 青瓷灰 and 冷银灰.
+Choices preview immediately and save automatically to the signed-in account;
+save failures remain visible with a retry action. **退出登录** is inside Settings.
+The dialog preserves the current page, drafts, attachments and active replies.
+
+`GET/PUT /api/me/appearance` stores an allowlisted theme independently of Learning
+Style and profile data, in local `appearances` or DynamoDB's user-owned
+`APPEARANCE` record. Existing accounts default to the original colors without a
+migration. Optional browser caches are scoped by user ID. Restoring the default
+removes theme overrides; Office document/slide/cell content colors are preserved.
+
 The Study Area mode selector sits beside the question shortcuts above the input.
 Each mode supplies four editable prompts, with course introduction and deadline
 summary available in every mode. Selecting a shortcut fills the question without

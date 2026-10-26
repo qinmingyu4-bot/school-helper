@@ -22,6 +22,7 @@ const {
 const { StudyBridgeDatabase } = require("./lib/database");
 const studyModes = require("./public/study-modes");
 const learningStyle = require("./public/learning-style");
+const appearance = require("./public/appearance");
 const chatSpaces = require("./public/chat-spaces");
 
 async function getChatCourse(userId, courseId) {
@@ -2441,6 +2442,16 @@ if (openCommunityLikeMatch && method === "PATCH") {
     const invite = await db.updateInvite(inviteMatch[1], { active: Boolean(body.active) });
     if (!invite) return sendError(res, 404, "Invitation code not found.");
     return sendJson(res, 200, { invite: publicInvite(invite) });
+  }
+
+  if (url.pathname === "/api/me/appearance" && ["GET", "PUT"].includes(method)) {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    if (method === "GET") return sendJson(res, 200, { appearance: appearance.normalize(await db.getUserAppearance(user.id)) });
+    const body = await readJson(req);
+    if (!appearance.isValid(body)) return sendError(res, 400, "Please choose one of the available interface themes.");
+    await db.setUserAppearance(user.id, appearance.normalize(body));
+    return sendJson(res, 200, { appearance: appearance.normalize(body) });
   }
 
   if (url.pathname === "/api/me/preferences" && method === "PUT") {

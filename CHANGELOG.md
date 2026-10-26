@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-26
+
+- Add Settings beside StudyBridge in the former logout position and move logout into its accessible dialog. Keep the current blue/green appearance as the default; offer six white-based muted themes: 烟紫灰, 石墨灰, 雾蓝灰, 灰玫瑰, 青瓷灰 and 冷银灰.
+- Apply colors without rebuilding the current page, preserving drafts, attachments and active replies. Save appearance per account in a separate local/DynamoDB record with serialized writes, save/retry feedback and account-scoped browser caching. Restore original colors on default selection and logout; leave authored Office content colors intact.
+- All 134 automated tests and 137-file source/asset checks passed. Local Chrome verification covered all seven themes, the six student pages, original-color restoration, saved account settings after refresh/login, save failure/retry, retained drafts/attachments, changes during a streamed reply, authored Docs text-color preservation, and 1600/1100/390/320px layouts without horizontal overflow or browser errors. Prepared `1.1.85` on `feat/personal-appearance-settings` for review; not deployed to AWS.
+
 ## 2026-10-20
 
 - Prepare the user-authorized `1.1.84` AWS release of complete uploaded problem-set coverage and retained native PDF inputs (`eeb84ef`). All 126 tests, 135-file source/asset checks and the zero-vulnerability production audit passed. Preserve `74fcb6a` (`1.1.83`) as the rollback target. Deployment and live verification follow the main push; legacy attachments require re-upload to retain their original PDF.

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.84";
+  const VERSION = "1.1.85";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -26,6 +26,10 @@
   const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
 
   const root = document.getElementById("root");
+  const appearanceController = window.StudyBridgeAppearance.createController({
+    load: async () => (await api("/api/me/appearance")).appearance,
+    save: async (_userId, appearance) => { await api("/api/me/appearance", { method: "PUT", body: appearance }); }
+  });
   const emailDraft = {};
   const studyReplies = new Map();
   const uploadPreviewUrls = new Map();
@@ -337,7 +341,7 @@
         <header class="side-head">
           <div class="brand-mark">SB</div>
           <div><strong>StudyBridge</strong><span>${esc(state.user.name)} | ${esc(state.user.email)}</span></div>
-          <button data-action="logout">退出</button>
+          <button data-action="settings" aria-haspopup="dialog" title="Settings">设置</button>
         </header>
         ${state.mode === "student" ? `
           <button class="profile-card ${state.page === "profile" ? "active" : ""}" data-page="profile">
@@ -1615,7 +1619,12 @@
         render();
         return;
       }
+      if (action === "settings") {
+        appearanceController.open();
+        return;
+      }
       if (action === "logout") {
+        appearanceController.reset();
         for (const url of uploadPreviewUrls.values()) URL.revokeObjectURL(url);
         uploadPreviewUrls.clear();
         clearTimeout(learningStyleTimer);
@@ -1957,6 +1966,7 @@
   }
 
   function render() {
+    appearanceController.sync(state.user);
     officeTools.capture();
     creativeTools.capture();
     const previousAdminWorkspace = root.querySelector(".admin-workspace");

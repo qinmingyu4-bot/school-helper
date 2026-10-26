@@ -118,6 +118,29 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
   assert.equal(bob.status, 201);
   let courseId;
 
+  await t.test("appearance is authenticated, allowlisted, persistent and independent of learning preferences", async () => {
+    const route = "/api/me/appearance";
+    assert.equal((await request(route)).status, 401);
+    assert.equal((await request(route, { method: "PUT", body: { theme: "graphite" } })).status, 401);
+    assert.deepEqual((await request(route, { cookie: alice.cookie })).data.appearance, { theme: "default" });
+    for (const body of [null, [], {}, { theme: "<script>" }, { theme: "silver", userId: bob.data.user.id }]) {
+      assert.equal((await request(route, { cookie: alice.cookie, method: "PUT", body })).status, 400);
+    }
+    const prefs = (await request("/api/me", { cookie: alice.cookie })).data.user.preferences;
+    for (const theme of require("../public/appearance").themes) {
+      const result = await request(route, { cookie: alice.cookie, method: "PUT", body: { theme: theme.id } });
+      assert.equal(result.status, 200);
+      assert.equal(result.data.appearance.theme, theme.id);
+    }
+    await request("/api/me/preferences", { cookie: alice.cookie, method: "PUT", body: prefs });
+    await stop(); await start();
+    assert.deepEqual((await request(route, { cookie: alice.cookie })).data.appearance, { theme: "silver" });
+    assert.deepEqual((await request(route, { cookie: bob.cookie })).data.appearance, { theme: "default" });
+    assert.deepEqual((await request("/api/me", { cookie: alice.cookie })).data.user.preferences, require("../public/learning-style").normalize(prefs));
+    await request(route, { cookie: alice.cookie, method: "PUT", body: { theme: "default" } });
+    assert.deepEqual((await request(route, { cookie: alice.cookie })).data.appearance, { theme: "default" });
+  });
+
   await t.test("single-use invitations cannot be reused or raced", async () => {
     assert.equal((await request("/api/auth/register", { method: "POST", body: registration("Other owner", "other-admin@example.test", "health-owner-invite") })).status, 403);
     const generated = await request("/api/admin/invites", { method: "POST", cookie: admin.cookie, body: { maxUses: 100, role: "admin" } });

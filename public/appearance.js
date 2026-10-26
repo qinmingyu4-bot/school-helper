@@ -47,7 +47,7 @@
     };
   }
 
-  function createController({ load, save, document: doc = document, storage }) {
+  function createController({ load, save, createSettingsView, document: doc = document, storage }) {
     if (storage === undefined) { try { storage = globalThis.localStorage; } catch { /* Storage is optional. */ } }
     let userId = "", saver = null, dialog = null, loading = false, loadError = false, edited = false, generation = 0;
     const cacheKey = (id) => `studybridge.appearance.${id}`;
@@ -103,19 +103,13 @@
     function reset() {
       ++generation; userId = ""; edited = false; loading = false; loadError = false;
       saver?.dispose(); saver = null;
-      if (dialog) { dialog.close(); dialog.remove(); dialog = null; }
+      if (dialog) { dialog.disposeSettings?.(); dialog.close(); dialog.remove(); dialog = null; }
       apply({ theme: "default" });
     }
     function open() {
       if (!userId || !saver) return;
       if (!dialog) {
-        dialog = doc.createElement("dialog");
-        dialog.className = "settings-dialog";
-        dialog.setAttribute("aria-labelledby", "settings-title");
-        dialog.innerHTML = `<header class="settings-heading"><div><h2 id="settings-title">设置 <span>Settings</span></h2><p>把学习空间调成你喜欢的样子。</p></div><button type="button" class="settings-close" aria-label="关闭设置">×</button></header>
-          <fieldset class="settings-themes"><legend>界面色调</legend><p>默认保留蓝绿；其他色调以白色为主，低饱和颜色做辅助。</p><div class="settings-theme-grid">${themes.map((theme) => `<label class="settings-theme-option"><input type="radio" name="sb-theme" value="${theme.id}"><span class="settings-theme-sample" style="--sample-accent:${theme.accent};--sample-tint:${theme.tint}"><i></i><i></i><i></i></span><span class="settings-theme-name">${theme.name}<small>${theme.detail}</small></span></label>`).join("")}</div></fieldset>
-          <div class="settings-save-row"><span class="settings-save-status" role="status" aria-live="polite"></span><button type="button" class="settings-retry" hidden>重试</button></div>
-          <footer class="settings-footer"><span>账号</span><button type="button" class="settings-logout" data-action="logout">退出登录</button></footer>`;
+        dialog = createSettingsView({ themes, getAppearance: () => saver.snapshot().draft, flushAppearance: () => saver.flush() });
         dialog.querySelector(".settings-close").addEventListener("click", () => dialog.close());
         dialog.querySelector(".settings-retry").addEventListener("click", () => {
           if (loadError && !edited) void read(); else void saver.flush().catch(() => {});
@@ -129,10 +123,11 @@
         });
         doc.body.append(dialog);
       }
+      dialog.refreshSettings?.();
       update();
       if (!dialog.open) dialog.showModal();
     }
-    return { sync, open, reset };
+    return { sync, open, reset, refreshLearning: () => dialog?.refreshLearning?.() };
   }
   return { themes, isValid, normalize, createSaver, createController };
 });

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.85";
+  const VERSION = "1.1.86";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -28,8 +28,36 @@
   const root = document.getElementById("root");
   const appearanceController = window.StudyBridgeAppearance.createController({
     load: async () => (await api("/api/me/appearance")).appearance,
-    save: async (_userId, appearance) => { await api("/api/me/appearance", { method: "PUT", body: appearance }); }
+    save: async (_userId, appearance) => { await api("/api/me/appearance", { method: "PUT", body: appearance }); },
+    createSettingsView: (appearance) => window.StudyBridgeSettings.createView({ ...appearance, version: VERSION,
+      getUser: () => state.user, getContext: () => ({ courseCount: state.courses.length }),
+      learning: {
+        snapshot: () => getLearningStyleEditor().saver.snapshot(),
+        setDraft: (draft) => {
+          getLearningStyleEditor().saver.setDraft(draft);
+          for (const key of ["englishTerms", "englishAnswers", "chineseExplanations"]) if ($(key)) $(key).checked = draft[key];
+          if ($("customInstruction")) $("customInstruction").value = draft.customInstruction;
+        },
+        flush: async () => { await settingsProfileSave.catch(() => {}); await getLearningStyleEditor().saver.flush(); }
+      },
+      saveProfile: (values) => {
+        const userId = state.user.id;
+        settingsProfileSave = settingsProfileSave.catch(() => {}).then(async () => {
+          await getLearningStyleEditor().saver.flush();
+          if (state.user?.id !== userId) throw new Error("登录状态已变更，请重新登录。");
+          const data = await api("/api/me/profile", { method: "PUT", body: { ...values,
+            avatarUrl: profile().avatarUrl || "", backgroundUrl: profile().backgroundUrl || "" } });
+          if (state.user?.id !== userId) return;
+          state.user = data.user; render();
+        });
+        return settingsProfileSave;
+      },
+      requestPasswordReset: () => api("/api/auth/request-manual-reset", { method: "POST", body: { email: state.user.email } }),
+      logout: () => handleAction({ dataset: { action: "logout" } }),
+      navigate: (page) => loadPage(page)
+    })
   });
+  let settingsProfileSave = Promise.resolve();
   const emailDraft = {};
   const studyReplies = new Map();
   const uploadPreviewUrls = new Map();
@@ -440,6 +468,7 @@
           if (badge) badge.textContent = learningStyleStatus();
           const summary = root.querySelector("[data-learning-style-summary]");
           if (summary) summary.textContent = learningStyle.summary(learningStyleEditor.saver.snapshot().draft);
+          appearanceController.refreshLearning();
         }
       });
       learningStyleEditor = { userId, saver };
@@ -1620,6 +1649,8 @@
         return;
       }
       if (action === "settings") {
+        clearTimeout(learningStyleTimer);
+        if ($("englishTerms")) void captureLearningStyle().saver.flush().catch(() => {});
         appearanceController.open();
         return;
       }

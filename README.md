@@ -76,11 +76,29 @@ are stored by this feature.
 ### Settings and appearance
 
 **设置 (Settings)** occupies the former logout position beside StudyBridge at the
-top of the sidebar. Open it to choose the existing blue/green default or one of
-six white-based, muted alternatives: 烟紫灰, 石墨灰, 雾蓝灰, 灰玫瑰, 青瓷灰 and 冷银灰.
-Choices preview immediately and save automatically to the signed-in account;
-save failures remain visible with a retry action. **退出登录** is inside Settings.
-The dialog preserves the current page, drafts, attachments and active replies.
+top of the sidebar. It opens a full settings center: category navigation on the
+left and persistent detail panels on the right, or a category list with back
+navigation on mobile. **退出登录** remains inside Settings. Categories are:
+
+- **账号与资料:** edit name, school, major and SB ID with explicit save; inspect the
+  login email, open avatar/cover management, and request the existing manual
+  password-reset workflow. Existing avatar/cover images are retained on text saves.
+- **学习与 AI:** change independent English-term, English-answer and Chinese-explanation
+  choices plus custom instructions. Uses the same serialized saver as the Study
+  Area sidebar, with automatic save, synchronized controls and failure/retry status.
+- **外观与显示:** keep the blue/green default or choose 烟紫灰, 石墨灰, 雾蓝灰,
+  灰玫瑰, 青瓷灰 or 冷银灰. Changes preview immediately and save to the account.
+- **课程与提醒:** open course/document management and the timetable; distinguish
+  available in-app reminders from email/system push, which is not yet available.
+- **隐私与数据:** inspect profile visibility through the profile page and download
+  current appearance/language/instruction choices as a JSON preference copy. This
+  is not an account/course/chat export or a restore/import feature.
+- **帮助与关于:** expandable usage help and the current application version.
+
+Category switches preserve form drafts. Opening Settings and changing themes do
+not rebuild the current page or interrupt attachments and active replies. Closing
+and reopening Settings retains unsaved profile edits until logout. Category
+definitions and panel builders in `public/settings.js` allow future expansion.
 
 `GET/PUT /api/me/appearance` stores an allowlisted theme independently of Learning
 Style and profile data, in local `appearances` or DynamoDB's user-owned

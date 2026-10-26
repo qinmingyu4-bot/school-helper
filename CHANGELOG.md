@@ -2,9 +2,11 @@
 
 ## 2026-10-26
 
+- Prepare the user-authorized `1.1.86` AWS release of clipboard compatibility (`9308e89`) from stable `1.1.84`. Keep the unrelated, unfinished `1.1.85` appearance work outside this release. Bump package/entry versions and preserve `27f1535` as the rollback target; production databases and credentials are excluded.
+
 - Fixed invitation copy buttons on HTTP sites and browsers without an available Clipboard API. Fall back to a temporary selected text field when modern clipboard access is unavailable or denied, check actual copy acceptance, restore focus/selection, and show an honest success/failure message. Reuse the helper for the existing reply-copy command.
 - Invitation copy feedback no longer rerenders the admin page, preserving invitation drafts and scroll position. Verified actual clipboard contents and pasting of a newly generated disposable invitation on a non-loopback HTTP origin. Private invitation data remains outside source control.
-- All 132 tests and 137-file source/asset checks passed. Verified separate buttons for two invitations, matching clipboard/pasted text, retained drafts, temporary-field cleanup, and desktop/mobile layouts. Prepared on an isolated fix branch without unrelated appearance changes; not deployed to AWS.
+- All 132 tests and 137-file source/asset checks passed. Verified separate buttons for two invitations, matching clipboard/pasted text, retained drafts, temporary-field cleanup, and desktop/mobile layouts. Initially prepared on an isolated fix branch without unrelated appearance changes; authorized for release above.
 
 ## 2026-10-20
 

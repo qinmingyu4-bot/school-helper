@@ -10,6 +10,20 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.86 - 2026-10-26
+
+Purpose:
+- Release invitation copy compatibility for HTTP pages and denied/unavailable modern clipboard access (`9308e89`). Verify copy acceptance, restore focus/selection and show honest success/failure feedback without clearing admin drafts or scroll position.
+- Reuse the helper for reply copying. Exclude the unrelated, unfinished `1.1.85` appearance changes.
+
+Validation:
+- All 132 automated tests and 137-file source/asset checks passed again on the prepared release. Production dependency auditing passes the high-risk deployment gate; one existing moderate Nodemailer advisory remains outside this clipboard-only change.
+- Actual disposable invitation copy/paste and exact clipboard checks passed on a non-loopback HTTP origin, for separate invitation buttons and desktop/mobile layouts.
+- Recheck the release and verify GitHub check/deploy results and online copying after the authorized main push. Preserve production accounts, invitation records and credentials.
+
+Rollback target:
+- `27f1535` (previous production version `1.1.84`).
+
 ### 1.1.84 - 2026-10-20
 
 Purpose:

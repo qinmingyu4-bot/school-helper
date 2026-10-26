@@ -2,6 +2,9 @@
 
 ## 2026-10-26
 
+- Prepare the user-authorized `1.1.87` AWS release of the complete settings center and six optional muted themes (`49c47c1`), retaining the original blue/green default and the already released invitation clipboard fix (`e331ddd`). Refresh package/frontend/cache versions and preserve `e331ddd` as the rollback target. Production data and credentials are excluded; deployment and live verification follow the main push.
+- Merged release validation passed all 141 tests, 141-file source/asset checks, settings browser checks and the configured high-severity production dependency audit gate. The audit reports one existing moderate Nodemailer advisory; no dependency changes are included in this interface release.
+
 - Expand Settings into a category-based center with account/profile, learning/AI, appearance, courses/reminders, privacy/data, and help/about panels. Keep a left sidebar on desktop and category-list/detail/back navigation on mobile, with logout inside Settings.
 - Connect real profile edits, shared autosaved Learning Style controls, the existing password-reset request, course/timetable/profile navigation, preference-only JSON export and usage help. Preserve avatar/cover images on text saves, form drafts across category changes, and current chat/editor state; clearly identify unavailable push notifications without dummy switches. Prepare `1.1.86` on the existing review branch.
 - All 135 automated tests and 139-file source/asset checks passed. Browser checks covered category navigation, real profile save/rejection/retry, shared learning preferences, JSON downloads, timetable links, all seven themes, saved settings after login, pending preference saves immediately before logout, draft/attachment retention, live replies, authored Office colors, and 1600/1100/390/320px layouts without browser errors or horizontal overflow. Not deployed to AWS.
@@ -9,6 +12,12 @@
 - Add Settings beside StudyBridge in the former logout position and move logout into its accessible dialog. Keep the current blue/green appearance as the default; offer six white-based muted themes: 烟紫灰, 石墨灰, 雾蓝灰, 灰玫瑰, 青瓷灰 and 冷银灰.
 - Apply colors without rebuilding the current page, preserving drafts, attachments and active replies. Save appearance per account in a separate local/DynamoDB record with serialized writes, save/retry feedback and account-scoped browser caching. Restore original colors on default selection and logout; leave authored Office content colors intact.
 - All 134 automated tests and 137-file source/asset checks passed. Local Chrome verification covered all seven themes, the six student pages, original-color restoration, saved account settings after refresh/login, save failure/retry, retained drafts/attachments, changes during a streamed reply, authored Docs text-color preservation, and 1600/1100/390/320px layouts without horizontal overflow or browser errors. Prepared `1.1.85` on `feat/personal-appearance-settings` for review; not deployed to AWS.
+
+- Prepare the user-authorized `1.1.86` AWS release of clipboard compatibility (`9308e89`) from stable `1.1.84`. Keep the unrelated, unfinished `1.1.85` appearance work outside this release. Bump package/entry versions and preserve `27f1535` as the rollback target; production databases and credentials are excluded.
+
+- Fixed invitation copy buttons on HTTP sites and browsers without an available Clipboard API. Fall back to a temporary selected text field when modern clipboard access is unavailable or denied, check actual copy acceptance, restore focus/selection, and show an honest success/failure message. Reuse the helper for the existing reply-copy command.
+- Invitation copy feedback no longer rerenders the admin page, preserving invitation drafts and scroll position. Verified actual clipboard contents and pasting of a newly generated disposable invitation on a non-loopback HTTP origin. Private invitation data remains outside source control.
+- All 132 tests and 137-file source/asset checks passed. Verified separate buttons for two invitations, matching clipboard/pasted text, retained drafts, temporary-field cleanup, and desktop/mobile layouts. Initially prepared on an isolated fix branch without unrelated appearance changes; authorized for release above.
 
 ## 2026-10-20
 

@@ -2,6 +2,8 @@
 
 ## 2026-10-26
 
+- Study Area and General Chat now send with Enter and retain Shift+Enter for a newline. Ignore IME composition/legacy key code 229, held-key repeats, modified Enter, empty submissions and active replies; reuse the existing send action and error handling.
+
 - Renamed the Study Area learning-preference instruction label from 补充要求 to 自定义要求, without changing its saved value or behavior.
 
 - Updated to `1.1.88`: compacted Study Area course materials and learning preferences. Aligned note/title/file controls with accessible save/upload icons, reduced textarea heights, styled the native file picker, and bounded long material lists. Replaced repeated bilingual preference explanations with concise checkbox labels, a labeled optional instruction field and a compact save/retry action. Preserved account-level autosave and Settings synchronization.

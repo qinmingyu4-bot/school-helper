@@ -2172,7 +2172,24 @@
     if (item) item[field] = field === "selected" ? event.target.checked : event.target.value;
   });
 
+  const composingChatInputs = new WeakSet();
+  document.addEventListener("compositionstart", (event) => {
+    if (event.target?.id === "chatInput") composingChatInputs.add(event.target);
+  });
+  document.addEventListener("compositionend", (event) => {
+    composingChatInputs.delete(event.target);
+  });
+
   document.addEventListener("keydown", (event) => {
+    if (event.target?.id === "chatInput" && event.key === "Enter") {
+      if (event.defaultPrevented || event.isComposing || event.keyCode === 229 || composingChatInputs.has(event.target)) return;
+      if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
+      event.preventDefault();
+      if (event.repeat || !state.user || state.page !== "study" || state.busy || activeStudyReply()) return;
+      if (!event.target.value.trim() && !state.uploadFiles.length) return;
+      root.querySelector('[data-action="send-chat"]')?.click();
+      return;
+    }
     if (event.target?.id === "communityChannelValue" && event.key === "Enter") {
       event.preventDefault();
       root.querySelector('[data-action="community-select"]')?.click();

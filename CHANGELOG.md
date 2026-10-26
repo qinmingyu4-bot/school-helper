@@ -2,6 +2,8 @@
 
 ## 2026-10-26
 
+- Renamed the Study Area learning-preference instruction label from 补充要求 to 自定义要求, without changing its saved value or behavior.
+
 - Updated to `1.1.88`: compacted Study Area course materials and learning preferences. Aligned note/title/file controls with accessible save/upload icons, reduced textarea heights, styled the native file picker, and bounded long material lists. Replaced repeated bilingual preference explanations with concise checkbox labels, a labeled optional instruction field and a compact save/retry action. Preserved account-level autosave and Settings synchronization.
 - All 141 tests and 141-file source/asset checks passed. Real isolated-account browser checks verified note save, file upload, preference save/reload, 1440/1100/390/320px layouts and overflow; the complete Settings browser regression also passed. Prepared on `codex/study-sidebar-layout` for local review; not deployed to AWS.
 

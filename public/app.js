@@ -440,7 +440,7 @@
           ${prefBox("chineseExplanations", "中文解释解题思路")}
         </div>
         <p hidden data-learning-style-summary>${esc(learningStyle.summary(getLearningStyleEditor().saver.snapshot().draft))}</p>
-        <label class="study-instruction-label" for="customInstruction">补充要求<span>选填</span></label>
+        <label class="study-instruction-label" for="customInstruction">自定义要求<span>选填</span></label>
         <textarea id="customInstruction" maxlength="500" rows="3" placeholder="例如：先给英文答案，再用中文解释">${esc(getLearningStyleEditor().saver.snapshot().draft.customInstruction)}</textarea>
         <div class="study-preference-footer"><small class="muted">本次提问的要求优先</small><button class="study-side-icon" data-action="save-prefs" title="保存偏好" aria-label="保存偏好"><svg aria-hidden="true"><use href="/classmates-icons.svg#save"></use></svg></button></div>
       </section>

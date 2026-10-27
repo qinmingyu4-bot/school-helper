@@ -111,3 +111,10 @@
   .planner-month-layout { gap: 14px; }
 }
 .planner-view { display: grid; gap: 18px; min-width: 0; }
+
+.planner-type-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 20px; }
+.planner-type-filters > span { font-size: 12px; color: var(--muted); margin-right: 4px; }
+.planner-type-filters button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; min-height: 36px; font-size: 12px; background: var(--panel, #fff); color: var(--muted); }
+.planner-type-filters button[aria-pressed="true"] { color: var(--green); border-color: var(--green); background: var(--green-soft, #eaf5ef); }
+.planner-type-filters button span { font-size: 10px; }
+.planner-filter-hint { color: var(--muted); font-size: 11px; line-height: 1.6; margin: 9px 0 0; }

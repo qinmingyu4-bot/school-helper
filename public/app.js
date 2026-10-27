@@ -108,6 +108,7 @@
     scheduleMonth: "",
     scheduleSelectedDate: "",
     scheduleAgendaView: "upcoming",
+    scheduleAgendaTypes: [],
     scheduleUploadFile: null,
     scheduleImportOpen: false,
     scheduleSaving: false,
@@ -1131,7 +1132,7 @@
     return `
       ${pageHeader("SCHEDULE", "时间表", "一个月历，收好你的课程、作业与生活安排。")}
       <section class="schedule-layout">
-        <div id="scheduleCalendarView" class="planner-view">${scheduleCalendarView.render(model, { agendaView: state.scheduleAgendaView, countdown: dueText })}</div>
+        <div id="scheduleCalendarView" class="planner-view">${scheduleCalendarView.render(model, { agendaView: state.scheduleAgendaView, agendaTypes: state.scheduleAgendaTypes, countdown: dueText })}</div>
         <details class="card schedule-manual" id="scheduleManual" ${state.scheduleManualOpen || state.scheduleDraftOrigin === "quick" && state.scheduleDrafts.length ? "open" : ""}>
           <summary><span><b>＋ 新增安排</b><small>课程、作业截止、个人计划，都放在这里</small></span><span class="schedule-disclosure" aria-hidden="true">⌄</span></summary>
           ${scheduleQuickHtml(model)}
@@ -2317,7 +2318,7 @@
         if ($("emailOriginal")) $("toolOutput").innerHTML = emailDraft.output;
         return;
       }
-      if (action === "schedule-month" || action === "schedule-today" || action === "schedule-day" || action === "schedule-agenda") {
+      if (action === "schedule-month" || action === "schedule-today" || action === "schedule-day" || action === "schedule-agenda" || action === "schedule-type") {
         const model = scheduleMonthModel();
         if (action === "schedule-month") {
           state.scheduleMonth = scheduleCalendarView.shiftMonth(model.month, Number(button.dataset.offset));
@@ -2326,7 +2327,9 @@
         if (action === "schedule-today") { state.scheduleSelectedDate = model.today; state.scheduleMonth = model.today.slice(0, 7); }
         if (action === "schedule-day" && scheduleImport.validDate(button.dataset.date)) { state.scheduleSelectedDate = button.dataset.date; state.scheduleMonth = button.dataset.date.slice(0, 7); }
         if (action === "schedule-agenda" && ["upcoming", "all", "completed"].includes(button.dataset.view)) state.scheduleAgendaView = button.dataset.view;
+        if (action === "schedule-type") state.scheduleAgendaTypes = scheduleCalendarView.toggleType(state.scheduleAgendaTypes, button.dataset.type);
         render();
+        if (action === "schedule-type") root.querySelector(`.planner-type-filters [data-type="${button.dataset.type}"]`)?.focus({ preventScroll: true });
         if (action === "schedule-day") {
           root.querySelector('.planner-day[aria-pressed="true"]')?.focus({ preventScroll: true });
           root.querySelector(".planner-day-detail")?.scrollIntoView({ block: "nearest" });
@@ -2762,7 +2765,7 @@
       const signature = scheduleClockSignature(model);
       if (signature !== state.scheduleClockSignature) {
         state.scheduleClockSignature = signature;
-        $("scheduleCalendarView").innerHTML = scheduleCalendarView.render(model, { agendaView: state.scheduleAgendaView, countdown: dueText });
+        $("scheduleCalendarView").innerHTML = scheduleCalendarView.render(model, { agendaView: state.scheduleAgendaView, agendaTypes: state.scheduleAgendaTypes, countdown: dueText });
       }
     }
     root.querySelectorAll("[data-countdown]").forEach((element) => {

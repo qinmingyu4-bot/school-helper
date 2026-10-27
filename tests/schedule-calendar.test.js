@@ -5,6 +5,40 @@ const importer = require("../public/schedule-import");
 const context = { now: "2026-10-26T15:30:00Z", timeZone: "America/Toronto" };
 const row = (title, startsAt, kind = "LEC", extra = {}) => ({ title, startsAt, kind, docId: title, courseId: "planner", ...extra });
 
+test("agenda categories distinguish legacy assessments and combine with completion without changing the calendar", () => {
+  const items = [
+    row("Lecture about final exams", "2026-10-28T10:00Z", "LEC"),
+    row("Tutorial: quiz review", "2026-10-29T10:00Z", "TUT"),
+    row("Assignment 1", "2026-10-20T10:00Z", "DDL"),
+    row("Quiz 1", "2026-10-30T10:00Z", "DDL"),
+    row("期中考试", "2026-11-02T10:00Z", "DDL"),
+    row("Final exam", "2026-10-21T10:00Z", "DDL", { completedAt: "2026-10-21T12:00Z" }),
+    row("Dinner", "2026-11-03T10:00Z", "EVENT")
+  ];
+  const original = JSON.stringify(items);
+  const model = calendar.buildModel({ ...context, items });
+  assert.deepEqual(items.map(calendar.agendaType), ["LEC", "TUT", "DDL", "QUIZ", "EXAM", "EXAM", "EVENT"]);
+  assert.deepEqual(calendar.filterAgenda(model.upcoming, ["EXAM", "DDL"]).map((item) => item.title), ["Assignment 1", "期中考试"]);
+  assert.deepEqual(calendar.filterAgenda(model.completed, ["EXAM"]).map((item) => item.title), ["Final exam"]);
+  assert.equal(calendar.filterAgenda(model.rows, []).length, 7);
+  assert.deepEqual(calendar.toggleType(["EXAM"], "DDL"), ["EXAM", "DDL"]);
+  assert.deepEqual(calendar.toggleType(["EXAM", "DDL"], "EXAM"), ["DDL"]);
+  assert.deepEqual(calendar.toggleType(["EXAM"], "all"), []);
+  assert.deepEqual(calendar.toggleType([], "invalid"), []);
+  const html = calendar.render(model, { agendaTypes: ["EXAM", "DDL"] });
+  const agenda = html.split('<article class="card planner-agenda"')[1];
+  assert.match(agenda, /待完成<span>2<\/span>/);
+  assert.match(agenda, /全部安排<span>3<\/span>/);
+  assert.match(agenda, /已完成<span>1<\/span>/);
+  assert.ok(agenda.includes("Assignment 1") && agenda.includes("期中考试"));
+  assert.ok(!agenda.includes("Quiz 1") && !agenda.includes("Dinner") && !agenda.includes("Final exam"));
+  assert.match(agenda, /data-type="EXAM" aria-pressed="true"/);
+  assert.ok(html.split('<article class="card planner-agenda"')[0].includes("Quiz 1"), "calendar keeps unfiltered events");
+  assert.equal(JSON.stringify(items), original);
+  const empty = calendar.render(calendar.buildModel({ ...context }), { agendaTypes: ["QUIZ"] });
+  assert.match(empty, /当前筛选下没有安排/);
+});
+
 test("month navigation crosses years and clamps the supported calendar range", () => {
   assert.equal(calendar.shiftMonth("2026-12", 1), "2027-01");
   assert.equal(calendar.shiftMonth("2027-01", -1), "2026-12");

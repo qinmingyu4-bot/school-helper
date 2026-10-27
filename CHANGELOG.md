@@ -2,6 +2,8 @@
 
 ## 2026-10-27
 
+- Add multi-select type filters below the agenda status tabs: Lecture, Tutorial, assignments/deadlines, Quiz, exams and personal plans. Combine types across pending/all/completed lists, keep chronological ordering, update counts and overdue notices, and clear with All types. Classify legacy quiz/exam titles for display without rewriting stored records; retain the full month calendar and completion rules.
+
 - Hide the internal Schedule & Deadlines folder from the study chat/course list and skip it when restoring a selected chat. Preserve its course record, historical chats and documents, calendar reads, personal-event saves and duplicate checks; this is a presentation change without a data migration.
 
 - Scope saved academic response preferences to actual learning intent, including academic questions in general chat. Let the reply model infer scope from the current question and relevant follow-ups, with explicit everyday/product-question and mixed-topic rules. Ordinary questions follow the user's language without forced bilingual duplication, while useful API/HTTPS/BYOK terms remain intact. Preserve explicit language requests, academic checkbox combinations and saved preferences; clarify scope in the sidebar and settings.

@@ -156,6 +156,8 @@ continue to guide the AI response.
 
 The internal `Schedule & Deadlines` storage course is hidden from the study chat/course list. Saved chat selections fall back to a visible course or general chat. Its records remain intact for calendar events, personal plans, deadlines and duplicate checks; do not delete or filter it from schedule storage/API reads.
 
+The full agenda supports multi-select type filters alongside pending/all/completed status. An empty selection means all types; users can combine Lecture, Tutorial, assignment/deadline, Quiz, exam and personal categories. Status counts reflect selected types, type counts reflect the current status, and the month calendar remains unfiltered. Historical DDL assessments are classified by their titles (Quiz/小测/测验 and exam/test/midterm/final/考试); stored kinds and completion rules remain unchanged.
+
 Learning Style checkboxes are independent saved **academic** preferences. The reply model first infers the current intent from the question and relevant follow-ups. Everyday conversation and practical software/product questions use the question's language without mandatory bilingual repetition; necessary terms such as API, HTTPS and BYOK remain intact. Course membership or a study-mode selection alone does not make a question academic, while academic work in general chat still follows the saved study preferences. Explicit language requests override these defaults, and mixed requests apply the study preferences only to their academic portion. Saved settings are not changed by this scope decision.
 
 Within academic work, English answers

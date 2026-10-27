@@ -144,7 +144,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/opt/studybridge-certbot/bin/certbot renew --non-interactive --quiet --config-dir /etc/letsencrypt-studybridge --work-dir /var/lib/letsencrypt-studybridge --logs-dir /var/log/letsencrypt-studybridge
+ExecStart=/opt/studybridge-certbot/bin/certbot renew --non-interactive --quiet --no-random-sleep-on-renew --config-dir /etc/letsencrypt-studybridge --work-dir /var/lib/letsencrypt-studybridge --logs-dir /var/log/letsencrypt-studybridge
 SERVICE
 cat > /etc/systemd/system/studybridge-certbot.timer <<'TIMER'
 [Unit]
@@ -160,7 +160,7 @@ WantedBy=timers.target
 TIMER
 systemctl daemon-reload
 systemctl enable --now studybridge-certbot.timer
-"$CERTBOT" renew --cert-name "$IP" --dry-run --run-deploy-hooks --non-interactive "${ACME[@]}"
+"$CERTBOT" renew --cert-name "$IP" --dry-run --run-deploy-hooks --non-interactive --no-random-sleep-on-renew "${ACME[@]}"
 systemctl start studybridge-certbot.service
 systemctl is-active studybridge-certbot.timer
 systemctl list-timers studybridge-certbot.timer --no-pager

@@ -18,7 +18,7 @@
   成功续期后先 `nginx -t` 再 reload，不中断应用或其他站点。
 - `systemctl list-timers studybridge-certbot.timer` 查看下次检查时间；
   `journalctl -u studybridge-certbot.service` 查看续期结果。
-- 测试续期：`sudo /opt/studybridge-certbot/bin/certbot renew --dry-run --run-deploy-hooks --config-dir /etc/letsencrypt-studybridge --work-dir /var/lib/letsencrypt-studybridge --logs-dir /var/log/letsencrypt-studybridge`。
+- 测试续期：`sudo /opt/studybridge-certbot/bin/certbot renew --dry-run --run-deploy-hooks --no-random-sleep-on-renew --config-dir /etc/letsencrypt-studybridge --work-dir /var/lib/letsencrypt-studybridge --logs-dir /var/log/letsencrypt-studybridge`。
 - 80 端口保留 HTTP-01 验证，其余请求跳转 HTTPS；443 反向代理现有服务。
   保留 70 MiB 请求上限以容纳 50 MiB 资料的 base64 编码，AI 流式响应不缓存。
 - 公网 IP 必须保持不变；若 AWS 更换 IP，需更新脚本地址并重新签发证书。

@@ -14,7 +14,7 @@
 .course-folder-heading .course-folder-name { display: grid; flex: 1; min-width: 0; gap: 1px; text-align: left; overflow-wrap: anywhere; }
 .course-folder-name small { color: var(--muted); font-size: 11px; }
 .course-folder-heading button:hover, .course-chat-row button:hover { background: var(--sb-tint, #edf6f3); }
-.course-chat-list { display: grid; gap: 1px; padding: 1px 0 5px 21px; }
+.course-chat-list { display: grid; gap: 1px; padding: 1px 0 5px 37px; }
 .course-chat-row { display: flex; gap: 3px; align-items: center; border-left: 2px solid transparent; padding-left: 6px; }
 .course-chat-row.active { border-color: var(--green); background: var(--sb-tint, #edf6f3); border-radius: 0 3px 3px 0; }
 .course-chat-row button { border: 0; background: transparent; padding: 5px 4px; min-height: 32px; font-size: 12px; border-radius: 3px; box-shadow: none; }

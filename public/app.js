@@ -575,7 +575,7 @@
         <button data-action="new-conversation" data-id="${esc(course.id)}" aria-label="在 ${esc(course.name)} 下新增对话" title="新增对话">＋</button>
         <button data-action="delete-course" data-id="${esc(course.id)}" aria-label="删除课程 ${esc(course.name)}" title="删除课程">×</button>
       </div>
-      ${open ? `<div class="course-chat-list"><p class="course-conversation-help">对话各自独立，共享这门课程的资料</p>${rows.map((chat) => {
+      ${open ? `<div class="course-chat-list">${rows.map((chat) => {
         const renaming = state.renamingConversation?.courseId === course.id && state.renamingConversation.id === chat.id;
         return renaming ? `<div class="course-chat-rename"><input id="conversationRename" data-course="${esc(course.id)}" data-conversation="${esc(chat.id)}" aria-label="对话标题" maxlength="120" value="${esc(state.renamingConversation.title ?? chat.title)}"><div><button data-action="save-conversation-name" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}">保存标题</button><button data-action="cancel-conversation-name">取消</button></div></div>`
           : `<div class="course-chat-row ${state.activeCourseId === course.id && state.activeConversationId === chat.id ? "active" : ""}"><button class="course-chat-title" data-action="select-conversation" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}" title="${esc(chat.title)}" ${state.activeCourseId === course.id && state.activeConversationId === chat.id ? 'aria-current="page"' : ""}>${esc(chat.title)}</button><button data-action="rename-conversation" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}" aria-label="重命名对话 ${esc(chat.title)}" title="重命名">✎</button></div>`;

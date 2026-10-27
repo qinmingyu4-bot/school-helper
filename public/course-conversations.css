@@ -1,0 +1,19 @@
+.course-folder { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.course-folder-heading { display: flex; align-items: center; gap: 3px; padding: 5px; }
+.course-folder-heading > button { border: 0; background: transparent; padding: 8px 5px; min-width: 28px; }
+.course-folder-heading .course-folder-name { display: grid; flex: 1; min-width: 0; gap: 3px; text-align: left; overflow-wrap: anywhere; }
+.course-folder-name small { color: var(--muted); font-size: 11px; }
+.course-folder-heading button:hover, .course-chat-row button:hover { background: var(--sb-tint, #edf6f3); }
+.course-chat-list { display: grid; gap: 3px; padding: 2px 7px 8px 20px; }
+.course-chat-row { display: flex; gap: 3px; align-items: center; border-left: 2px solid var(--line); padding-left: 6px; }
+.course-chat-row.active { border-color: var(--green); background: var(--sb-tint, #edf6f3); border-radius: 0 6px 6px 0; }
+.course-chat-row button { border: 0; background: transparent; padding: 8px 4px; min-height: 36px; font-size: 12px; }
+.course-chat-row .course-chat-title { flex: 1; text-align: left; min-width: 0; overflow-wrap: anywhere; }
+.course-chat-rename { display: grid; gap: 6px; padding: 6px 0; }
+.course-chat-rename input { width: 100%; min-width: 0; font-size: 13px; }
+.course-chat-rename > div { display: flex; gap: 6px; }
+.course-chat-rename button { font-size: 12px; padding: 6px 9px; }
+.course-chat-heading { display: grid; gap: 5px; }
+.course-chat-heading > small { color: var(--muted); font-size: 12px; }
+.course-chat-heading h1 { font-size: 21px; }
+.course-conversation-help { margin: 3px 0 8px; color: var(--muted); font-size: 11px; line-height: 1.5; }

@@ -1,10 +1,11 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.92";
+  const VERSION = "1.1.93";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
+  const courseChats = window.StudyBridgeCourseConversations;
   const isGeneralChat = () => state.activeCourseId === chatSpaces.general.id;
   const studyModes = window.StudyBridgeStudyModes;
   const scheduleImport = window.StudyBridgeScheduleImport;
@@ -65,6 +66,7 @@
   let settingsProfileSave = Promise.resolve();
   const emailDraft = {};
   const studyReplies = new Map();
+  const studyDrafts = new Map();
   const uploadPreviewUrls = new Map();
   const pdfReturnDrafts = new Map();
   let nextStudyReplyId = 0;
@@ -72,7 +74,7 @@
     reading: "读取附件中", preparing: "整合课程资料中", thinking: "思考中",
     searching: "检索中", integrating: "整合中", writing: "正在回答", saving: "保存中"
   };
-  const studyReplyKey = (userId = state.user?.id, courseId = state.activeCourseId) => `${userId}:${courseId}`;
+  const studyReplyKey = (userId = state.user?.id, courseId = state.activeCourseId, conversationId = state.activeConversationId) => courseChats.key(userId, courseId, conversationId || courseChats.DEFAULT_ID);
   const activeStudyReply = () => studyReplies.get(studyReplyKey());
   let classmatesEvents = null;
   let classmatesPoll = null;
@@ -93,6 +95,11 @@
     page: "study",
     courses: [],
     activeCourseId: "",
+    activeConversationId: "default",
+    conversationCourseId: "",
+    courseConversations: {},
+    expandedCourses: {},
+    renamingConversation: null,
     studyMode: studyModes.defaultMode,
     docs: [],
     messages: [],
@@ -107,6 +114,7 @@
     scheduleClockSignature: "",
     scheduleDrafts: [],
     scheduleSource: "",
+    scheduleImportedCourses: [],
     scheduleDraftOrigin: "file",
     scheduleQuickText: "",
     scheduleQuickStatus: "",
@@ -433,12 +441,7 @@
           <button class="course-item ${isGeneralChat() ? "active" : ""}" data-action="select-course" data-id="${chatSpaces.general.id}">
             <b>${chatSpaces.general.name}</b><small>${chatSpaces.general.term}</small>
           </button>
-          ${state.courses.length ? state.courses.map((course) => `
-            <button class="course-item ${course.id === state.activeCourseId ? "active" : ""}" data-action="select-course" data-id="${esc(course.id)}">
-              <b>${esc(course.name)}</b><small>${esc(course.term || "Current term")}</small>
-              <span data-action="delete-course" data-id="${esc(course.id)}">×</span>
-            </button>
-          `).join("") : `<p class="muted">还没有课程。可以新增课程后开始保存资料。</p>`}
+          ${state.courses.length ? state.courses.map(courseFolderHtml).join("") : `<p class="muted">还没有课程。导入课表可自动添加，也可点击新增。</p>`}
         </div>
       </section>
       ${isGeneralChat() ? "" : `<section class="side-section study-materials">
@@ -529,7 +532,7 @@
     return `
       <div class="app-shell${fullChat ? " classmate-chat-shell" : ""}${admin ? " admin-shell" : ""}">
         ${fullChat ? "" : sidebarHtml()}
-        <main class="workspace${state.mode !== "admin" && state.page === "study" ? " study-workspace" : ""}${state.mode !== "admin" && state.page === "classmates" ? " classmates-workspace" : ""}${fullChat ? " classmate-chat-workspace" : ""}${admin ? " admin-workspace" : ""}" id="workspace" data-course-id="${esc(state.activeCourseId)}">
+        <main class="workspace${state.mode !== "admin" && state.page === "study" ? " study-workspace" : ""}${state.mode !== "admin" && state.page === "classmates" ? " classmates-workspace" : ""}${fullChat ? " classmate-chat-workspace" : ""}${admin ? " admin-workspace" : ""}" id="workspace" data-course-id="${esc(state.activeCourseId)}" data-conversation-id="${esc(state.activeConversationId)}">
           ${content}
         </main>
       </div>
@@ -559,10 +562,28 @@
     return shellHtml((pages[state.page] || studyPage)());
   }
 
+  function courseFolderHtml(course) {
+    const open = Boolean(state.expandedCourses[course.id]);
+    const rows = state.courseConversations[course.id] || [{ id: "default", title: "默认对话" }];
+    return `<section class="course-folder" aria-label="${esc(course.name)} 的对话">
+      <div class="course-folder-heading">
+        <button data-action="toggle-course" data-id="${esc(course.id)}" aria-expanded="${open}" aria-label="${open ? "收起" : "展开"}${esc(course.name)}">${open ? "▾" : "▸"}</button>
+        <button class="course-folder-name" data-action="select-course" data-id="${esc(course.id)}"><b>${esc(course.name)}</b><small>${esc(course.term || "Current term")}</small></button>
+        <button data-action="new-conversation" data-id="${esc(course.id)}" aria-label="在 ${esc(course.name)} 下新增对话" title="新增对话">＋</button>
+        <button data-action="delete-course" data-id="${esc(course.id)}" aria-label="删除课程 ${esc(course.name)}" title="删除课程">×</button>
+      </div>
+      ${open ? `<div class="course-chat-list"><p class="course-conversation-help">对话各自独立，共享这门课程的资料</p>${rows.map((chat) => {
+        const renaming = state.renamingConversation?.courseId === course.id && state.renamingConversation.id === chat.id;
+        return renaming ? `<div class="course-chat-rename"><input id="conversationRename" data-course="${esc(course.id)}" data-conversation="${esc(chat.id)}" aria-label="对话标题" maxlength="120" value="${esc(state.renamingConversation.title ?? chat.title)}"><div><button data-action="save-conversation-name" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}">保存标题</button><button data-action="cancel-conversation-name">取消</button></div></div>`
+          : `<div class="course-chat-row ${state.activeCourseId === course.id && state.activeConversationId === chat.id ? "active" : ""}"><button class="course-chat-title" data-action="select-conversation" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}" title="${esc(chat.title)}" ${state.activeCourseId === course.id && state.activeConversationId === chat.id ? 'aria-current="page"' : ""}>${esc(chat.title)}</button><button data-action="rename-conversation" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}" aria-label="重命名对话 ${esc(chat.title)}" title="重命名">✎</button></div>`;
+      }).join("")}</div>` : ""}</section>`;
+  }
+
   function studyPage() {
     const course = isGeneralChat() ? chatSpaces.general : state.courses.find((item) => item.id === state.activeCourseId);
+    const conversation = state.courseConversations[state.activeCourseId]?.find((item) => item.id === state.activeConversationId);
     return `
-      <header class="page-header"><div><h1 title="${esc(course?.name || "请选择课程")}">${esc(course?.name || "请选择课程")}</h1></div></header>
+      <header class="page-header"><div class="course-chat-heading"><small>${esc(course?.name || "请选择课程")}${!isGeneralChat() ? " · 课程资料共享" : ""}</small><h1 title="${esc(conversation?.title || course?.name || "请选择课程")}">${esc(conversation?.title || course?.name || "请选择课程")}</h1></div>${!isGeneralChat() && course ? `<button data-action="new-conversation" data-id="${esc(course.id)}">＋ 新对话</button>` : ""}</header>
       ${upcomingBanner()}
       <section class="chat-area">
         <div class="messages" id="messages">
@@ -584,7 +605,7 @@
     `;
   }
 
-  const studyModeStorageKey = () => `studybridge.studyMode.${state.user.id}.${state.activeCourseId}`;
+  const studyModeStorageKey = () => `studybridge.studyMode.${state.user.id}.${state.activeCourseId}${state.activeConversationId === "default" ? "" : `.${state.activeConversationId}`}`;
 
   function loadStudyMode() {
     if (isGeneralChat()) { state.studyMode = "general"; return; }
@@ -745,7 +766,7 @@
       return { name: file.name, kind: image ? "image" : "file", ...(url ? { url } : {}) };
     });
     const reply = {
-      key: studyReplyKey(), courseId: state.activeCourseId, mode: state.studyMode,
+      key: studyReplyKey(), userId: state.user.id, courseId: state.activeCourseId, conversationId: state.activeConversationId, mode: state.studyMode,
       controller: new AbortController(), frame: 0, started: false,
       user: { role: "user", content: text || "请分析我上传的文件。", clientReplyId: `question-${nextStudyReplyId + 1}`, attachments: previews },
       assistant: { role: "assistant", content: "", clientReplyId: `reply-${++nextStudyReplyId}`, pending: true, phase: files.length ? "reading" : "preparing" }
@@ -767,7 +788,7 @@
       const response = await fetch(`/api/courses/${reply.courseId}/chat`, {
         method: "POST", credentials: "same-origin", signal: reply.controller.signal,
         headers: { "content-type": "application/json", accept: "text/event-stream" },
-        body: JSON.stringify({ message: text, mode: reply.mode, attachments, learningStyle: reply.learningStyle, stream: true })
+        body: JSON.stringify({ conversationId: reply.conversationId, message: text, mode: reply.mode, attachments, learningStyle: reply.learningStyle, stream: true })
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -830,6 +851,10 @@
       previewUrls.forEach((url) => URL.revokeObjectURL(url));
       // Before the server accepts a request there may be no reply bubble to patch.
       if (!reply.started && studyReplyKey() === reply.key) render();
+      if (reply.courseId !== chatSpaces.general.id && state.user?.id === reply.userId) {
+        await refreshCourseConversations(reply.courseId).catch(() => {});
+        if (state.page === "study") render();
+      }
     }
   }
 
@@ -1243,7 +1268,7 @@
   function scheduleReviewHtml() {
     if (!state.scheduleDrafts.length) return "";
     return `<article class="card schedule-review"><h2>核对提取结果（${state.scheduleDrafts.length} 条）</h2>
-      <p>${esc(state.scheduleSource)} · 尚未加入时间表。勾选要加入的项目，点开卡片可编辑并查看完整备注与原文。${state.scheduleDrafts.some((item) => item.weekly) ? "每周课程确认一次即可生成本学期剩余安排。" : ""}</p>
+      <p>${esc(state.scheduleSource)} · 尚未加入时间表。勾选要加入的项目，点开卡片可编辑并查看完整备注与原文。${state.scheduleDraftOrigin === "file" && state.scheduleImportedCourses.length ? "已识别的课程已自动加入「对话与课程」，取消预览不会删除课程。" : ""}${state.scheduleDrafts.some((item) => item.weekly) ? "每周课程确认一次即可生成本学期剩余安排。" : ""}</p>
       ${state.scheduleDrafts.some((item) => item.weekly) ? scheduleCalendarHtml() : ""}
       <fieldset ${state.scheduleImportBusy ? "disabled" : ""}>
       ${state.scheduleDrafts.map((item, index) => scheduleDraftHtml(item, index)).join("")}
@@ -1360,6 +1385,8 @@
     try {
       const [payload] = await readFiles([file]);
       const result = await api("/api/schedule/extract", { method: "POST", body: { ...payload, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone } });
+      for (const course of result.courses || []) if (!state.courses.some((item) => item.id === course.id)) state.courses.push(course);
+      state.scheduleImportedCourses = result.courses || [];
       state.scheduleDrafts = result.items;
       state.scheduleSource = result.fileName;
       state.scheduleCalendar = result.calendar || null;
@@ -1368,6 +1395,7 @@
       state.scheduleCalendarEditing = false;
       state.scheduleCalendarDraft = { startDate: result.calendar?.teachingPeriods[0]?.startDate || "", endDate: result.calendar?.teachingPeriods.at(-1)?.endDate || "", breaks: (result.calendar ? scheduleImport.nonTeachingRanges(result.calendar) : []).map((pause) => `${pause.startDate} / ${pause.endDate}`).join("\n"), timeZone: result.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone };
       state.scheduleImportStatus = result.items.length ? `提取到 ${result.items.length} 条待核对安排${result.duplicateCount ? `，发现 ${result.duplicateCount} 项重复，自动跳过已有安排` : ""}。请在下方核对并确认。` : result.duplicateCount ? `识别的安排已存在，已跳过 ${result.duplicateCount} 项重复，无需再次添加。` : "未找到可提取的时间点。请尝试更清晰的文件或分批上传，也可以手动添加。";
+      if (result.courses?.length) state.scheduleImportStatus += ` ${result.createdCourses?.length ? `已自动添加 ${result.createdCourses.length} 门课程；` : ""}已识别课程可直接在「对话与课程」中打开。`;
     } catch (error) { state.scheduleImportStatus = error.message; }
     finally { state.scheduleImportBusy = false; render(); }
   }
@@ -1409,7 +1437,7 @@
         if (state.user?.id !== userId) return;
         saved += result.saved;
         duplicates += result.duplicates;
-        if (result.course && !state.courses.some((course) => course.id === result.course.id)) state.courses.unshift(result.course);
+        for (const course of result.courses || (result.course ? [result.course] : [])) if (!state.courses.some((item) => item.id === course.id)) state.courses.push(course);
         const known = new Set(state.scheduleItems.map((item) => item.docId));
         state.scheduleItems.push(...result.items.filter((item) => !known.has(item.docId)));
         const processed = Math.min(offset + 80, selected.length);
@@ -1557,6 +1585,29 @@
     };
   }
 
+  async function refreshCourseConversations(courseId) {
+    const userId = state.user.id;
+    const data = await api(`/api/courses/${courseId}/conversations`);
+    if (state.user?.id === userId) state.courseConversations[courseId] = data.conversations || [];
+    return data.conversations || [];
+  }
+
+  async function selectConversation(courseId, conversationId) {
+    studyDrafts.set(studyReplyKey(), { text: $("chatInput")?.value ?? studyDrafts.get(studyReplyKey())?.text ?? "", files: [...state.uploadFiles] });
+    state.activeCourseId = courseId;
+    state.activeConversationId = conversationId || "default";
+    state.conversationCourseId = courseId;
+    state.messages = []; state.docs = [];
+    state.uploadFiles = studyDrafts.get(studyReplyKey())?.files || [];
+    state.renamingConversation = null;
+    if (courseId !== chatSpaces.general.id) state.expandedCourses[courseId] = true;
+    try {
+      localStorage.setItem(`studybridge.chatSpace.${state.user.id}`, courseId);
+      localStorage.setItem(`studybridge.conversation.${state.user.id}.${courseId}`, state.activeConversationId);
+    } catch { /* Storage may be disabled. */ }
+    await loadPage("study");
+  }
+
   async function loadStudy() {
     const coursesData = await api("/api/courses");
     state.courses = coursesData.courses || [];
@@ -1566,15 +1617,29 @@
     if (!isGeneralChat() && !state.courses.some((c) => c.id === state.activeCourseId)) {
       state.activeCourseId = state.courses[0]?.id || chatSpaces.general.id;
     }
+    if (state.conversationCourseId !== state.activeCourseId) {
+      state.activeConversationId = "default";
+      try { state.activeConversationId = localStorage.getItem(`studybridge.conversation.${state.user.id}.${state.activeCourseId}`) || "default"; } catch { /* Storage may be disabled. */ }
+      state.conversationCourseId = state.activeCourseId;
+    }
+    if (isGeneralChat()) state.activeConversationId = "default";
+    else {
+      const courseId = state.activeCourseId;
+      const chats = await refreshCourseConversations(courseId);
+      if (state.activeCourseId !== courseId) return;
+      if (!chats.some((chat) => chat.id === state.activeConversationId)) state.activeConversationId = "default";
+      if (state.expandedCourses[courseId] === undefined) state.expandedCourses[courseId] = true;
+    }
     loadStudyMode();
     if (state.activeCourseId) {
       const courseId = state.activeCourseId;
+      const conversationId = state.activeConversationId;
       const replyAtLoad = activeStudyReply();
       const [docsData, messagesData] = await Promise.all([
         isGeneralChat() ? Promise.resolve({ documents: [] }) : api(`/api/courses/${courseId}/documents`),
-        api(`/api/courses/${courseId}/messages`)
+        api(`/api/courses/${courseId}/messages?conversationId=${encodeURIComponent(conversationId)}`)
       ]);
-      if (courseId !== state.activeCourseId) return;
+      if (courseId !== state.activeCourseId || conversationId !== state.activeConversationId) return;
       state.docs = docsData.documents || [];
       state.messages = mergeStudyReply(messagesData.messages || [], activeStudyReply() || replyAtLoad);
     } else {
@@ -1973,22 +2038,53 @@
         const name = prompt("课程名称，例如 ECO101");
         if (!name) return;
         const data = await api("/api/courses", { method: "POST", body: { name, term: "Current term" } });
-        state.activeCourseId = data.course.id;
-        await loadPage("study");
+        await selectConversation(data.course.id, "default");
         return;
       }
       if (action === "select-course") {
-        if (state.activeCourseId !== button.dataset.id) { state.messages = []; state.docs = []; }
-        state.activeCourseId = button.dataset.id;
-        try { localStorage.setItem(`studybridge.chatSpace.${state.user.id}`, state.activeCourseId); } catch { /* Storage may be disabled. */ }
-        await loadPage("study");
+        let conversationId = "default";
+        try { conversationId = localStorage.getItem(`studybridge.conversation.${state.user.id}.${button.dataset.id}`) || "default"; } catch { /* Storage may be disabled. */ }
+        await selectConversation(button.dataset.id, conversationId);
+        return;
+      }
+      if (action === "toggle-course") {
+        const courseId = button.dataset.id;
+        if (!state.expandedCourses[courseId]) await refreshCourseConversations(courseId);
+        state.expandedCourses[courseId] = !state.expandedCourses[courseId];
+        render(); return;
+      }
+      if (action === "new-conversation") {
+        if (button.disabled) return;
+        button.disabled = true;
+        try {
+          const data = await api(`/api/courses/${button.dataset.id}/conversations`, { method: "POST", body: { title: "新对话" } });
+          await selectConversation(button.dataset.id, data.conversation.id);
+          $("chatInput")?.focus();
+        } finally { button.disabled = false; }
+        return;
+      }
+      if (action === "select-conversation") {
+        await selectConversation(button.dataset.id, button.dataset.conversation); return;
+      }
+      if (action === "rename-conversation") {
+        state.renamingConversation = { courseId: button.dataset.id, id: button.dataset.conversation };
+        render(); $("conversationRename")?.focus(); $("conversationRename")?.select(); return;
+      }
+      if (action === "cancel-conversation-name") { state.renamingConversation = null; render(); return; }
+      if (action === "save-conversation-name") {
+        const title = courseChats.title($("conversationRename")?.value);
+        await api(`/api/courses/${button.dataset.id}/conversations/${button.dataset.conversation}`, { method: "PATCH", body: { title } });
+        await refreshCourseConversations(button.dataset.id);
+        state.renamingConversation = null; render();
         return;
       }
       if (action === "delete-course") {
         if (!confirm("确定删除这门课程吗？")) return;
-        studyReplies.get(studyReplyKey(state.user.id, button.dataset.id))?.controller.abort();
+        for (const reply of studyReplies.values()) if (reply.userId === state.user.id && reply.courseId === button.dataset.id) reply.controller.abort();
         await api(`/api/courses/${button.dataset.id}`, { method: "DELETE" });
         if (state.activeCourseId === button.dataset.id) state.activeCourseId = "";
+        delete state.courseConversations[button.dataset.id]; delete state.expandedCourses[button.dataset.id];
+        for (const key of studyDrafts.keys()) if (JSON.parse(key)[1] === button.dataset.id) studyDrafts.delete(key);
         await loadPage("study");
         return;
       }
@@ -2206,7 +2302,7 @@
         output.textContent = "正在生成...";
         const course = state.activeCourseId || (state.courses[0]?.id);
         if (!course) throw new Error("请先在学习区新增一门课程，用来保存 AI 对话。");
-        const data = await api(`/api/courses/${course}/chat`, { method: "POST", body: { message: prompt, mode: "email" } });
+        const data = await api(`/api/courses/${course}/chat`, { method: "POST", body: { conversationId: state.activeConversationId, message: prompt, mode: "email" } });
         emailDraft.output = formatText((data.messages || []).at(-1)?.content || "");
         if ($("emailOriginal")) $("toolOutput").innerHTML = emailDraft.output;
         return;
@@ -2374,6 +2470,8 @@
   }
 
   function render() {
+    const renameInput = $("conversationRename");
+    if (renameInput && state.renamingConversation?.courseId === renameInput.dataset.course && state.renamingConversation.id === renameInput.dataset.conversation) state.renamingConversation.title = renameInput.value;
     appearanceController.sync(state.user);
     officeTools.capture();
     creativeTools.capture();
@@ -2397,9 +2495,12 @@
     if (state.user && previousDmId) state.directMessageDrafts[previousDmId] = previousDmDraft;
     const previousChat = root.querySelector(".study-workspace .chat-area");
     const previousCourseId = previousChat?.parentElement.dataset.courseId;
+    const previousConversationId = previousChat?.parentElement.dataset.conversationId || "default";
+    const previousChatKey = previousChat ? studyReplyKey(state.user?.id, previousCourseId, previousConversationId) : "";
     const previousMessages = previousChat?.querySelector(".messages")?.innerHTML;
     const previousScrollTop = previousChat?.scrollTop || 0;
     const previousChatDraft = $("chatInput")?.value || "";
+    if (previousChatKey) studyDrafts.set(previousChatKey, { ...studyDrafts.get(previousChatKey), text: previousChatDraft });
     try {
       root.innerHTML = routeHtml();
     } catch (error) {
@@ -2436,12 +2537,11 @@
     }
     const chat = root.querySelector(".study-workspace .chat-area");
     if (chat) {
-      if (previousCourseId === state.activeCourseId) $("chatInput").value = previousChatDraft;
-      else if (pdfReturnDrafts.has(studyReplyKey())) {
+      if (pdfReturnDrafts.has(studyReplyKey())) {
         $("chatInput").value = pdfReturnDrafts.get(studyReplyKey());
         pdfReturnDrafts.delete(studyReplyKey());
-      }
-      const showLatest = !previousChat || previousCourseId !== state.activeCourseId
+      } else $("chatInput").value = studyDrafts.get(studyReplyKey())?.text || "";
+      const showLatest = !previousChat || previousChatKey !== studyReplyKey()
         || previousMessages !== chat.querySelector(".messages")?.innerHTML;
       chat.scrollTop = showLatest ? chat.scrollHeight : previousScrollTop;
       keepLatestAfterFontLoad(chat);

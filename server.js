@@ -35,6 +35,7 @@ const { buildExerciseCoverage, coverageInstruction } = require("./lib/study-cove
 const { selectAiModel } = require("./lib/ai-routing");
 const scheduleImport = require("./public/schedule-import");
 const scheduleBatch = require("./lib/schedule-batch");
+const courseConversations = require("./public/course-conversations");
 const scheduleInput = require("./lib/schedule-input");
 const scheduleTranscription = require("./lib/schedule-transcription");
 const { createCalendarService } = require("./lib/academic-calendar");
@@ -849,8 +850,8 @@ function chatAttachmentMetadata(courseId, reference, attachments) {
   }));
 }
 
-async function chatMessagesForDisplay(userId, courseId) {
-  const messages = await db.listMessages(userId, courseId);
+async function chatMessagesForDisplay(userId, courseId, conversationId = courseConversations.DEFAULT_ID) {
+  const messages = await db.listMessages(userId, courseId, 80, conversationId);
   const missing = messages.filter((item) => item.role === "user" && !item.attachments && String(item.content).includes("\n\nAttachments:\n"));
   if (!missing.length) return messages;
   // Older retained uploads already encode their originating message ID.
@@ -1390,13 +1391,13 @@ async function callAi(messages, model = simpleAiModel, stream = null) {
   return callAiWithChatCompletions(messages, model, stream);
 }
 
-async function studyAnswerContext({ user, course, message, mode, attachments }) {
+async function studyAnswerContext({ user, course, conversationId = courseConversations.DEFAULT_ID, message, mode, attachments }) {
   const [documents, history, scheduleItems, weatherContext, savedAttachments] = await Promise.all([
     course.chatType === "general" ? [] : db.listDocuments(user.id, course.id),
-    db.listMessages(user.id, course.id),
+    db.listMessages(user.id, course.id, 80, conversationId),
     course.chatType === "general" && !/deadline|\bdue\b|\bddl\b|考试|作业|截止|提醒|日程/i.test(message) ? [] : listUserScheduleItems(user.id),
     getWeatherContextForQuestion(message, user),
-    db.listChatAttachments(user.id, course.id)
+    db.listChatAttachments(user.id, course.id, conversationId)
   ]);
   const documentPdfs = (await Promise.all(documents.filter((doc) => doc.hasSourcePdf).map(async (doc) => {
     try { return await db.readMaterial(user.id, course.id, `DOCFILE#${doc.id}#PDF`); }
@@ -1408,7 +1409,7 @@ async function studyAnswerContext({ user, course, message, mode, attachments }) 
 }
 
 async function streamCourseChat(req, res, context) {
-  const { user, course, message, mode, attachments } = context;
+  const { user, course, conversationId, message, mode, attachments } = context;
   const controller = new AbortController();
   let partial = "";
   let userMessage;
@@ -1433,7 +1434,7 @@ async function streamCourseChat(req, res, context) {
   try {
     const messageId = createId("msg");
     const attachmentRef = await db.saveChatAttachments(user.id, course.id, messageId, attachments);
-    userMessage = await db.createMessage({ id: messageId, userId: user.id, courseId: course.id, role: "user", content: `${message}${chatAttachmentLabel(attachments)}`, displayText: message, ...(attachmentRef ? { attachments: chatAttachmentMetadata(course.id, attachmentRef, attachments) } : {}), mode });
+    userMessage = await db.createMessage({ id: messageId, userId: user.id, courseId: course.id, conversationId, role: "user", content: `${message}${chatAttachmentLabel(attachments)}`, displayText: message, ...(attachmentRef ? { attachments: chatAttachmentMetadata(course.id, attachmentRef, attachments) } : {}), mode });
     send("start", { message: userMessage });
     controller.signal.throwIfAborted();
     const { prompt, model } = await studyAnswerContext(context);
@@ -1454,13 +1455,13 @@ async function streamCourseChat(req, res, context) {
     if (!partial) send("delta", { text: content });
     send("status", { phase: "saving" });
     if (!(await getChatCourse(user.id, course.id))) throw new Error("Course was deleted during the reply.");
-    assistantMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId: course.id, role: "assistant", content, mode });
+    assistantMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId: course.id, conversationId, role: "assistant", content, mode });
     send("done", { messages: [userMessage, assistantMessage], model });
   } catch (error) {
     if (!controller.signal.aborted) console.error("StudyBridge streaming reply failed:", error);
     if (userMessage && !assistantMessage && await getChatCourse(user.id, course.id)) {
       try {
-        assistantMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId: course.id, role: "assistant", content: partial, mode, interrupted: true });
+        assistantMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId: course.id, conversationId, role: "assistant", content: partial, mode, interrupted: true });
       } catch (saveError) {
         console.error("StudyBridge interrupted reply could not be saved:", saveError);
       }
@@ -2706,8 +2707,8 @@ if (directMessageMatch && method === "POST") {
     try { items = scheduleBatch.normalizeBatch(body); }
     catch (error) { return sendError(res, 400, error.message); }
     const result = await db.importScheduleBatch(user.id, items);
-    return sendJson(res, 200, { saved: result.saved, duplicates: result.duplicates, course: result.course,
-      items: scheduleBatch.storedItems(result.course ? [result.course] : [], result.records, user.id) });
+    return sendJson(res, 200, { saved: result.saved, duplicates: result.duplicates, course: result.course, courses: result.courses,
+      items: scheduleBatch.storedItems(result.courses, result.records, user.id) });
   }
 
   if (url.pathname === "/api/schedule/parse-text" && method === "POST") {
@@ -2791,12 +2792,13 @@ if (directMessageMatch && method === "POST") {
         } else calendarNotice = "联网校历检索未启用。课表已识别，只需在下方补充一次授课起止和停课日期。";
       }
       const importFromDate = scheduleImport.todayInZone(calendar?.timeZone || timeZone);
+      const imported = await db.ensureImportedCourses(user.id, items.map((item) => item.course), calendar?.label || [termHint.year, termHint.season].filter(Boolean).join(" "));
       const existing = await listUserScheduleItems(user.id, { includeCompleted: true });
       const review = scheduleImport.reviewDuplicates(items, existing, { calendar, fromDate: importFromDate, timeZone });
       items = review.items;
       const previewCount = calendar ? scheduleImport.deduplicate(scheduleImport.expandWeekly(items.filter((item) => !item.weekly || scheduleImport.validWeekly(item.weekly)), calendar, { fromDate: importFromDate }).map((item) => ({ ...item, timeZone: item.timeZone || timeZone })), existing).items.length : null;
       if (/\.(doc|ppt|xls)$/i.test(file.fileName)) items.forEach((item) => { item.warning = `${item.warning} 旧版 Office 文件可能漏读，请核对原件；建议另存为 DOCX / PPTX / XLSX 后提取。`.trim(); });
-      return sendJson(res, 200, { items, duplicateCount: review.duplicateCount, fileName: file.fileName, timeZone: calendar?.timeZone || timeZone, calendar, calendarNotice, importFromDate, previewCount });
+      return sendJson(res, 200, { items, courses: imported.courses, createdCourses: imported.createdCourses, duplicateCount: review.duplicateCount, fileName: file.fileName, timeZone: calendar?.timeZone || timeZone, calendar, calendarNotice, importFromDate, previewCount });
     } catch (error) {
       console.warn("Schedule extraction failed:", error.message);
       return sendError(res, 502, "AI 提取未成功，请重试或手动添加；尚未保存任何提醒。");
@@ -2917,8 +2919,27 @@ if (directMessageMatch && method === "POST") {
       return sendJson(res, 200, { ok: true });
     }
 
+    if (child === "conversations") {
+      if (course.chatType === "general") return sendError(res, 400, "自由问答不属于课程对话目录。");
+      if (method === "GET" && !childId) return sendJson(res, 200, { conversations: await db.listConversations(user.id, courseId) });
+      if (method === "POST" && !childId) {
+        const body = await readJson(req, 4096);
+        let title;
+        try { title = courseConversations.title(body.title ?? "新对话"); } catch (error) { return sendError(res, 400, error.message); }
+        return sendJson(res, 201, { conversation: await db.createConversation(user.id, courseId, title) });
+      }
+      if (method === "PATCH" && childId) {
+        const body = await readJson(req, 4096);
+        let title;
+        try { title = courseConversations.title(body.title); } catch (error) { return sendError(res, 400, error.message); }
+        const conversation = await db.renameConversation(user.id, courseId, childId, title);
+        return conversation ? sendJson(res, 200, { conversation }) : sendError(res, 404, "Conversation not found.");
+      }
+    }
     if (child === "messages" && method === "GET") {
-      return sendJson(res, 200, { messages: await chatMessagesForDisplay(user.id, courseId) });
+      const conversationId = url.searchParams.get("conversationId") || courseConversations.DEFAULT_ID;
+      if (conversationId !== courseConversations.DEFAULT_ID && !(await db.getConversation(user.id, courseId, conversationId))) return sendError(res, 404, "Conversation not found.");
+      return sendJson(res, 200, { messages: await chatMessagesForDisplay(user.id, courseId, conversationId) });
     }
     if (child === "attachments" && childId && method === "GET") {
       let reference;
@@ -2941,6 +2962,9 @@ if (directMessageMatch && method === "POST") {
     }
     if (child === "chat" && method === "POST") {
       const body = await readJson(req);
+      const conversationId = body.conversationId ?? courseConversations.DEFAULT_ID;
+      if (typeof conversationId !== "string" || conversationId.length > 100 || course.chatType === "general" && conversationId !== courseConversations.DEFAULT_ID) return sendError(res, 400, "Invalid conversation.");
+      if (conversationId !== courseConversations.DEFAULT_ID && !(await db.getConversation(user.id, courseId, conversationId))) return sendError(res, 404, "Conversation not found.");
       const rawMessage = String(body.message || "").trim().slice(0, 4000);
       const mode = course.chatType === "general" ? "general" : String(body.mode || "guided").slice(0, 40);
       const attachments = await normalizeChatAttachments(body.attachments);
@@ -2948,14 +2972,14 @@ if (directMessageMatch && method === "POST") {
       if (!message) return sendError(res, 400, "Message is required.");
       const effectiveUser = body.learningStyle && typeof body.learningStyle === "object" && !Array.isArray(body.learningStyle)
         ? { ...user, preferences: learningStyle.normalize(body.learningStyle) } : user;
-      const context = { user: effectiveUser, course, message, mode, attachments };
+      const context = { user: effectiveUser, course, conversationId, message, mode, attachments };
       if (body.stream === true) return streamCourseChat(req, res, context);
       const messageId = createId("msg");
       const attachmentRef = await db.saveChatAttachments(user.id, courseId, messageId, attachments);
-      const userMessage = await db.createMessage({ id: messageId, userId: user.id, courseId, role: "user", content: `${message}${chatAttachmentLabel(attachments)}`, displayText: message, ...(attachmentRef ? { attachments: chatAttachmentMetadata(course.id, attachmentRef, attachments) } : {}), mode });
+      const userMessage = await db.createMessage({ id: messageId, userId: user.id, courseId, conversationId, role: "user", content: `${message}${chatAttachmentLabel(attachments)}`, displayText: message, ...(attachmentRef ? { attachments: chatAttachmentMetadata(course.id, attachmentRef, attachments) } : {}), mode });
       const { prompt, model: selectedModel } = await studyAnswerContext(context);
       const aiContent = await callAi(prompt, selectedModel);
-      const assistantMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId, role: "assistant", content: aiContent, mode });
+      const assistantMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId, conversationId, role: "assistant", content: aiContent, mode });
       return sendJson(res, 201, { messages: [userMessage, assistantMessage], model: selectedModel });
     }
   }

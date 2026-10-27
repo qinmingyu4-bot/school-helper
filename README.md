@@ -12,6 +12,8 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, in
 - Admin-only recent online timestamps with relative labels and exact-time tooltips
 - HttpOnly session cookie
 - Per-student courses, course documents, preferences, and chat history
+- Expandable course folders with multiple independently titled chats, first-question titles and manual renaming. Course documents are shared; each chat keeps its own messages, uploads, input drafts and streaming reply. Historical course messages remain in the default conversation.
+- Timetable/syllabus extraction automatically adds recognized courses and reuses existing ones; calendar entries are saved only after confirmation and filed under the corresponding course.
 - Backend AI calls using `OPENAI_API_KEY`
 - Incremental Study Area replies with animated activity states and a stop-generation control
 - Self-hosted Inter Variable and Noto Sans SC interface fonts, with bundled licenses and source notes in `public/fonts/SOURCES.md`

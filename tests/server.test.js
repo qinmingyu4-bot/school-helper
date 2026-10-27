@@ -541,9 +541,17 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
         assert.deepEqual(result.data.items.map((item) => item.kind), ["DDL", "LEC", "TUT"]);
         assert.equal(result.data.items[2].startsAt, "");
         assert.ok(result.data.items[0].evidence);
+        assert.equal(result.data.courses.length, 1);
+        assert.equal(result.data.courses[0].name, "MAT101");
+        assert.equal(result.data.createdCourses.length, extension === "txt" ? 1 : 0);
       }
     }
-    assert.deepEqual((await request("/api/courses", { cookie })).data, beforeExtraction.data, "extraction must not create a planner or reminders");
+    const afterExtraction = (await request("/api/courses", { cookie })).data.courses;
+    for (const previous of beforeExtraction.data.courses) assert.deepEqual(afterExtraction.find((course) => course.id === previous.id), previous);
+    assert.equal(afterExtraction.filter((course) => course.name === "MAT101").length, 1, "repeated file extraction automatically adds the named course once");
+    const addedCourse = afterExtraction.find((course) => course.name === "MAT101");
+    assert.equal((await request(`/api/courses/${addedCourse.id}/documents`, { cookie })).data.documents.length, 0, "calendar entries still need confirmation");
+    assert.equal(afterExtraction.some((course) => course.name === "Schedule & Deadlines" && !beforeExtraction.data.courses.some((old) => old.id === course.id)), false);
     const pdf = await fs.readFile(path.join(root, "tests/fixtures/schedule.pdf"));
     assert.equal((await request("/api/schedule/extract", { method: "POST", cookie, body: { fileName: "schedule.pdf", fileData: pdf.toString("base64") } })).status, 200);
     const fullPdf = await fs.readFile(path.join(root, "tests/fixtures/schedule-full.pdf"));

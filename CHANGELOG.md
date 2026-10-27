@@ -2,6 +2,8 @@
 
 ## 2026-10-27
 
+- Release `1.1.95`: publish individual course conversation deletion with private-attachment cleanup and late-reply protection, together with the compact flat course directory. Refresh frontend/cache versions; preserve existing courses, shared materials, schedules, accounts and undeleted chat history. Code rollback target: `bc275be` (`1.1.94`).
+
 - Simplify the course sidebar into a compact, flat directory: remove nested rounded course cards, tighten row spacing and indentation, omit repetitive default Current term subtitles, and retain custom term labels, selected chat highlighting and visible action buttons.
 
 - Add deletion for individual course conversations, including the legacy default: confirm before removing messages and private attachments, preserve shared documents/schedules and other chats, switch away from deleted selections and discard their drafts. Persist deletion markers so late AI replies and renames cannot revive removed chats.

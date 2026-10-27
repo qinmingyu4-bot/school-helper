@@ -437,7 +437,7 @@
   function studySidebarHtml() {
     const courses = courseChats.visibleCourses(state.courses);
     return `
-      <section class="side-section" data-doc-dropzone="true">
+      <section class="side-section study-course-directory" data-doc-dropzone="true">
         <div class="section-title"><b>对话与课程</b><button data-action="add-course">新增</button></div>
         <div class="course-list">
           <button class="course-item ${isGeneralChat() ? "active" : ""}" data-action="select-course" data-id="${chatSpaces.general.id}">
@@ -571,7 +571,7 @@
     return `<section class="course-folder" aria-label="${esc(course.name)} 的对话">
       <div class="course-folder-heading">
         <button data-action="toggle-course" data-id="${esc(course.id)}" aria-expanded="${open}" aria-label="${open ? "收起" : "展开"}${esc(course.name)}">${open ? "▾" : "▸"}</button>
-        <button class="course-folder-name" data-action="select-course" data-id="${esc(course.id)}"><b>${esc(course.name)}</b><small>${esc(course.term || "Current term")}</small></button>
+        <button class="course-folder-name" data-action="select-course" data-id="${esc(course.id)}"><b>${esc(course.name)}</b>${course.term && course.term !== "Current term" ? `<small>${esc(course.term)}</small>` : ""}</button>
         <button data-action="new-conversation" data-id="${esc(course.id)}" aria-label="在 ${esc(course.name)} 下新增对话" title="新增对话">＋</button>
         <button data-action="delete-course" data-id="${esc(course.id)}" aria-label="删除课程 ${esc(course.name)}" title="删除课程">×</button>
       </div>

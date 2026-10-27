@@ -18,7 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect existing AWS server
+      - name: Validate HTTPS setup script
+        run: bash -n aws/ip-https.sh
+      - name: Configure IP certificate and automatic renewal
         env:
           LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}
           LIGHTSAIL_USER: ${{ secrets.LIGHTSAIL_USER }}
@@ -32,21 +34,4 @@ jobs:
           chmod 600 ~/.ssh/studybridge_https_key
           ssh-keygen -y -f ~/.ssh/studybridge_https_key >/dev/null
           ssh-keyscan -H "$LIGHTSAIL_HOST" >> ~/.ssh/known_hosts
-          ssh -i ~/.ssh/studybridge_https_key "$LIGHTSAIL_USER@$LIGHTSAIL_HOST" 'bash -s' <<'REMOTE'
-          set -eu
-          cat /etc/os-release
-          id
-          sudo -n true
-          command -v nginx || true
-          sudo nginx -v 2>&1 || true
-          sudo ss -lntp | awk 'NR==1 || /:80 |:443 |:3000 /'
-          sudo ls -l /etc/nginx/sites-enabled /etc/letsencrypt/live 2>/dev/null || true
-          sudo nginx -T 2>&1 | head -240 || true
-          command -v certbot || true
-          command -v python3 || true
-          sudo ufw status 2>/dev/null || true
-          systemctl list-timers --all --no-pager | head -25
-          cd ~/school-helper
-          git rev-parse HEAD
-          curl --fail --silent http://127.0.0.1:3000/api/health
-          REMOTE
+          ssh -i ~/.ssh/studybridge_https_key "$LIGHTSAIL_USER@$LIGHTSAIL_HOST" 'sudo -n bash -s -- apply' < aws/ip-https.sh

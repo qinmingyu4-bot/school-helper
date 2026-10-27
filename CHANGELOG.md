@@ -2,6 +2,8 @@
 
 ## 2026-10-27
 
+- Configure trusted HTTPS for the existing AWS public IP with an isolated Certbot IP certificate, HTTP challenge/redirect, Nginx forwarding to the existing StudyBridge process, 70 MiB proxy requests and unbuffered AI streaming. Check renewal every six hours and reload Nginx after successful renewal; preserve the other hosted site's certificate and all StudyBridge accounts/data.
+
 - Prepare the authorized `1.1.91` AWS release of the 待完成 agenda: retain past/overdue personal plans and assignments until manual completion, preserve automatic class completion and chronological order, and distinguish the separate 下一项安排 highlight. Refresh package/frontend/cache versions; keep `1325a14` (`1.1.90`) as the rollback target and preserve production accounts, data and credentials.
 
 - Rename the agenda's upcoming tab to 待完成 and retain every unfinished assignment and personal plan, including past/overdue items, in chronological order. Preserve automatic Lecture/Tutorial completion and manual task completion; label the separate future-event highlight 下一项安排 to distinguish it from the pending list.

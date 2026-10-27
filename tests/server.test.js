@@ -296,6 +296,28 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     assert.equal((await request(`/api/courses/${courseId}/documents`, { cookie: alice.cookie })).data.documents.length, 5);
   });
 
+  await t.test("schedule batch API authenticates, validates atomically, preserves fields and skips saved duplicates", async () => {
+    const item = { title: "Batch tutorial", kind: "TUT", course: "STA437H1", startsAt: "2027-01-12T10:00", endsAt: "2027-01-12T11:00", notes: "Detailed topic ".repeat(150), evidence: "Source page 3", location: "SS 2127", recurrence: { frequency: "weekly", weekdays: [2], sources: [] } };
+    const body = { items: [item, item, { ...item, title: "Quiz 1", kind: "DDL" }], source: "outline.pdf", timeZone: "America/Toronto" };
+    assert.equal((await request("/api/schedule/import", { method: "POST", body })).status, 401);
+    assert.equal((await request("/api/schedule/items")).status, 401);
+    assert.equal((await request("/api/schedule/import", { method: "POST", cookie: alice.cookie, body: { ...body, items: [item, { ...item, startsAt: "invalid" }] } })).status, 400);
+    const saved = await request("/api/schedule/import", { method: "POST", cookie: alice.cookie, body });
+    assert.equal(saved.status, 200);
+    assert.equal(saved.data.saved, 2);
+    assert.equal(saved.data.duplicates, 1);
+    assert.equal(saved.data.items[0].notes, item.notes);
+    assert.equal(saved.data.items[0].source, "outline.pdf");
+    assert.equal(saved.data.items[0].endsAt, "2027-01-12T16:00:00.000Z");
+    assert.equal(saved.data.items[0].evidence, item.evidence);
+    const retry = await request("/api/schedule/import", { method: "POST", cookie: alice.cookie, body });
+    assert.equal(retry.data.saved, 0);
+    assert.equal(retry.data.duplicates, 3);
+    const own = await request("/api/schedule/items", { cookie: alice.cookie });
+    assert.equal(own.data.items.filter((event) => event.title === "Batch tutorial").length, 1);
+    assert.equal((await request("/api/schedule/items", { cookie: bob.cookie })).data.items.some((event) => event.title === "Batch tutorial"), false);
+  });
+
   await t.test("schedule extraction authentication, unreadable files, and unconfigured AI", async () => {
     const body = { fileName: "schedule.txt", fileData: Buffer.from("Essay due Nov 12, 2026 at 23:59").toString("base64") };
     assert.equal((await request("/api/schedule/extract", { method: "POST", body })).status, 401);

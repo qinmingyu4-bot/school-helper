@@ -34,6 +34,7 @@ const { buildMaterialContext, selectStudyVisuals } = require("./lib/study-contex
 const { buildExerciseCoverage, coverageInstruction } = require("./lib/study-coverage");
 const { selectAiModel } = require("./lib/ai-routing");
 const scheduleImport = require("./public/schedule-import");
+const scheduleBatch = require("./lib/schedule-batch");
 const scheduleInput = require("./lib/schedule-input");
 const scheduleTranscription = require("./lib/schedule-transcription");
 const { createCalendarService } = require("./lib/academic-calendar");
@@ -2688,6 +2689,26 @@ if (directMessageMatch && method === "POST") {
   notifyClassmates(connection.userIds, connection.id);
   return sendJson(res, 201, { message: { ...message, mine: true } });
 }
+
+  if (url.pathname === "/api/schedule/items" && method === "GET") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const courses = await db.listCourses(user.id);
+    const documents = (await Promise.all(courses.map((course) => db.listDocuments(user.id, course.id)))).flat();
+    return sendJson(res, 200, { courses, items: scheduleBatch.storedItems(courses, documents, user.id) });
+  }
+
+  if (url.pathname === "/api/schedule/import" && method === "POST") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const body = await readJson(req, 8 * 1024 * 1024);
+    let items;
+    try { items = scheduleBatch.normalizeBatch(body); }
+    catch (error) { return sendError(res, 400, error.message); }
+    const result = await db.importScheduleBatch(user.id, items);
+    return sendJson(res, 200, { saved: result.saved, duplicates: result.duplicates, course: result.course,
+      items: scheduleBatch.storedItems(result.course ? [result.course] : [], result.records, user.id) });
+  }
 
   if (url.pathname === "/api/schedule/parse-text" && method === "POST") {
     const user = await requireUser(req, res);

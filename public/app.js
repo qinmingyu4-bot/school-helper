@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.91";
+  const VERSION = "1.1.92";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -115,6 +115,7 @@
     scheduleVoicePending: false,
     scheduleVoiceFile: null,
     scheduleImportBusy: false,
+    scheduleImportProgress: null,
     scheduleImportStatus: "",
     scheduleCalendar: null,
     scheduleCalendarNotice: "",
@@ -1246,7 +1247,7 @@
       ${state.scheduleDrafts.some((item) => item.weekly) ? scheduleCalendarHtml() : ""}
       <fieldset ${state.scheduleImportBusy ? "disabled" : ""}>
       ${state.scheduleDrafts.map((item, index) => scheduleDraftHtml(item, index)).join("")}
-      <div class="schedule-review-actions"><span data-review-selected-count aria-live="polite">已选 ${state.scheduleDrafts.filter((item) => item.selected).length} 项</span><button class="primary" data-action="confirm-schedule">确认加入</button><button data-action="cancel-schedule">取消</button></div>
+      <div class="schedule-review-actions">${scheduleSaveProgressHtml()}<span data-review-selected-count aria-live="polite">已选 ${state.scheduleDrafts.filter((item) => item.selected).length} 项</span><button class="primary" data-action="confirm-schedule">${state.scheduleImportProgress ? "正在加入…" : "确认加入"}</button><button data-action="cancel-schedule">取消</button></div>
       </fieldset></article>`;
   }
 
@@ -1371,41 +1372,66 @@
     finally { state.scheduleImportBusy = false; render(); }
   }
 
+  function scheduleSaveProgressHtml() {
+    const progress = state.scheduleImportProgress;
+    if (!progress) return "";
+    return `<div class="schedule-save-progress" data-save-progress role="status" aria-live="polite"><span data-save-progress-text>${esc(progress.message)}</span><progress aria-label="加入日历进度" max="${progress.total || 1}" value="${progress.processed}"></progress></div>`;
+  }
+
+  function updateScheduleSaveProgress(progress) {
+    state.scheduleImportProgress = { ...state.scheduleImportProgress, ...progress };
+    const value = state.scheduleImportProgress;
+    root.querySelectorAll("[data-save-progress-text]").forEach((element) => { element.textContent = value.message; });
+    root.querySelectorAll("[data-save-progress] progress").forEach((element) => { element.max = value.total || 1; element.value = value.processed; });
+  }
+
   async function confirmScheduleImport() {
     if (state.scheduleImportBusy) return;
-    const selectedDrafts = state.scheduleDrafts.filter((item) => item.selected);
-    const selected = scheduleImport.expandWeekly(selectedDrafts, state.scheduleCalendar, { fromDate: state.scheduleFromDate });
-    if (!selected.length) throw new Error(selectedDrafts.length ? "本学期已无可生成的未来上课日期，请核对学期范围。" : "请至少勾选一个项目。");
-    if (selected.some((item) => !item.title.trim() || !scheduleImport.validTime(item.startsAt))) throw new Error("请为所选项目补全有效的标题、日期和时间。");
-    if (selected.some((item) => item.endsAt && (!scheduleImport.validTime(item.endsAt) || item.endsAt <= item.startsAt))) throw new Error("请核对结束时间，结束时间应晚于开始时间。");
+    const userId = state.user.id;
     state.scheduleImportBusy = true;
-    setScheduleImportStatus("正在保存已确认的项目…");
+    state.scheduleImportProgress = { processed: 0, total: 0, message: "正在整理课程日期，准备批量保存…" };
     render();
     let saved = 0, duplicates = 0;
     try {
-      await loadScheduleItems(true, true);
-      const seen = scheduleImport.duplicateIndex(state.scheduleItems);
-      let course = null;
-      for (const item of selected) {
-        if (seen.has(item)) { duplicates++; }
-        else {
-          course ||= await ensureScheduleCourse();
-          const payload = { ...item, startsAt: item.timeZone ? scheduleImport.toUtc(item.startsAt, item.timeZone) : new Date(item.startsAt).toISOString(), ...(item.endsAt && item.timeZone ? { endsAt: scheduleImport.toUtc(item.endsAt, item.timeZone) } : {}), completedAt: "", source: state.scheduleSource };
-          delete payload.selected;
-          await api(`/api/courses/${course.id}/documents`, { method: "POST", body: { title: `${SCHEDULE_PREFIX} ${item.title}`, type: "Schedule", text: JSON.stringify(payload) } });
-          seen.add(item);
-          saved++;
+      // Paint the busy state before expanding a full semester on a phone.
+      await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+      const selectedDrafts = state.scheduleDrafts.filter((item) => item.selected);
+      const selected = scheduleImport.expandWeekly(selectedDrafts, state.scheduleCalendar, { fromDate: state.scheduleFromDate });
+      if (!selected.length) throw new Error(selectedDrafts.length ? "本学期已无可生成的未来上课日期，请核对学期范围。" : "请至少勾选一个项目。");
+      if (selected.some((item) => !item.title.trim() || !scheduleImport.validTime(item.startsAt))) throw new Error("请为所选项目补全有效的标题、日期和时间。");
+      if (selected.some((item) => item.endsAt && (!scheduleImport.validTime(item.endsAt) || item.endsAt <= item.startsAt))) throw new Error("结束时间应晚于开始时间。");
+      updateScheduleSaveProgress({ total: selected.length, message: `正在检查重复并批量保存：0 / ${selected.length} 条…` });
+      for (let offset = 0; offset < selected.length; offset += 80) {
+        if (state.user?.id !== userId) throw new Error("登录账号已变化，请重新确认安排。");
+        const result = await api("/api/schedule/import", { method: "POST", body: {
+          items: selected.slice(offset, offset + 80), source: state.scheduleSource, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        } });
+        if (state.user?.id !== userId) return;
+        saved += result.saved;
+        duplicates += result.duplicates;
+        if (result.course && !state.courses.some((course) => course.id === result.course.id)) state.courses.unshift(result.course);
+        const known = new Set(state.scheduleItems.map((item) => item.docId));
+        state.scheduleItems.push(...result.items.filter((item) => !known.has(item.docId)));
+        const processed = Math.min(offset + 80, selected.length);
+        updateScheduleSaveProgress({ processed, message: `已处理 ${processed} / ${selected.length} 条 · 已保存 ${saved} 条 · 跳过重复 ${duplicates} 条` });
+        if (processed < selected.length) {
+          await new Promise((resolve) => setTimeout(resolve, 0));
         }
-        state.scheduleDrafts = state.scheduleDrafts.filter((draft) => draft !== item);
       }
       state.scheduleDrafts = [];
       state.scheduleUploadFile = null;
       setScheduleImportStatus(`已添加 ${saved} 条安排${duplicates ? `，跳过 ${duplicates} 条重复项目` : ""}。`);
-    } catch (error) { setScheduleImportStatus(`已保存 ${saved} 条，其余项目仍待确认；重试会跳过已保存的重复项目。${error.message}`); }
+    } catch (error) {
+      if (state.user?.id === userId) setScheduleImportStatus(`本次已确认保存 ${saved} 条，跳过重复 ${duplicates} 条。预览已保留；重试会重新检查并跳过已保存项目。${error.message}`);
+    }
     finally {
-      await loadScheduleItems().catch(() => {});
-      state.scheduleImportBusy = false;
-      render();
+      if (state.user?.id === userId) {
+        updateScheduleSaveProgress({ message: "正在同步日历，已保存的安排不会丢失…" });
+        await loadScheduleItems().catch(() => { setScheduleImportStatus(`${state.scheduleDraftOrigin === "quick" ? state.scheduleQuickStatus : state.scheduleImportStatus} 日历同步暂未完成，请刷新；重试添加会自动跳过重复项目。`); });
+        state.scheduleImportBusy = false;
+        state.scheduleImportProgress = null;
+        if (state.page === "schedule") render();
+      }
     }
   }
 
@@ -1559,20 +1585,11 @@
   }
 
   async function loadScheduleItems(refreshCourses = true, strict = false) {
-    if (refreshCourses) {
-      const coursesData = await api("/api/courses");
-      state.courses = coursesData.courses || [];
-    }
-    const allDocs = [];
-    for (const course of state.courses) {
-      const data = await api(`/api/courses/${course.id}/documents`).catch((error) => {
-        if (strict) throw error;
-        return { documents: [] };
-      });
-      allDocs.push({ course, documents: data.documents || [] });
-    }
-    state.allDocs = allDocs;
-    state.scheduleItems = allDocs.flatMap((entry) => entry.documents.map((doc) => parseScheduleDoc(doc, entry.course)).filter(Boolean));
+    const userId = state.user?.id;
+    const data = await api("/api/schedule/items");
+    if (state.user?.id !== userId) return;
+    if (refreshCourses) state.courses = data.courses || [];
+    state.scheduleItems = data.items || [];
   }
 
   async function ensureScheduleCourse() {

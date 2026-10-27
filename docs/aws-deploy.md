@@ -30,6 +30,12 @@
 
 ## 通用部署参考
 
+课程表确认加入采用每批最多 80 条的 `/api/schedule/import`，界面显示实际完成的
+保存/重复数量，失败保留预览供重试。`/api/schedule/items` 一次返回当前用户的完整
+日历安排，不传输其他课程资料正文。本地数据库每批统一落盘；DynamoDB 使用
+`TransactWriteItems`（已有权限需包含该动作）和导入版本条件，保证每批原子提交。
+原数据库及已有逐条新增、修改、完成操作保持兼容。
+
 StudyBridge Cloud 是一个 Node 服务：前端、登录、数据库 API 和 AI API 都由同一个服务提供。推荐先用 AWS App Runner 或 EC2 跑起来，数据库用 DynamoDB。
 
 ## 1. 本地确认

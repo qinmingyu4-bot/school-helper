@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-27
+
+- Prepare the authorized `1.1.90` AWS release of the monthly calendar and unified agenda, automatic Lecture/Tutorial completion with manual assignment completion, syllabus assessment extraction and duplicate checks, compact mobile import review with complete notes, and everyday-language/voice entry. Refresh package/frontend/cache versions and retain `cb0a035` (`1.1.89`) as the code rollback target. Preserve production credentials, accounts and stored materials; exclude databases and temporary previews. Direct microphone recording needs HTTPS/browser permission; voice-file upload and phone-keyboard dictation remain available on HTTP.
+
 ## 2026-10-26
 
 - Add everyday-language and voice entry to Schedule. Parse multiple personal plans/classes/deadlines into editable compact drafts with explicit timezone/current-day/selected-day context, end times and duplicate checks; save only after confirmation. Record bounded audio with microphone cleanup/cancellation or import a voice file, transcribe through the server, and retain editable text on errors. Keep manual entry and file imports, with accessible recording states, retry, mobile layout and an HTTPS/keyboard-dictation fallback.

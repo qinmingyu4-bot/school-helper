@@ -2,6 +2,8 @@
 
 ## 2026-10-27
 
+- Release `1.1.96`: publish the additional 16 px indentation for course conversations and their selected backgrounds. Refresh frontend/cache versions so existing browsers receive the new spacing. No account or data migration; code rollback target: `cdb3b70` (`1.1.95`).
+
 - Increase the indentation of conversations within each course by 16 px so chat titles and selection highlights clearly sit beneath their parent course without adding card borders or vertical spacing.
 
 - Release `1.1.95`: publish individual course conversation deletion with private-attachment cleanup and late-reply protection, together with the compact flat course directory. Refresh frontend/cache versions; preserve existing courses, shared materials, schedules, accounts and undeleted chat history. Code rollback target: `bc275be` (`1.1.94`).

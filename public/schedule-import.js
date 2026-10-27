@@ -10,6 +10,30 @@
   }
   function validDate(value) { return /^\d{4}-\d{2}-\d{2}$/.test(String(value || "")) && validTime(`${value}T12:00`); }
   function validClock(value) { return /^([01]\d|2[0-3]):[0-5]\d$/.test(String(value || "")); }
+  function draftDateTime(item) {
+    return { date: validTime(item.startsAt) ? item.startsAt.slice(0, 10) : validDate(item.date) ? item.date : "",
+      time: validTime(item.startsAt) ? item.startsAt.slice(11) : validClock(item.time) ? item.time : "" };
+  }
+  function withDatePart(item, field, value) {
+    const parts = { ...draftDateTime(item), [field]: value };
+    return { ...item, ...parts, startsAt: validDate(parts.date) && validClock(parts.time) ? `${parts.date}T${parts.time}` : "" };
+  }
+  function explicitDraftDate(row) {
+    const supplied = String(row.date || row.startsAt || "").slice(0, 10);
+    if (validDate(supplied)) return supplied;
+    if (kind(row.kind) !== "DDL") return "";
+    // Recover a primary due date from this item's own evidence, never a late-acceptance date or an inferred year.
+    const text = `${row.evidence || ""}\n${row.notes || ""}`;
+    const dates = new Set();
+    for (const match of text.matchAll(/\bdue(?:\s+date)?(?:\s+is)?(?:\s+on)?\s*:?\s*(\d{4}-\d{2}-\d{2})\b/gi)) if (validDate(match[1])) dates.add(match[1]);
+    const months = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+    for (const match of text.matchAll(/\bdue(?:\s+date)?(?:\s+is)?(?:\s+on)?\s*:?\s*([A-Za-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?[,]?\s+(\d{4})\b/gi)) {
+      const month = months.indexOf(match[1].toLowerCase()) + 1;
+      const date = `${match[3]}-${String(month).padStart(2, "0")}-${match[2].padStart(2, "0")}`;
+      if (validDate(date)) dates.add(date);
+    }
+    return dates.size === 1 ? [...dates][0] : "";
+  }
   function validWeekly(weekly) {
     return weekly && Array.isArray(weekly.weekdays) && weekly.weekdays.length > 0 && weekly.weekdays.every((day) => Number.isInteger(day) && day >= 0 && day <= 6)
       && validClock(weekly.startTime) && (!weekly.endTime || validClock(weekly.endTime) && weekly.endTime > weekly.startTime);
@@ -22,7 +46,10 @@
     const items = rows.map((row) => {
       if (!row || typeof row !== "object" || Array.isArray(row) || !kind(row.kind)) throw new Error("AI 返回了无法识别的类型，请重新提取。");
       const string = (key, limit) => String(row[key] || "").trim().slice(0, limit);
-      const startsAt = string("startsAt", 30);
+      const rawStart = string("startsAt", 30);
+      const date = explicitDraftDate(row);
+      const time = validTime(rawStart) ? rawStart.slice(11) : validClock(row.time) ? row.time : "";
+      const startsAt = validTime(rawStart) ? rawStart : date && time ? `${date}T${time}` : "";
       const endsAt = string("endsAt", 30);
       const invalidEnd = endsAt && (!validTime(endsAt) || validTime(startsAt) && endsAt <= startsAt);
       const weekly = ["LEC", "TUT"].includes(kind(row.kind)) && row.weekly && typeof row.weekly === "object" ? {
@@ -30,7 +57,7 @@
         startTime: String(row.weekly.startTime || "").slice(0, 5), endTime: String(row.weekly.endTime || "").slice(0, 5),
         startDate: validDate(row.weekly.startDate) ? row.weekly.startDate : "", endDate: validDate(row.weekly.endDate) ? row.weekly.endDate : ""
       } : null;
-      return { kind: kind(row.kind), title: string("title", 160), course: string("course", 80), startsAt: validTime(startsAt) ? startsAt : "", ...(endsAt ? { endsAt: validTime(endsAt) ? endsAt : "" } : {}), location: string("location", 160), notes: string("notes", 600), evidence: string("evidence", 600), warning: string("warning", 600) || (weekly ? validWeekly(weekly) ? "" : "星期或上课时间未识别完整，请仅补充缺失信息。" : !validTime(startsAt) ? "日期或时间不完整，请补全后确认。" : invalidEnd ? "结束时间无效或早于开始时间，请核对。" : ""), ...(weekly ? { weekly } : {}), selected: true };
+      return { kind: kind(row.kind), title: string("title", 160), course: string("course", 80), startsAt: validTime(startsAt) ? startsAt : "", ...(!startsAt && (date || time) ? { date, time } : {}), ...(endsAt ? { endsAt: validTime(endsAt) ? endsAt : "" } : {}), location: string("location", 160), notes: string("notes", 600), evidence: string("evidence", 600), warning: string("warning", 600) || (weekly ? validWeekly(weekly) ? "" : "星期或上课时间未识别完整，请仅补充缺失信息。" : date && !time ? "日期已识别，请补充具体时间后确认。" : !validTime(startsAt) ? "日期或时间不完整，请补全后确认。" : invalidEnd ? "结束时间无效或早于开始时间，请核对。" : ""), ...(weekly ? { weekly } : {}), selected: true };
     });
     const hint = !Array.isArray(payload) && payload.termHint || {};
     return { items, termHint: { year: Number.isInteger(hint.year) && hint.year >= 2000 && hint.year <= 2200 ? hint.year : null,
@@ -193,7 +220,7 @@
     if (Number.isFinite(start) && finish <= Number(new Date(now))) return { classMeeting, automatic: true, completedAt: new Date(finish).toISOString() };
     return result;
   }
-  const api = { kind, validTime, validDate, validClock, validWeekly, parse, parseExtraction, normalizeCalendar, nonTeachingRanges, todayInZone, toUtc, expandWeekly, fingerprint, duplicateIndex, deduplicate, reviewDuplicates, completion };
+  const api = { draftDateTime, withDatePart, kind, validTime, validDate, validClock, validWeekly, parse, parseExtraction, normalizeCalendar, nonTeachingRanges, todayInZone, toUtc, expandWeekly, fingerprint, duplicateIndex, deduplicate, reviewDuplicates, completion };
   if (typeof module === "object" && module.exports) module.exports = api;
   else scope.StudyBridgeScheduleImport = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

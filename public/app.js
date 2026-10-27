@@ -1288,9 +1288,10 @@
 
   function scheduleDraftSummary(item) {
     const valid = item.weekly ? scheduleImport.validWeekly(item.weekly) : scheduleImport.validTime(item.startsAt);
+    const parts = scheduleImport.draftDateTime(item);
     return {
       title: item.title.trim() || "未命名项目", kind: item.kind === "EVENT" ? "个人安排" : item.kind,
-      time: item.weekly ? `每周${item.weekly.weekdays.map((weekday) => ["日", "一", "二", "三", "四", "五", "六"][weekday]).join("、") || "（待补星期）"} ${item.weekly.startTime || "时间待补充"}${item.weekly.endTime ? `–${item.weekly.endTime}` : ""}` : valid ? `${item.startsAt.replace("T", " ")}${item.endsAt ? ` → ${item.endsAt.replace("T", " ")}` : ""}` : "日期 / 时间待补充",
+      time: item.weekly ? `每周${item.weekly.weekdays.map((weekday) => ["日", "一", "二", "三", "四", "五", "六"][weekday]).join("、") || "（待补星期）"} ${item.weekly.startTime || "时间待补充"}${item.weekly.endTime ? `–${item.weekly.endTime}` : ""}` : valid ? `${item.startsAt.replace("T", " ")}${item.endsAt ? ` → ${item.endsAt.replace("T", " ")}` : ""}` : parts.date ? `${parts.date} · 时间待补充` : parts.time ? `日期待补充 · ${parts.time}` : "日期 / 时间待补充",
       context: [item.course, item.location].filter(Boolean).join(" · "), notes: item.notes.trim(),
       warning: item.warning || (!item.title.trim() || !valid ? "请补全标题或时间后再加入。" : ""), needsInput: !item.title.trim() || !valid || Boolean(item.endsAt && (!scheduleImport.validTime(item.endsAt) || item.endsAt <= item.startsAt))
     };
@@ -1298,6 +1299,7 @@
 
   function scheduleDraftHtml(item, index) {
     const summary = scheduleDraftSummary(item);
+    const parts = scheduleImport.draftDateTime(item);
     const open = scheduleDraftDisclosure.has(item) ? scheduleDraftDisclosure.get(item) : summary.needsInput;
     return `<section class="schedule-draft" data-draft="${index}">
       <label class="schedule-review-select"><input type="checkbox" data-draft-field="selected" aria-label="加入时间表：${esc(summary.title)}" ${item.selected ? "checked" : ""}></label>
@@ -1310,7 +1312,7 @@
         </summary>
         <div class="schedule-draft-fields">
         <div class="inline-fields"><label>类型<select data-draft-field="kind">${(item.weekly ? ["LEC", "TUT"] : ["EVENT", "DDL", "LEC", "TUT"]).map((kind) => `<option value="${kind}" ${item.kind === kind ? "selected" : ""}>${kind === "EVENT" ? "个人安排" : kind}</option>`).join("")}</select></label>
-        ${item.weekly ? `<label>每周上课时间<input type="time" data-weekly-field="startTime" value="${esc(item.weekly.startTime)}"></label><label>结束时间<input type="time" data-weekly-field="endTime" value="${esc(item.weekly.endTime)}"></label>` : `<label>日期与时间<input type="datetime-local" data-draft-field="startsAt" value="${esc(item.startsAt)}"></label><label>结束日期与时间（选填）<input type="datetime-local" data-draft-field="endsAt" value="${esc(item.endsAt || "")}"></label>`}</div>
+        ${item.weekly ? `<label>每周上课时间<input type="time" data-weekly-field="startTime" value="${esc(item.weekly.startTime)}"></label><label>结束时间<input type="time" data-weekly-field="endTime" value="${esc(item.weekly.endTime)}"></label>` : `<label>日期<input type="date" data-draft-field="date" value="${esc(parts.date)}"></label><label>时间${!parts.time ? "（待补充）" : ""}<input type="time" data-draft-field="time" value="${esc(parts.time)}"></label><label>结束日期与时间（选填）<input type="datetime-local" data-draft-field="endsAt" value="${esc(item.endsAt || "")}"></label>`}</div>
         ${item.weekly ? `<div class="schedule-weekdays" aria-label="每周上课日">${["日", "一", "二", "三", "四", "五", "六"].map((day, weekday) => `<label><input type="checkbox" data-weekday="${weekday}" ${item.weekly.weekdays.includes(weekday) ? "checked" : ""}>周${day}</label>`).join("")}</div><p class="muted">每周重复；只在授课日安排，跳过官网停课日期。</p>` : ""}
         <label>标题<input data-draft-field="title" value="${esc(item.title)}" maxlength="160"></label>
         <div class="inline-fields"><label>课程<input data-draft-field="course" value="${esc(item.course)}"></label><label>地点 / 链接<input data-draft-field="location" value="${esc(item.location)}"></label></div>
@@ -1370,7 +1372,7 @@
         draft.warning = "";
         section.querySelector(".schedule-warning")?.remove();
       }
-      if (draft && !draft.weekly && scheduleImport.validTime(draft.startsAt) && draft.warning === "日期或时间不完整，请补全后确认。") { draft.warning = ""; section.querySelector(".schedule-warning")?.remove(); }
+      if (draft && !draft.weekly && scheduleImport.validTime(draft.startsAt) && ["日期或时间不完整，请补全后确认。", "日期已识别，请补充具体时间后确认。"].includes(draft.warning)) { draft.warning = ""; section.querySelector(".schedule-warning")?.remove(); }
       if (draft && draft.warning === "结束时间无效或早于开始时间，请核对。" && (!draft.endsAt || scheduleImport.validTime(draft.endsAt) && draft.endsAt > draft.startsAt)) { draft.warning = ""; section.querySelector(".schedule-warning")?.remove(); }
       refreshScheduleDraftSummary(section, draft);
     });
@@ -2700,7 +2702,7 @@
     const field = event.target.dataset?.draftField;
     if (!field) return;
     const item = state.scheduleDrafts[Number(event.target.closest("[data-draft]")?.dataset.draft)];
-    if (item) { item[field] = field === "selected" ? event.target.checked : event.target.value; refreshScheduleDraftSummary(event.target.closest("[data-draft]"), item); }
+    if (item) { if (["date", "time"].includes(field)) Object.assign(item, scheduleImport.withDatePart(item, field, event.target.value)); else item[field] = field === "selected" ? event.target.checked : event.target.value; refreshScheduleDraftSummary(event.target.closest("[data-draft]"), item); }
   });
 
   const composingChatInputs = new WeakSet();

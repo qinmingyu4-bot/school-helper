@@ -117,4 +117,13 @@ test("timetable images/PDFs retain layout, use school calendars and return recur
   const repeatedPlans = await request("/api/schedule/parse-text", natural, cookie);
   assert.equal(repeatedPlans.data.items.length, 0);
   assert.equal(repeatedPlans.data.duplicateCount, 2);
+  const portfolio = await request("/api/schedule/extract", { fileName: "portfolio-date-only-fixture.txt", fileData: Buffer.from("Portfolios are due on April 9, 2027. Late portfolios will not be accepted after April 14, 2027.").toString("base64"), timeZone: "America/Toronto" }, cookie);
+  assert.equal(portfolio.status, 200);
+  assert.equal(portfolio.data.items[0].date, "2027-04-09");
+  assert.equal(portfolio.data.items[0].startsAt, "");
+  assert.equal((await request("/api/schedule/import", { items: portfolio.data.items, timeZone: "America/Toronto" }, cookie)).status, 400, "a known date must not fabricate an exact deadline time");
+  const filled = importer.withDatePart(portfolio.data.items[0], "time", "17:00");
+  const added = await request("/api/schedule/import", { items: [filled], timeZone: "America/Toronto" }, cookie);
+  assert.equal(added.data.saved, 1);
+  assert.equal((await request("/api/schedule/import", { items: [filled], timeZone: "America/Toronto" }, cookie)).data.duplicates, 1);
 });

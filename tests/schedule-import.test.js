@@ -2,6 +2,37 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const importer = require("../public/schedule-import");
 
+test("date-only portfolio deadlines retain the due date without inventing a clock or using the late cutoff", () => {
+  const portfolio = { kind: "DDL", title: "Portfolio", course: "MAT329Y1", startsAt: "", notes: "Due 2027-04-09; submission time not stated.", evidence: "p. 4: Portfolios are due on April 9, 2027. p. 5: Late portfolios will not be accepted after April 14, 2027." };
+  const parsed = importer.parse(JSON.stringify([portfolio]))[0];
+  assert.deepEqual(importer.draftDateTime(parsed), { date: "2027-04-09", time: "" });
+  assert.equal(parsed.startsAt, "");
+  assert.match(parsed.warning, /日期已识别/);
+  assert.equal(parsed.evidence, portfolio.evidence);
+  const complete = importer.withDatePart(parsed, "time", "17:30");
+  assert.equal(complete.startsAt, "2027-04-09T17:30");
+  assert.equal(importer.toUtc(complete.startsAt, "America/Toronto"), "2027-04-09T21:30:00.000Z");
+  const cleared = importer.withDatePart(complete, "time", "");
+  assert.equal(cleared.startsAt, "");
+  assert.equal(importer.draftDateTime(cleared).date, "2027-04-09");
+  for (const fields of [{ startsAt: "2027-04-09" }, { date: "2027-04-09" }]) {
+    const item = importer.parse(JSON.stringify([{ kind: "DDL", title: "Portfolio", ...fields }]))[0];
+    assert.deepEqual(importer.draftDateTime(item), { date: "2027-04-09", time: "" });
+  }
+});
+
+test("partial schedule dates preserve independent fields without guessing years, exam dates or ambiguous deadlines", () => {
+  for (const evidence of ["Due on April 9", "Final exam during April 2027", "Late submissions accepted until April 14, 2027", "Due on April 9, 2027 or due on April 10, 2027", "Due on February 30, 2027"]) {
+    const item = importer.parse(JSON.stringify([{ kind: "DDL", title: "Task", evidence }]))[0];
+    assert.equal(importer.draftDateTime(item).date, "", evidence);
+  }
+  const item = importer.parse(JSON.stringify([{ kind: "EVENT", title: "Meeting", time: "14:00" }]))[0];
+  assert.deepEqual(importer.draftDateTime(item), { date: "", time: "14:00" });
+  assert.equal(importer.withDatePart(item, "date", "2027-04-09").startsAt, "2027-04-09T14:00");
+  const full = importer.parse(JSON.stringify([{ kind: "DDL", title: "Task", date: "2027-04-09", time: "18:00" }]))[0];
+  assert.equal(full.startsAt, "2027-04-09T18:00");
+});
+
 test("schedule extraction rejects malformed output and invalid calendar dates", () => {
   assert.equal(importer.validTime("2028-02-29T23:59"), true);
   for (const value of ["2026-02-29T12:00", "2026-04-31T12:00", "2026-10-11T24:00", "2026-10-11T12:60", "", "next Friday"]) assert.equal(importer.validTime(value), false);

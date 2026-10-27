@@ -85,6 +85,7 @@ test("Dynamo conversation renames and late replies preserve message ownership an
   db.dynamo = {
     get: async (pk, sk) => rows.get(`${pk}|${sk}`) || null,
     put: async (pk, sk, type, value) => { rows.set(`${pk}|${sk}`, value); return value; },
+    delete: async (pk, sk) => rows.delete(`${pk}|${sk}`),
     query: async (pk, prefix) => [...rows].filter(([key]) => key.startsWith(`${pk}|${prefix}`)).map(([, value]) => value),
     transactPut: async (records) => {
       await new Promise((resolve) => setImmediate(resolve));
@@ -105,4 +106,47 @@ test("Dynamo conversation renames and late replies preserve message ownership an
   assert.equal((await db.getConversation("alice", "math", chat.id)).title, "Manual title");
   assert.equal((await db.listMessages("alice", "math", 80, chat.id)).length, 1);
   await assert.rejects(db.createMessage({ id: "bad", userId: "bob", courseId: "math", conversationId: chat.id, role: "user", content: "Not mine" }), /Conversation not found/);
+  assert.equal(await db.deleteConversation("alice", "math", chat.id), true);
+  assert.equal(await db.getConversation("alice", "math", chat.id), null);
+  assert.equal(await db.renameConversation("alice", "math", chat.id, "Revived"), null);
+  await assert.rejects(db.createMessage({ id: "late", userId: "alice", courseId: "math", conversationId: chat.id, role: "assistant", content: "Late reply" }), /Conversation not found/);
+  assert.deepEqual(await db.listMessages("alice", "math", Infinity, chat.id), []);
+  await db.createMessage({ id: "default", userId: "alice", courseId: "math", conversationId: "default", role: "user", content: "Old default" });
+  await db.deleteConversation("alice", "math", "default");
+  assert.deepEqual(await db.listConversations("alice", "math"), []);
+  await assert.rejects(db.createMessage({ id: "late-default", userId: "alice", courseId: "math", conversationId: "default", role: "assistant", content: "Late default" }), /Conversation not found/);
+});
+
+test("local conversation deletion is durable, rolls back failed saves and preserves shared data", async (t) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "studybridge-delete-chat-"));
+  t.after(() => fs.rm(directory, { recursive: true, force: true }));
+  const db = new StudyBridgeDatabase(); db.local.file = path.join(directory, "db.json");
+  const a = await db.createConversation("alice", "math"), b = await db.createConversation("alice", "math", "Keep");
+  await db.createMessage({ id: "legacy", userId: "alice", courseId: "math", role: "user", content: "Legacy" });
+  await db.createMessage({ id: "a", userId: "alice", courseId: "math", conversationId: a.id, role: "user", content: "Delete" });
+  await db.createMessage({ id: "b", userId: "alice", courseId: "math", conversationId: b.id, role: "user", content: "Keep" });
+  await db.saveChatAttachments("alice", "math", "legacy", [{ name: "legacy.txt", text: "legacy" }]);
+  const ref = await db.saveChatAttachments("alice", "math", "a", [{ name: "a.txt", text: "private" }]);
+  await db.saveChatAttachments("alice", "math", "b", [{ name: "b.txt", text: "keep" }]);
+  await db.createDocument({ id: "shared", userId: "alice", courseId: "math", title: "Syllabus", text: "Shared" });
+  const save = db.local.save.bind(db.local);
+  db.local.save = async () => { throw new Error("disk full"); };
+  await assert.rejects(db.deleteConversation("alice", "math", a.id), /disk full/);
+  assert.ok(await db.getConversation("alice", "math", a.id));
+  assert.equal((await db.listMessages("alice", "math", Infinity, a.id)).length, 1);
+  assert.ok(await db.readMaterial("alice", "math", ref));
+  db.local.save = save;
+  assert.equal(await db.deleteConversation("bob", "math", a.id), false);
+  await db.deleteConversation("alice", "math", a.id);
+  assert.equal(await db.readMaterial("alice", "math", ref), null);
+  await assert.rejects(db.createMessage({ id: "late", userId: "alice", courseId: "math", conversationId: a.id, role: "assistant", content: "Late" }), /Conversation not found/);
+  await db.deleteConversation("alice", "math", "default");
+  assert.equal(await db.getConversation("alice", "math", "default"), null);
+  assert.equal(await db.renameConversation("alice", "math", "default", "Revived"), null);
+  assert.deepEqual((await db.listConversations("alice", "math")).map((chat) => chat.id), [b.id]);
+  assert.deepEqual((await db.listMessages("alice", "math", Infinity)).map((message) => message.id), ["b"]);
+  assert.equal((await db.listChatAttachments("alice", "math"))[0].name, "b.txt");
+  assert.equal((await db.listDocuments("alice", "math"))[0].id, "shared");
+  const restarted = new StudyBridgeDatabase(); restarted.local.file = db.local.file;
+  assert.deepEqual((await restarted.listConversations("alice", "math")).map((chat) => chat.id), [b.id]);
 });

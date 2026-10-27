@@ -1408,6 +1408,17 @@ async function studyAnswerContext({ user, course, conversationId = courseConvers
   return { model, prompt: buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message, attachments: savedAttachments, currentAttachments: attachments, documentPdfs }) };
 }
 
+async function saveChatQuestion({ user, course, conversationId, message, mode, attachments }) {
+  const messageId = createId("msg");
+  const attachmentRef = await db.saveChatAttachments(user.id, course.id, messageId, attachments);
+  try {
+    return await db.createMessage({ id: messageId, userId: user.id, courseId: course.id, conversationId, role: "user", content: `${message}${chatAttachmentLabel(attachments)}`, displayText: message, ...(attachmentRef ? { attachments: chatAttachmentMetadata(course.id, attachmentRef, attachments) } : {}), mode });
+  } catch (error) {
+    if (attachmentRef) await db.deleteMaterials(user.id, course.id, `${attachmentRef}#`);
+    throw error;
+  }
+}
+
 async function streamCourseChat(req, res, context) {
   const { user, course, conversationId, message, mode, attachments } = context;
   const controller = new AbortController();
@@ -1432,9 +1443,7 @@ async function streamCourseChat(req, res, context) {
   }, 10000);
   const timeout = setTimeout(() => controller.abort(new Error("AI reply timed out.")), 180000);
   try {
-    const messageId = createId("msg");
-    const attachmentRef = await db.saveChatAttachments(user.id, course.id, messageId, attachments);
-    userMessage = await db.createMessage({ id: messageId, userId: user.id, courseId: course.id, conversationId, role: "user", content: `${message}${chatAttachmentLabel(attachments)}`, displayText: message, ...(attachmentRef ? { attachments: chatAttachmentMetadata(course.id, attachmentRef, attachments) } : {}), mode });
+    userMessage = await saveChatQuestion(context);
     send("start", { message: userMessage });
     controller.signal.throwIfAborted();
     const { prompt, model } = await studyAnswerContext(context);
@@ -2928,6 +2937,10 @@ if (directMessageMatch && method === "POST") {
         try { title = courseConversations.title(body.title ?? "新对话"); } catch (error) { return sendError(res, 400, error.message); }
         return sendJson(res, 201, { conversation: await db.createConversation(user.id, courseId, title) });
       }
+      if (method === "DELETE" && childId) {
+        const deleted = await db.deleteConversation(user.id, courseId, childId);
+        return deleted ? sendJson(res, 200, { ok: true }) : sendError(res, 404, "Conversation not found.");
+      }
       if (method === "PATCH" && childId) {
         const body = await readJson(req, 4096);
         let title;
@@ -2938,7 +2951,7 @@ if (directMessageMatch && method === "POST") {
     }
     if (child === "messages" && method === "GET") {
       const conversationId = url.searchParams.get("conversationId") || courseConversations.DEFAULT_ID;
-      if (conversationId !== courseConversations.DEFAULT_ID && !(await db.getConversation(user.id, courseId, conversationId))) return sendError(res, 404, "Conversation not found.");
+      if (!(await db.getConversation(user.id, courseId, conversationId))) return sendError(res, 404, "Conversation not found.");
       return sendJson(res, 200, { messages: await chatMessagesForDisplay(user.id, courseId, conversationId) });
     }
     if (child === "attachments" && childId && method === "GET") {
@@ -2964,7 +2977,7 @@ if (directMessageMatch && method === "POST") {
       const body = await readJson(req);
       const conversationId = body.conversationId ?? courseConversations.DEFAULT_ID;
       if (typeof conversationId !== "string" || conversationId.length > 100 || course.chatType === "general" && conversationId !== courseConversations.DEFAULT_ID) return sendError(res, 400, "Invalid conversation.");
-      if (conversationId !== courseConversations.DEFAULT_ID && !(await db.getConversation(user.id, courseId, conversationId))) return sendError(res, 404, "Conversation not found.");
+      if (!(await db.getConversation(user.id, courseId, conversationId))) return sendError(res, 404, "Conversation not found.");
       const rawMessage = String(body.message || "").trim().slice(0, 4000);
       const mode = course.chatType === "general" ? "general" : String(body.mode || "guided").slice(0, 40);
       const attachments = await normalizeChatAttachments(body.attachments);
@@ -2974,9 +2987,7 @@ if (directMessageMatch && method === "POST") {
         ? { ...user, preferences: learningStyle.normalize(body.learningStyle) } : user;
       const context = { user: effectiveUser, course, conversationId, message, mode, attachments };
       if (body.stream === true) return streamCourseChat(req, res, context);
-      const messageId = createId("msg");
-      const attachmentRef = await db.saveChatAttachments(user.id, courseId, messageId, attachments);
-      const userMessage = await db.createMessage({ id: messageId, userId: user.id, courseId, conversationId, role: "user", content: `${message}${chatAttachmentLabel(attachments)}`, displayText: message, ...(attachmentRef ? { attachments: chatAttachmentMetadata(course.id, attachmentRef, attachments) } : {}), mode });
+      const userMessage = await saveChatQuestion(context);
       const { prompt, model: selectedModel } = await studyAnswerContext(context);
       const aiContent = await callAi(prompt, selectedModel);
       const assistantMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId, conversationId, role: "assistant", content: aiContent, mode });

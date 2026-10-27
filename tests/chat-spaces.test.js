@@ -20,6 +20,10 @@ test("DynamoDB general messages isolate users without counting a virtual course"
   const rows = new Map();
   db.dynamo = {
     put: async (pk, sk, type, data) => { rows.set(`${pk}|${sk}`, structuredClone(data)); return data; },
+    get: async (pk, sk) => rows.get(`${pk}|${sk}`) || null,
+    transactPut: async (records) => {
+      for (const record of records) rows.set(`${record.pk}|${record.sk}`, structuredClone(record.data));
+    },
     query: async (pk, prefix) => [...rows.entries()].filter(([key]) => key.startsWith(`${pk}|${prefix}`)).map(([, value]) => structuredClone(value))
   };
   for (const [id, userId, courseId] of [["a", "alice", "general"], ["b", "bob", "general"], ["c", "alice", "math"]]) {

@@ -154,6 +154,8 @@ switching modes leaves drafts, attachments, and the current reading position int
 Course materials, account learning preferences, and the latest explicit request
 continue to guide the AI response.
 
+Each course conversation (including the legacy default) has a delete action with confirmation. Deletion removes its messages and private attachments while keeping the course, shared documents, calendar data and other conversations. A deletion marker prevents late replies or renames from resurrecting it. Deleting the last chat returns to general chat; reopening the empty course starts a fresh conversation.
+
 The internal `Schedule & Deadlines` storage course is hidden from the study chat/course list. Saved chat selections fall back to a visible course or general chat. Its records remain intact for calendar events, personal plans, deadlines and duplicate checks; do not delete or filter it from schedule storage/API reads.
 
 The full agenda supports multi-select type filters alongside pending/all/completed status. An empty selection means all types; users can combine Lecture, Tutorial, assignment/deadline, Quiz, exam and personal categories. Status counts reflect selected types, type counts reflect the current status, and the month calendar remains unfiltered. Historical DDL assessments are classified by their titles (Quiz/小测/测验 and exam/test/midterm/final/考试); stored kinds and completion rules remain unchanged.

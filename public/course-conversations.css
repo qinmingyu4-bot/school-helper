@@ -16,3 +16,6 @@
 .course-chat-heading { display: grid; gap: 5px; }
 .course-chat-heading > small { color: var(--muted); font-size: 12px; }
 .course-chat-heading h1 { font-size: 21px; }
+
+.course-chat-row button[data-action="delete-conversation"] { flex-shrink: 0; min-width: 28px; }
+.course-chat-row button[data-action="delete-conversation"]:hover { color: #a23434; background: #fceeee; }

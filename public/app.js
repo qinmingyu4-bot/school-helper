@@ -578,7 +578,7 @@
       ${open ? `<div class="course-chat-list">${rows.map((chat) => {
         const renaming = state.renamingConversation?.courseId === course.id && state.renamingConversation.id === chat.id;
         return renaming ? `<div class="course-chat-rename"><input id="conversationRename" data-course="${esc(course.id)}" data-conversation="${esc(chat.id)}" aria-label="对话标题" maxlength="120" value="${esc(state.renamingConversation.title ?? chat.title)}"><div><button data-action="save-conversation-name" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}">保存标题</button><button data-action="cancel-conversation-name">取消</button></div></div>`
-          : `<div class="course-chat-row ${state.activeCourseId === course.id && state.activeConversationId === chat.id ? "active" : ""}"><button class="course-chat-title" data-action="select-conversation" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}" title="${esc(chat.title)}" ${state.activeCourseId === course.id && state.activeConversationId === chat.id ? 'aria-current="page"' : ""}>${esc(chat.title)}</button><button data-action="rename-conversation" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}" aria-label="重命名对话 ${esc(chat.title)}" title="重命名">✎</button></div>`;
+          : `<div class="course-chat-row ${state.activeCourseId === course.id && state.activeConversationId === chat.id ? "active" : ""}"><button class="course-chat-title" data-action="select-conversation" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}" title="${esc(chat.title)}" ${state.activeCourseId === course.id && state.activeConversationId === chat.id ? 'aria-current="page"' : ""}>${esc(chat.title)}</button><button data-action="rename-conversation" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}" aria-label="重命名对话 ${esc(chat.title)}" title="重命名">✎</button><button data-action="delete-conversation" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}" aria-label="删除对话 ${esc(chat.title)}" title="删除对话">×</button></div>`;
       }).join("")}</div>` : ""}</section>`;
   }
 
@@ -1636,9 +1636,14 @@
     if (isGeneralChat()) state.activeConversationId = "default";
     else {
       const courseId = state.activeCourseId;
-      const chats = await refreshCourseConversations(courseId);
+      let chats = await refreshCourseConversations(courseId);
+      if (!chats.length) {
+        const data = await api(`/api/courses/${courseId}/conversations`, { method: "POST", body: { title: "新对话" } });
+        chats = [data.conversation];
+        state.courseConversations[courseId] = chats;
+      }
       if (state.activeCourseId !== courseId) return;
-      if (!chats.some((chat) => chat.id === state.activeConversationId)) state.activeConversationId = "default";
+      if (!chats.some((chat) => chat.id === state.activeConversationId)) state.activeConversationId = chats[0].id;
       if (state.expandedCourses[courseId] === undefined) state.expandedCourses[courseId] = true;
     }
     loadStudyMode();
@@ -2087,6 +2092,26 @@
         await api(`/api/courses/${button.dataset.id}/conversations/${button.dataset.conversation}`, { method: "PATCH", body: { title } });
         await refreshCourseConversations(button.dataset.id);
         state.renamingConversation = null; render();
+        return;
+      }
+      if (action === "delete-conversation") {
+        const courseId = button.dataset.id, conversationId = button.dataset.conversation;
+        const title = state.courseConversations[courseId]?.find((chat) => chat.id === conversationId)?.title || "此对话";
+        if (!confirm(`确定删除“${title}”及其中的消息和对话附件吗？课程资料和其他对话会保留。`)) return;
+        button.disabled = true;
+        const key = studyReplyKey(state.user.id, courseId, conversationId);
+        studyReplies.get(key)?.controller.abort();
+        try {
+          await api(`/api/courses/${courseId}/conversations/${conversationId}`, { method: "DELETE" });
+          studyReplies.delete(key); studyDrafts.delete(key); pdfReturnDrafts.delete(key);
+          state.renamingConversation = null;
+          const chats = await refreshCourseConversations(courseId);
+          try { localStorage.removeItem(`studybridge.studyMode.${state.user.id}.${courseId}${conversationId === "default" ? "" : `.${conversationId}`}`); localStorage.removeItem(`studybridge.conversation.${state.user.id}.${courseId}`); } catch { /* Storage may be disabled. */ }
+          if (state.activeCourseId === courseId && state.activeConversationId === conversationId) {
+            await selectConversation(chats.length ? courseId : chatSpaces.general.id, chats[0]?.id || "default");
+            studyDrafts.delete(key);
+          } else render();
+        } finally { button.disabled = false; }
         return;
       }
       if (action === "delete-course") {

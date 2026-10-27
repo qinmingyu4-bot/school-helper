@@ -2,6 +2,8 @@
 
 ## 2026-10-27
 
+- Add deletion for individual course conversations, including the legacy default: confirm before removing messages and private attachments, preserve shared documents/schedules and other chats, switch away from deleted selections and discard their drafts. Persist deletion markers so late AI replies and renames cannot revive removed chats.
+
 - Release `1.1.94`: publish all pending fixes together: continuous reply loading/stop button, academic-only learning preferences, hidden internal planner chat, multi-select agenda type filters and removal of repetitive course-folder help. Refresh frontend/cache versions; preserve production accounts, schedules and chat data without a data migration. Code rollback target: `1a18a2c` (`1.1.93`).
 
 - Remove the repeated conversation-independence/material-sharing hint from each expanded course folder to keep the course list compact.

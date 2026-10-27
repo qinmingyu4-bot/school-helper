@@ -70,4 +70,28 @@ test("course conversations isolate API history, AI context and attachments acros
   assert.equal(rows.find((row) => row.id === chatA.id).title, "Assignment discussion");
   assert.equal((await request(route + `/messages?conversationId=${chatA.id}`)).data.messages.length, 4);
   assert.deepEqual((await request(route + "/messages")).data.messages.map((message) => message.id), legacy.map((message) => message.id));
+  assert.equal((await request(route + `/conversations/${chatA.id}`, "DELETE", undefined, "")).status, 401);
+  assert.equal((await request(route + `/conversations/${chatA.id}`, "DELETE", undefined, bob)).status, 404);
+  assert.equal((await request(`/api/courses/${other.id}/conversations/${chatA.id}`, "DELETE")).status, 404);
+  assert.equal((await request(route + `/conversations/${chatA.id}`, "DELETE")).status, 200);
+  assert.equal((await request(route + `/messages?conversationId=${chatA.id}`)).status, 404);
+  assert.equal((await request(route + `/conversations/${chatA.id}`, "PATCH", { title: "Revive" })).status, 404);
+  assert.equal((await request(route + "/chat", "POST", { conversationId: chatA.id, message: "Revive" })).status, 404);
+  assert.equal((await request(route + "/conversations/default", "DELETE")).status, 200);
+  assert.equal((await request(route + "/messages")).status, 404);
+  assert.equal((await request(route + `/messages?conversationId=${chatB.id}`)).data.messages.length, 2);
+  assert.equal((await request(route + "/documents")).data.documents[0].title, "Syllabus");
+  const duringReply = (await request(route + "/conversations", "POST", { title: "Delete during reply" })).data.conversation;
+  const pendingResponse = await fetch(base + route + "/chat", { method: "POST", headers: { cookie: alice, "content-type": "application/json" }, body: JSON.stringify({ stream: true, conversationId: duringReply.id, message: "Explain this slowly" }) });
+  let deletedWhileGenerating = false;
+  await readEvents(pendingResponse, async ({ event }) => {
+    if (event === "start") {
+      assert.equal((await request(route + `/conversations/${duringReply.id}`, "DELETE")).status, 200);
+      deletedWhileGenerating = true;
+    }
+  });
+  assert.ok(deletedWhileGenerating);
+  assert.equal((await request(route + `/messages?conversationId=${duringReply.id}`)).status, 404);
+  await stop(); await start();
+  assert.deepEqual((await request(route + "/conversations")).data.conversations.map((chat) => chat.id), [chatB.id]);
 });

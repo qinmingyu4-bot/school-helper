@@ -2,6 +2,8 @@
 
 ## 2026-10-26
 
+- Prioritize syllabus quizzes, tests/exams and assignment deadlines as separate manually completed tasks. Match repeated timetable Lecture/Tutorial occurrences by normalized course, meeting type, actual instant and compatible section identifiers rather than title, including school time zones and UofT term suffixes. Skip duplicates during extraction review and recheck fresh saved items at confirmation; preserve distinct courses/sections and same-time assessments, count only new occurrences in previews, and avoid creating an empty planner for duplicate-only imports.
+
 - Automatically treat elapsed Lecture/Tutorial meetings as completed at their valid end time (or recorded start time when no end is available), with no manual completion button or database rewrites. Share the rule across calendar/day/agenda views and server AI context; keep overdue assignments unfinished and visible until explicitly completed. Preserve prior manual completion records and refresh class status while the calendar stays open.
 
 - Label unfinished Schedule actions 完成; reserve 已完成 for the status and completed view after the student clicks the action.

@@ -326,7 +326,15 @@ last teaching day, excluding reading weeks, closures, holidays, exam/vacation
 gaps and dates outside teaching periods. Official weekday substitutions are
 supported. Review stays grouped by pattern, not by every occurrence. School-local
 wall times are converted to UTC with DST handling. Up to 200 source patterns and
-1500 generated occurrences are allowed; re-imports skip existing UTC duplicates.
+1500 generated occurrences are allowed. Syllabus extraction prioritizes explicit
+quiz, test/midterm/final-exam and assignment dates as DDL tasks, including quizzes
+held during a lecture. Missing dates/times remain editable rather than invented.
+Re-imports compare saved items during review and again at confirmation. Ordinary
+Lecture/Tutorial meetings match by normalized course code, kind and actual UTC
+start time even when their titles differ; conflicting explicit section identifiers
+remain distinct. UofT term suffixes and school-local DST conversions are normalized.
+Assessments keep their titles in the duplicate key so a quiz and assignment at the
+same course/time both survive, and a quiz never merges with its host lecture.
 
 Schedule opens with a monthly calendar, a today marker, month navigation and
 selectable day details. The independent chronological agenda spans every month

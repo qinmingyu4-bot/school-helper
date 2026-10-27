@@ -70,6 +70,15 @@ globalThis.fetch = async (url, options) => {
     if (source.includes("weekly-timetable-fixture.png") && (!Array.isArray(input) || !input.some((part) => part.type === "image_url" && part.image_url.detail === "high"))) throw new Error("Timetable images must retain their original layout in high detail.");
     if (source.includes("weekly-timetable-fixture.pdf") && (!Array.isArray(input) || !input.some((part) => part.type === "file"))) throw new Error("Timetable PDFs must include original page visuals.");
     if (source.includes("MALFORMED_SCHEDULE")) content = "invalid JSON";
+    else if (source.includes("syllabus-assessments-fixture")) {
+      if (!body.messages[0].content.includes("prioritize every explicitly scheduled quiz") || !body.messages[0].content.includes("they are separate tasks")) throw new Error("Syllabus extraction must prioritize assessments without replacing their host lectures.");
+      content = JSON.stringify([
+        { kind: "LEC", title: "MAT101H1 Course lecture", course: "MAT 101H1", startsAt: "2026-11-02T10:00", evidence: "Lecture Monday Nov 2, 10:00" },
+        { kind: "DDL", title: "Quiz 1", course: "MAT101H1", startsAt: "2026-11-02T10:00", evidence: "Quiz 1 during the November 2 lecture, 10:00" },
+        { kind: "DDL", title: "Midterm exam", course: "MAT101H1", startsAt: "2026-11-04T18:00", evidence: "Midterm November 4, 18:00" },
+        { kind: "DDL", title: "Assignment 1", course: "MAT101H1", startsAt: "2026-11-06T23:59", evidence: "Assignment 1 due November 6, 23:59" }
+      ]);
+    }
     else if (/weekly-(?:timetable|missing-day)-fixture/.test(source)) content = JSON.stringify({ termHint: { year: 2026, season: "fall", campus: "St. George", faculty: "Arts & Science" }, items: [
       { kind: "TUT", title: "FOR200H1F TUT0105", course: "FOR200H1F", weekly: { weekdays: source.includes("weekly-missing-day-fixture") ? [] : [1], startTime: "10:00", endTime: "11:00" }, location: "SS 2127", evidence: "Monday 10:00–11:00 FOR200H1F TUT0105 SS 2127" }
     ] });

@@ -109,6 +109,74 @@
     return result;
   }
   function fingerprint(item) { return [kind(item.kind) || item.kind, String(item.title || "").trim().toLowerCase(), String(item.course || "").trim().toLowerCase(), new Date(item.timeZone && validTime(item.startsAt) ? toUtc(item.startsAt, item.timeZone) : item.startsAt).getTime()].join("|"); }
+  function duplicateIndex(existing = []) {
+    const exact = new Set();
+    const meetings = new Map();
+    const normalize = (value) => String(value || "").normalize("NFKC").trim().toUpperCase().replace(/\s+/g, " ");
+    const courseKey = (item) => {
+      const codes = (value) => (normalize(value).match(/\b[A-Z]{2,6}[\s-]*\d{2,4}[A-Z0-9]*\b/g) || []).filter((code) => !/^(LEC|TUT|LAB|PRA)[\s-]*\d/.test(code));
+      const code = codes(item.course)[0] || codes(item.title)[0];
+      if (code) return code.replace(/[\s-]/g, "").replace(/([A-Z]\d)[FSY]$/, "$1");
+      const name = normalize(item.course);
+      return name && name !== "SCHEDULE & DEADLINES" ? `name:${name}` : "";
+    };
+    const keys = (item) => {
+      let instant;
+      try { instant = new Date(item.timeZone && validTime(item.startsAt) ? toUtc(item.startsAt, item.timeZone) : item.startsAt).getTime(); }
+      catch { return null; }
+      if (!Number.isFinite(instant)) return null;
+      const itemKind = kind(item.kind) || item.kind;
+      const course = courseKey(item);
+      const section = normalize(item.title).match(/\b(LEC|TUT)[\s:-]*(\d{1,4})\b/);
+      return { exact: JSON.stringify([itemKind, normalize(item.title), course || normalize(item.course), instant]), meeting: ["LEC", "TUT"].includes(itemKind) && course ? JSON.stringify([itemKind, course, instant]) : "", section: section ? `${section[1]}${section[2].padStart(4, "0")}` : "" };
+    };
+    const has = (item) => {
+      const key = keys(item);
+      if (!key) return false;
+      if (exact.has(key.exact)) return true;
+      const sections = key.meeting && meetings.get(key.meeting);
+      return Boolean(sections && (!key.section || sections.has("") || sections.has(key.section)));
+    };
+    const add = (item) => {
+      const key = keys(item);
+      if (!key) return;
+      exact.add(key.exact);
+      if (key.meeting) {
+        if (!meetings.has(key.meeting)) meetings.set(key.meeting, new Set());
+        meetings.get(key.meeting).add(key.section);
+      }
+    };
+    existing.forEach(add);
+    return { has, add };
+  }
+  function deduplicate(items, existing = []) {
+    const index = duplicateIndex(existing);
+    const unique = [], duplicates = [];
+    for (const item of items) {
+      if (index.has(item)) duplicates.push(item);
+      else { unique.push(item); index.add(item); }
+    }
+    return { items: unique, duplicates };
+  }
+  function reviewDuplicates(items, existing, { calendar = null, fromDate = "", timeZone = "" } = {}) {
+    const index = duplicateIndex(existing);
+    const drafts = [];
+    let duplicateCount = 0;
+    for (const item of items) {
+      let occurrences;
+      if (item.weekly) {
+        if (!calendar || !validWeekly(item.weekly)) { drafts.push(item); continue; }
+        occurrences = expandWeekly([item], calendar, { fromDate });
+      } else occurrences = [{ ...item, timeZone: item.timeZone || timeZone }];
+      let newCount = 0;
+      for (const occurrence of occurrences) {
+        if (index.has(occurrence)) duplicateCount++;
+        else { newCount++; index.add(occurrence); }
+      }
+      if (newCount || !occurrences.length) drafts.push(item);
+    }
+    return { items: drafts, duplicateCount };
+  }
   function completion(item, now = Date.now()) {
     const classMeeting = ["LEC", "TUT"].includes(kind(item.kind));
     const result = { classMeeting, automatic: false, completedAt: item.completedAt || "" };
@@ -123,7 +191,7 @@
     if (Number.isFinite(start) && finish <= Number(new Date(now))) return { classMeeting, automatic: true, completedAt: new Date(finish).toISOString() };
     return result;
   }
-  const api = { kind, validTime, validDate, validClock, validWeekly, parse, parseExtraction, normalizeCalendar, nonTeachingRanges, todayInZone, toUtc, expandWeekly, fingerprint, completion };
+  const api = { kind, validTime, validDate, validClock, validWeekly, parse, parseExtraction, normalizeCalendar, nonTeachingRanges, todayInZone, toUtc, expandWeekly, fingerprint, duplicateIndex, deduplicate, reviewDuplicates, completion };
   if (typeof module === "object" && module.exports) module.exports = api;
   else scope.StudyBridgeScheduleImport = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

@@ -1102,7 +1102,7 @@
           <div class="schedule-upload-intro">
             <span class="schedule-kicker">AI IMPORT</span>
             <h2>把课程文件变成时间表</h2>
-            <p>上传 syllabus、课表图片或 PDF。课表默认每周重复，按学校官网校历跳过停课假期，授课结束后停止。</p>
+            <p>上传 syllabus 提取 quiz、考试和作业时间；已有课程会自动去重。课表按每周重复，并根据学校校历跳过停课日期。</p>
             <div class="schedule-steps" aria-label="导入步骤"><span><b>1</b> 上传文件</span><span><b>2</b> 核对时间</span><span><b>3</b> 开始倒计时</span></div>
           </div>
           <div class="schedule-upload-controls">
@@ -1133,7 +1133,7 @@
   function scheduleReviewHtml() {
     if (!state.scheduleDrafts.length) return "";
     return `<article class="card schedule-review"><h2>核对提取结果（${state.scheduleDrafts.length} 条）</h2>
-      <p>${esc(state.scheduleSource)} · 尚未加入时间表。课表按每周规则显示，确认一次即可生成本学期剩余上课日期。</p>
+      <p>${esc(state.scheduleSource)} · 尚未加入时间表。${state.scheduleDrafts.some((item) => item.weekly) ? "课表按每周规则显示，确认一次即可生成本学期剩余上课日期。" : "核对 quiz、考试和作业的日期与时间，确认后加入完整日程。"}</p>
       ${state.scheduleDrafts.some((item) => item.weekly) ? scheduleCalendarHtml() : ""}
       <fieldset ${state.scheduleImportBusy ? "disabled" : ""}>
       ${state.scheduleDrafts.map((item, index) => `<section class="schedule-draft" data-draft="${index}">
@@ -1155,9 +1155,9 @@
     const calendar = state.scheduleCalendar;
     const draft = state.scheduleCalendarDraft;
     let count = null;
-    try { if (calendar) count = scheduleImport.expandWeekly(state.scheduleDrafts.filter((item) => item.selected), calendar, { fromDate: state.scheduleFromDate }).length; } catch {}
+    try { if (calendar) count = scheduleImport.deduplicate(scheduleImport.expandWeekly(state.scheduleDrafts.filter((item) => item.selected), calendar, { fromDate: state.scheduleFromDate }), state.scheduleItems).items.length; } catch {}
     return `<section class="schedule-calendar" aria-label="学期与停课规则"><h3>本学期循环规则</h3><p>${esc(state.scheduleCalendarNotice)}</p>
-      ${calendar ? `<p><strong>${esc([calendar.school, calendar.campus, calendar.label].filter(Boolean).join(" · "))}</strong></p><p>授课范围：${calendar.teachingPeriods.map((period) => `${esc(period.startDate)} — ${esc(period.endDate)}`).join("；")}<br>从 ${esc(state.scheduleFromDate)} 起生成；时区 ${esc(calendar.timeZone)} · <span data-schedule-preview-count>${count !== null ? `共 ${count} 次安排` : "请补全课程规则"}</span></p>
+      ${calendar ? `<p><strong>${esc([calendar.school, calendar.campus, calendar.label].filter(Boolean).join(" · "))}</strong></p><p>授课范围：${calendar.teachingPeriods.map((period) => `${esc(period.startDate)} — ${esc(period.endDate)}`).join("；")}<br>从 ${esc(state.scheduleFromDate)} 起生成；时区 ${esc(calendar.timeZone)} · <span data-schedule-preview-count>${count !== null ? `新增 ${count} 次安排（自动跳过重复）` : "请补全课程规则"}</span></p>
       <p>停课：${calendar.breaks.length ? calendar.breaks.map((pause) => `${esc(pause.startDate)}${pause.endDate !== pause.startDate ? ` — ${esc(pause.endDate)}` : ""} ${esc(pause.label)}`).join("；") : "本次校历未列出范围内的停课日"}</p>
       ${(calendar.sources || []).map((source) => `<a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a>`).join(" · ")}` : `<p class="schedule-warning">只需填写一次学期范围，所有已识别的每周课程都会使用它。</p>`}
       <details ${!calendar || state.scheduleCalendarEditing ? "open" : ""}><summary>手动确认或调整本学期</summary><div class="inline-fields"><label>授课开始<input type="date" data-calendar-field="startDate" value="${esc(draft.startDate)}"></label><label>最后授课日<input type="date" data-calendar-field="endDate" value="${esc(draft.endDate)}"></label></div><label>停课日期（每行一个日期或起止范围）<textarea data-calendar-field="breaks" placeholder="2026-10-12&#10;2026-10-26 / 2026-10-30">${esc(draft.breaks)}</textarea></label><label>学校时区<input data-calendar-field="timeZone" value="${esc(draft.timeZone)}" placeholder="America/Toronto"></label></details>
@@ -1189,7 +1189,7 @@
     });
     const preview = root.querySelector("[data-schedule-preview-count]");
     if (!preview || !state.scheduleCalendar) return;
-    try { preview.textContent = `共 ${scheduleImport.expandWeekly(state.scheduleDrafts.filter((item) => item.selected), state.scheduleCalendar, { fromDate: state.scheduleFromDate }).length} 次安排`; }
+    try { preview.textContent = `新增 ${scheduleImport.deduplicate(scheduleImport.expandWeekly(state.scheduleDrafts.filter((item) => item.selected), state.scheduleCalendar, { fromDate: state.scheduleFromDate }), state.scheduleItems).items.length} 次安排（自动跳过重复）`; }
     catch { preview.textContent = "请补全课程规则"; }
   }
 
@@ -1212,7 +1212,7 @@
       state.scheduleFromDate = result.importFromDate || scheduleImport.todayInZone(result.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone);
       state.scheduleCalendarEditing = false;
       state.scheduleCalendarDraft = { startDate: result.calendar?.teachingPeriods[0]?.startDate || "", endDate: result.calendar?.teachingPeriods.at(-1)?.endDate || "", breaks: (result.calendar ? scheduleImport.nonTeachingRanges(result.calendar) : []).map((pause) => `${pause.startDate} / ${pause.endDate}`).join("\n"), timeZone: result.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone };
-      state.scheduleImportStatus = result.items.length ? `提取到 ${result.items.length} 条，请在下方核对并确认。` : "未找到可提取的时间点。请尝试更清晰的文件或分批上传，也可以手动添加。";
+      state.scheduleImportStatus = result.items.length ? `提取到 ${result.items.length} 条待核对安排${result.duplicateCount ? `，发现 ${result.duplicateCount} 项重复，自动跳过已有安排` : ""}。请在下方核对并确认。` : result.duplicateCount ? `识别的安排已存在，已跳过 ${result.duplicateCount} 项重复，无需再次添加。` : "未找到可提取的时间点。请尝试更清晰的文件或分批上传，也可以手动添加。";
     } catch (error) { state.scheduleImportStatus = error.message; }
     finally { state.scheduleImportBusy = false; render(); }
   }
@@ -1229,16 +1229,16 @@
     let saved = 0, duplicates = 0;
     try {
       await loadScheduleItems(true, true);
-      const seen = new Set(state.scheduleItems.map(scheduleImport.fingerprint));
-      const course = await ensureScheduleCourse();
+      const seen = scheduleImport.duplicateIndex(state.scheduleItems);
+      let course = null;
       for (const item of selected) {
-        const key = scheduleImport.fingerprint(item);
-        if (seen.has(key)) { duplicates++; }
+        if (seen.has(item)) { duplicates++; }
         else {
+          course ||= await ensureScheduleCourse();
           const payload = { ...item, startsAt: item.timeZone ? scheduleImport.toUtc(item.startsAt, item.timeZone) : new Date(item.startsAt).toISOString(), ...(item.endsAt && item.timeZone ? { endsAt: scheduleImport.toUtc(item.endsAt, item.timeZone) } : {}), completedAt: "", source: state.scheduleSource };
           delete payload.selected;
           await api(`/api/courses/${course.id}/documents`, { method: "POST", body: { title: `${SCHEDULE_PREFIX} ${item.title}`, type: "Schedule", text: JSON.stringify(payload) } });
-          seen.add(key);
+          seen.add(item);
           saved++;
         }
         state.scheduleDrafts = state.scheduleDrafts.filter((draft) => draft !== item);

@@ -2,6 +2,8 @@
 
 ## 2026-10-27
 
+- Release `1.1.94`: publish all pending fixes together: continuous reply loading/stop button, academic-only learning preferences, hidden internal planner chat, multi-select agenda type filters and removal of repetitive course-folder help. Refresh frontend/cache versions; preserve production accounts, schedules and chat data without a data migration. Code rollback target: `1a18a2c` (`1.1.93`).
+
 - Remove the repeated conversation-independence/material-sharing hint from each expanded course folder to keep the course list compact.
 
 - Add multi-select type filters below the agenda status tabs: Lecture, Tutorial, assignments/deadlines, Quiz, exams and personal plans. Combine types across pending/all/completed lists, keep chronological ordering, update counts and overdue notices, and clear with All types. Classify legacy quiz/exam titles for display without rewriting stored records; retain the full month calendar and completion rules.

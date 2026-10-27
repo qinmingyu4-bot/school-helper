@@ -154,10 +154,12 @@ switching modes leaves drafts, attachments, and the current reading position int
 Course materials, account learning preferences, and the latest explicit request
 continue to guide the AI response.
 
-Learning Style checkboxes are independent saved preferences. English answers
+Learning Style checkboxes are independent saved **academic** preferences. The reply model first infers the current intent from the question and relevant follow-ups. Everyday conversation and practical software/product questions use the question's language without mandatory bilingual repetition; necessary terms such as API, HTTPS and BYOK remain intact. Course membership or a study-mode selection alone does not make a question academic, while academic work in general chat still follows the saved study preferences. Explicit language requests override these defaults, and mixed requests apply the study preferences only to their academic portion. Saved settings are not changed by this scope decision.
+
+Within academic work, English answers
 select English final answers/drafts; Chinese explanations select Chinese teaching
-and supporting explanations. Enabling both produces an English answer followed by
-a complementary Chinese explanation for worked academic problems, even with an
+and supporting explanations. Enabling both produces Chinese teaching followed by
+a concise English answer for worked academic problems, even with an
 empty custom instruction. English terms preserves useful academic keywords in
 Chinese explanations. The latest explicit language/format request takes priority,
 followed by custom instructions, checkboxes, then the question's language; simply

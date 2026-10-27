@@ -2,6 +2,27 @@ const assert = require("node:assert/strict");
 const { test } = require("node:test");
 const { normalize, summary, buildInstruction, createSaver } = require("../public/learning-style");
 
+test("academic preferences are gated by current intent without losing saved checkbox choices", () => {
+  for (const englishTerms of [false, true]) {
+    const preferences = { englishTerms, englishAnswers: true, chineseExplanations: true, customInstruction: "Use bilingual examples" };
+    const snapshot = { ...preferences };
+    const instruction = buildInstruction(preferences);
+    assert.ok(instruction.indexOf("ACADEMIC SCOPE GATE") < instruction.indexOf("resolved response contract"));
+    assert.match(instruction, /ONLY for the academic portion/);
+    assert.match(instruction, /being inside a course or having a study mode selected does not make every question academic/);
+    assert.match(instruction, /A general chat can contain academic work/);
+    assert.match(instruction, /会不会很麻烦.*remains non-academic/);
+    assert.match(instruction, /Reassess when the user changes topics/);
+    assert.match(instruction, /For mixed requests, apply.*only to the learning portion/);
+    assert.match(instruction, /API, HTTPS, BYOK and ChatGPT.*regardless of the English-terms checkbox/);
+    assert.match(instruction, /do NOT apply.*custom study-format instructions/);
+    assert.match(instruction, /Latest explicit user requests still take precedence/);
+    assert.match(instruction, /Combined checkboxes/);
+    assert.deepEqual(preferences, snapshot);
+  }
+  assert.match(buildInstruction({ englishAnswers: false }), /must not trigger an extra English translation/);
+});
+
 test("all checkbox combinations retain independent answer, explanation and term choices", () => {
   for (const englishTerms of [false, true]) for (const englishAnswers of [false, true]) for (const chineseExplanations of [false, true]) {
     const value = { englishTerms, englishAnswers, chineseExplanations, customInstruction: "" };

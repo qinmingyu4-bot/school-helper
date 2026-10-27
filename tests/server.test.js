@@ -778,6 +778,17 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
       assert.ok(!system.includes("Use readable plain-text math"));
       assert.match(system, /question merely written in Chinese/);
       assert.ok(!system.includes("old default toggles"));
+      assert.ok(system.endsWith(require("../public/learning-style").applicabilityInstruction), "scope gate must follow mode-specific teaching rules");
+    }
+    // The fixture echoes requests: verify context/rule delivery, not model classification accuracy.
+    for (const message of ["我的应用能让用户连接自己的 API key 吗？", "会不会很麻烦", "Please answer in English: how do I configure my website?"]) {
+      const result = await request(`/api/courses/${id}/chat`, { method: "POST", cookie, body: { mode: "guided", message } });
+      assert.equal(result.status, 201);
+      const sent = JSON.parse(result.data.messages[1].content).messages;
+      assert.match(sent[0].content, /without forced bilingual duplication/);
+      assert.match(sent[0].content, /Prior bilingual assistant output.*do not make an unrelated new question academic/);
+      assert.ok(JSON.stringify(sent[1].content).includes(message));
+      if (message === "会不会很麻烦") assert.ok(JSON.stringify(sent[1].content).includes("我的应用能让用户连接自己的 API key 吗？"));
     }
     const override = { ...selected, chineseExplanations: false };
     const response = await fetch(`${base}/api/courses/${id}/chat`, { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ message: "继续讲这道题", mode: "guided", stream: true, learningStyle: override }) });
@@ -789,6 +800,7 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     const system = JSON.parse(answer.slice(answer.indexOf("{"))).messages[0].content;
     assert.match(system, /English answer ON/);
     assert.match(system, /Chinese explanation OFF/);
+    assert.ok(system.endsWith(require("../public/learning-style").applicabilityInstruction));
     assert.ok(system.includes("Chinese explanation OFF does not remove the worked explanation"));
     assert.ok(!system.includes("Combined checkboxes"));
     assert.deepEqual((await request("/api/me", { cookie })).data.user.preferences, selected, "per-request snapshot must not silently rewrite the saved profile");

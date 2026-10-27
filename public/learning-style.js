@@ -4,6 +4,14 @@
   else root.StudyBridgeLearningStyle = factory();
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
+  const applicabilityInstruction = [
+    "\n\nLearning Style — ACADEMIC SCOPE GATE (apply before the saved response contract):",
+    "- Infer the CURRENT intent semantically from the question, relevant user follow-ups and any referenced files. Apply saved learning-language checkboxes and custom STUDY instructions only to academic learning: course concepts, worked problems, homework, exam practice, academic writing, or a requested study artifact. A general chat can contain academic work; being inside a course or having a study mode selected does not make every question academic.",
+    "- For clearly NON-ACADEMIC intent (everyday conversation, cooking, travel, practical website setup or the user's own software/product decisions), do NOT apply the saved learning-language checkboxes or custom study-format instructions. Answer naturally in the current question's language, following any latest explicit language/format request. Do not force Chinese-plus-English sections, an Answer (English) translation, an academic explanation, or decorative English keywords. Keep necessary original terms, proper nouns, code and abbreviations such as API, HTTPS, BYOK and ChatGPT when useful, regardless of the English-terms checkbox.",
+    "- Academic example: 'Explain BYOK for my computer-science assignment' uses the academic contract. Non-academic example: 'Can my app let users connect their own API key?' is a practical product question and gets one natural answer, not a bilingual study response. '会不会很麻烦' following that app question remains non-academic; the same short follow-up about an assignment keeps the academic context.",
+    "- Reassess when the user changes topics. Prior bilingual assistant output and stored preference JSON do not make an unrelated new question academic. For mixed requests, apply the academic preferences only to the learning portion; answer the everyday portion naturally. If the context is ambiguous, use the most recent substantive user intent; ask a brief clarification only when it is necessary to answer the actual question. Do not announce your classification or ask the user to switch modes.",
+    "- This scope gate also limits later course-mode, worked-solution and bilingual-section instructions. Latest explicit user requests still take precedence within the applicable scope. Do not change or erase the user's saved preferences when they ask an everyday question."
+  ].join("\n");
   function normalize(value = {}) {
     if (!value || typeof value !== "object" || Array.isArray(value)) value = {};
     return {
@@ -23,14 +31,15 @@
   function buildInstruction(value) {
     const p = normalize(value);
     const lines = [
-      "\n\nLearning Style — resolved response contract:",
+      applicabilityInstruction,
+      "\n\nLearning Style — resolved response contract (ONLY for the academic portion identified above):",
       "- Apply safety first, then the latest EXPLICIT language/format request, then the student's custom style instruction, then the checkbox settings below, then the default of matching the question's language. A question merely written in Chinese (such as 怎么做) is not an explicit Chinese-only request. Likewise, an English question alone does not disable Chinese explanations.",
       p.englishTerms
         ? "- English terms ON: preserve useful English academic/technical terms in Chinese explanations, with a short Chinese definition when needed. Do not translate entire paragraphs twice."
         : "- English terms OFF: explain terms naturally in the chosen explanation language; do not insert English keywords into Chinese prose just for bilingual decoration. Preserve formulas, proper nouns, exact quotations, and required English answer wording.",
       p.englishAnswers
         ? "- English answer ON: provide the final answer, exam-ready response, or requested draft in English even when the student asks in Chinese. This checkbox is an explicit saved preference, including when all three checkboxes are ON and the custom instruction is empty."
-        : "- English answer OFF: choose the final answer language from the latest explicit request/custom instruction, otherwise match the student's question. This does not prohibit English if the task itself requires it.",
+        : "- English answer OFF: choose the final answer language from the latest explicit request/custom instruction, otherwise match the student's question. This does not prohibit English if the task itself requires it. English terms ON or Chinese explanation ON alone must not trigger an extra English translation of the same answer.",
       p.chineseExplanations
         ? "- Chinese explanation ON: explain concepts, steps, justification, and study guidance in Chinese even if the question is in English. Provide a learner-facing explanation, not private/internal chain-of-thought."
         : p.englishAnswers ? "- Chinese explanation OFF: use English for the supporting explanation unless an explicit request/custom instruction specifies otherwise." : "- Chinese explanation OFF: explain in the question's language unless an explicit request/custom instruction specifies otherwise."
@@ -86,5 +95,5 @@
     }
     return { snapshot, setDraft, flush, dispose: () => { disposed = true; } };
   }
-  return { normalize, summary, buildInstruction, createSaver };
+  return { normalize, summary, buildInstruction, createSaver, applicabilityInstruction };
 });

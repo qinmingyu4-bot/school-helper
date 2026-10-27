@@ -461,6 +461,7 @@
       </section>`}
       <section class="side-section study-preferences">
         <div class="section-title"><b>学习偏好</b><span data-learning-style-status role="status">${learningStyleStatus()}</span></div>
+        <p class="study-preference-scope">用于课程学习、作业和考试；日常问题按提问语言自然回答。</p>
         <div class="study-preference-options">
           ${prefBox("englishTerms", "保留英文术语")}
           ${prefBox("englishAnswers", "英文作答 / 草稿")}

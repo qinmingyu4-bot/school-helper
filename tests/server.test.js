@@ -661,6 +661,7 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     const attachmentText = "attachment background ".repeat(700) + " LATE_ATTACHMENT_EVIDENCE";
     const uploaded = await request(`${route}/chat`, { method: "POST", cookie, body: { message: "Read these sources", attachments: [
       { name: "之前的讲义.txt", mime: "text/plain", text: attachmentText },
+      { name: "previous-midterm.txt", mime: "text/plain", text: "Section A: Short answer (10 marks). Question 1. (a) Define opportunity cost. (b) Apply it to a study decision. Section B: Long response (20 marks)." },
       { name: "diagram.png", kind: "image", mime: "image/png", dataUrl: "data:image/png;base64,aGVsbG8=" }
     ] } });
     assert.equal(uploaded.status, 201);
@@ -668,7 +669,7 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     await start({ fakeAi: true });
     const modes = require("../public/study-modes");
     for (const mode of Object.keys(modes.modes)) {
-      const reply = await request(`${route}/chat`, { method: "POST", cookie, body: { mode, message: "teach me using the previous attachment and the end of the course lecture" } });
+      const reply = await request(`${route}/chat`, { method: "POST", cookie, body: { mode, message: mode === "exam" ? "请出一份新的练习卷" : "teach me using the previous attachment and the end of the course lecture" } });
       assert.equal(reply.status, 201);
       const providerRequest = JSON.parse(reply.data.messages[1].content);
       assert.equal(providerRequest.model, "gpt-6.1-sol", mode);
@@ -679,6 +680,11 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
       assert.ok(prompt.includes("LATE_COURSE_EVIDENCE"), mode);
       assert.ok(prompt.includes("LATE_ATTACHMENT_EVIDENCE"), mode);
       assert.ok(prompt.includes("之前的讲义.txt"), mode);
+      if (mode === "exam") {
+        assert.ok(providerRequest.messages[0].content.includes(modes.getMode("exam").instruction));
+        assert.ok(prompt.includes("previous-midterm.txt"));
+        assert.ok(prompt.includes("Section A: Short answer (10 marks). Question 1. (a) Define opportunity cost. (b) Apply it to a study decision. Section B: Long response (20 marks)."));
+      }
       for (let i = 0; i < 9; i++) assert.ok(prompt.includes(`SOURCE_${i}`), mode);
       assert.equal(content[1].image_url.url, "data:image/png;base64,aGVsbG8=");
     }

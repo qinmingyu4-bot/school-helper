@@ -272,6 +272,14 @@ model even below the generic long-attachment threshold. The immediate upload's t
 has priority over older background when retrieval is needed, and recent long replies
 retain their completion summary for follow-up questions.
 
+Mock-exam mode defaults to the format and structure of previously uploaded questions
+available in the current conversation or shared course materials. It follows observable
+question types, section order, numbering/subparts, wording, answer requirements,
+marks and difficulty while creating new questions. Explicit current requirements
+override these defaults; selected references take priority, otherwise relevant sources
+are preferred, with recency breaking ties. Replies identify reference filenames and
+important source gaps, or label format assumptions when no prior questions exist.
+
 New chat and course-material PDF uploads retain their original bytes privately and
 send bounded original PDF inputs to the model alongside extracted text, so graphs,
 table layout and mathematical notation remain available across refresh/restart and

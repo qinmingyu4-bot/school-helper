@@ -2,6 +2,8 @@
 
 ## 2026-10-27
 
+- Make mock-exam generation default to the format and structure of available previously uploaded questions in the current conversation or shared course materials. Preserve supported question types, sections, numbering/subparts, answer requirements, marks and difficulty while generating new content; honor current overrides and identify references or source gaps.
+
 - Release `1.1.99`: publish amber highlighting and inline guidance for incomplete import fields, persistent validation messages and automatic focus/scroll before saving. Refresh frontend/cache versions; preserve accounts, course materials and calendar data. Code rollback target: `49113ee` (`1.1.98`).
 
 - Highlight incomplete selected import drafts and exact missing/invalid fields with fixed amber status colors, inline guidance and accessible descriptions. Keep a persistent issue count beside confirmation; block saving before progress starts and expand/focus/scroll to the first problem. Clear highlighting as fields are corrected or items deselected, retain nonblocking source warnings and show server/save errors inside the preview.

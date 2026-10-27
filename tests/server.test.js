@@ -192,6 +192,12 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     assert.equal((await request("/api/me/profile", { method: "PUT", cookie: alice.cookie, body: { name: "Alice", sbId: "alice", school: "Health University" } })).status, 200);
     assert.equal((await request("/api/me/profile", { method: "PUT", cookie: bob.cookie, body: { name: "Bob", sbId: "ALICE" } })).status, 409);
     assert.equal((await request("/api/me/profile", { method: "PUT", cookie: bob.cookie, body: { name: "Bob", sbId: "bob", school: "Health University" } })).status, 200);
+    const beforeImageFailure = (await request("/api/me", { cookie: alice.cookie })).data.user;
+    const oversizedImage = await request("/api/me/profile", { method: "PUT", cookie: alice.cookie, body: { name: "Must not save", sbId: "alice", avatarUrl: "data:image/jpeg;base64," + "A".repeat(2200000) } });
+    assert.equal(oversizedImage.status, 400);
+    const afterImageFailure = (await request("/api/me", { cookie: alice.cookie })).data.user;
+    assert.equal(afterImageFailure.name, beforeImageFailure.name);
+    assert.deepEqual(afterImageFailure.profile, beforeImageFailure.profile);
   });
 
   await t.test("last activity is admin-only, server-timed and persistent without fabricating legacy history", async () => {
@@ -302,6 +308,27 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
       method: "POST", cookie: alice.cookie, body: { channel: "all", content: "Health check community post" }
     });
     assert.equal(post.status, 201);
+    const repliesRoute = `/api/community/posts/${post.data.post.id}/replies`;
+    assert.equal((await request(repliesRoute)).status, 401);
+    assert.equal((await request(repliesRoute, { method: "POST", body: { content: "Not signed in" } })).status, 401);
+    assert.equal((await request(repliesRoute, { method: "POST", cookie: bob.cookie, body: { content: "  " } })).status, 400);
+    assert.equal((await request(repliesRoute, { method: "POST", cookie: bob.cookie, body: { content: "x".repeat(1601) } })).status, 400);
+    assert.equal((await request("/api/community/posts/missing/replies", { cookie: bob.cookie })).status, 404);
+    const reply = await request(repliesRoute, { method: "POST", cookie: bob.cookie, body: { content: "  Other students can reply below the post.  ", userId: "forged", authorName: "Forged" } });
+    assert.equal(reply.status, 201);
+    assert.equal(reply.data.reply.authorName, "Bob");
+    assert.equal(reply.data.reply.content, "Other students can reply below the post.");
+    assert.equal(reply.data.reply.mine, true);
+    assert.equal(reply.data.reply.userId, undefined);
+    const discussion = await request(repliesRoute, { cookie: alice.cookie });
+    assert.equal(discussion.data.replies.length, 1);
+    assert.equal(discussion.data.replies[0].id, reply.data.reply.id);
+    assert.equal(discussion.data.replies[0].mine, false);
+    const authorReply = await request(repliesRoute, { method: "POST", cookie: alice.cookie, body: { content: "Thanks!" } });
+    assert.equal(authorReply.status, 201);
+    const separate = await request("/api/community/posts", { method: "POST", cookie: alice.cookie, body: { channel: "major", channelValue: "Reply test major", content: "Separate discussion thread" } });
+    assert.equal((await request(`/api/community/posts/${separate.data.post.id}/replies`, { cookie: bob.cookie })).data.replies.length, 0);
+    assert.equal((await request(`/api/community/posts/${separate.data.post.id}/replies`, { method: "POST", cookie: bob.cookie, body: { content: "A reply in the major channel" } })).status, 201);
     const feed = await request("/api/community?channel=all", { cookie: bob.cookie });
     assert.ok(feed.data.posts.some((item) => item.id === post.data.post.id));
     const pending = await request("/api/classmates", { method: "POST", cookie: alice.cookie, body: { sbId: "bob" } });
@@ -420,6 +447,11 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     await stop();
     await start();
     assert.equal((await request("/api/me", { cookie: alice.cookie })).data.user.email, "alice@example.test");
+    const community = await request("/api/community?channel=all", { cookie: bob.cookie });
+    const discussionPost = community.data.posts.find((post) => post.content === "Health check community post");
+    const persistedReplies = await request(`/api/community/posts/${discussionPost.id}/replies`, { cookie: bob.cookie });
+    assert.equal(persistedReplies.data.replies.length, 2);
+    assert.ok(persistedReplies.data.replies.some((reply) => reply.content === "Thanks!"));
     assert.equal((await request("/api/classmates", { cookie: bob.cookie })).data.classmates[0].unreadCount, 0);
     assert.equal((await request(`/api/courses/${courseId}/documents`, { cookie: alice.cookie })).data.documents.length, 5);
     assert.equal((await request(`/api/courses/${courseId}/messages`, { cookie: alice.cookie })).data.messages.length, 2);

@@ -41,6 +41,37 @@ The editor bundle is lazy-loaded from this server. After changing `client/office
 
 ## Local Run
 
+Profile avatar and cover uploads accept source photos up to 25 MiB. The browser
+resizes and re-encodes them locally before saving: avatar up to 512 px/80 KiB and
+cover up to 1600 px/128 KiB. Only the processed image is uploaded; originals are
+not modified. The combined encoded images leave room for profile metadata in a
+DynamoDB item. Transparent images receive a white background; animated images
+become still images. HEIC/HEIF works only when the browser can decode it; otherwise
+export a JPG/PNG first. Unsupported or oversized images show an error without
+silently truncating the image data or replacing the saved profile.
+
+Community posts include an expandable reply discussion. Signed-in users can read
+and send replies beneath posts in the all/school/major feeds. Replies show the
+account name and timestamp, remain attached to the original post across channels,
+and persist separately in local JSON or DynamoDB. Refresh retrieves new replies;
+older replies load in 50-reply pages. Unsent drafts survive page/channel navigation
+within the session, and failed sends retain their text. Account changes clear drafts.
+
+Course-material uploads accept files up to **50 MiB each**, including PDF, Word,
+PowerPoint, Excel and text files. Multiple selected files are read and uploaded
+sequentially to limit browser memory; failed batches retain successful uploads.
+The course-upload JSON body limit includes base64 overhead; other API body limits,
+chat attachments, Schedule imports and manual Office-editor imports are unchanged.
+PDF originals remain private and durable. Large PDFs still contribute extracted
+text to retrieval, but PDFs over the existing 32 MiB encoded visual-input budget
+are not sent whole to AI. Split scanned PDFs or perform OCR when no text can be
+extracted. This does not add OCR or unlimited AI context.
+
+If deployed behind Nginx or another reverse proxy, permit at least a **70 MiB
+request body** for course uploads (for example, `client_max_body_size 70m;` in
+the relevant Nginx location). A smaller proxy limit can reject a file before
+StudyBridge receives it. Review the deployed proxy configuration before release.
+
 ```bash
 cp .env.example .env
 npm ci
@@ -83,6 +114,9 @@ navigation on mobile. **退出登录** remains inside Settings. Categories are:
 - **账号与资料:** edit name, school, major and SB ID with explicit save; inspect the
   login email, open avatar/cover management, and request the existing manual
   password-reset workflow. Existing avatar/cover images are retained on text saves.
+  School fields in Profile and Settings suggest full names from the bundled catalog
+  when typing a name, abbreviation (such as UofT/UBC) or Chinese alias. Select by
+  click or arrow keys and Enter; unlisted schools can still be entered manually.
 - **学习与 AI:** change independent English-term, English-answer and Chinese-explanation
   choices plus custom instructions. Uses the same serialized saver as the Study
   Area sidebar, with automatic save, synchronized controls and failure/retry status.
@@ -265,13 +299,34 @@ the server; no additional browser credentials or environment settings are needed
 
 ## Schedule imports
 
-The Schedule page accepts PDF (up to 8 MB), Word, PowerPoint, Excel, TXT, MD,
-CSV, and JSON (up to 12 MB). An authenticated AI extraction request reads only
+The Schedule page accepts timetable JPG/PNG/WebP images, PDF (up to 8 MB), Word,
+PowerPoint, Excel, TXT, MD, CSV, and JSON (other files up to 12 MB). Native images
+and PDF pages accompany extracted text so the AI can use weekday columns and
+the time axis rather than losing the grid layout. An authenticated request reads
 the selected file and returns editable DDL, LEC, and TUT drafts. It does not
 create a course, document, chat message, or reminder until the student confirms
 selected rows. Missing dates/times remain blank for review; original evidence
-and ambiguity notes appear beside each draft. Weekly meetings expand only when
-the source specifies semester boundaries and meeting times.
+and genuine ambiguity notes appear beside each draft. Standard timetable LEC/TUT
+meetings default to one weekly pattern per section; DDL/exam dates stay one-off.
+Missing semester boundaries no longer require editing every class occurrence.
+
+For weekly patterns, the server uses the Profile school and the extracted year,
+term, campus/faculty and course codes to search the university's allowlisted
+official domain. Calendar ranges are accepted only with matching year/term,
+confirmed campus scope, confirmed no-class dates and consulted source URLs for
+each teaching range, break or makeup day. The UI shows the sources and school
+time zone. Calendar results are cached for six hours. No calendar dates are
+hardcoded or guessed; an unsupported school, ambiguous scope, disabled search or
+lookup failure leaves a single shared semester form for manual confirmation.
+The default term is the current term only when the file omits it, with an explicit
+review notice. Registry entries are in `lib/academic-calendar.js`.
+
+Confirmation expands selected weekly patterns from the import date through the
+last teaching day, excluding reading weeks, closures, holidays, exam/vacation
+gaps and dates outside teaching periods. Official weekday substitutions are
+supported. Review stays grouped by pattern, not by every occurrence. School-local
+wall times are converted to UTC with DST handling. Up to 200 source patterns and
+1500 generated occurrences are allowed; re-imports skip existing UTC duplicates.
 
 File import and the reminder list use the full available page width. The manual
 form expands on demand, and completed reminders stay in a collapsible section.
@@ -282,7 +337,8 @@ and preserves remaining drafts if saving fails. Countdown labels refresh every
 15 seconds while the page is open, without replacing the student's draft inputs.
 Dates are displayed in the browser's time zone and saved as UTC instants.
 AI extraction requires the server's existing `OPENAI_API_KEY` and uses
-`OPENAI_COMPLEX_MODEL`. Scanned PDFs without readable text need conversion first;
+`OPENAI_COMPLEX_MODEL`. Official calendar lookup also requires `OPENAI_WEB_SEARCH`
+and Responses API web search. Scanned PDFs are sent with their original pages;
 legacy DOC/PPT/XLS extraction is best-effort and displays a review warning.
 Documents over 100,000 extracted characters must be split rather than truncated.
 Drafts stay in memory while navigating but are discarded on page reload.

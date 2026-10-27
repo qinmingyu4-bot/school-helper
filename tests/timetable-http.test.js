@@ -1,0 +1,58 @@
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs/promises");
+const os = require("node:os");
+const path = require("node:path");
+const { spawn } = require("node:child_process");
+const { once } = require("node:events");
+const importer = require("../public/schedule-import");
+
+test("timetable images/PDFs retain layout, use school calendars and return recurring drafts without saving reminders", { timeout: 30000 }, async (context) => {
+  const root = path.resolve(__dirname, "..");
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "studybridge-timetable-"));
+  const child = spawn(process.execPath, ["--require", "./tests/fixtures/echo-ai.js", "server.js"], { cwd: root, env: {
+    ...process.env, PORT: "0", NODE_ENV: "test", STUDYBRIDGE_DB: "local", LOCAL_DB_FILE: path.join(directory, "db.json"), LOCAL_DB_BACKUP_DISABLED: "true",
+    REQUIRE_INVITE_CODE: "false", REQUIRE_EMAIL_VERIFICATION: "false", OPENAI_API_KEY: "test-fixture", OPENAI_WEB_SEARCH: "true", SESSION_SECRET: "timetable-test-session"
+  }, stdio: ["ignore", "pipe", "pipe"] });
+  context.after(async () => { if (child.exitCode === null) { const stopped = once(child, "exit"); child.kill(); await stopped; } await fs.rm(directory, { recursive: true, force: true }); });
+  const base = await new Promise((resolve, reject) => {
+    let output = "";
+    const timer = setTimeout(() => reject(new Error("Startup timed out")), 10000);
+    child.once("error", (error) => { clearTimeout(timer); reject(error); });
+    child.stdout.on("data", (chunk) => { output += chunk; const match = output.match(/http:\/\/localhost:(\d+)/); if (match) { clearTimeout(timer); resolve(`http://127.0.0.1:${match[1]}`); } });
+  });
+  async function request(route, body, cookie = "", method = "POST") {
+    const response = await fetch(base + route, { method, headers: { "content-type": "application/json", cookie }, ...(body ? { body: JSON.stringify(body) } : {}) });
+    return { status: response.status, cookie: response.headers.get("set-cookie")?.split(";")[0], data: await response.json() };
+  }
+  const account = await request("/api/auth/register", { name: "Timetable test", email: "timetable@example.test", password: "TimetableTest2026!", passwordConfirm: "TimetableTest2026!" });
+  const cookie = account.cookie;
+  assert.equal((await request("/api/me/profile", { name: "Timetable test", school: "University of Toronto" }, cookie, "PUT")).status, 200);
+  const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aOZkAAAAASUVORK5CYII=";
+  const imageFile = { fileName: "weekly-timetable-fixture.png", fileData: `data:image/png;base64,${png}`, timeZone: "Asia/Shanghai" };
+  assert.equal((await request("/api/schedule/extract", imageFile)).status, 401);
+  const image = await request("/api/schedule/extract", imageFile, cookie);
+  assert.equal(image.status, 200, JSON.stringify(image.data));
+  assert.equal(image.data.items.length, 1);
+  assert.equal(image.data.items[0].weekly.startTime, "10:00");
+  assert.equal(image.data.items[0].warning, "");
+  assert.equal(image.data.calendar.timeZone, "America/Toronto");
+  assert.equal(image.data.calendar.teachingPeriods[0].endDate, "2026-12-07");
+  const expanded = importer.expandWeekly(image.data.items, image.data.calendar, { fromDate: "2026-10-26" });
+  assert.equal(expanded.length, 6);
+  assert.equal(expanded[0].startsAt, "2026-11-02T10:00");
+  const pdfBytes = await fs.readFile(path.join(root, "tests/fixtures/schedule-full.pdf"));
+  const pdf = await request("/api/schedule/extract", { fileName: "weekly-timetable-fixture.pdf", fileData: pdfBytes.toString("base64"), timeZone: "America/Toronto" }, cookie);
+  assert.equal(pdf.status, 200);
+  assert.equal(pdf.data.items[0].weekly.endTime, "11:00");
+  assert.deepEqual((await request("/api/courses", null, cookie, "GET")).data.courses, []);
+  const unknownDay = await request("/api/schedule/extract", { fileName: "weekly-missing-day-fixture.txt", fileData: Buffer.from("Weekly timetable; weekday heading unreadable").toString("base64") }, cookie);
+  assert.deepEqual(unknownDay.data.items[0].weekly.weekdays, []);
+  assert.match(unknownDay.data.items[0].warning, /星期/);
+  await request("/api/me/profile", { name: "Timetable test", school: "Unlisted test school" }, cookie, "PUT");
+  const unknownSchool = await request("/api/schedule/extract", imageFile, cookie);
+  assert.equal(unknownSchool.status, 200);
+  assert.equal(unknownSchool.data.calendar, null);
+  assert.ok(unknownSchool.data.items[0].weekly);
+  assert.match(unknownSchool.data.calendarNotice, /一次/);
+});

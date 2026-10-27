@@ -10,6 +10,20 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.89 - 2026-10-26
+
+Purpose:
+- Release the user-authorized school-name suggestions, 50 MiB course uploads, per-post community replies, automatic profile-photo compression and weekly timetable imports with official-calendar lookup.
+- Preserve production accounts, local/DynamoDB records, credentials and existing reminders. New community replies use separate records; timetable reminders are still saved only after explicit confirmation.
+
+Validation:
+- The feature set passed 161 automated tests and isolated browser checks for school matching, large-file upload/persistence, cross-account replies, photo compression and timetable confirmation/deduplication.
+- Timetable recognition/calendar API results were mocked in tests; live AI lookup still depends on the production AI/web-search configuration and official-source availability.
+- Re-run source/asset checks, the full suite and the production high-severity dependency audit for the versioned release. Verify deployment and live assets after publishing.
+
+Rollback target:
+- `3348e36` (previous production version `1.1.88`).
+
 ### 1.1.88 - 2026-10-26
 
 Purpose:

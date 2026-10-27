@@ -27,6 +27,32 @@ test("DynamoDB community likes stay in the selected channel and directory uses p
   assert.deepEqual(await db.listCommunityChannels(), { schools: [], majors: ["Psychology"] });
 });
 
+test("community replies use independent local and DynamoDB records with stable paginated ordering", async (t) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "studybridge-community-replies-"));
+  t.after(() => fs.rm(directory, { recursive: true, force: true }));
+  for (const mode of ["local", "dynamodb"]) {
+    const db = new StudyBridgeDatabase();
+    db.local.file = path.join(directory, `${mode}.json`);
+    const rows = new Map();
+    db.dynamo = mode === "local" ? null : {
+      put: async (pk, sk, type, value) => { assert.equal(type, "communityReply"); rows.set(`${pk}|${sk}`, value); return value; },
+      query: async (pk, prefix) => [...rows].filter(([key]) => key.startsWith(`${pk}|${prefix}`)).map(([, value]) => value)
+    };
+    const records = await Promise.all(Array.from({ length: 55 }, (_, index) => db.createCommunityReply({ id: `reply-${String(index).padStart(3, "0")}`, postId: "post", userId: "alice", content: `Reply ${index}` })));
+    await db.createCommunityReply({ id: "other", postId: "other-post", userId: "bob", content: "Other post" });
+    const newest = await db.listCommunityReplies("post");
+    assert.equal(newest.replies.length, 50);
+    assert.ok(newest.nextBefore);
+    const earlier = await db.listCommunityReplies("post", newest.nextBefore);
+    assert.equal(earlier.replies.length, 5);
+    assert.equal(earlier.nextBefore, null);
+    assert.equal(new Set([...earlier.replies, ...newest.replies].map((reply) => reply.id)).size, records.length);
+    if (mode === "local") db.local.state = null;
+    assert.equal((await db.listCommunityReplies("other-post")).replies[0].id, "other");
+    assert.equal((await db.listCommunityReplies("missing")).replies.length, 0);
+  }
+});
+
 test("local activity is throttled, persistent and isolated from concurrent profile changes", async (t) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "studybridge-activity-"));
   t.after(() => fs.rm(directory, { recursive: true, force: true }));

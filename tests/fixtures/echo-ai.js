@@ -8,6 +8,13 @@ globalThis.fetch = async (url, options) => {
     throw new Error(`Unexpected external request in AI test: ${url}`);
   }
   const body = JSON.parse(options.body);
+  if (typeof body.input?.[0]?.content === "string" && body.input[0].content.startsWith("Find official academic teaching dates")) {
+    const sourceUrl = "https://rotmancommerce.utoronto.ca/current-students/international-student-welcome-guide/important-dates-and-deadlines-for-rotman-commerce-international-students/";
+    const calendar = { year: 2026, season: "fall", label: "2026 Fall teaching term", campus: "St. George / Arts & Science", timeZone: "America/Toronto", scopeConfirmed: true, breaksConfirmed: true,
+      teachingPeriods: [{ startDate: "2026-09-08", endDate: "2026-12-07", sourceUrl }],
+      breaks: [{ startDate: "2026-10-12", endDate: "2026-10-12", label: "Thanksgiving", sourceUrl }, { startDate: "2026-10-26", endDate: "2026-10-30", label: "Reading week", sourceUrl }], replacements: [], sources: [{ url: sourceUrl, title: "University official academic dates (test fixture)" }] };
+    return new Response(JSON.stringify({ status: "completed", output: [{ type: "web_search_call", action: { sources: [{ url: sourceUrl }] } }, { type: "message", content: [{ type: "output_text", text: JSON.stringify(calendar) }] }] }), { status: 200 });
+  }
   if (!body.stream && JSON.stringify(body.messages || body.input).includes("NONSTREAM_INCOMPLETE")) {
     const incomplete = String(url).endsWith("/responses") ? { status: "incomplete", output_text: "Unfinished provider answer" }
       : { choices: [{ finish_reason: "length", message: { content: "Unfinished provider answer" } }] };
@@ -58,8 +65,14 @@ globalThis.fetch = async (url, options) => {
   }
   let content = JSON.stringify(body);
   if (body.messages?.[0]?.content.startsWith("Extract only DDL")) {
-    const source = body.messages[1].content;
+    const input = body.messages[1].content;
+    const source = typeof input === "string" ? input : input.filter((part) => part.type === "text").map((part) => part.text).join("\n");
+    if (source.includes("weekly-timetable-fixture.png") && (!Array.isArray(input) || !input.some((part) => part.type === "image_url" && part.image_url.detail === "high"))) throw new Error("Timetable images must retain their original layout in high detail.");
+    if (source.includes("weekly-timetable-fixture.pdf") && (!Array.isArray(input) || !input.some((part) => part.type === "file"))) throw new Error("Timetable PDFs must include original page visuals.");
     if (source.includes("MALFORMED_SCHEDULE")) content = "invalid JSON";
+    else if (/weekly-(?:timetable|missing-day)-fixture/.test(source)) content = JSON.stringify({ termHint: { year: 2026, season: "fall", campus: "St. George", faculty: "Arts & Science" }, items: [
+      { kind: "TUT", title: "FOR200H1F TUT0105", course: "FOR200H1F", weekly: { weekdays: source.includes("weekly-missing-day-fixture") ? [] : [1], startTime: "10:00", endTime: "11:00" }, location: "SS 2127", evidence: "Monday 10:00–11:00 FOR200H1F TUT0105 SS 2127" }
+    ] });
     else content = JSON.stringify([
       { kind: "DDL", title: "Essay", course: "MAT101", startsAt: "2026-11-12T23:59", evidence: "Essay due Nov 12, 2026 at 23:59" },
       { kind: "LEC", title: "Lecture", startsAt: "2026-11-13T10:00" },

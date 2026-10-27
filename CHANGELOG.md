@@ -2,6 +2,18 @@
 
 ## 2026-10-26
 
+- Prepare the user-authorized `1.1.89` AWS release containing all five locally reviewed updates: school suggestions, 50 MiB course materials, community replies, profile-photo compression and weekly timetable/calendar defaults. Bump package/frontend/cache versions and retain `3348e36` (`1.1.88`) as the code rollback target; exclude databases, credentials, browser fixtures and temporary verification files.
+
+- Treat timetable LEC/TUT grids as weekly patterns, preserving original image/PDF layout. Look up teaching dates and no-class periods from the Profile school's official calendar with source/year/scope checks, then expand only upcoming teaching-day occurrences through the last class day with DST-aware school-local times. Show one shared semester/source summary and grouped meeting rules; preserve one-off deadlines and ask only for genuinely missing weekday/time or unverified semester information. No reminders are created before confirmation.
+
+- Accept profile source photos up to 25 MiB and resize/compress avatars and covers locally before upload instead of rejecting photos over 2 MiB. Bound encoded images for profile storage, preserve saved images when no replacement is selected, show save progress and actionable decode errors, and reject oversized API image values instead of silently truncating them.
+
+- Add persistent per-post community discussions: authenticated replies with account names and timestamps, isolated post threads, older-reply pagination, refresh, retained drafts and retryable errors. Store replies separately in local JSON/DynamoDB so concurrent responses do not overwrite the original post or likes; exclude account IDs from public reply responses.
+
+- Raise authenticated course-material uploads to 50 MiB per file, with a shared browser/server limit and a route-specific JSON limit that includes base64 overhead. Read multi-file uploads sequentially, show progress and retain successful files after a partial failure. Preserve smaller limits on chat, Schedule and Office-editor imports, private PDF storage and bounded AI visual context; document reverse-proxy requirements and large scanned-PDF limitations.
+
+- Restore school-name suggestions in Profile and Settings, including dynamically created forms. Match full names, abbreviations and Chinese aliases; selecting a suggestion fills the full school name. Preserve manual entries and explicit profile saving, and support arrow keys, Enter, Escape and IME composition without submitting the form.
+
 - Prepare the authorized `1.1.88` AWS release: compact course materials/preferences (`b6ad697`), rename 自定义要求 (`5b21033`), and add Enter-to-send with Shift+Enter/IME safeguards (`9c1d643`). Preserve production data and credentials; record `b8e34fe` (1.1.87) as the rollback target. Recheck source/assets, full tests, actual browser save/upload/keyboard behavior and the high-severity production audit gate before deployment; one existing moderate Nodemailer advisory remains outside this UI-only release.
 
 - Study Area and General Chat now send with Enter and retain Shift+Enter for a newline. Ignore IME composition/legacy key code 229, held-key repeats, modified Enter, empty submissions and active replies; reuse the existing send action and error handling.

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.88";
+  const VERSION = "1.1.89";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -24,6 +24,9 @@
     ".png", ".jpg", ".jpeg", ".webp", ".gif"
   ].join(",");
   const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
+  const MAX_COURSE_UPLOAD_BYTES = window.StudyBridgeUploadLimits.courseFileBytes;
+  let courseUploadPending = false;
+  const communityReplies = window.StudyBridgeCommunityReplies.createController({ api, getUser: () => state.user, onChange: updateCommunityThread });
 
   const root = document.getElementById("root");
   const appearanceController = window.StudyBridgeAppearance.createController({
@@ -97,6 +100,11 @@
     scheduleSource: "",
     scheduleImportBusy: false,
     scheduleImportStatus: "",
+    scheduleCalendar: null,
+    scheduleCalendarNotice: "",
+    scheduleCalendarDraft: { startDate: "", endDate: "", breaks: "", timeZone: "" },
+    scheduleCalendarEditing: false,
+    scheduleFromDate: "",
     scheduleManualOpen: false,
     scheduleManualDraft: {},
     communityChannel: "all",
@@ -128,17 +136,7 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
-  const readProfileImageFile = (input, existingValue = "") =>
-    new Promise((resolve, reject) => {
-      const file = input?.files?.[0];
-      if (!file) return resolve(existingValue || "");
-      if (!file.type.startsWith("image/")) return reject(new Error("请上传图片文件。"));
-      if (file.size > 2 * 1024 * 1024) return reject(new Error("图片太大，请选择 2 MB 以内的图片。"));
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ""));
-      reader.onerror = () => reject(new Error("图片读取失败，请换一个文件再试。"));
-      reader.readAsDataURL(file);
-    });
+  const readProfileImageFile = window.StudyBridgeProfileImages.readInput;
   const initials = (name) => String(name || "SB").trim().slice(0, 1).toUpperCase() || "S";
   const isAdmin = () => ["admin", "co-admin"].includes(String(state.user?.role || "").toLowerCase());
   const profile = () => state.user?.profile || {};
@@ -431,6 +429,8 @@
           <button class="study-side-icon" data-action="upload-doc" title="上传所选文件" aria-label="上传所选文件"><svg aria-hidden="true"><use href="/classmates-icons.svg#upload"></use></svg></button>
         </div>
         <div class="study-material-list">${state.docs.length ? state.docs.map((doc) => `<div class="mini-row"><b>${esc(doc.title)}</b><small>${esc(doc.type || "Note")}</small></div>`).join("") : `<p class="muted">暂无课程资料</p>`}</div>
+        <p class="muted">课程资料每个文件最多 50 MB，多文件逐个上传。较大 PDF 优先使用提取文字；扫描件建议拆分或先做文字识别。</p>
+        <p id="courseUploadStatus" class="muted" role="status" aria-live="polite"></p>
       </section>`}
       <section class="side-section study-preferences">
         <div class="section-title"><b>学习偏好</b><span data-learning-style-status role="status">${learningStyleStatus()}</span></div>
@@ -849,7 +849,8 @@
           <label>封面<input id="profileCoverFile" type="file" accept="image/*"></label>
           <input id="profileCover" type="hidden" value="${esc(p.backgroundUrl || "")}">
           </div>
-          <p class="profile-upload-note">选择图片后保存，未选择的图片会保留。</p>
+          <p class="profile-upload-note">支持 25 MB 以内的照片，保存时自动缩放压缩。未选择的图片会保留；若 HEIC 无法读取，请导出为 JPG 或 PNG。</p>
+          <p id="profileSaveStatus" class="profile-upload-note" role="status" aria-live="polite"></p>
           </section>
           <footer class="profile-editor-footer"><button class="primary" data-action="save-profile">保存资料</button></footer>
         </article>
@@ -886,6 +887,35 @@
     return query.toString();
   }
 
+  function communityThreadHtml(postId) {
+    const thread = communityReplies.thread(postId);
+    const disabled = thread.loading || thread.sending;
+    return `<section class="community-thread" id="community-thread-${esc(postId)}" data-community-thread="${esc(postId)}" aria-label="帖子回复" ${thread.open ? "" : "hidden"}>
+      ${thread.open ? `<div class="community-thread-heading"><h5>帖子回复</h5><button type="button" data-action="community-replies-refresh" data-id="${esc(postId)}" ${disabled ? "disabled" : ""}>刷新回复</button></div>
+      ${thread.nextBefore ? `<button type="button" data-action="community-replies-older" data-id="${esc(postId)}" ${disabled ? "disabled" : ""}>加载更早回复</button>` : ""}
+      <div class="community-reply-list">${thread.replies.map((reply) => `<article class="community-reply"><div><b>${esc(reply.authorName)}${reply.mine ? " · 我" : ""}</b><time datetime="${esc(reply.createdAt)}">${esc(formatDate(reply.createdAt))}</time></div><p>${esc(reply.content)}</p></article>`).join("")}</div>
+      ${thread.loading ? `<p role="status" class="muted">正在加载回复…</p>` : thread.loaded && !thread.replies.length ? `<p class="muted">还没有回复，来分享你的想法吧。</p>` : ""}
+      ${thread.error ? `<p class="community-reply-error" role="alert">${esc(thread.error)}</p>` : ""}
+      <label for="community-reply-${esc(postId)}">参与讨论</label><textarea id="community-reply-${esc(postId)}" data-community-reply="${esc(postId)}" maxlength="1600" rows="3" placeholder="写下你的回复…" ${thread.sending ? "disabled" : ""}>${esc(thread.draft)}</textarea>
+      <div class="community-reply-actions"><small>回复将以你的账号姓名公开显示。</small><button type="button" class="primary" data-action="community-reply-send" data-id="${esc(postId)}" ${disabled ? "disabled" : ""}>${thread.sending ? "发送中…" : "发送回复"}</button></div>` : ""}
+    </section>`;
+  }
+
+  function updateCommunityThread(postId) {
+    if (state.page !== "community") return;
+    const section = document.getElementById(`community-thread-${postId}`);
+    if (!section) return;
+    const focused = document.activeElement;
+    const restore = focused?.dataset?.communityReply === postId;
+    const selection = restore ? [focused.selectionStart, focused.selectionEnd] : null;
+    section.outerHTML = communityThreadHtml(postId);
+    const thread = communityReplies.thread(postId);
+    const toggle = root.querySelector(`[data-action="community-replies-toggle"][data-id="${CSS.escape(postId)}"]`);
+    if (toggle) { toggle.setAttribute("aria-expanded", String(thread.open)); toggle.textContent = thread.open ? "收起讨论" : "回复 / 讨论"; }
+    const input = document.getElementById(`community-reply-${postId}`);
+    if (restore && input && !input.disabled) { input.focus({ preventScroll: true }); input.setSelectionRange(...selection); }
+  }
+
   function communityPage() {
     const data = state.community;
     const posts = data?.posts || [];
@@ -912,6 +942,8 @@
                 <h4>${esc(post.topic)}</h4>
                 <div class="formatted-text">${formatText(post.content)}</div>
                 <footer><button type="button" class="community-like ${post.likedByMe ? "is-liked" : ""}" aria-pressed="${Boolean(post.likedByMe)}" aria-label="${post.likedByMe ? "取消赞同" : "赞同"}" data-action="community-like" data-id="${esc(post.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11H3V10h4Zm0 0 5-7c2 0 3 1 2 4l-1 3h5a2 2 0 0 1 2 2l-1 7a2 2 0 0 1-2 2H7"/></svg>赞同 <span>${post.likeCount || 0}</span></button></footer>
+                <button type="button" class="community-replies-toggle" data-action="community-replies-toggle" data-id="${esc(post.id)}" aria-expanded="${communityReplies.thread(post.id).open}" aria-controls="community-thread-${esc(post.id)}">${communityReplies.thread(post.id).open ? "收起讨论" : "回复 / 讨论"}</button>
+                ${communityThreadHtml(post.id)}
               </article>`).join("") : `<div class="community-empty"><span class="community-empty-icon">${conversationIcon}</span><h4>第一条讨论，从你开始</h4><p>这里还没有讨论。一个问题、一点经验，<br>都可能成为帮助同学的开始。</p><div class="community-topic-hints"><span>选课交流</span><span>作业求助</span><span>学习搭子</span></div><button type="button" data-action="community-compose">发起第一条讨论 <span aria-hidden="true">↗</span></button></div>`}
           </div>
         </section>
@@ -1043,14 +1075,14 @@
           <div class="schedule-upload-intro">
             <span class="schedule-kicker">AI IMPORT</span>
             <h2>把课程文件变成时间表</h2>
-            <p>上传 syllabus 或课程表，AI 提取时间，你确认后再加入提醒。</p>
+            <p>上传 syllabus、课表图片或 PDF。课表默认每周重复，按学校官网校历跳过停课假期，授课结束后停止。</p>
             <div class="schedule-steps" aria-label="导入步骤"><span><b>1</b> 上传文件</span><span><b>2</b> 核对时间</span><span><b>3</b> 开始倒计时</span></div>
           </div>
           <div class="schedule-upload-controls">
             <label class="schedule-file-picker ${state.scheduleImportBusy || state.scheduleDrafts.length ? "is-disabled" : ""}">
-              <input id="scheduleFile" aria-label="选择课程文件" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md,.csv,.json" ${state.scheduleImportBusy || state.scheduleDrafts.length ? "disabled" : ""}>
+              <input id="scheduleFile" aria-label="选择课程文件" type="file" accept=".png,.jpg,.jpeg,.webp,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md,.csv,.json" ${state.scheduleImportBusy || state.scheduleDrafts.length ? "disabled" : ""}>
               <span class="schedule-file-symbol" aria-hidden="true">↑</span>
-              <span><strong id="scheduleFileName">选择课程文件</strong><small>PDF、Word、PPT、Excel 或文字文件</small></span>
+              <span><strong id="scheduleFileName">选择课程文件</strong><small>课表截图、PDF、Word、PPT、Excel 或文字文件</small></span>
             </label>
             <div class="schedule-upload-bottom"><small>PDF ≤ 8 MB · 其他文件 ≤ 12 MB</small><button class="primary" data-action="extract-schedule" ${state.scheduleImportBusy || state.scheduleDrafts.length ? "disabled" : ""}>${state.scheduleImportBusy ? "处理中…" : "AI 提取时间"}</button></div>
           </div>
@@ -1094,12 +1126,14 @@
   function scheduleReviewHtml() {
     if (!state.scheduleDrafts.length) return "";
     return `<article class="card schedule-review"><h2>核对提取结果（${state.scheduleDrafts.length} 条）</h2>
-      <p>${esc(state.scheduleSource)} · 尚未加入时间表。请核对时间及班号，只勾选你需要的项目。</p>
+      <p>${esc(state.scheduleSource)} · 尚未加入时间表。课表按每周规则显示，确认一次即可生成本学期剩余上课日期。</p>
+      ${state.scheduleDrafts.some((item) => item.weekly) ? scheduleCalendarHtml() : ""}
       <fieldset ${state.scheduleImportBusy ? "disabled" : ""}>
       ${state.scheduleDrafts.map((item, index) => `<section class="schedule-draft" data-draft="${index}">
         <label class="schedule-select"><input type="checkbox" data-draft-field="selected" ${item.selected ? "checked" : ""}>加入时间表</label>
-        <div class="inline-fields"><label>类型<select data-draft-field="kind">${["DDL", "LEC", "TUT"].map((kind) => `<option ${item.kind === kind ? "selected" : ""}>${kind}</option>`).join("")}</select></label>
-        <label>日期与时间<input type="datetime-local" data-draft-field="startsAt" value="${esc(item.startsAt)}"></label></div>
+        <div class="inline-fields"><label>类型<select data-draft-field="kind">${(item.weekly ? ["LEC", "TUT"] : ["DDL", "LEC", "TUT"]).map((kind) => `<option ${item.kind === kind ? "selected" : ""}>${kind}</option>`).join("")}</select></label>
+        ${item.weekly ? `<label>每周上课时间<input type="time" data-weekly-field="startTime" value="${esc(item.weekly.startTime)}"></label><label>结束时间<input type="time" data-weekly-field="endTime" value="${esc(item.weekly.endTime)}"></label>` : `<label>日期与时间<input type="datetime-local" data-draft-field="startsAt" value="${esc(item.startsAt)}"></label>`}</div>
+        ${item.weekly ? `<div class="schedule-weekdays" aria-label="每周上课日">${["日", "一", "二", "三", "四", "五", "六"].map((day, weekday) => `<label><input type="checkbox" data-weekday="${weekday}" ${item.weekly.weekdays.includes(weekday) ? "checked" : ""}>周${day}</label>`).join("")}</div><p class="muted">每周重复；只在授课日安排，跳过官网停课日期。</p>` : ""}
         <label>标题<input data-draft-field="title" value="${esc(item.title)}" maxlength="160"></label>
         <div class="inline-fields"><label>课程<input data-draft-field="course" value="${esc(item.course)}"></label><label>地点 / 链接<input data-draft-field="location" value="${esc(item.location)}"></label></div>
         <label>备注<textarea data-draft-field="notes">${esc(item.notes)}</textarea></label>
@@ -1110,6 +1144,48 @@
       </fieldset></article>`;
   }
 
+  function scheduleCalendarHtml() {
+    const calendar = state.scheduleCalendar;
+    const draft = state.scheduleCalendarDraft;
+    let count = null;
+    try { if (calendar) count = scheduleImport.expandWeekly(state.scheduleDrafts.filter((item) => item.selected), calendar, { fromDate: state.scheduleFromDate }).length; } catch {}
+    return `<section class="schedule-calendar" aria-label="学期与停课规则"><h3>本学期循环规则</h3><p>${esc(state.scheduleCalendarNotice)}</p>
+      ${calendar ? `<p><strong>${esc([calendar.school, calendar.campus, calendar.label].filter(Boolean).join(" · "))}</strong></p><p>授课范围：${calendar.teachingPeriods.map((period) => `${esc(period.startDate)} — ${esc(period.endDate)}`).join("；")}<br>从 ${esc(state.scheduleFromDate)} 起生成；时区 ${esc(calendar.timeZone)} · <span data-schedule-preview-count>${count !== null ? `共 ${count} 次安排` : "请补全课程规则"}</span></p>
+      <p>停课：${calendar.breaks.length ? calendar.breaks.map((pause) => `${esc(pause.startDate)}${pause.endDate !== pause.startDate ? ` — ${esc(pause.endDate)}` : ""} ${esc(pause.label)}`).join("；") : "本次校历未列出范围内的停课日"}</p>
+      ${(calendar.sources || []).map((source) => `<a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a>`).join(" · ")}` : `<p class="schedule-warning">只需填写一次学期范围，所有已识别的每周课程都会使用它。</p>`}
+      <details ${!calendar || state.scheduleCalendarEditing ? "open" : ""}><summary>手动确认或调整本学期</summary><div class="inline-fields"><label>授课开始<input type="date" data-calendar-field="startDate" value="${esc(draft.startDate)}"></label><label>最后授课日<input type="date" data-calendar-field="endDate" value="${esc(draft.endDate)}"></label></div><label>停课日期（每行一个日期或起止范围）<textarea data-calendar-field="breaks" placeholder="2026-10-12&#10;2026-10-26 / 2026-10-30">${esc(draft.breaks)}</textarea></label><label>学校时区<input data-calendar-field="timeZone" value="${esc(draft.timeZone)}" placeholder="America/Toronto"></label></details>
+    </section>`;
+  }
+
+  function applyScheduleCalendarDraft() {
+    const draft = state.scheduleCalendarDraft;
+    try {
+      const breaks = draft.breaks.split(/\n/).filter((line) => line.trim()).map((line) => {
+        const dates = line.match(/\d{4}-\d{2}-\d{2}/g) || [];
+        if (dates.length < 1 || dates.length > 2) throw new Error("每行填写一个停课日期，或一个起止日期范围。");
+        return { startDate: dates[0], endDate: dates[1] || dates[0], label: "手动确认停课" };
+      });
+      state.scheduleCalendar = scheduleImport.normalizeCalendar({ label: "手动确认的学期", timeZone: draft.timeZone, teachingPeriods: [{ startDate: draft.startDate, endDate: draft.endDate }], breaks, sources: [], replacements: [] });
+      state.scheduleCalendarNotice = "学期范围已手动确认；按这些日期生成每周安排。";
+    } catch (error) { state.scheduleCalendar = null; state.scheduleCalendarNotice = error.message; }
+    state.scheduleCalendarEditing = true;
+    render();
+  }
+
+  function updateSchedulePreviewCount() {
+    root.querySelectorAll(".schedule-draft[data-draft]").forEach((section) => {
+      const draft = state.scheduleDrafts[Number(section.dataset.draft)];
+      if (draft?.weekly && scheduleImport.validWeekly(draft.weekly) && draft.warning === "星期或上课时间未识别完整，请仅补充缺失信息。") {
+        draft.warning = "";
+        section.querySelector(".schedule-warning")?.remove();
+      }
+    });
+    const preview = root.querySelector("[data-schedule-preview-count]");
+    if (!preview || !state.scheduleCalendar) return;
+    try { preview.textContent = `共 ${scheduleImport.expandWeekly(state.scheduleDrafts.filter((item) => item.selected), state.scheduleCalendar, { fromDate: state.scheduleFromDate }).length} 次安排`; }
+    catch { preview.textContent = "请补全课程规则"; }
+  }
+
   async function extractScheduleFile() {
     if (state.scheduleImportBusy || state.scheduleDrafts.length) return;
     const file = $("scheduleFile")?.files?.[0];
@@ -1117,13 +1193,18 @@
     validateUploadFile(file);
     if (/\.pdf$/i.test(file.name) && file.size > 8 * 1024 * 1024) throw new Error("PDF 最大支持 8 MB。");
     state.scheduleImportBusy = true;
-    state.scheduleImportStatus = "正在读取文件并提取 DDL / LEC / TUT…";
+    state.scheduleImportStatus = "正在读取课表版面与时间；识别到每周课程后将自动核对学校官网校历…";
     render();
     try {
       const [payload] = await readFiles([file]);
       const result = await api("/api/schedule/extract", { method: "POST", body: { ...payload, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone } });
       state.scheduleDrafts = result.items;
       state.scheduleSource = result.fileName;
+      state.scheduleCalendar = result.calendar || null;
+      state.scheduleCalendarNotice = result.calendarNotice || "";
+      state.scheduleFromDate = result.importFromDate || scheduleImport.todayInZone(result.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone);
+      state.scheduleCalendarEditing = false;
+      state.scheduleCalendarDraft = { startDate: result.calendar?.teachingPeriods[0]?.startDate || "", endDate: result.calendar?.teachingPeriods.at(-1)?.endDate || "", breaks: (result.calendar ? scheduleImport.nonTeachingRanges(result.calendar) : []).map((pause) => `${pause.startDate} / ${pause.endDate}`).join("\n"), timeZone: result.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone };
       state.scheduleImportStatus = result.items.length ? `提取到 ${result.items.length} 条，请在下方核对并确认。` : "未找到可提取的时间点。请尝试更清晰的文件或分批上传，也可以手动添加。";
     } catch (error) { state.scheduleImportStatus = error.message; }
     finally { state.scheduleImportBusy = false; render(); }
@@ -1131,8 +1212,9 @@
 
   async function confirmScheduleImport() {
     if (state.scheduleImportBusy) return;
-    const selected = state.scheduleDrafts.filter((item) => item.selected);
-    if (!selected.length) throw new Error("请至少勾选一个项目。");
+    const selectedDrafts = state.scheduleDrafts.filter((item) => item.selected);
+    const selected = scheduleImport.expandWeekly(selectedDrafts, state.scheduleCalendar, { fromDate: state.scheduleFromDate });
+    if (!selected.length) throw new Error(selectedDrafts.length ? "本学期已无可生成的未来上课日期，请核对学期范围。" : "请至少勾选一个项目。");
     if (selected.some((item) => !item.title.trim() || !scheduleImport.validTime(item.startsAt))) throw new Error("请为所选项目补全有效的标题、日期和时间。");
     state.scheduleImportBusy = true;
     state.scheduleImportStatus = "正在保存已确认的项目…";
@@ -1146,7 +1228,7 @@
         const key = scheduleImport.fingerprint(item);
         if (seen.has(key)) { duplicates++; }
         else {
-          const payload = { ...item, startsAt: new Date(item.startsAt).toISOString(), completedAt: "", source: state.scheduleSource };
+          const payload = { ...item, startsAt: item.timeZone ? scheduleImport.toUtc(item.startsAt, item.timeZone) : new Date(item.startsAt).toISOString(), ...(item.endsAt && item.timeZone ? { endsAt: scheduleImport.toUtc(item.endsAt, item.timeZone) } : {}), completedAt: "", source: state.scheduleSource };
           delete payload.selected;
           await api(`/api/courses/${course.id}/documents`, { method: "POST", body: { title: `${SCHEDULE_PREFIX} ${item.title}`, type: "Schedule", text: JSON.stringify(payload) } });
           seen.add(key);
@@ -1156,7 +1238,7 @@
       }
       state.scheduleDrafts = [];
       state.scheduleImportStatus = `已添加 ${saved} 条倒计时提醒${duplicates ? `，跳过 ${duplicates} 条重复项目` : ""}。`;
-    } catch (error) { state.scheduleImportStatus = `已保存 ${saved} 条，其余项目仍待确认。${error.message}`; }
+    } catch (error) { state.scheduleImportStatus = `已保存 ${saved} 条，其余项目仍待确认；重试会跳过已保存的重复项目。${error.message}`; }
     finally {
       await loadScheduleItems().catch(() => {});
       state.scheduleImportBusy = false;
@@ -1527,9 +1609,9 @@
     }
   }
 
-  async function readFiles(files) {
+  async function readFiles(files, maxBytes = MAX_UPLOAD_BYTES) {
     const list = Array.from(files || []);
-    list.forEach(validateUploadFile);
+    list.forEach((file) => validateUploadFile(file, maxBytes));
     return Promise.all(list.map((file) => new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve({ fileName: file.name, fileType: file.type, fileSize: file.size, fileData: reader.result });
@@ -1538,10 +1620,10 @@
     })));
   }
 
-  function validateUploadFile(file) {
+  function validateUploadFile(file, maxBytes = MAX_UPLOAD_BYTES) {
     if (!file) throw new Error("没有读取到文件。");
-    if (file.size > MAX_UPLOAD_BYTES) {
-      throw new Error(`文件太大：${file.name}。请上传 12 MB 以内的 PDF、Word、PPT、Excel、图片或文字文件。`);
+    if (file.size > maxBytes) {
+      throw new Error(`文件太大：${file.name}。单文件最大支持 ${maxBytes / 1024 / 1024} MB。`);
     }
   }
 
@@ -1560,7 +1642,7 @@
   function addChatFiles(files) {
     const incoming = Array.from(files || []).filter(Boolean);
     if (!incoming.length) return false;
-    incoming.forEach(validateUploadFile);
+    incoming.forEach((file) => validateUploadFile(file));
     const seen = new Set(state.uploadFiles.map((file) => `${file.name}:${file.size}:${file.lastModified}`));
     for (const file of incoming) {
       const key = `${file.name}:${file.size}:${file.lastModified}`;
@@ -1574,15 +1656,35 @@
   }
 
   async function uploadCourseFiles(files) {
+    if (courseUploadPending) throw new Error("课程资料正在上传，请等待当前上传完成。");
     if (isGeneralChat()) throw new Error("请在对话输入区上传附件，或选择课程后上传课程资料。");
     if (!state.activeCourseId) throw new Error("请先选择或新增课程。");
-    const payloads = await readFiles(files);
-    if (!payloads.length) throw new Error("请先选择要上传的文件。");
-    for (const file of payloads) {
-      await api(`/api/courses/${state.activeCourseId}/documents`, { method: "POST", body: { title: file.fileName, ...file } });
+    const selectedFiles = Array.from(files || []);
+    if (!selectedFiles.length) throw new Error("请先选择要上传的文件。");
+    selectedFiles.forEach((file) => validateUploadFile(file, MAX_COURSE_UPLOAD_BYTES));
+    const courseId = state.activeCourseId;
+    let uploaded = 0;
+    courseUploadPending = true;
+    root.querySelectorAll('[data-action="upload-doc"], [data-action="save-doc"]').forEach((button) => { button.disabled = true; });
+    try {
+      for (const selected of selectedFiles) {
+        try {
+          const status = $("courseUploadStatus");
+          if (status && state.activeCourseId === courseId) status.textContent = `正在上传 ${uploaded + 1}/${selectedFiles.length}：${selected.name}`;
+          const [file] = await readFiles([selected], MAX_COURSE_UPLOAD_BYTES);
+          await api(`/api/courses/${courseId}/documents`, { method: "POST", body: { title: file.fileName, ...file } });
+          uploaded += 1;
+        } catch (error) {
+          if (state.activeCourseId === courseId) await loadPage("study").catch(() => {});
+          throw new Error(`已成功上传 ${uploaded}/${selectedFiles.length} 个文件；${selected.name} 上传失败：${error.message}。已成功上传的资料已保留。`);
+        }
+      }
+      setToast(`已上传 ${uploaded} 个文件。`);
+      if (state.activeCourseId === courseId) await loadPage("study");
+    } finally {
+      courseUploadPending = false;
+      root.querySelectorAll('[data-action="upload-doc"], [data-action="save-doc"]').forEach((button) => { button.disabled = false; });
     }
-    setToast(`已上传 ${payloads.length} 个文件。`);
-    await loadPage("study");
   }
 
   async function handleAction(button) {
@@ -1755,7 +1857,29 @@
         return;
       }
       if (action === "save-profile") {
-        const data = await api("/api/me/profile", { method: "PUT", body: { name: $("profileName")?.value || "", school: $("profileSchool")?.value || "", major: $("profileMajor")?.value || "", sbId: $("profileSbId")?.value || "", avatarUrl: await readProfileImageFile($("profileAvatarFile"), $("profileAvatar")?.value || ""), backgroundUrl: await readProfileImageFile($("profileCoverFile"), $("profileCover")?.value || "") } });
+        if (button.disabled) return;
+        button.disabled = true;
+        const label = button.textContent;
+        button.textContent = "正在处理照片并保存…";
+        const message = $("profileSaveStatus");
+        if (message) message.textContent = "正在处理照片并保存…";
+        const userId = state.user.id;
+        const values = { name: $("profileName")?.value || "", school: $("profileSchool")?.value || "", major: $("profileMajor")?.value || "", sbId: $("profileSbId")?.value || "" };
+        const avatarInput = $("profileAvatarFile"), coverInput = $("profileCoverFile");
+        const avatar = $("profileAvatar")?.value || "", cover = $("profileCover")?.value || "";
+        let data;
+        try {
+          values.avatarUrl = await readProfileImageFile(avatarInput, avatar);
+          values.backgroundUrl = await readProfileImageFile(coverInput, cover, "cover");
+          if (state.user?.id !== userId) return;
+          data = await api("/api/me/profile", { method: "PUT", body: values });
+        } catch (error) {
+          if (message) message.textContent = error.message || "保存失败，请重试。";
+          return;
+        } finally {
+          button.disabled = false;
+          button.textContent = label;
+        }
         state.user = data.user;
         setToast("资料已保存。");
         await loadPage("profile");
@@ -1788,6 +1912,21 @@
         state.communityDraft = { topic: "", content: "", anonymous: false };
         state.communityChoices = null;
         await loadPage("community");
+        return;
+      }
+      if (action === "community-replies-toggle") {
+        const thread = communityReplies.thread(button.dataset.id);
+        thread.open = !thread.open;
+        updateCommunityThread(button.dataset.id);
+        if (thread.open && !thread.loaded) await communityReplies.load(button.dataset.id);
+        return;
+      }
+      if (action === "community-replies-refresh" || action === "community-replies-older") {
+        await communityReplies.load(button.dataset.id, action === "community-replies-older");
+        return;
+      }
+      if (action === "community-reply-send") {
+        await communityReplies.send(button.dataset.id);
         return;
       }
       if (action === "community-like") {
@@ -2133,6 +2272,14 @@
   });
 
   document.addEventListener("change", (event) => {
+    if (event.target.dataset?.calendarField) { state.scheduleCalendarDraft[event.target.dataset.calendarField] = event.target.value; applyScheduleCalendarDraft(); return; }
+    if (event.target.dataset?.weekday) {
+      const draft = state.scheduleDrafts[Number(event.target.closest("[data-draft]")?.dataset.draft)];
+      if (draft?.weekly) { const day = Number(event.target.dataset.weekday); draft.weekly.weekdays = event.target.checked ? [...new Set([...draft.weekly.weekdays, day])] : draft.weekly.weekdays.filter((value) => value !== day); }
+      updateSchedulePreviewCount();
+      return;
+    }
+    if (event.target.dataset?.weeklyField || event.target.dataset?.draftField === "selected") { updateSchedulePreviewCount(); return; }
     if (event.target?.id === "postAnon") { state.communityDraft.anonymous = event.target.checked; return; }
     if (["englishTerms", "englishAnswers", "chineseExplanations"].includes(event.target?.id)) { scheduleLearningStyleSave(); return; }
     if (event.target?.id === "scheduleFile") {
@@ -2161,6 +2308,9 @@
   });
 
   document.addEventListener("input", (event) => {
+    if (event.target.dataset?.calendarField) { state.scheduleCalendarDraft[event.target.dataset.calendarField] = event.target.value; return; }
+    if (event.target.dataset?.weeklyField) { const draft = state.scheduleDrafts[Number(event.target.closest("[data-draft]")?.dataset.draft)]; if (draft?.weekly) draft.weekly[event.target.dataset.weeklyField] = event.target.value; return; }
+    if (event.target.dataset?.communityReply) { communityReplies.thread(event.target.dataset.communityReply).draft = event.target.value; return; }
     if (event.target?.id === "postTopic") { state.communityDraft.topic = event.target.value; return; }
     if (event.target?.id === "postContent") { state.communityDraft.content = event.target.value; return; }
     if (event.target?.id === "customInstruction") { scheduleLearningStyleSave(); return; }

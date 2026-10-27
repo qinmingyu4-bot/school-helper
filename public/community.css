@@ -69,6 +69,20 @@
 .community-like { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; color: var(--muted); font-size: 12px; border-color: transparent; background: #f5f8fa; }
 .community-like svg { width: 16px; height: 16px; }
 .community-like.is-liked { color: #216653; background: #eaf5ef; }
+.community-replies-toggle { margin-top: 12px; font-size: 13px; color: var(--green); }
+.community-thread { display: grid; min-width: 0; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.community-thread[hidden] { display: none; }
+.community-thread-heading, .community-reply-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.community-thread-heading h5 { margin: 0; font-size: 14px; }
+.community-thread button { padding: 7px 11px; font-size: 12px; }
+.community-reply-list { display: grid; gap: 12px; }
+.community-reply { padding: 12px; border-radius: 10px; background: #f5f8fa; min-width: 0; }
+.community-reply > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; font-size: 12px; }
+.community-reply time, .community-reply-actions small { color: var(--muted); font-size: 11px; }
+.community-reply p { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; font-size: 13px; }
+.community-thread > label { font-size: 13px; }
+.community-thread textarea { width: 100%; min-height: 80px; resize: vertical; font-size: 14px; }
+.community-reply-error { margin: 0; color: #a33232; font-size: 13px; }
 @media (max-width: 1100px) {
   .community-layout { grid-template-columns: minmax(0, 1fr) 310px; gap: 20px; padding: 28px 24px 44px; }
   .community-composer-card { padding: 20px; }

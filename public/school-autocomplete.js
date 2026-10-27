@@ -194,6 +194,16 @@
     }
   ];
 
+  for (const [name, aliases] of [
+    ["McMaster University", ["mcmaster", "麦克马斯特大学"]],
+    ["Seneca Polytechnic", ["seneca", "seneca college", "圣力嘉学院"]],
+    ["George Brown College", ["george brown", "乔治布朗学院"]],
+    ["Sheridan College", ["sheridan", "谢尔丹学院"]],
+    ["New York University", ["nyu", "纽约大学"]],
+    ["Boston University", ["bu", "波士顿大学"]],
+    ["Northeastern University", ["northeastern", "东北大学"]]
+  ]) schools.push({ name, aliases, type: "", place: "", traits: [], note: "" });
+
   function normalize(value) {
     return String(value || "")
       .toLowerCase()
@@ -231,6 +241,9 @@
     const q = normalize(name);
     return schools.find((school) => [school.name, ...(school.aliases || [])].some((candidate) => normalize(candidate) === q));
   }
+
+  if (typeof module === "object" && module.exports) module.exports = { searchSchools, findSchool };
+  if (typeof document === "undefined") return;
 
   function installStyle() {
     if (document.querySelector("#studybridge-school-autocomplete-style")) return;
@@ -271,6 +284,7 @@
         background: #ffffff;
       }
       .school-suggest-name { font-weight: 900; color: var(--navy); }
+      .school-suggest-option.is-active { background: #eaf3ff; outline: 2px solid #2f7d62; outline-offset: -2px; }
       .school-suggest-meta { color: var(--muted); font-size: 12px; line-height: 1.35; }
       .school-suggest-empty { padding: 10px; color: var(--muted); font-size: 12px; }
       .school-match-card {
@@ -313,11 +327,14 @@
     `;
   }
 
-  function setupAutocomplete() {
+  let nextListId = 0;
+  const inputSelector = '#profileSchool, #schoolInput, #onboardingSchoolInput, #profilePageSchoolInput, .settings-profile-form input[name="school"]';
+
+  function setupInput(input) {
     installStyle();
-    const input = document.querySelector("#schoolInput");
     if (!input || input.dataset.schoolAutocompleteReady === "true") return;
     input.dataset.schoolAutocompleteReady = "true";
+    input.removeAttribute("list");
 
     const label = input.closest("label");
     const shell = document.createElement("div");
@@ -326,19 +343,29 @@
     shell.appendChild(input);
 
     const list = document.createElement("div");
+    list.id = `school-suggestions-${++nextListId}`;
     list.className = "school-suggest-list";
+    list.setAttribute("role", "listbox");
+    list.setAttribute("aria-label", "学校名称建议");
     list.hidden = true;
     shell.appendChild(list);
 
     const matchCard = document.createElement("section");
     matchCard.className = "school-match-card";
     matchCard.hidden = true;
-    label.insertAdjacentElement("afterend", matchCard);
+    if (label && input.id === "schoolInput") label.insertAdjacentElement("afterend", matchCard);
+
+    input.setAttribute("role", "combobox");
+    input.setAttribute("aria-label", "学校");
+    input.setAttribute("aria-autocomplete", "list");
+    input.setAttribute("aria-controls", list.id);
+    input.setAttribute("aria-expanded", "false");
 
     let activeIndex = -1;
     let matches = [];
 
     function renderMatchCard(school) {
+      if (input.id !== "schoolInput") return;
       if (!school) {
         matchCard.hidden = true;
         return;
@@ -357,10 +384,28 @@
 
     function chooseSchool(school) {
       input.value = school.name;
-      list.hidden = true;
       renderMatchCard(school);
       input.dispatchEvent(new Event("input", { bubbles: true }));
-      setTimeout(() => renderInsight(school), 40);
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      closeList();
+    }
+
+    function closeList() {
+      list.hidden = true;
+      input.setAttribute("aria-expanded", "false");
+      input.removeAttribute("aria-activedescendant");
+    }
+
+    function highlightOption() {
+      list.querySelectorAll("[data-school-index]").forEach((option, index) => {
+        option.classList.toggle("is-active", index === activeIndex);
+        option.setAttribute("aria-selected", String(index === activeIndex));
+      });
+      const option = list.querySelector(`[data-school-index="${activeIndex}"]`);
+      if (option) {
+        input.setAttribute("aria-activedescendant", option.id);
+        option.scrollIntoView({ block: "nearest" });
+      }
     }
 
     function renderList() {
@@ -368,72 +413,77 @@
       matches = searchSchools(value);
       activeIndex = matches.length ? 0 : -1;
       if (!value) {
-        list.hidden = true;
+        closeList();
         renderMatchCard(null);
         return;
       }
       if (!matches.length) {
         list.hidden = false;
+        input.setAttribute("aria-expanded", "true");
+        input.removeAttribute("aria-activedescendant");
         list.innerHTML = `<div class="school-suggest-empty">资料库暂时没有匹配学校。你仍然可以手动输入，保存后 AI 会使用这个学校名称。</div>`;
         renderMatchCard(null);
         return;
       }
       list.hidden = false;
+      input.setAttribute("aria-expanded", "true");
       list.innerHTML = matches
         .map(
           (school, index) => `
-            <button class="school-suggest-option${index === activeIndex ? " is-active" : ""}" type="button" data-school-index="${index}">
+            <button id="${list.id}-${index}" role="option" aria-selected="${index === activeIndex}" tabindex="-1" class="school-suggest-option${index === activeIndex ? " is-active" : ""}" type="button" data-school-index="${index}">
               <span class="school-suggest-name">${escapeHtml(school.name)}</span>
-              <span class="school-suggest-meta">${escapeHtml(school.place)} · ${escapeHtml(school.type)}</span>
+              <span class="school-suggest-meta">${escapeHtml(school.place)}</span>
             </button>
           `
         )
         .join("");
-      renderMatchCard(matches[0]);
+      input.setAttribute("aria-activedescendant", `${list.id}-${activeIndex}`);
     }
 
     input.setAttribute("autocomplete", "off");
     input.addEventListener("input", renderList);
     input.addEventListener("focus", renderList);
+    input.addEventListener("blur", closeList);
     input.addEventListener("keydown", (event) => {
+      if (event.isComposing || event.keyCode === 229) return;
+      if (event.key === "Escape" && !list.hidden) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeList();
+        return;
+      }
       if (list.hidden || !matches.length) return;
       if (event.key === "ArrowDown") {
         event.preventDefault();
         activeIndex = (activeIndex + 1) % matches.length;
-        renderList();
+        highlightOption();
       } else if (event.key === "ArrowUp") {
         event.preventDefault();
         activeIndex = (activeIndex - 1 + matches.length) % matches.length;
-        renderList();
+        highlightOption();
       } else if (event.key === "Enter" && activeIndex >= 0) {
         event.preventDefault();
         chooseSchool(matches[activeIndex]);
-      } else if (event.key === "Escape") {
-        list.hidden = true;
       }
     });
 
-    list.addEventListener("mousedown", (event) => {
+    list.addEventListener("pointerdown", (event) => {
       const button = event.target.closest("[data-school-index]");
       if (!button) return;
       event.preventDefault();
       chooseSchool(matches[Number(button.dataset.schoolIndex)]);
     });
 
-    document.addEventListener("click", (event) => {
-      if (!shell.contains(event.target)) list.hidden = true;
-    });
-
-    const current = findSchool(input.value || document.querySelector("#profilePreviewSchool")?.textContent || "");
+    const current = findSchool(input.value);
     if (current) renderMatchCard(current);
   }
 
-  setupAutocomplete();
-  document.querySelector("#openProfilePageButton")?.addEventListener("click", () => setTimeout(setupAutocomplete, 80));
-  let tries = 0;
-  const timer = setInterval(() => {
-    setupAutocomplete();
-    tries += 1;
-    if (tries > 20) clearInterval(timer);
-  }, 250);
+  document.querySelectorAll(inputSelector).forEach(setupInput);
+  document.addEventListener("focusin", (event) => {
+    if (!event.target.matches(inputSelector)) return;
+    const input = event.target;
+    if (input.dataset.schoolAutocompleteReady === "true") return;
+    setupInput(input);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
 })();

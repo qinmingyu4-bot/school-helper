@@ -45,7 +45,7 @@
     });
     const pending = rows.filter((item) => !item.completedAt);
     return { today, month, selectedDate, timeZone, now, rows, days, selectedItems: onDay(selectedDate), invalidCount: items.length - rows.length,
-      upcoming: pending.filter((item) => item.start >= now || item.end > now || importer.kind(item.kind) === "DDL"), completed: rows.filter((item) => item.completedAt),
+      upcoming: pending, completed: rows.filter((item) => item.completedAt),
       overdue: pending.filter((item) => importer.kind(item.kind) === "DDL" && item.start < now),
       next: pending.find((item) => item.start >= now) || null, ongoing: pending.filter((item) => item.start <= now && item.end > now) };
   }
@@ -77,7 +77,7 @@
   function nextHtml(model, countdown) {
     const item = model.next;
     const instant = item ? new Date(item.start).toISOString() : "";
-    return `<div class="planner-next-heading"><span class="schedule-kicker">UP NEXT</span><h2>接下来</h2></div><div class="planner-next-content">${item ? `${badge(item)}<b>${escape(item.title)}</b><small>${escape(dateLabel(item.startDay))} · ${escape(timeLabel(item, model.timeZone))}${item.location ? ` · ${escape(item.location)}` : ""}</small>` : `<b>暂无即将开始的安排</b><small>选择日期，添加课程、作业或自己的计划。</small>`}</div>${item ? `<strong data-countdown="${instant}">${escape(countdown(instant))}</strong><button data-action="schedule-day" data-date="${escape(item.startDay)}">查看当天</button>` : ""}${model.ongoing.length ? `<p class="planner-ongoing">正在进行：${escape(model.ongoing.map((entry) => entry.title).join("、"))}</p>` : ""}`;
+    return `<div class="planner-next-heading"><span class="schedule-kicker">UP NEXT</span><h2>下一项安排</h2></div><div class="planner-next-content">${item ? `${badge(item)}<b>${escape(item.title)}</b><small>${escape(dateLabel(item.startDay))} · ${escape(timeLabel(item, model.timeZone))}${item.location ? ` · ${escape(item.location)}` : ""}</small>` : `<b>暂无即将开始的安排</b><small>选择日期，添加课程、作业或自己的计划。</small>`}</div>${item ? `<strong data-countdown="${instant}">${escape(countdown(instant))}</strong><button data-action="schedule-day" data-date="${escape(item.startDay)}">查看当天</button>` : ""}${model.ongoing.length ? `<p class="planner-ongoing">正在进行：${escape(model.ongoing.map((entry) => entry.title).join("、"))}</p>` : ""}`;
   }
   function render(model, { agendaView = "upcoming", countdown = () => "" } = {}) {
     const visible = agendaView === "all" ? model.rows : agendaView === "completed" ? model.completed : model.upcoming;
@@ -102,10 +102,10 @@
           <div class="planner-day-items">${model.selectedItems.length ? model.selectedItems.map((item) => itemHtml(item, model, countdown)).join("") : `<div class="planner-empty"><b>这一天还没有安排</b><p>添加个人计划，或从课程文件导入。</p></div>`}</div>
         </article>
       </div>
-      <article class="card planner-agenda" aria-label="完整日程"><div class="planner-agenda-header"><div><span class="schedule-kicker">YOUR AGENDA</span><h2>完整日程</h2><p>课程、作业与个人安排 · 按时间排序，不受所选月份限制</p><p>Lecture / Tutorial 下课后自动完成，作业需手动点击“完成”。</p></div><nav class="planner-tabs" aria-label="日程范围">${[["upcoming", "接下来", model.upcoming.length], ["all", "全部安排", model.rows.length], ["completed", "已完成", model.completed.length]].map(([view, label, count]) => `<button data-action="schedule-agenda" data-view="${view}" aria-pressed="${agendaView === view}">${label}<span>${count}</span></button>`).join("")}</nav></div>
+      <article class="card planner-agenda" aria-label="完整日程"><div class="planner-agenda-header"><div><span class="schedule-kicker">YOUR AGENDA</span><h2>完整日程</h2><p>课程、作业与个人安排 · 按时间排序，不受所选月份限制</p><p>Lecture / Tutorial 下课后自动完成；作业和个人安排需手动完成，过期也保留在“待完成”。</p></div><nav class="planner-tabs" aria-label="日程范围">${[["upcoming", "待完成", model.upcoming.length], ["all", "全部安排", model.rows.length], ["completed", "已完成", model.completed.length]].map(([view, label, count]) => `<button data-action="schedule-agenda" data-view="${view}" aria-pressed="${agendaView === view}">${label}<span>${count}</span></button>`).join("")}</nav></div>
         ${model.overdue.length && agendaView === "upcoming" ? `<p class="planner-overdue-notice">${model.overdue.length} 项作业已过截止时间，仍需手动完成。</p>` : ""}
         ${model.invalidCount ? `<p class="planner-overdue-notice">${model.invalidCount} 项安排缺少有效时间，暂时无法放入月历。</p>` : ""}
-        <div class="planner-agenda-items">${agenda || `<div class="planner-empty"><b>${agendaView === "completed" ? "还没有已完成的安排" : agendaView === "all" ? "从第一条安排开始" : "接下来暂无安排"}</b><p>选择月历中的日期，添加课程、作业或个人计划。</p></div>`}</div>
+        <div class="planner-agenda-items">${agenda || `<div class="planner-empty"><b>${agendaView === "completed" ? "还没有已完成的安排" : agendaView === "all" ? "从第一条安排开始" : "暂无待完成的安排"}</b><p>选择月历中的日期，添加课程、作业或个人计划。</p></div>`}</div>
       </article>`;
   }
   const api = { shiftMonth, buildModel, dateLabel, render, nextHtml };

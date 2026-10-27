@@ -62,6 +62,30 @@ test("school-local records and UTC records land on the correct viewing day acros
   assert.ok(!countdownInputs.includes("2026-11-02T10:00"));
 });
 
+test("pending view retains every unfinished personal task and deadline in chronological order after their times pass", () => {
+  const items = [
+    row("Future homework", "2026-11-02T20:00Z", "DDL"),
+    row("Past personal plan", "2026-10-20T10:00Z", "EVENT"),
+    row("Ended lecture", "2026-10-24T10:00Z", "LEC", { endsAt: "2026-10-24T11:00Z" }),
+    row("Overdue homework", "2026-10-21T20:00Z", "DDL"),
+    row("Finished personal plan", "2026-10-22T10:00Z", "EVENT", { completedAt: "2026-10-22T11:00Z" }),
+    row("Ongoing tutorial", "2026-10-26T15:00Z", "TUT", { endsAt: "2026-10-26T16:00Z" }),
+    row("Future personal plan", "2026-10-28T10:00Z", "EVENT")
+  ];
+  const model = calendar.buildModel({ ...context, items });
+  assert.deepEqual(model.upcoming.map((item) => item.title), ["Past personal plan", "Overdue homework", "Ongoing tutorial", "Future personal plan", "Future homework"]);
+  assert.equal(model.rows.length, 7);
+  assert.equal(model.completed.length, 2);
+  const agenda = calendar.render(model).split('<article class="card planner-agenda"')[1];
+  assert.match(agenda, /待完成<span>5<\/span>/);
+  assert.ok(agenda.includes("Past personal plan"));
+  assert.ok(!agenda.includes("Ended lecture"));
+  assert.ok(!agenda.includes("Finished personal plan"));
+  const later = calendar.buildModel({ ...context, items, now: "2026-11-03T00:00Z" });
+  assert.deepEqual(later.upcoming.map((item) => item.title), ["Past personal plan", "Overdue homework", "Future personal plan", "Future homework"]);
+  assert.equal(later.completed.length, 3);
+});
+
 test("multi-day events span the calendar but a midnight end does not occupy the next day", () => {
   const items = [row("Trip", "2026-10-26T22:00Z", "EVENT", { endsAt: "2026-10-28T04:00Z" })];
   const model = calendar.buildModel({ ...context, items });

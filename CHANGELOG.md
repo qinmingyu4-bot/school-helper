@@ -2,6 +2,8 @@
 
 ## 2026-10-27
 
+- Rename the agenda's upcoming tab to 待完成 and retain every unfinished assignment and personal plan, including past/overdue items, in chronological order. Preserve automatic Lecture/Tutorial completion and manual task completion; label the separate future-event highlight 下一项安排 to distinguish it from the pending list.
+
 - Prepare the authorized `1.1.90` AWS release of the monthly calendar and unified agenda, automatic Lecture/Tutorial completion with manual assignment completion, syllabus assessment extraction and duplicate checks, compact mobile import review with complete notes, and everyday-language/voice entry. Refresh package/frontend/cache versions and retain `cb0a035` (`1.1.89`) as the code rollback target. Preserve production credentials, accounts and stored materials; exclude databases and temporary previews. Direct microphone recording needs HTTPS/browser permission; voice-file upload and phone-keyboard dictation remain available on HTTP.
 
 ## 2026-10-26

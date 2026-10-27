@@ -364,13 +364,15 @@ same course/time both survive, and a quiz never merges with its host lecture.
 
 Schedule opens with a monthly calendar, a today marker, month navigation and
 selectable day details. The independent chronological agenda spans every month
-and offers upcoming, all and completed views for lectures, tutorials, assignment
+and offers pending (待完成), all and completed views for lectures, tutorials, assignment
 deadlines and personal events. The next future event is highlighted separately;
 ongoing classes and overdue, unfinished assignments remain visible. Lecture and
 Tutorial meetings automatically enter the completed view at their valid end time;
 legacy meetings without an end use their recorded start time. These classes have
 no manual completion button. Assignments/deadlines require an explicit completion
-click even after their due time. The same derived rule filters server AI context,
+click even after their due time. Past personal plans also remain in the pending
+view until manually completed. All pending items retain chronological ordering;
+the separate next-event highlight shows the next future arrangement. The same derived rule filters server AI context,
 without rewriting saved meetings or relying on a background process. Desktop day
 cells show event previews; narrow screens use colored dots and counts.
 

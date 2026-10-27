@@ -58,7 +58,7 @@ test("calendar views move elapsed classes into history while overdue assignments
   assert.ok(duringHtml.includes('aria-label="完成 DDL"'));
   const after = calendar.buildModel({ items, now: end, timeZone: "America/Toronto" });
   assert.deepEqual(after.completed.map((item) => item.kind), ["LEC", "TUT"]);
-  assert.deepEqual(after.upcoming.map((item) => item.kind), ["DDL"]);
+  assert.deepEqual(after.upcoming.map((item) => item.kind), ["DDL", "EVENT"]);
   assert.equal(after.overdue.length, 1);
   assert.equal(after.next, null);
   assert.equal(after.days.find((day) => day.date === "2026-11-02").items.filter((item) => item.completedAt).length, 2);

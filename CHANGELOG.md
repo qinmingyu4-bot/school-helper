@@ -2,6 +2,8 @@
 
 ## 2026-10-27
 
+- Release `1.1.97`: publish preservation of explicit dates with missing clock times, visible/unchecked existing timetable and syllabus entries, and theme-independent developer health lights. Refresh frontend/cache versions; preserve existing accounts, course materials, saved schedules and chat data without migration. Code rollback target: `2b4b06c` (`1.1.96`).
+
 - Keep developer system-health indicator colors independent of appearance themes: normal stays green, warning stays orange and failure stays red, including under gray-toned themes. Scope the semantic colors to status lights without changing theme accents or status detection.
 
 - Retain duplicate timetable/syllabus entries in import review, mark calendar/batch duplicates and default fully existing entries to unchecked in either upload order. Keep manual checkbox choices, show counts for partly overlapping weekly templates and recheck edited dates/course/calendar settings. Preserve source details, quiz/assignment separation and final server duplicate protection.

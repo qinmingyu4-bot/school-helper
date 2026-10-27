@@ -71,7 +71,7 @@
     return `<div class="planner-item ${item.completedAt ? "is-completed" : ""}">
       <div class="planner-item-time"><time datetime="${escape(item.startsAt)}">${escape(timeLabel(item, model.timeZone))}</time>${badge(item)}</div>
       <div class="planner-item-content"><b>${escape(item.title)}</b>${item.course || item.location ? `<small>${escape([item.course, item.location].filter(Boolean).join(" · "))}</small>` : ""}${item.notes ? `<details class="planner-notes"><summary>查看备注</summary><p>${escape(item.notes)}</p></details>` : ""}</div>
-      <div class="planner-item-actions">${item.completedAt ? `<span class="planner-completed-label">✓ 已完成</span>` : `<small class="${overdue ? "planner-overdue" : ""}" ${item.start < model.now || ongoing ? "" : `data-countdown="${instant}"`}>${escape(status)}</small><button data-action="complete-schedule" data-course="${escape(item.courseId)}" data-doc="${escape(item.docId)}" aria-label="完成 ${escape(item.title)}">标为完成</button>`}</div>
+      <div class="planner-item-actions">${item.completedAt ? `<span class="planner-completed-label">✓ 已完成</span>` : `<small class="${overdue ? "planner-overdue" : ""}" ${item.start < model.now || ongoing ? "" : `data-countdown="${instant}"`}>${escape(status)}</small><button data-action="complete-schedule" data-course="${escape(item.courseId)}" data-doc="${escape(item.docId)}" aria-label="完成 ${escape(item.title)}">完成</button>`}</div>
     </div>`;
   }
   function nextHtml(model, countdown) {

@@ -2,6 +2,8 @@
 
 ## 2026-10-26
 
+- Label unfinished Schedule actions 完成; reserve 已完成 for the status and completed view after the student clicks the action.
+
 - Redesign Schedule as a monthly calendar with today/month navigation, selectable day details and a separate chronological agenda spanning all months. Show the next event and ongoing classes, distinguish Lecture/Tutorial/deadlines/personal plans, retain completed and overdue entries, and add day-prefilled personal arrangements with optional end times. Preserve existing imports, upload selections and manual drafts during calendar navigation; retain imported duration/time-zone/recurrence data when marking entries complete.
 
 - Prepare the user-authorized `1.1.89` AWS release containing all five locally reviewed updates: school suggestions, 50 MiB course materials, community replies, profile-photo compression and weekly timetable/calendar defaults. Bump package/frontend/cache versions and retain `3348e36` (`1.1.88`) as the code rollback target; exclude databases, credentials, browser fixtures and temporary verification files.

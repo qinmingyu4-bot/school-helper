@@ -621,6 +621,10 @@
       .map(([label, prompt]) => `<button data-action="quick-prompt" data-prompt="${esc(prompt)}" title="${esc(prompt)}">${esc(label)}</button>`).join("");
   }
 
+  function sendButtonContent(pending) {
+    return pending ? '<span class="reply-spinner send-spinner" aria-hidden="true"></span><span>停止</span>' : "发送";
+  }
+
   function composerHtml() {
     return `
       <footer class="composer" data-chat-dropzone="true">
@@ -634,7 +638,7 @@
           <button class="attach" data-action="pick-chat-file" aria-label="上传附件" title="上传附件；也可拖放文件，或在输入框按 Ctrl+V 粘贴截图">+</button>
           <input id="chatFile" class="hidden" type="file" multiple accept="${SUPPORTED_UPLOAD_ACCEPT},*/*">
           <textarea id="chatInput" rows="1" placeholder="输入问题，可 Ctrl+V 粘贴截图..." aria-label="问题"></textarea>
-          <button class="send" data-action="${activeStudyReply() ? "stop-chat" : "send-chat"}" ${state.busy ? "disabled" : ""} ${activeStudyReply() ? 'title="停止生成" aria-label="停止生成"' : 'aria-label="发送"'}>${activeStudyReply() ? '<svg aria-hidden="true"><use href="/classmates-icons.svg#stop"></use></svg>' : "发送"}</button>
+          <button class="send" data-action="${activeStudyReply() ? "stop-chat" : "send-chat"}" ${state.busy ? "disabled" : ""} ${activeStudyReply() ? 'title="正在生成，点击停止" aria-label="停止生成"' : 'aria-label="发送"'}>${sendButtonContent(Boolean(activeStudyReply()))}</button>
         </div>
         ${selectedUploadFilesHtml()}
       </footer>
@@ -729,11 +733,14 @@
     if (followLatest) chat.scrollTop = chat.scrollHeight;
     const send = root.querySelector(".compose-row .send");
     const pending = Boolean(activeStudyReply());
-    send.dataset.action = pending ? "stop-chat" : "send-chat";
-    send.title = pending ? "停止生成" : "发送";
-    send.setAttribute("aria-label", send.title);
+    const action = pending ? "stop-chat" : "send-chat";
+    // Preserve the spinner node across streamed text updates so its animation
+    // does not restart with every incoming token.
+    if (send.dataset.action !== action) send.innerHTML = sendButtonContent(pending);
+    send.dataset.action = action;
+    send.title = pending ? `${replyPhases[activeStudyReply()?.assistant.phase] || "正在生成"}，点击停止` : "发送";
+    send.setAttribute("aria-label", pending ? "停止生成" : "发送");
     send.disabled = state.busy;
-    send.innerHTML = pending ? '<svg aria-hidden="true"><use href="/classmates-icons.svg#stop"></use></svg>' : "发送";
   }
 
   function scheduleStudyReply(reply) {

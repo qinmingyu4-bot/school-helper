@@ -2,6 +2,8 @@
 
 ## 2026-10-27
 
+- Show a continuously rotating loading ring with a clear 停止 action on the Study Area send button while a reply is pending. Keep stop-generation behavior and accessible action labels, respect reduced-motion settings, and preserve the spinner node across streamed updates so the animation does not repeatedly restart.
+
 - Release `1.1.93`: organize courses as expandable folders containing independently titled conversations. Add new chats, first-question titles and manual renaming; isolate each chat's history, retained uploads, drafts, learning mode and streaming reply while sharing course documents. Keep all historical messages in a compatible default conversation without rewriting data. Include automatic timetable/syllabus course creation, reuse existing names/codes, and file confirmed calendar items under their matching courses. Preserve batch saving, duplicate checks, original course information and account data; code rollback target is `c2bbee1` (`1.1.92`).
 
 - Release `1.1.92`: batch confirmed calendar imports in groups of 80, with real processed/saved/duplicate progress and one final calendar refresh. Check duplicates on the server against all saved meetings (including completed records), preserve complete notes/evidence/time zones/end times/recurrence sources, and make retries safe after interrupted responses. Save each local batch in one file replacement with rollback on failure; use guarded atomic transactions in DynamoDB. Read calendar entries through one authenticated endpoint instead of downloading every course document separately.

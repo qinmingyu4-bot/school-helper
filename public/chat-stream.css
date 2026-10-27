@@ -22,7 +22,9 @@
 }
 .reply-notice { margin-top: 8px; color: #70614c; font-size: 13px; line-height: 20px; }
 .compose-row .send svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; }
-.compose-row .send { display: grid; place-items: center; }
+.compose-row .send { display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
+.study-workspace .compose-row .send { min-width: 84px; }
+.compose-row .send .send-spinner { flex-basis: 16px; width: 16px; height: 16px; border-color: rgba(255,255,255,.35); border-top-color: currentColor; }
 .compose-row .send:disabled { opacity: .55; cursor: wait; }
 @keyframes reply-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .reply-spinner { animation: none; } }

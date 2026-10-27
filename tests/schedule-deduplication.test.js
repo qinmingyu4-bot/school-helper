@@ -61,7 +61,9 @@ test("weekly duplicate templates remain visible, unselected only when every occu
   assert.equal(all.duplicateCount, 2);
   const noCalendar = importer.reviewDuplicates([weekly], [saved, second]);
   assert.equal(noCalendar.items.length, 1);
-  assert.equal(noCalendar.items[0].selected, true);
+  assert.equal(noCalendar.items[0].selected, false);
+  assert.equal(noCalendar.items[0].duplicateReview.coverageUnknown, true);
+  assert.match(importer.duplicateNotice(noCalendar.items[0]), /学期范围待核对/);
 });
 
 test("review deduplication does not mutate imported drafts or saved completion metadata", () => {
@@ -91,4 +93,38 @@ test("either upload order marks saved lectures, supports manual selection and pr
   assert.equal(result.items[0].selected, true);
   assert.equal(result.items[1].selected, false);
   assert.match(importer.duplicateNotice(result.items[1]), /本次导入中已有/);
+});
+
+
+test("failed calendar lookup still compares explicit weekly dates in either upload order", () => {
+  const weekly = { ...syllabus, startsAt: "", weekly: { weekdays: [1], startTime: "10:00", endTime: "11:00", startDate: "2026-11-02", endDate: "2026-11-09" } };
+  const second = { ...saved, startsAt: "2026-11-09T15:00Z" };
+  for (const previous of [[saved, second], [{ ...syllabus }, { ...syllabus, startsAt: "2026-11-09T10:00" }]]) {
+    const result = importer.reviewDuplicates([weekly], previous, { timeZone: "America/Toronto", fromDate: "2026-10-27" });
+    assert.equal(result.items[0].selected, false);
+    assert.equal(result.items[0].duplicateReview.existingCount, 2);
+    assert.match(importer.duplicateNotice(result.items[0]), /日历中已有/);
+  }
+  const partial = importer.reviewDuplicates([weekly], [saved], { timeZone: "America/Toronto" }).items[0];
+  assert.equal(partial.selected, true);
+  assert.equal(partial.duplicateReview.newCount, 1);
+  for (const different of [{ ...weekly, course: "STA437H1" }, { ...weekly, title: "FOR200H1 LEC0201" }, { ...weekly, weekly: { ...weekly.weekly, startTime: "11:00" } }]) {
+    assert.equal(importer.reviewDuplicates([different], [saved, second], { timeZone: "America/Toronto" }).items[0].selected, true);
+  }
+});
+
+test("unknown weekly boundaries report matching patterns conservatively across DST and keep extra weekdays selected", () => {
+  const weekly = { ...syllabus, startsAt: "", weekly: { weekdays: [1], startTime: "10:00", endTime: "11:00" } };
+  const summer = { ...saved, startsAt: "2026-10-19T14:00Z" };
+  for (const record of [saved, summer]) {
+    const item = importer.reviewDuplicates([weekly], [record], { timeZone: "America/Toronto" }).items[0];
+    assert.equal(item.selected, false);
+    assert.equal(item.duplicateReview.coverageUnknown, true);
+    assert.match(importer.duplicateNotice(item), /学期范围待核对/);
+  }
+  const extraDay = importer.reviewDuplicates([{ ...weekly, weekly: { ...weekly.weekly, weekdays: [1, 3] } }], [saved], { timeZone: "America/Toronto" }).items[0];
+  assert.equal(extraDay.selected, true);
+  assert.match(importer.duplicateNotice(extraDay), /其余星期/);
+  assert.equal(importer.reviewDuplicates([weekly], [saved], { timeZone: "America/Toronto", fromDate: "2027-01-01" }).items[0].selected, true);
+  assert.equal(importer.reviewDuplicates([{ ...weekly, weekly: { ...weekly.weekly, weekdays: [] } }], [saved], { timeZone: "America/Toronto" }).items[0].selected, true);
 });

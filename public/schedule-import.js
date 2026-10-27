@@ -187,16 +187,40 @@
     }
     return { items: unique, duplicates };
   }
+  function weeklyComparison(item, existing, { calendar, fromDate, timeZone }) {
+    if (!validWeekly(item.weekly)) return { occurrences: [], coverageUnknown: false, weekdaysCovered: false };
+    if (calendar) return { occurrences: expandWeekly([item], calendar, { fromDate }), coverageUnknown: false, weekdaysCovered: true };
+    const { startDate, endDate } = item.weekly;
+    if (validDate(startDate) && validDate(endDate) && startDate <= endDate && Date.parse(endDate) - Date.parse(startDate) <= 370 * 86400000) {
+      // Compare explicit source dates only. This is not a fabricated university calendar or permission to save.
+      const comparison = { timeZone: item.timeZone || timeZone || "UTC", teachingPeriods: [{ startDate, endDate }], breaks: [] };
+      return { occurrences: expandWeekly([item], comparison, { fromDate }), coverageUnknown: false, weekdaysCovered: true };
+    }
+    const occurrences = [], seen = new Set(), days = new Set(), formatters = new Map();
+    for (const saved of existing) {
+      try {
+        const zone = item.timeZone || timeZone || saved.timeZone || "UTC";
+        const instant = validTime(saved.startsAt) ? toUtc(saved.startsAt, saved.timeZone || zone) : saved.startsAt;
+        if (!Number.isFinite(Date.parse(instant))) continue;
+        if (!formatters.has(zone)) formatters.set(zone, new Intl.DateTimeFormat("en-CA", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }));
+        const parts = Object.fromEntries(formatters.get(zone).formatToParts(new Date(instant)).map((part) => [part.type, part.value]));
+        const date = `${parts.year}-${parts.month}-${parts.day}`;
+        const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
+        if (fromDate && date < fromDate || validDate(startDate) && date < startDate || validDate(endDate) && date > endDate || !item.weekly.weekdays.includes(weekday) || `${parts.hour}:${parts.minute}` !== item.weekly.startTime) continue;
+        const candidate = { ...item, weekly: undefined, startsAt: new Date(instant).toISOString(), timeZone: zone };
+        if (!duplicateIndex([saved]).has(candidate) || seen.has(candidate.startsAt)) continue;
+        seen.add(candidate.startsAt); days.add(weekday); occurrences.push(candidate);
+      } catch { /* An invalid saved row cannot establish a matching weekly pattern. */ }
+    }
+    return { occurrences, coverageUnknown: true, weekdaysCovered: item.weekly.weekdays.every((day) => days.has(day)) };
+  }
   function reviewDuplicates(items, existing, { calendar = null, fromDate = "", timeZone = "", preserveSelection = false } = {}) {
     const saved = duplicateIndex(existing);
     const index = duplicateIndex(existing);
     let duplicateCount = 0;
     const drafts = items.map((item) => {
-      let occurrences;
-      if (item.weekly) {
-        if (!calendar || !validWeekly(item.weekly)) occurrences = [];
-        else occurrences = expandWeekly([item], calendar, { fromDate });
-      } else occurrences = [{ ...item, timeZone: item.timeZone || timeZone }];
+      const comparison = item.weekly ? weeklyComparison(item, existing, { calendar, fromDate, timeZone }) : null;
+      const occurrences = comparison ? comparison.occurrences : [{ ...item, timeZone: item.timeZone || timeZone }];
       let newCount = 0, existingCount = 0, batchCount = 0;
       for (const occurrence of occurrences) {
         if (saved.has(occurrence)) existingCount++;
@@ -204,8 +228,8 @@
         else { newCount++; index.add(occurrence); }
       }
       duplicateCount += existingCount + batchCount;
-      const duplicate = existingCount + batchCount > 0 && newCount === 0;
-      return { ...item, duplicateReview: { duplicate, existingCount, batchCount, newCount },
+      const duplicate = existingCount + batchCount > 0 && newCount === 0 && (!comparison || comparison.weekdaysCovered);
+      return { ...item, duplicateReview: { duplicate, existingCount, batchCount, newCount, ...(comparison?.coverageUnknown ? { coverageUnknown: true } : {}) },
         selected: preserveSelection && item.selectionTouched ? item.selected : !duplicate };
     });
     return { items: drafts, duplicateCount };
@@ -213,6 +237,7 @@
   function duplicateNotice(item) {
     const review = item.duplicateReview;
     if (!review || !review.existingCount && !review.batchCount) return "";
+    if (review.coverageUnknown) return `日历中已有 ${review.existingCount} 次相同每周课程；学期范围待核对${review.duplicate ? " · 默认不勾选，可手动勾选" : "，其余星期仍需核对"}`;
     if (review.duplicate) return `${review.existingCount ? "日历中已有" : "本次导入中已有"} · 默认不勾选，可手动勾选；保存时仍会检查重复`;
     return `其中 ${review.existingCount + review.batchCount} 次安排已有，仅添加 ${review.newCount} 次新增安排`;
   }

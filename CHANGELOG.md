@@ -2,6 +2,10 @@
 
 ## 2026-10-27
 
+- Release `1.1.98`: remove university-calendar availability as a prerequisite for weekly import duplicate review. Include bounded-date comparison, conservative unknown-range pattern matching and both upload-order regression coverage. Refresh frontend/cache versions; preserve existing account/schedule data. Code rollback target: `61be81b` (`1.1.97`).
+
+- Fix weekly import duplicate review when university-calendar lookup fails: compare explicit source date ranges independently, or conservatively flag matching stored weekly patterns when boundaries are unknown. Default fully matching patterns to unchecked, retain new dates/weekdays and distinct sections/assessments, preserve manual selection and keep final batch duplicate checks. Comparison-only ranges do not create or replace a university calendar.
+
 - Release `1.1.97`: publish preservation of explicit dates with missing clock times, visible/unchecked existing timetable and syllabus entries, and theme-independent developer health lights. Refresh frontend/cache versions; preserve existing accounts, course materials, saved schedules and chat data without migration. Code rollback target: `2b4b06c` (`1.1.96`).
 
 - Keep developer system-health indicator colors independent of appearance themes: normal stays green, warning stays orange and failure stays red, including under gray-toned themes. Scope the semantic colors to status lights without changing theme accents or status detection.

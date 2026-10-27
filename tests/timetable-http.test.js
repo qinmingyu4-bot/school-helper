@@ -128,4 +128,22 @@ test("timetable images/PDFs retain layout, use school calendars and return recur
   const added = await request("/api/schedule/import", { items: [filled], timeZone: "America/Toronto" }, cookie);
   assert.equal(added.data.saved, 1);
   assert.equal((await request("/api/schedule/import", { items: [filled], timeZone: "America/Toronto" }, cookie)).data.duplicates, 1);
+  for (const order of [["timetable", "syllabus"], ["syllabus", "timetable"]]) {
+    const testCookie = (await request("/api/auth/register", { name: "No calendar test", email: `no-calendar-${order[0]}@example.test`, password: "NoCalendar-Test-2026!", passwordConfirm: "NoCalendar-Test-2026!" })).cookie;
+    const file = (type) => ({ fileName: `weekly-no-calendar-fixture-${type}.txt`, fileData: Buffer.from("QA801H1 Monday 10:00 to 11:00, November 2 to November 9 2026").toString("base64"), timeZone: "America/Toronto" });
+    const first = await request("/api/schedule/extract", file(order[0]), testCookie);
+    assert.equal(first.status, 200);
+    assert.equal(first.data.calendar, null);
+    const moduleCalendar = { timeZone: "America/Toronto", teachingPeriods: [{ startDate: "2026-11-02", endDate: "2026-11-09" }], breaks: [] };
+    const meetings = importer.expandWeekly(first.data.items, moduleCalendar);
+    assert.equal((await request("/api/schedule/import", { items: meetings, timeZone: "America/Toronto" }, testCookie)).data.saved, 2);
+    const second = await request("/api/schedule/extract", file(order[1]), testCookie);
+    assert.equal(second.status, 200);
+    assert.equal(second.data.calendar, null);
+    assert.equal(second.data.items[0].selected, false, order.join(" then "));
+    assert.equal(second.data.items[0].duplicateReview.existingCount, 2);
+    assert.match(importer.duplicateNotice(second.data.items[0]), /日历中已有/);
+    assert.equal((await request("/api/schedule/import", { items: meetings, timeZone: "America/Toronto" }, testCookie)).data.saved, 0);
+  }
+
 });

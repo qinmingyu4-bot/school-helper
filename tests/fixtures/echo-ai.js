@@ -94,6 +94,7 @@ globalThis.fetch = async (url, options) => {
         { kind: "DDL", title: "Assignment 1", course: "MAT101H1", startsAt: "2026-11-06T23:59", evidence: "Assignment 1 due November 6, 23:59" }
       ]);
     }
+    else if (source.includes("weekly-no-calendar-fixture")) content = JSON.stringify({ items: [{ kind: "LEC", title: "QA801H1 LEC0101", course: "QA801H1", weekly: { weekdays: [1], startTime: "10:00", endTime: "11:00", startDate: "2026-11-02", endDate: "2026-11-09" } }] });
     else if (source.includes("portfolio-date-only-fixture")) content = JSON.stringify({ items: [{ kind: "DDL", title: "Portfolio", course: "MAT329Y1", startsAt: "", notes: "Due 2027-04-09; submission time not stated.", evidence: "Portfolios are due on April 9, 2027. Late portfolios will not be accepted after April 14, 2027." }] });
     else if (/weekly-(?:timetable|missing-day)-fixture/.test(source)) content = JSON.stringify({ termHint: { year: 2026, season: "fall", campus: "St. George", faculty: "Arts & Science" }, items: [
       { kind: "TUT", title: "FOR200H1F TUT0105", course: "FOR200H1F", weekly: { weekdays: source.includes("weekly-missing-day-fixture") ? [] : [1], startTime: "10:00", endTime: "11:00" }, location: "SS 2127", evidence: "Monday 10:00–11:00 FOR200H1F TUT0105 SS 2127" }

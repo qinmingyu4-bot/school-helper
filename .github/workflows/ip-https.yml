@@ -34,4 +34,4 @@ jobs:
           chmod 600 ~/.ssh/studybridge_https_key
           ssh-keygen -y -f ~/.ssh/studybridge_https_key >/dev/null
           ssh-keyscan -H "$LIGHTSAIL_HOST" >> ~/.ssh/known_hosts
-          ssh -i ~/.ssh/studybridge_https_key "$LIGHTSAIL_USER@$LIGHTSAIL_HOST" 'sudo -n bash -s -- apply' < aws/ip-https.sh
+          ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o ConnectTimeout=20 -i ~/.ssh/studybridge_https_key "$LIGHTSAIL_USER@$LIGHTSAIL_HOST" 'sudo -n bash -s -- apply' < aws/ip-https.sh

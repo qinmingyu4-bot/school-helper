@@ -23,6 +23,9 @@ if [[ $MODE == inspect ]]; then
   exit 0
 fi
 [[ $MODE == apply ]] || { echo 'Expected inspect or apply.' >&2; exit 1; }
+# Serialize reruns, including when an earlier SSH client disconnected.
+exec 9>/run/lock/studybridge-ip-https.lock
+flock -w 600 9
 nginx -t
 curl --fail --silent http://127.0.0.1:3000/api/health
 

@@ -1,0 +1,52 @@
+name: Configure StudyBridge IP HTTPS
+
+on:
+  push:
+    branches: [codex/aws-ip-https]
+    paths: [.github/workflows/ip-https.yml, aws/ip-https.sh]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: studybridge-ip-https
+  cancel-in-progress: false
+
+jobs:
+  https:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect existing AWS server
+        env:
+          LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}
+          LIGHTSAIL_USER: ${{ secrets.LIGHTSAIL_USER }}
+          LIGHTSAIL_SSH_KEY_B64: ${{ secrets.LIGHTSAIL_SSH_KEY_B64 }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 ~/.ssh
+          trap 'rm -f ~/.ssh/studybridge_https_key' EXIT
+          printf '%s' "$LIGHTSAIL_SSH_KEY_B64" | tr -d '[:space:]' | base64 -d | tr -d '\r' > ~/.ssh/studybridge_https_key
+          printf '\n' >> ~/.ssh/studybridge_https_key
+          chmod 600 ~/.ssh/studybridge_https_key
+          ssh-keygen -y -f ~/.ssh/studybridge_https_key >/dev/null
+          ssh-keyscan -H "$LIGHTSAIL_HOST" >> ~/.ssh/known_hosts
+          ssh -i ~/.ssh/studybridge_https_key "$LIGHTSAIL_USER@$LIGHTSAIL_HOST" 'bash -s' <<'REMOTE'
+          set -eu
+          cat /etc/os-release
+          id
+          sudo -n true
+          command -v nginx || true
+          sudo nginx -v 2>&1 || true
+          sudo ss -lntp | awk 'NR==1 || /:80 |:443 |:3000 /'
+          sudo ls -l /etc/nginx/sites-enabled /etc/letsencrypt/live 2>/dev/null || true
+          sudo nginx -T 2>&1 | head -240 || true
+          command -v certbot || true
+          command -v python3 || true
+          sudo ufw status 2>/dev/null || true
+          systemctl list-timers --all --no-pager | head -25
+          cd ~/school-helper
+          git rev-parse HEAD
+          curl --fail --silent http://127.0.0.1:3000/api/health
+          REMOTE

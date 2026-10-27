@@ -78,7 +78,7 @@
 .schedule-timezone { color: var(--muted); font-size: 11px; line-height: 1.6; margin: -4px 0 0; text-align: center; }
 .deadline-banner [data-countdown] { color: inherit; font-size: inherit; font-weight: inherit; }
 .schedule-review > p { color: var(--muted); font-size: 13px; line-height: 1.6; margin: 8px 0 18px; overflow-wrap: anywhere; }
-.schedule-review fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 14px; }
+.schedule-review fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; align-items: start; gap: 10px; }
 .schedule-calendar { padding: 16px; margin: 16px 0; border: 1px solid var(--line); border-radius: 10px; background: #f1f8f4; min-width: 0; }
 .schedule-calendar h3 { margin: 0; font-size: 15px; }
 .schedule-calendar p, .schedule-calendar a, .schedule-calendar summary { font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
@@ -88,7 +88,27 @@
 .schedule-weekdays { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
 .schedule-draft .schedule-weekdays label { display: flex; align-items: center; gap: 5px; margin: 0; }
 .schedule-draft .schedule-weekdays input { width: auto; }
-.schedule-draft { padding: 18px; border: 1px solid var(--line); border-radius: 9px; background: #fafcfd; min-width: 0; }
+.schedule-draft { position: relative; padding: 14px; border: 1px solid var(--line); border-radius: 9px; background: #fafcfd; min-width: 0; }
+.schedule-draft .schedule-review-select { position: absolute; top: 5px; left: 5px; width: 40px; height: 40px; display: grid; place-items: center; margin: 0; z-index: 1; cursor: pointer; }
+.schedule-review-select input { width: 20px !important; height: 20px; margin: 0; }
+.schedule-draft-editor { min-width: 0; }
+.schedule-draft-summary { position: relative; padding-left: 32px; padding-right: 16px; cursor: pointer; list-style: none; }
+.schedule-draft-summary::-webkit-details-marker { display: none; }
+.schedule-draft-summary > b { display: block; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.schedule-review-chevron { position: absolute; right: 0; top: 0; color: var(--muted); font-size: 18px; }
+.schedule-draft-editor[open] .schedule-review-chevron { transform: rotate(180deg); }
+.schedule-review-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 8px; margin-top: 5px; font-size: 12px; line-height: 1.5; }
+[data-review-kind] { font-size: 10px; border-radius: 4px; padding: 1px 5px; background: #eaf0f4; color: #516878; }
+.schedule-review-context, .schedule-review-note, .schedule-review-warning { margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; }
+.schedule-review-context { display: block; }
+.schedule-review-note, .schedule-review-warning { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.schedule-review-warning { color: #945318; }
+.schedule-draft-summary [hidden] { display: none; }
+.schedule-draft-fields { padding-top: 14px; margin-top: 14px; border-top: 1px solid var(--line); }
+.schedule-draft-editor[open] .schedule-review-note { display: none; }
+.schedule-review-actions { grid-column: 1 / -1; position: sticky; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; padding: 12px 0 2px; background: #fff; border-top: 1px solid var(--line); }
+.schedule-review-actions > span { margin-right: auto; font-size: 12px; color: var(--muted); }
+.schedule-review-actions button { min-height: 40px; font-size: 13px; padding: 9px 12px; }
 .schedule-draft label { display: grid; gap: 6px; margin-bottom: 10px; font-size: 12px; }
 .schedule-draft .inline-fields { grid-template-columns: repeat(2,minmax(0,1fr)); align-items: start; }
 .schedule-draft input, .schedule-draft textarea, .schedule-draft select { width: 100%; min-width: 0; font-size: 14px; padding: 10px 12px; }
@@ -105,6 +125,8 @@
 @container (max-width: 480px) {
   .schedule-layout .card { padding: 18px; }
   .schedule-manual-form, .schedule-draft .inline-fields { grid-template-columns: 1fr; }
+  .schedule-draft { padding: 12px; }
+  .schedule-draft input:not([type="checkbox"]), .schedule-draft textarea, .schedule-draft select { font-size: 16px; }
   .schedule-item { grid-template-columns: auto minmax(0,1fr); gap: 10px; }
   .schedule-item > strong { grid-column: 2; }
   .schedule-item > button { grid-column: 2; justify-self: start; }

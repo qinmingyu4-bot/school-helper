@@ -309,6 +309,12 @@ selected rows. Missing dates/times remain blank for review; original evidence
 and genuine ambiguity notes appear beside each draft. Standard timetable LEC/TUT
 meetings default to one weekly pattern per section; DDL/exam dates stay one-off.
 Missing semester boundaries no longer require editing every class occurrence.
+Pending imports use compact expandable cards with selection, title/type/time,
+course/location and a two-line notes preview. Expand a card for the complete notes
+(including tutorial topics), evidence and editable fields. Missing required
+information opens for correction; draft edits, selections and disclosure state
+survive calendar navigation. A sticky selected-count confirmation bar reduces
+mobile scrolling without truncating saved content or paginating the preview.
 
 For weekly patterns, the server uses the Profile school and the extracted year,
 term, campus/faculty and course codes to search the university's allowlisted

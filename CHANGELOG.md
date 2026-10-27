@@ -2,6 +2,8 @@
 
 ## 2026-10-26
 
+- Compact pending Schedule imports into selectable, expandable cards. Keep title/type/time, course/location and a two-line notes preview visible; preserve complete notes, tutorial topics, evidence, warnings and editable fields inside each card. Open incomplete items for correction, retain disclosure/draft state during navigation, and keep a selected-count confirmation bar within reach on mobile without pagination or a nested scrolling list.
+
 - Prioritize syllabus quizzes, tests/exams and assignment deadlines as separate manually completed tasks. Match repeated timetable Lecture/Tutorial occurrences by normalized course, meeting type, actual instant and compatible section identifiers rather than title, including school time zones and UofT term suffixes. Skip duplicates during extraction review and recheck fresh saved items at confirmation; preserve distinct courses/sections and same-time assessments, count only new occurrences in previews, and avoid creating an empty planner for duplicate-only imports.
 
 - Automatically treat elapsed Lecture/Tutorial meetings as completed at their valid end time (or recorded start time when no end is available), with no manual completion button or database rewrites. Share the rule across calendar/day/agenda views and server AI context; keep overdue assignments unfinished and visible until explicitly completed. Preserve prior manual completion records and refresh class status while the calendar stays open.

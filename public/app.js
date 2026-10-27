@@ -9,6 +9,7 @@
   const studyModes = window.StudyBridgeStudyModes;
   const scheduleImport = window.StudyBridgeScheduleImport;
   const scheduleCalendarView = window.StudyBridgeScheduleCalendar;
+  const scheduleDraftDisclosure = new WeakMap();
   const userActivity = window.StudyBridgeUserActivity;
   const learningStyle = window.StudyBridgeLearningStyle;
   let learningStyleEditor = null;
@@ -1133,11 +1134,37 @@
   function scheduleReviewHtml() {
     if (!state.scheduleDrafts.length) return "";
     return `<article class="card schedule-review"><h2>核对提取结果（${state.scheduleDrafts.length} 条）</h2>
-      <p>${esc(state.scheduleSource)} · 尚未加入时间表。${state.scheduleDrafts.some((item) => item.weekly) ? "课表按每周规则显示，确认一次即可生成本学期剩余上课日期。" : "核对 quiz、考试和作业的日期与时间，确认后加入完整日程。"}</p>
+      <p>${esc(state.scheduleSource)} · 尚未加入时间表。勾选要加入的项目，点开卡片可编辑并查看完整备注与原文。${state.scheduleDrafts.some((item) => item.weekly) ? "每周课程确认一次即可生成本学期剩余安排。" : ""}</p>
       ${state.scheduleDrafts.some((item) => item.weekly) ? scheduleCalendarHtml() : ""}
       <fieldset ${state.scheduleImportBusy ? "disabled" : ""}>
-      ${state.scheduleDrafts.map((item, index) => `<section class="schedule-draft" data-draft="${index}">
-        <label class="schedule-select"><input type="checkbox" data-draft-field="selected" ${item.selected ? "checked" : ""}>加入时间表</label>
+      ${state.scheduleDrafts.map((item, index) => scheduleDraftHtml(item, index)).join("")}
+      <div class="schedule-review-actions"><span data-review-selected-count aria-live="polite">已选 ${state.scheduleDrafts.filter((item) => item.selected).length} 项</span><button class="primary" data-action="confirm-schedule">确认加入</button><button data-action="cancel-schedule">取消</button></div>
+      </fieldset></article>`;
+  }
+
+  function scheduleDraftSummary(item) {
+    const valid = item.weekly ? scheduleImport.validWeekly(item.weekly) : scheduleImport.validTime(item.startsAt);
+    return {
+      title: item.title.trim() || "未命名项目", kind: item.kind,
+      time: item.weekly ? `每周${item.weekly.weekdays.map((weekday) => ["日", "一", "二", "三", "四", "五", "六"][weekday]).join("、") || "（待补星期）"} ${item.weekly.startTime || "时间待补充"}${item.weekly.endTime ? `–${item.weekly.endTime}` : ""}` : valid ? item.startsAt.replace("T", " ") : "日期 / 时间待补充",
+      context: [item.course, item.location].filter(Boolean).join(" · "), notes: item.notes.trim(),
+      warning: item.warning || (!item.title.trim() || !valid ? "请补全标题或时间后再加入。" : ""), needsInput: !item.title.trim() || !valid
+    };
+  }
+
+  function scheduleDraftHtml(item, index) {
+    const summary = scheduleDraftSummary(item);
+    const open = scheduleDraftDisclosure.has(item) ? scheduleDraftDisclosure.get(item) : summary.needsInput;
+    return `<section class="schedule-draft" data-draft="${index}">
+      <label class="schedule-review-select"><input type="checkbox" data-draft-field="selected" aria-label="加入时间表：${esc(summary.title)}" ${item.selected ? "checked" : ""}></label>
+      <details class="schedule-draft-editor" data-review-editor="${index}" ${open ? "open" : ""}>
+        <summary class="schedule-draft-summary"><b data-review-title>${esc(summary.title)}</b><span class="schedule-review-chevron" aria-hidden="true">⌄</span>
+          <span class="schedule-review-meta"><span data-review-kind>${esc(summary.kind)}</span><span data-review-time>${esc(summary.time)}</span></span>
+          <span class="schedule-review-context" data-review-context ${summary.context ? "" : "hidden"}>${esc(summary.context)}</span>
+          <span class="schedule-review-note" data-review-note ${summary.notes ? "" : "hidden"}>${summary.notes ? `备注：${esc(summary.notes)}` : ""}</span>
+          <span class="schedule-review-warning" data-review-warning ${summary.warning ? "" : "hidden"}>需核对：${esc(summary.warning)}</span>
+        </summary>
+        <div class="schedule-draft-fields">
         <div class="inline-fields"><label>类型<select data-draft-field="kind">${(item.weekly ? ["LEC", "TUT"] : ["DDL", "LEC", "TUT"]).map((kind) => `<option ${item.kind === kind ? "selected" : ""}>${kind}</option>`).join("")}</select></label>
         ${item.weekly ? `<label>每周上课时间<input type="time" data-weekly-field="startTime" value="${esc(item.weekly.startTime)}"></label><label>结束时间<input type="time" data-weekly-field="endTime" value="${esc(item.weekly.endTime)}"></label>` : `<label>日期与时间<input type="datetime-local" data-draft-field="startsAt" value="${esc(item.startsAt)}"></label>`}</div>
         ${item.weekly ? `<div class="schedule-weekdays" aria-label="每周上课日">${["日", "一", "二", "三", "四", "五", "六"].map((day, weekday) => `<label><input type="checkbox" data-weekday="${weekday}" ${item.weekly.weekdays.includes(weekday) ? "checked" : ""}>周${day}</label>`).join("")}</div><p class="muted">每周重复；只在授课日安排，跳过官网停课日期。</p>` : ""}
@@ -1146,9 +1173,22 @@
         <label>备注<textarea data-draft-field="notes">${esc(item.notes)}</textarea></label>
         ${item.evidence ? `<p class="muted">原文：${esc(item.evidence)}</p>` : ""}
         ${item.warning ? `<p class="schedule-warning">需核对：${esc(item.warning)}</p>` : ""}
-      </section>`).join("")}
-      <div class="inline-fields"><button class="primary" data-action="confirm-schedule">确认并添加所选项目</button><button data-action="cancel-schedule">取消导入</button></div>
-      </fieldset></article>`;
+        </div>
+      </details>
+    </section>`;
+  }
+
+  function refreshScheduleDraftSummary(section, item) {
+    if (!section || !item) return;
+    const summary = scheduleDraftSummary(item);
+    for (const key of ["title", "kind", "time", "context", "note", "warning"]) {
+      const element = section.querySelector(`[data-review-${key}]`);
+      if (!element) continue;
+      const value = key === "note" ? summary.notes : summary[key];
+      element.textContent = `${key === "note" && value ? "备注：" : key === "warning" && value ? "需核对：" : ""}${value || ""}`;
+      element.hidden = !value;
+    }
+    section.querySelector('[data-draft-field="selected"]').setAttribute("aria-label", `加入时间表：${summary.title}`);
   }
 
   function scheduleCalendarHtml() {
@@ -1186,7 +1226,10 @@
         draft.warning = "";
         section.querySelector(".schedule-warning")?.remove();
       }
+      if (draft && !draft.weekly && scheduleImport.validTime(draft.startsAt) && draft.warning === "日期或时间不完整，请补全后确认。") { draft.warning = ""; section.querySelector(".schedule-warning")?.remove(); }
+      refreshScheduleDraftSummary(section, draft);
     });
+    root.querySelectorAll("[data-review-selected-count]").forEach((element) => { element.textContent = `已选 ${state.scheduleDrafts.filter((item) => item.selected).length} 项`; });
     const preview = root.querySelector("[data-schedule-preview-count]");
     if (!preview || !state.scheduleCalendar) return;
     try { preview.textContent = `新增 ${scheduleImport.deduplicate(scheduleImport.expandWeekly(state.scheduleDrafts.filter((item) => item.selected), state.scheduleCalendar, { fromDate: state.scheduleFromDate }), state.scheduleItems).items.length} 次安排（自动跳过重复）`; }
@@ -2367,7 +2410,7 @@
 
   document.addEventListener("input", (event) => {
     if (event.target.dataset?.calendarField) { state.scheduleCalendarDraft[event.target.dataset.calendarField] = event.target.value; return; }
-    if (event.target.dataset?.weeklyField) { const draft = state.scheduleDrafts[Number(event.target.closest("[data-draft]")?.dataset.draft)]; if (draft?.weekly) draft.weekly[event.target.dataset.weeklyField] = event.target.value; return; }
+    if (event.target.dataset?.weeklyField) { const section = event.target.closest("[data-draft]"); const draft = state.scheduleDrafts[Number(section?.dataset.draft)]; if (draft?.weekly) { draft.weekly[event.target.dataset.weeklyField] = event.target.value; refreshScheduleDraftSummary(section, draft); } return; }
     if (event.target.dataset?.communityReply) { communityReplies.thread(event.target.dataset.communityReply).draft = event.target.value; return; }
     if (event.target?.id === "postTopic") { state.communityDraft.topic = event.target.value; return; }
     if (event.target?.id === "postContent") { state.communityDraft.content = event.target.value; return; }
@@ -2377,7 +2420,7 @@
     const field = event.target.dataset?.draftField;
     if (!field) return;
     const item = state.scheduleDrafts[Number(event.target.closest("[data-draft]")?.dataset.draft)];
-    if (item) item[field] = field === "selected" ? event.target.checked : event.target.value;
+    if (item) { item[field] = field === "selected" ? event.target.checked : event.target.value; refreshScheduleDraftSummary(event.target.closest("[data-draft]"), item); }
   });
 
   const composingChatInputs = new WeakSet();
@@ -2405,6 +2448,10 @@
   });
 
   document.addEventListener("toggle", (event) => {
+    if (event.target.matches?.("[data-review-editor]") && event.target.isConnected) {
+      const draft = state.scheduleDrafts[Number(event.target.dataset.reviewEditor)];
+      if (draft) scheduleDraftDisclosure.set(draft, event.target.open);
+    }
     if (event.target?.id === "scheduleManual") state.scheduleManualOpen = event.target.open;
     if (event.target?.id === "scheduleImportPanel") state.scheduleImportOpen = event.target.open;
   }, true);

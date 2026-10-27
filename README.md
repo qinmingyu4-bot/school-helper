@@ -328,9 +328,20 @@ supported. Review stays grouped by pattern, not by every occurrence. School-loca
 wall times are converted to UTC with DST handling. Up to 200 source patterns and
 1500 generated occurrences are allowed; re-imports skip existing UTC duplicates.
 
-File import and the reminder list use the full available page width. The manual
-form expands on demand, and completed reminders stay in a collapsible section.
-Review cards adapt to the width of the content area, including narrow side panels.
+Schedule opens with a monthly calendar, a today marker, month navigation and
+selectable day details. The independent chronological agenda spans every month
+and offers upcoming, all and completed views for lectures, tutorials, assignment
+deadlines and personal events. The next future event is highlighted separately;
+ongoing classes and overdue, unfinished assignments remain visible. Desktop day
+cells show event previews; narrow screens use colored dots and counts.
+
+Students can add a personal event or course/deadline from a selected day, with
+a required title/start time and optional same-day end time, course, location and
+notes. Manual events use the existing private planner without requiring AI.
+File import and manual entry expand on demand. Month/day/agenda navigation keeps
+the manual draft and chosen upload file; marking an imported event complete
+preserves its duration, school time zone and recurrence metadata. Review cards
+adapt to the width of the content area, including narrow side panels.
 
 Confirmation saves reminders in the existing per-user planner, skips duplicates,
 and preserves remaining drafts if saving fails. Countdown labels refresh every

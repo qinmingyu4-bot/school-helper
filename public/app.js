@@ -8,6 +8,7 @@
   const isGeneralChat = () => state.activeCourseId === chatSpaces.general.id;
   const studyModes = window.StudyBridgeStudyModes;
   const scheduleImport = window.StudyBridgeScheduleImport;
+  const scheduleCalendarView = window.StudyBridgeScheduleCalendar;
   const userActivity = window.StudyBridgeUserActivity;
   const learningStyle = window.StudyBridgeLearningStyle;
   let learningStyleEditor = null;
@@ -96,6 +97,13 @@
     messages: [],
     allDocs: [],
     scheduleItems: [],
+    scheduleMonth: "",
+    scheduleSelectedDate: "",
+    scheduleAgendaView: "upcoming",
+    scheduleUploadFile: null,
+    scheduleImportOpen: false,
+    scheduleSaving: false,
+    scheduleClockSignature: "",
     scheduleDrafts: [],
     scheduleSource: "",
     scheduleImportBusy: false,
@@ -1065,13 +1073,32 @@
   }
 
   function schedulePage() {
-    const items = state.scheduleItems || [];
-    const pending = items.filter((item) => !item.completedAt).sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
-    const done = items.filter((item) => item.completedAt);
+    const model = scheduleMonthModel();
+    state.scheduleMonth = model.month;
+    state.scheduleSelectedDate = model.selectedDate;
+    const draft = state.scheduleManualDraft;
+    state.scheduleClockSignature = scheduleClockSignature(model);
     return `
-      ${pageHeader("SCHEDULE", "时间表", "你的 DDL、Lecture 和 Tutorial，一处掌握。")}
+      ${pageHeader("SCHEDULE", "时间表", "一个月历，收好你的课程、作业与生活安排。")}
       <section class="schedule-layout">
-        <article class="card schedule-upload">
+        <div id="scheduleCalendarView" class="planner-view">${scheduleCalendarView.render(model, { agendaView: state.scheduleAgendaView, countdown: dueText })}</div>
+        <details class="card schedule-manual" id="scheduleManual" ${state.scheduleManualOpen ? "open" : ""}>
+          <summary><span><b>＋ 新增安排</b><small>课程、作业截止、个人计划，都放在这里</small></span><span class="schedule-disclosure" aria-hidden="true">⌄</span></summary>
+          <div class="schedule-manual-form">
+            <label class="schedule-field-wide">标题<input id="scheduleTitle" data-manual-field="title" maxlength="160" value="${esc(draft.title || "")}" placeholder="例如 复习 STA437 或 Essay 1 截止"></label>
+            <label>类型<select id="scheduleKind" data-manual-field="kind">${[["EVENT", "个人安排"], ["DDL", "作业 / 截止"], ["LEC", "Lecture"], ["TUT", "Tutorial"]].map(([kind, label]) => `<option value="${kind}" ${(draft.kind || "EVENT") === kind ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+            <label>日期<input id="scheduleDate" data-manual-field="date" type="date" min="2000-01-01" max="2200-12-31" value="${esc(draft.date || model.selectedDate)}"></label>
+            <label>开始 / 截止时间<input id="scheduleClock" data-manual-field="time" type="time" value="${esc(draft.time || "")}"></label>
+            <label>结束时间（选填，当天）<input id="scheduleEndClock" data-manual-field="endTime" type="time" value="${esc(draft.endTime || "")}"></label>
+            <label>课程（选填）<input id="scheduleCourse" data-manual-field="course" maxlength="80" value="${esc(draft.course || "")}" placeholder="例如 STA437"></label>
+            <label>地点 / 链接（选填）<input id="scheduleLocation" data-manual-field="location" maxlength="160" value="${esc(draft.location || "")}" placeholder="教室、会议地点或提交入口"></label>
+            <label class="schedule-field-wide">备注（选填）<textarea id="scheduleNotes" data-manual-field="notes" maxlength="600" placeholder="补充要求或备注">${esc(draft.notes || "")}</textarea></label>
+            <div class="schedule-field-wide schedule-form-actions"><button class="primary" data-action="add-schedule" ${state.scheduleSaving ? "disabled" : ""}>${state.scheduleSaving ? "正在保存…" : "保存安排"}</button></div>
+          </div>
+        </details>
+        <details class="card planner-import" id="scheduleImportPanel" ${state.scheduleImportOpen || state.scheduleImportBusy || state.scheduleDrafts.length ? "open" : ""}>
+          <summary><span>从课程文件导入</span><small>上传课表、syllabus 或课程资料，自动提取安排 ⌄</small></summary>
+          <div class="schedule-upload">
           <div class="schedule-upload-intro">
             <span class="schedule-kicker">AI IMPORT</span>
             <h2>把课程文件变成时间表</h2>
@@ -1082,45 +1109,25 @@
             <label class="schedule-file-picker ${state.scheduleImportBusy || state.scheduleDrafts.length ? "is-disabled" : ""}">
               <input id="scheduleFile" aria-label="选择课程文件" type="file" accept=".png,.jpg,.jpeg,.webp,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md,.csv,.json" ${state.scheduleImportBusy || state.scheduleDrafts.length ? "disabled" : ""}>
               <span class="schedule-file-symbol" aria-hidden="true">↑</span>
-              <span><strong id="scheduleFileName">选择课程文件</strong><small>课表截图、PDF、Word、PPT、Excel 或文字文件</small></span>
+              <span><strong id="scheduleFileName">${esc(state.scheduleUploadFile?.name || "选择课程文件")}</strong><small>课表截图、PDF、Word、PPT、Excel 或文字文件</small></span>
             </label>
             <div class="schedule-upload-bottom"><small>PDF ≤ 8 MB · 其他文件 ≤ 12 MB</small><button class="primary" data-action="extract-schedule" ${state.scheduleImportBusy || state.scheduleDrafts.length ? "disabled" : ""}>${state.scheduleImportBusy ? "处理中…" : "AI 提取时间"}</button></div>
           </div>
           ${state.scheduleImportStatus ? `<p class="schedule-import-status" role="status" aria-live="polite">${esc(state.scheduleImportStatus)}</p>` : ""}
-        </article>
-        ${scheduleReviewHtml()}
-        <details class="card schedule-manual" id="scheduleManual" ${state.scheduleManualOpen ? "open" : ""}>
-          <summary><span><b>＋ 手动添加提醒</b><small>直接填写一条 DDL、LEC 或 TUT</small></span><span class="schedule-disclosure" aria-hidden="true">⌄</span></summary>
-          <div class="schedule-manual-form">
-            <label class="schedule-field-wide">标题<input id="scheduleTitle" data-manual-field="title" value="${esc(state.scheduleManualDraft.title || "")}" placeholder="例如 ECO101 Essay 1"></label>
-            <label>类型<select id="scheduleKind" data-manual-field="kind">${["DDL", "LEC", "TUT"].map((kind) => `<option ${state.scheduleManualDraft.kind === kind ? "selected" : ""}>${kind}</option>`).join("")}</select></label>
-            <label>日期与时间<input id="scheduleTime" data-manual-field="startsAt" type="datetime-local" value="${esc(state.scheduleManualDraft.startsAt || "")}"></label>
-            <label>课程<input id="scheduleCourse" data-manual-field="course" value="${esc(state.scheduleManualDraft.course || "")}" placeholder="例如 ECO101"></label>
-            <label>地点 / 链接<input id="scheduleLocation" data-manual-field="location" value="${esc(state.scheduleManualDraft.location || "")}" placeholder="教室或提交入口"></label>
-            <label class="schedule-field-wide">备注（选填）<textarea id="scheduleNotes" data-manual-field="notes" placeholder="补充要求或备注">${esc(state.scheduleManualDraft.notes || "")}</textarea></label>
-            <div class="schedule-field-wide schedule-form-actions"><button class="primary" data-action="add-schedule">添加提醒</button></div>
           </div>
+        ${scheduleReviewHtml()}
         </details>
-        <article class="card schedule-reminders">
-          <div class="schedule-list-header"><div><h2>待办与课程</h2><p>${pending.length ? `${pending.length} 条提醒 · 按时间排序` : "确认后的时间点会显示在这里"}</p></div>
-          <div class="schedule-type-legend"><span>DDL 截止</span><span>LEC 讲座</span><span>TUT 辅导课</span></div></div>
-          ${pending.length ? `<div class="schedule-list-rows">${pending.map((item) => scheduleItemHtml(item)).join("")}</div>` : `<div class="schedule-empty"><span aria-hidden="true">◷</span><b>时间表还空着</b><p>上传一份课程文件，或手动添加第一条提醒。</p></div>`}
-          ${done.length ? `<details class="schedule-completed"><summary>已完成 <span>${done.length}</span></summary>${done.map((item) => `<div class="mini-row done"><b>${esc(item.title)}</b><small>${esc(formatDate(item.startsAt))}</small></div>`).join("")}</details>` : ""}
-        </article>
-        <p class="schedule-timezone">时区：${esc(Intl.DateTimeFormat().resolvedOptions().timeZone)} · 不确定的时间将在确认时标出</p>
+        <p class="schedule-timezone">月历和新增安排使用当前时区：${esc(model.timeZone)} · 导入课程按学校时区换算</p>
       </section>
     `;
   }
 
-  function scheduleItemHtml(item) {
-    return `
-      <div class="schedule-item">
-        <span>${esc(scheduleImport.kind(item.kind) || item.kind || "DDL")}</span>
-        <div><b>${esc(item.title)}</b><small>${esc([item.course, formatDate(item.startsAt), item.location].filter(Boolean).join(" · "))}</small></div>
-        <strong data-countdown="${esc(item.startsAt)}">${esc(dueText(item.startsAt))}</strong>
-        <button data-action="complete-schedule" data-course="${esc(item.courseId)}" data-doc="${esc(item.docId)}">已完成</button>
-      </div>
-    `;
+  function scheduleMonthModel() {
+    return scheduleCalendarView.buildModel({ items: state.scheduleItems || [], month: state.scheduleMonth, selectedDate: state.scheduleSelectedDate });
+  }
+
+  function scheduleClockSignature(model) {
+    return JSON.stringify([model.today, model.next?.docId, model.upcoming.length, model.overdue.length, model.ongoing.map((item) => item.docId)]);
   }
 
   function scheduleReviewHtml() {
@@ -1188,7 +1195,7 @@
 
   async function extractScheduleFile() {
     if (state.scheduleImportBusy || state.scheduleDrafts.length) return;
-    const file = $("scheduleFile")?.files?.[0];
+    const file = $("scheduleFile")?.files?.[0] || state.scheduleUploadFile;
     if (!file) throw new Error("请先选择一个文件。");
     validateUploadFile(file);
     if (/\.pdf$/i.test(file.name) && file.size > 8 * 1024 * 1024) throw new Error("PDF 最大支持 8 MB。");
@@ -1237,6 +1244,7 @@
         state.scheduleDrafts = state.scheduleDrafts.filter((draft) => draft !== item);
       }
       state.scheduleDrafts = [];
+      state.scheduleUploadFile = null;
       state.scheduleImportStatus = `已添加 ${saved} 条倒计时提醒${duplicates ? `，跳过 ${duplicates} 条重复项目` : ""}。`;
     } catch (error) { state.scheduleImportStatus = `已保存 ${saved} 条，其余项目仍待确认；重试会跳过已保存的重复项目。${error.message}`; }
     finally {
@@ -1358,6 +1366,9 @@
       kind: data.kind || "DDL",
       course: data.course || (course.name === SCHEDULE_COURSE ? "" : course.name),
       startsAt: data.startsAt || doc.createdAt,
+      endsAt: data.endsAt || "",
+      timeZone: data.timeZone || "",
+      recurrence: data.recurrence,
       location: data.location || "",
       notes: data.notes || "",
       completedAt: data.completedAt || ""
@@ -2025,19 +2036,58 @@
         if ($("emailOriginal")) $("toolOutput").innerHTML = emailDraft.output;
         return;
       }
+      if (action === "schedule-month" || action === "schedule-today" || action === "schedule-day" || action === "schedule-agenda") {
+        const model = scheduleMonthModel();
+        if (action === "schedule-month") {
+          state.scheduleMonth = scheduleCalendarView.shiftMonth(model.month, Number(button.dataset.offset));
+          state.scheduleSelectedDate = state.scheduleMonth === model.today.slice(0, 7) ? model.today : `${state.scheduleMonth}-01`;
+        }
+        if (action === "schedule-today") { state.scheduleSelectedDate = model.today; state.scheduleMonth = model.today.slice(0, 7); }
+        if (action === "schedule-day" && scheduleImport.validDate(button.dataset.date)) { state.scheduleSelectedDate = button.dataset.date; state.scheduleMonth = button.dataset.date.slice(0, 7); }
+        if (action === "schedule-agenda" && ["upcoming", "all", "completed"].includes(button.dataset.view)) state.scheduleAgendaView = button.dataset.view;
+        render();
+        if (action === "schedule-day") {
+          root.querySelector('.planner-day[aria-pressed="true"]')?.focus({ preventScroll: true });
+          root.querySelector(".planner-day-detail")?.scrollIntoView({ block: "nearest" });
+        }
+        if (action === "schedule-agenda") root.querySelector(`.planner-tabs [data-view="${state.scheduleAgendaView}"]`)?.focus({ preventScroll: true });
+        if (action === "schedule-month") root.querySelector(`.planner-month-nav [data-offset="${button.dataset.offset}"]`)?.focus({ preventScroll: true });
+        if (action === "schedule-today") root.querySelector('[data-action="schedule-today"]')?.focus({ preventScroll: true });
+        return;
+      }
+      if (action === "schedule-new") {
+        if (!scheduleImport.validDate(button.dataset.date)) return;
+        state.scheduleManualDraft.date = button.dataset.date;
+        state.scheduleManualOpen = true;
+        render();
+        $("scheduleManual")?.scrollIntoView({ block: "center" });
+        $("scheduleTitle")?.focus({ preventScroll: true });
+        return;
+      }
       if (action === "add-schedule") {
-        if (button.disabled) return;
-        const startsAt = $("scheduleTime")?.value || "";
+        if (button.disabled || state.scheduleSaving) return;
+        const day = $("scheduleDate")?.value || "";
+        const startsAt = `${day}T${$("scheduleClock")?.value || ""}`;
+        const endClock = $("scheduleEndClock")?.value || "";
         const title = $("scheduleTitle")?.value.trim() || "";
         if (!title || !scheduleImport.validTime(startsAt)) throw new Error("请填写标题和有效日期、时间。");
+        if (endClock && (!scheduleImport.validClock(endClock) || endClock <= startsAt.slice(11))) throw new Error("结束时间应晚于开始时间；跨天安排请分天添加。");
+        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const payload = { title, kind: scheduleImport.kind($("scheduleKind")?.value) || "EVENT", course: $("scheduleCourse")?.value || "", startsAt: scheduleImport.toUtc(startsAt, timeZone),
+          endsAt: endClock ? scheduleImport.toUtc(`${day}T${endClock}`, timeZone) : "", timeZone, location: $("scheduleLocation")?.value || "", notes: $("scheduleNotes")?.value || "", completedAt: "" };
         button.disabled = true;
+        state.scheduleSaving = true;
         try {
         const course = await ensureScheduleCourse();
-        const payload = { title, kind: $("scheduleKind")?.value || "DDL", course: $("scheduleCourse")?.value || "", startsAt: new Date(startsAt).toISOString(), location: $("scheduleLocation")?.value || "", notes: $("scheduleNotes")?.value || "", completedAt: "" };
         await api(`/api/courses/${course.id}/documents`, { method: "POST", body: { title: `${SCHEDULE_PREFIX} ${payload.title}`, type: "Schedule", text: JSON.stringify(payload) } });
         state.scheduleManualDraft = {};
+        state.scheduleManualOpen = false;
+        state.scheduleSelectedDate = day;
+        state.scheduleMonth = day.slice(0, 7);
+        state.scheduleSaving = false;
+        setToast("安排已保存，已同步到月历和完整日程。");
         await loadPage("schedule");
-        } finally { button.disabled = false; }
+        } finally { state.scheduleSaving = false; button.disabled = false; }
         return;
       }
       if (action === "extract-schedule") { await extractScheduleFile(); return; }
@@ -2045,6 +2095,7 @@
       if (action === "cancel-schedule") {
         if (state.scheduleImportBusy) return;
         state.scheduleDrafts = [];
+        state.scheduleUploadFile = null;
         state.scheduleImportStatus = "已取消，未添加待确认项目。";
         render(); return;
       }
@@ -2272,6 +2323,10 @@
   });
 
   document.addEventListener("change", (event) => {
+    if (event.target?.id === "scheduleMonthPicker") {
+      if (scheduleImport.validDate(`${event.target.value}-01`)) { state.scheduleMonth = event.target.value; state.scheduleSelectedDate = `${event.target.value}-01`; render(); $("scheduleMonthPicker")?.focus({ preventScroll: true }); }
+      return;
+    }
     if (event.target.dataset?.calendarField) { state.scheduleCalendarDraft[event.target.dataset.calendarField] = event.target.value; applyScheduleCalendarDraft(); return; }
     if (event.target.dataset?.weekday) {
       const draft = state.scheduleDrafts[Number(event.target.closest("[data-draft]")?.dataset.draft)];
@@ -2283,8 +2338,9 @@
     if (event.target?.id === "postAnon") { state.communityDraft.anonymous = event.target.checked; return; }
     if (["englishTerms", "englishAnswers", "chineseExplanations"].includes(event.target?.id)) { scheduleLearningStyleSave(); return; }
     if (event.target?.id === "scheduleFile") {
+      state.scheduleUploadFile = event.target.files?.[0] || state.scheduleUploadFile;
       const name = $("scheduleFileName");
-      if (name) name.textContent = event.target.files?.[0]?.name || "选择课程文件";
+      if (name) name.textContent = state.scheduleUploadFile?.name || "选择课程文件";
       return;
     }
     if (event.target?.id === "studyMode") {
@@ -2348,6 +2404,7 @@
 
   document.addEventListener("toggle", (event) => {
     if (event.target?.id === "scheduleManual") state.scheduleManualOpen = event.target.open;
+    if (event.target?.id === "scheduleImportPanel") state.scheduleImportOpen = event.target.open;
   }, true);
 
   async function reportUserActivity() {
@@ -2399,6 +2456,14 @@
 
   setInterval(() => {
     updateAdminActivityLabels();
+    if (state.page === "schedule" && $("scheduleCalendarView")) {
+      const model = scheduleMonthModel();
+      const signature = scheduleClockSignature(model);
+      if (signature !== state.scheduleClockSignature) {
+        state.scheduleClockSignature = signature;
+        $("scheduleCalendarView").innerHTML = scheduleCalendarView.render(model, { agendaView: state.scheduleAgendaView, countdown: dueText });
+      }
+    }
     root.querySelectorAll("[data-countdown]").forEach((element) => {
       element.textContent = dueText(element.dataset.countdown);
     });

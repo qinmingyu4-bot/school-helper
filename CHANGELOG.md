@@ -2,6 +2,8 @@
 
 ## 2026-10-26
 
+- Redesign Schedule as a monthly calendar with today/month navigation, selectable day details and a separate chronological agenda spanning all months. Show the next event and ongoing classes, distinguish Lecture/Tutorial/deadlines/personal plans, retain completed and overdue entries, and add day-prefilled personal arrangements with optional end times. Preserve existing imports, upload selections and manual drafts during calendar navigation; retain imported duration/time-zone/recurrence data when marking entries complete.
+
 - Prepare the user-authorized `1.1.89` AWS release containing all five locally reviewed updates: school suggestions, 50 MiB course materials, community replies, profile-photo compression and weekly timetable/calendar defaults. Bump package/frontend/cache versions and retain `3348e36` (`1.1.88`) as the code rollback target; exclude databases, credentials, browser fixtures and temporary verification files.
 
 - Treat timetable LEC/TUT grids as weekly patterns, preserving original image/PDF layout. Look up teaching dates and no-class periods from the Profile school's official calendar with source/year/scope checks, then expand only upcoming teaching-day occurrences through the last class day with DST-aware school-local times. Show one shared semester/source summary and grouped meeting rules; preserve one-off deadlines and ask only for genuinely missing weekday/time or unverified semester information. No reminders are created before confirmation.

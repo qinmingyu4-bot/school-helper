@@ -1,6 +1,6 @@
 (function (scope) {
   "use strict";
-  const kinds = { ddl: "DDL", deadline: "DDL", lec: "LEC", lecture: "LEC", class: "LEC", tut: "TUT", tutorial: "TUT" };
+  const kinds = { ddl: "DDL", deadline: "DDL", lec: "LEC", lecture: "LEC", class: "LEC", tut: "TUT", tutorial: "TUT", event: "EVENT", personal: "EVENT", appointment: "EVENT" };
   function kind(value) { const key = String(value || "").toLowerCase(); return Object.hasOwn(kinds, key) ? kinds[key] : ""; }
   function validTime(value) {
     if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(String(value || ""))) return false;
@@ -23,7 +23,7 @@
       if (!row || typeof row !== "object" || Array.isArray(row) || !kind(row.kind)) throw new Error("AI 返回了无法识别的类型，请重新提取。");
       const string = (key, limit) => String(row[key] || "").trim().slice(0, limit);
       const startsAt = string("startsAt", 30);
-      const weekly = kind(row.kind) !== "DDL" && row.weekly && typeof row.weekly === "object" ? {
+      const weekly = ["LEC", "TUT"].includes(kind(row.kind)) && row.weekly && typeof row.weekly === "object" ? {
         weekdays: [...new Set(Array.isArray(row.weekly.weekdays) ? row.weekly.weekdays.filter((day) => Number.isInteger(day) && day >= 0 && day <= 6) : [])],
         startTime: String(row.weekly.startTime || "").slice(0, 5), endTime: String(row.weekly.endTime || "").slice(0, 5),
         startDate: validDate(row.weekly.startDate) ? row.weekly.startDate : "", endDate: validDate(row.weekly.endDate) ? row.weekly.endDate : ""

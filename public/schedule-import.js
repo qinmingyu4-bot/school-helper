@@ -18,6 +18,22 @@
     const parts = { ...draftDateTime(item), [field]: value };
     return { ...item, ...parts, startsAt: validDate(parts.date) && validClock(parts.time) ? `${parts.date}T${parts.time}` : "" };
   }
+  function draftIssues(item) {
+    const issues = [];
+    const add = (field, label, message) => issues.push({ field, label, message });
+    if (!String(item.title || "").trim()) add("title", "标题", "请填写标题。");
+    if (item.weekly) {
+      if (!Array.isArray(item.weekly.weekdays) || !item.weekly.weekdays.length || item.weekly.weekdays.some((day) => !Number.isInteger(day) || day < 0 || day > 6)) add("weekdays", "星期", "请选择有效的上课星期。");
+      if (!validClock(item.weekly.startTime)) add("startTime", "上课时间", "请补充有效的上课时间。");
+      if (item.weekly.endTime && (!validClock(item.weekly.endTime) || validClock(item.weekly.startTime) && item.weekly.endTime <= item.weekly.startTime)) add("endTime", "结束时间", "结束时间应晚于上课时间。");
+    } else {
+      const parts = draftDateTime(item);
+      if (!parts.date) add("date", "日期", "请补充有效日期。");
+      if (!parts.time) add("time", "时间", "请补充具体时间；材料未注明时，请先核实。");
+      if (item.endsAt && (!validTime(item.endsAt) || validTime(item.startsAt) && item.endsAt <= item.startsAt)) add("endsAt", "结束时间", "请填写晚于开始时间的有效结束日期与时间。");
+    }
+    return issues;
+  }
   function explicitDraftDate(row) {
     const supplied = String(row.date || row.startsAt || "").slice(0, 10);
     if (validDate(supplied)) return supplied;
@@ -255,7 +271,7 @@
     if (Number.isFinite(start) && finish <= Number(new Date(now))) return { classMeeting, automatic: true, completedAt: new Date(finish).toISOString() };
     return result;
   }
-  const api = { duplicateNotice, draftDateTime, withDatePart, kind, validTime, validDate, validClock, validWeekly, parse, parseExtraction, normalizeCalendar, nonTeachingRanges, todayInZone, toUtc, expandWeekly, fingerprint, duplicateIndex, deduplicate, reviewDuplicates, completion };
+  const api = { draftIssues, duplicateNotice, draftDateTime, withDatePart, kind, validTime, validDate, validClock, validWeekly, parse, parseExtraction, normalizeCalendar, nonTeachingRanges, todayInZone, toUtc, expandWeekly, fingerprint, duplicateIndex, deduplicate, reviewDuplicates, completion };
   if (typeof module === "object" && module.exports) module.exports = api;
   else scope.StudyBridgeScheduleImport = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

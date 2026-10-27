@@ -2,6 +2,8 @@
 
 ## 2026-10-27
 
+- Highlight incomplete selected import drafts and exact missing/invalid fields with fixed amber status colors, inline guidance and accessible descriptions. Keep a persistent issue count beside confirmation; block saving before progress starts and expand/focus/scroll to the first problem. Clear highlighting as fields are corrected or items deselected, retain nonblocking source warnings and show server/save errors inside the preview.
+
 - Release `1.1.98`: remove university-calendar availability as a prerequisite for weekly import duplicate review. Include bounded-date comparison, conservative unknown-range pattern matching and both upload-order regression coverage. Refresh frontend/cache versions; preserve existing account/schedule data. Code rollback target: `61be81b` (`1.1.97`).
 
 - Fix weekly import duplicate review when university-calendar lookup fails: compare explicit source date ranges independently, or conservatively flag matching stored weekly patterns when boundaries are unknown. Default fully matching patterns to unchecked, retain new dates/weekdays and distinct sections/assessments, preserve manual selection and keep final batch duplicate checks. Comparison-only ranges do not create or replace a university calendar.

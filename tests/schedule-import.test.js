@@ -2,6 +2,17 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const importer = require("../public/schedule-import");
 
+test("draft validation pinpoints missing fields without treating source warnings as required input", () => {
+  const quiz = { title: "Quiz 1", kind: "DDL", date: "2027-04-09", startsAt: "", warning: "Tentative date" };
+  assert.deepEqual(importer.draftIssues(quiz).map((issue) => issue.field), ["time"]);
+  const filled = importer.withDatePart(quiz, "time", "10:00");
+  assert.deepEqual(importer.draftIssues(filled), [], "a review warning alone must not block confirmation");
+  assert.deepEqual(importer.draftIssues({ title: "", startsAt: "" }).map((issue) => issue.field), ["title", "date", "time"]);
+  assert.deepEqual(importer.draftIssues({ ...filled, endsAt: "2027-04-09T09:00" }).map((issue) => issue.field), ["endsAt"]);
+  assert.deepEqual(importer.draftIssues({ title: "Tutorial", weekly: { weekdays: [], startTime: "", endTime: "" } }).map((issue) => issue.field), ["weekdays", "startTime"]);
+  assert.deepEqual(importer.draftIssues({ title: "Tutorial", weekly: { weekdays: [1], startTime: "10:00", endTime: "09:00" } }).map((issue) => issue.field), ["endTime"]);
+});
+
 test("date-only portfolio deadlines retain the due date without inventing a clock or using the late cutoff", () => {
   const portfolio = { kind: "DDL", title: "Portfolio", course: "MAT329Y1", startsAt: "", notes: "Due 2027-04-09; submission time not stated.", evidence: "p. 4: Portfolios are due on April 9, 2027. p. 5: Late portfolios will not be accepted after April 14, 2027." };
   const parsed = importer.parse(JSON.stringify([portfolio]))[0];

@@ -158,3 +158,12 @@
 }
 
 .schedule-review-duplicate { grid-column: 1 / -1; color: var(--green); font-size: 11px; line-height: 1.6; font-weight: 500; }
+
+.schedule-review .schedule-draft.has-input-issues { border-color: #d38a18; box-shadow: inset 3px 0 #d38a18; }
+.schedule-review-required { grid-column: 1 / -1; color: #945318; background: #fff4df; padding: 4px 7px; border-radius: 4px; font-size: 12px; font-weight: 600; line-height: 1.6; }
+.schedule-review .schedule-draft [aria-invalid="true"] { border: 2px solid #d38a18; background: #fff8ec; outline-offset: 2px; }
+.schedule-field-error { color: #945318; font-size: 12px; line-height: 1.6; font-weight: 500; }
+.schedule-review-validation { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border: 1px solid #d38a18; background: #fff4df; color: #7c4612; border-radius: 5px; font-size: 12px; line-height: 1.6; }
+.schedule-review-validation[hidden], .schedule-review-validation button[hidden] { display: none; }
+.schedule-review-validation b { flex: 1; min-width: 180px; font-weight: 500; }
+.schedule-review-validation button { flex-shrink: 0; color: #7c4612; border-color: #d38a18; background: white; }

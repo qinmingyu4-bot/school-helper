@@ -981,6 +981,8 @@ function parseScheduleDocument(doc, course = {}) {
       kind: String(data.kind || "deadline").slice(0, 40),
       course: String(data.course || course.name || "").slice(0, 100),
       startsAt: data.startsAt,
+      endsAt: data.endsAt || "",
+      timeZone: data.timeZone || "",
       location: String(data.location || "").slice(0, 160),
       notes: String(data.notes || "").slice(0, 600),
       completedAt: data.completedAt || ""
@@ -1000,7 +1002,7 @@ async function listUserScheduleItems(userId) {
   );
   return perCourse
     .flatMap(({ course, documents }) => documents.map((doc) => parseScheduleDocument(doc, course)).filter(Boolean))
-    .filter((item) => !item.completedAt)
+    .filter((item) => !scheduleImport.completion(item).completedAt)
     .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
 }
 

@@ -40,9 +40,9 @@ test("next task advances at boundaries and keeps ongoing classes, overdue work a
   const model = calendar.buildModel({ ...context, items });
   assert.equal(model.next.title, "Next");
   assert.deepEqual(model.ongoing.map((item) => item.title), ["Ongoing"]);
-  assert.deepEqual(model.upcoming.map((item) => item.title), ["Ongoing", "Next"]);
+  assert.deepEqual(model.upcoming.map((item) => item.title), ["Overdue", "Ongoing", "Next"]);
   assert.deepEqual(model.overdue.map((item) => item.title), ["Overdue"]);
-  assert.equal(model.completed.length, 1);
+  assert.equal(model.completed.length, 2);
   assert.equal(model.rows.length, 5);
   const later = calendar.buildModel({ ...context, items, now: "2026-10-26T16:00:01Z" });
   assert.equal(later.next, null);

@@ -332,7 +332,12 @@ Schedule opens with a monthly calendar, a today marker, month navigation and
 selectable day details. The independent chronological agenda spans every month
 and offers upcoming, all and completed views for lectures, tutorials, assignment
 deadlines and personal events. The next future event is highlighted separately;
-ongoing classes and overdue, unfinished assignments remain visible. Desktop day
+ongoing classes and overdue, unfinished assignments remain visible. Lecture and
+Tutorial meetings automatically enter the completed view at their valid end time;
+legacy meetings without an end use their recorded start time. These classes have
+no manual completion button. Assignments/deadlines require an explicit completion
+click even after their due time. The same derived rule filters server AI context,
+without rewriting saved meetings or relying on a background process. Desktop day
 cells show event previews; narrow screens use colored dots and counts.
 
 Students can add a personal event or course/deadline from a selected day, with

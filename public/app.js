@@ -1117,7 +1117,7 @@
           </div>
         ${scheduleReviewHtml()}
         </details>
-        <p class="schedule-timezone">月历和新增安排使用当前时区：${esc(model.timeZone)} · 导入课程按学校时区换算</p>
+        <p class="schedule-timezone">月历和新增安排使用当前时区：${esc(model.timeZone)} · 导入课程按学校时区换算<br>Lecture / Tutorial 按结束时间自动完成；未填写结束时间时，按课表记录的开始时间处理。</p>
       </section>
     `;
   }
@@ -1127,7 +1127,7 @@
   }
 
   function scheduleClockSignature(model) {
-    return JSON.stringify([model.today, model.next?.docId, model.upcoming.length, model.overdue.length, model.ongoing.map((item) => item.docId)]);
+    return JSON.stringify([model.today, model.next?.docId, model.upcoming.length, model.completed.length, model.overdue.length, model.ongoing.map((item) => item.docId)]);
   }
 
   function scheduleReviewHtml() {
@@ -1350,8 +1350,9 @@
   }
 
   function nextDue() {
+    const now = Date.now();
     return (state.scheduleItems || [])
-      .filter((item) => !item.completedAt && item.startsAt && new Date(item.startsAt).getTime() >= Date.now() - 60000)
+      .filter((item) => !scheduleImport.completion(item, now).completedAt && item.startsAt && new Date(item.startsAt).getTime() >= now)
       .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt))[0] || null;
   }
 
@@ -2102,6 +2103,7 @@
       if (action === "complete-schedule") {
         const item = state.scheduleItems.find((entry) => entry.docId === button.dataset.doc && entry.courseId === button.dataset.course);
         if (!item) throw new Error("找不到这个提醒。");
+        if (scheduleImport.completion(item).classMeeting) return;
         const updated = { ...item, completedAt: new Date().toISOString() };
         await api(`/api/courses/${item.courseId}/documents/${item.docId}`, { method: "PATCH", body: { title: `${SCHEDULE_PREFIX} ${item.title}`, type: "Schedule", text: JSON.stringify(updated) } });
         await loadPage("schedule");

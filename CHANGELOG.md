@@ -2,6 +2,8 @@
 
 ## 2026-10-26
 
+- Automatically treat elapsed Lecture/Tutorial meetings as completed at their valid end time (or recorded start time when no end is available), with no manual completion button or database rewrites. Share the rule across calendar/day/agenda views and server AI context; keep overdue assignments unfinished and visible until explicitly completed. Preserve prior manual completion records and refresh class status while the calendar stays open.
+
 - Label unfinished Schedule actions 完成; reserve 已完成 for the status and completed view after the student clicks the action.
 
 - Redesign Schedule as a monthly calendar with today/month navigation, selectable day details and a separate chronological agenda spanning all months. Show the next event and ongoing classes, distinguish Lecture/Tutorial/deadlines/personal plans, retain completed and overdue entries, and add day-prefilled personal arrangements with optional end times. Preserve existing imports, upload selections and manual drafts during calendar navigation; retain imported duration/time-zone/recurrence data when marking entries complete.

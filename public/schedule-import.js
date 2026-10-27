@@ -109,7 +109,21 @@
     return result;
   }
   function fingerprint(item) { return [kind(item.kind) || item.kind, String(item.title || "").trim().toLowerCase(), String(item.course || "").trim().toLowerCase(), new Date(item.timeZone && validTime(item.startsAt) ? toUtc(item.startsAt, item.timeZone) : item.startsAt).getTime()].join("|"); }
-  const api = { kind, validTime, validDate, validClock, validWeekly, parse, parseExtraction, normalizeCalendar, nonTeachingRanges, todayInZone, toUtc, expandWeekly, fingerprint };
+  function completion(item, now = Date.now()) {
+    const classMeeting = ["LEC", "TUT"].includes(kind(item.kind));
+    const result = { classMeeting, automatic: false, completedAt: item.completedAt || "" };
+    if (!classMeeting || result.completedAt) return result;
+    const instant = (value) => {
+      try { return Date.parse(item.timeZone && validTime(value) ? toUtc(value, item.timeZone) : value); }
+      catch { return NaN; }
+    };
+    const start = instant(item.startsAt);
+    const end = instant(item.endsAt);
+    const finish = Number.isFinite(end) && end > start ? end : start;
+    if (Number.isFinite(start) && finish <= Number(new Date(now))) return { classMeeting, automatic: true, completedAt: new Date(finish).toISOString() };
+    return result;
+  }
+  const api = { kind, validTime, validDate, validClock, validWeekly, parse, parseExtraction, normalizeCalendar, nonTeachingRanges, todayInZone, toUtc, expandWeekly, fingerprint, completion };
   if (typeof module === "object" && module.exports) module.exports = api;
   else scope.StudyBridgeScheduleImport = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

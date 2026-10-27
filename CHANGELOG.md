@@ -2,6 +2,8 @@
 
 ## 2026-10-27
 
+- Retain duplicate timetable/syllabus entries in import review, mark calendar/batch duplicates and default fully existing entries to unchecked in either upload order. Keep manual checkbox choices, show counts for partly overlapping weekly templates and recheck edited dates/course/calendar settings. Preserve source details, quiz/assignment separation and final server duplicate protection.
+
 - Preserve explicitly extracted dates when a deadline has no clock time. Split draft date/time inputs, show the known date with a missing-time hint, and recover a unique explicit due date from item evidence/notes without using a late-acceptance cutoff or guessing a year/time. Keep source details, incomplete-item validation, timezone conversion and duplicate checks; update file and natural-language extraction contracts.
 
 - Release `1.1.96`: publish the additional 16 px indentation for course conversations and their selected backgrounds. Refresh frontend/cache versions so existing browsers receive the new spacing. No account or data migration; code rollback target: `cdb3b70` (`1.1.95`).

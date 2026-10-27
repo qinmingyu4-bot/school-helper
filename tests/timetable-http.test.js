@@ -70,8 +70,8 @@ test("timetable images/PDFs retain layout, use school calendars and return recur
   assert.equal(syllabus.data.createdCourses.length, 1);
   const subject = syllabus.data.courses[0];
   assert.equal(syllabus.data.duplicateCount, 1);
-  assert.deepEqual(syllabus.data.items.map((item) => item.title), ["Quiz 1", "Midterm exam", "Assignment 1"]);
-  assert.ok(syllabus.data.items.every((item) => item.kind === "DDL"));
+  assert.deepEqual(syllabus.data.items.filter((item) => item.selected).map((item) => item.title), ["Quiz 1", "Midterm exam", "Assignment 1"]);
+  assert.ok(syllabus.data.items.filter((item) => item.selected).every((item) => item.kind === "DDL"));
   assert.ok(syllabus.data.items.every((item) => item.timeZone === "America/Toronto"));
   const beforeConfirm = (await request(`/api/courses/${planner.id}/documents`, null, cookie, "GET")).data.documents;
   assert.equal(beforeConfirm.length, 1);
@@ -83,7 +83,8 @@ test("timetable images/PDFs retain layout, use school calendars and return recur
   assert.equal((await request(`/api/courses/${subject.id}/documents`, null, cookie, "GET")).data.documents.length, 3);
   const repeated = await request("/api/schedule/extract", syllabusFile, cookie);
   assert.equal(repeated.data.duplicateCount, 4);
-  assert.deepEqual(repeated.data.items, []);
+  assert.equal(repeated.data.items.length, 4);
+  assert.ok(repeated.data.items.every((item) => !item.selected && item.duplicateReview.duplicate));
   assert.equal(repeated.data.courses[0].id, subject.id);
   assert.deepEqual(repeated.data.createdCourses, []);
   assert.equal((await request(`/api/courses/${planner.id}/documents`, null, cookie, "GET")).data.documents.length, 1, "legacy planner entries remain unchanged");
@@ -115,7 +116,8 @@ test("timetable images/PDFs retain layout, use school calendars and return recur
   assert.equal((await request(`/api/courses/${planner.id}/documents`, null, cookie, "GET")).data.documents.length, 1);
   for (const item of plans.data.items) await request(`/api/courses/${planner.id}/documents`, { title: `[SCHEDULE_ITEM] ${item.title}`, type: "Schedule", text: JSON.stringify({ ...item, startsAt: importer.toUtc(item.startsAt, item.timeZone) }) }, cookie);
   const repeatedPlans = await request("/api/schedule/parse-text", natural, cookie);
-  assert.equal(repeatedPlans.data.items.length, 0);
+  assert.equal(repeatedPlans.data.items.length, 2);
+  assert.ok(repeatedPlans.data.items.every((item) => !item.selected));
   assert.equal(repeatedPlans.data.duplicateCount, 2);
   const portfolio = await request("/api/schedule/extract", { fileName: "portfolio-date-only-fixture.txt", fileData: Buffer.from("Portfolios are due on April 9, 2027. Late portfolios will not be accepted after April 14, 2027.").toString("base64"), timeZone: "America/Toronto" }, cookie);
   assert.equal(portfolio.status, 200);

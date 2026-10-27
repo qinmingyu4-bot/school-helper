@@ -1266,7 +1266,7 @@
       if (state.user?.id !== userId) return;
       state.scheduleDrafts = result.items; state.scheduleSource = "白话 / 语音输入";
       state.scheduleCalendar = null; state.scheduleFromDate = "";
-      state.scheduleQuickStatus = result.items.length ? `整理出 ${result.items.length} 条安排，请核对后确认加入。${result.duplicateCount ? `已跳过 ${result.duplicateCount} 条重复安排。` : ""}${result.clarification || ""}` : result.clarification || (result.duplicateCount ? "这些安排已存在，已跳过重复项目。" : "还没有找到明确安排，请补充日期、时间或事情内容。");
+      state.scheduleQuickStatus = result.items.length ? `整理出 ${result.items.length} 条安排，请核对后确认加入。${result.duplicateCount ? `${result.duplicateCount} 条重复安排已标记，默认不勾选。` : ""}${result.clarification || ""}` : result.clarification || (result.duplicateCount ? "这些安排已存在，已跳过重复项目。" : "还没有找到明确安排，请补充日期、时间或事情内容。");
     } catch (error) { state.scheduleQuickStatus = error.message; }
     finally { state.scheduleImportBusy = false; if (state.page === "schedule") render(); }
   }
@@ -1305,6 +1305,7 @@
       <label class="schedule-review-select"><input type="checkbox" data-draft-field="selected" aria-label="加入时间表：${esc(summary.title)}" ${item.selected ? "checked" : ""}></label>
       <details class="schedule-draft-editor" data-review-editor="${index}" ${open ? "open" : ""}>
         <summary class="schedule-draft-summary"><b data-review-title>${esc(summary.title)}</b><span class="schedule-review-chevron" aria-hidden="true">⌄</span>
+          <span class="schedule-review-duplicate" data-review-duplicate ${scheduleImport.duplicateNotice(item) ? "" : "hidden"}>${esc(scheduleImport.duplicateNotice(item))}</span>
           <span class="schedule-review-meta"><span data-review-kind>${esc(summary.kind)}</span><span data-review-time>${esc(summary.time)}</span></span>
           <span class="schedule-review-context" data-review-context ${summary.context ? "" : "hidden"}>${esc(summary.context)}</span>
           <span class="schedule-review-note" data-review-note ${summary.notes ? "" : "hidden"}>${summary.notes ? `备注：${esc(summary.notes)}` : ""}</span>
@@ -1334,6 +1335,8 @@
       element.textContent = `${key === "note" && value ? "备注：" : key === "warning" && value ? "需核对：" : ""}${value || ""}`;
       element.hidden = !value;
     }
+    const duplicate = section.querySelector("[data-review-duplicate]");
+    if (duplicate) { duplicate.textContent = scheduleImport.duplicateNotice(item); duplicate.hidden = !duplicate.textContent; }
     section.querySelector('[data-draft-field="selected"]').setAttribute("aria-label", `加入时间表：${summary.title}`);
   }
 
@@ -1360,9 +1363,17 @@
       });
       state.scheduleCalendar = scheduleImport.normalizeCalendar({ label: "手动确认的学期", timeZone: draft.timeZone, teachingPeriods: [{ startDate: draft.startDate, endDate: draft.endDate }], breaks, sources: [], replacements: [] });
       state.scheduleCalendarNotice = "学期范围已手动确认；按这些日期生成每周安排。";
+      refreshScheduleDuplicateReview();
     } catch (error) { state.scheduleCalendar = null; state.scheduleCalendarNotice = error.message; }
     state.scheduleCalendarEditing = true;
     render();
+  }
+
+  function refreshScheduleDuplicateReview() {
+    const previous = state.scheduleDrafts;
+    state.scheduleDrafts = scheduleImport.reviewDuplicates(previous, state.scheduleItems, { calendar: state.scheduleCalendar, fromDate: state.scheduleFromDate, timeZone: state.scheduleCalendar?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone, preserveSelection: true }).items;
+    state.scheduleDrafts.forEach((item, index) => { if (scheduleDraftDisclosure.has(previous[index])) scheduleDraftDisclosure.set(item, scheduleDraftDisclosure.get(previous[index])); });
+    root.querySelectorAll(".schedule-draft[data-draft]").forEach((section) => { const item = state.scheduleDrafts[Number(section.dataset.draft)]; if (item) section.querySelector('[data-draft-field="selected"]').checked = item.selected; });
   }
 
   function updateSchedulePreviewCount() {
@@ -1406,7 +1417,7 @@
       state.scheduleFromDate = result.importFromDate || scheduleImport.todayInZone(result.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone);
       state.scheduleCalendarEditing = false;
       state.scheduleCalendarDraft = { startDate: result.calendar?.teachingPeriods[0]?.startDate || "", endDate: result.calendar?.teachingPeriods.at(-1)?.endDate || "", breaks: (result.calendar ? scheduleImport.nonTeachingRanges(result.calendar) : []).map((pause) => `${pause.startDate} / ${pause.endDate}`).join("\n"), timeZone: result.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone };
-      state.scheduleImportStatus = result.items.length ? `提取到 ${result.items.length} 条待核对安排${result.duplicateCount ? `，发现 ${result.duplicateCount} 项重复，自动跳过已有安排` : ""}。请在下方核对并确认。` : result.duplicateCount ? `识别的安排已存在，已跳过 ${result.duplicateCount} 项重复，无需再次添加。` : "未找到可提取的时间点。请尝试更清晰的文件或分批上传，也可以手动添加。";
+      state.scheduleImportStatus = result.items.length ? `提取到 ${result.items.length} 条待核对安排${result.duplicateCount ? `，发现 ${result.duplicateCount} 项重复，已标记已有安排并默认取消勾选` : ""}。请在下方核对并确认。` : result.duplicateCount ? `识别的安排已存在，已跳过 ${result.duplicateCount} 项重复，无需再次添加。` : "未找到可提取的时间点。请尝试更清晰的文件或分批上传，也可以手动添加。";
       if (result.courses?.length) state.scheduleImportStatus += ` ${result.createdCourses?.length ? `已自动添加 ${result.createdCourses.length} 门课程；` : ""}已识别课程可直接在「对话与课程」中打开。`;
     } catch (error) { state.scheduleImportStatus = error.message; }
     finally { state.scheduleImportBusy = false; render(); }
@@ -2657,10 +2668,15 @@
     if (event.target.dataset?.weekday) {
       const draft = state.scheduleDrafts[Number(event.target.closest("[data-draft]")?.dataset.draft)];
       if (draft?.weekly) { const day = Number(event.target.dataset.weekday); draft.weekly.weekdays = event.target.checked ? [...new Set([...draft.weekly.weekdays, day])] : draft.weekly.weekdays.filter((value) => value !== day); }
-      updateSchedulePreviewCount();
+      refreshScheduleDuplicateReview(); updateSchedulePreviewCount();
       return;
     }
-    if (event.target.dataset?.weeklyField || event.target.dataset?.draftField) { updateSchedulePreviewCount(); return; }
+    if (event.target.dataset?.weeklyField || event.target.dataset?.draftField) {
+      if (event.target.dataset?.draftField !== "selected") {
+        refreshScheduleDuplicateReview();
+      }
+      updateSchedulePreviewCount(); return;
+    }
     if (event.target?.id === "postAnon") { state.communityDraft.anonymous = event.target.checked; return; }
     if (["englishTerms", "englishAnswers", "chineseExplanations"].includes(event.target?.id)) { scheduleLearningStyleSave(); return; }
     if (event.target?.id === "scheduleFile") {
@@ -2702,7 +2718,7 @@
     const field = event.target.dataset?.draftField;
     if (!field) return;
     const item = state.scheduleDrafts[Number(event.target.closest("[data-draft]")?.dataset.draft)];
-    if (item) { if (["date", "time"].includes(field)) Object.assign(item, scheduleImport.withDatePart(item, field, event.target.value)); else item[field] = field === "selected" ? event.target.checked : event.target.value; refreshScheduleDraftSummary(event.target.closest("[data-draft]"), item); }
+    if (item) { if (field === "selected") item.selectionTouched = true; if (["date", "time"].includes(field)) Object.assign(item, scheduleImport.withDatePart(item, field, event.target.value)); else item[field] = field === "selected" ? event.target.checked : event.target.value; refreshScheduleDraftSummary(event.target.closest("[data-draft]"), item); }
   });
 
   const composingChatInputs = new WeakSet();

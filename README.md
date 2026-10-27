@@ -471,3 +471,5 @@ docs/aws-deploy.md
 ```
 
 GitHub Pages can only serve the older static app. This cloud version needs a Node server, so deploy it to AWS Lightsail, EC2, Render, Railway, Fly.io, or another Node hosting provider.
+
+Import review keeps duplicate items visible: entries fully present in the calendar are labeled and unchecked by default, regardless of timetable/syllabus upload order. Manual checkbox changes remain possible. Partly overlapping weekly patterns stay selected with existing/new occurrence counts; final batch saving skips existing occurrences. Editing draft dates, courses or teaching-period settings rechecks duplicate status without discarding explicit checkbox choices. Saved records, notes and assessments are not removed by review.

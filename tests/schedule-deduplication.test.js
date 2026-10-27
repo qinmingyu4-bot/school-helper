@@ -43,19 +43,25 @@ test("duplicate detection also works within a batch and preserves unknown-course
   assert.equal(importer.duplicateIndex([name]).has({ ...name, title: "Intro lecture", course: " introduction   to biology " }), true);
 });
 
-test("weekly syllabus templates are removed only when all teaching-day occurrences are already saved", () => {
+test("weekly duplicate templates remain visible, unselected only when every occurrence already exists", () => {
   const calendar = { timeZone: "America/Toronto", teachingPeriods: [{ startDate: "2026-11-02", endDate: "2026-11-09" }], breaks: [] };
   const weekly = { ...syllabus, startsAt: "", weekly: { weekdays: [1], startTime: "10:00", endTime: "11:00" } };
   const assessment = { ...syllabus, kind: "DDL", title: "Midterm", startsAt: "2026-11-04T18:00" };
   const firstOnly = importer.reviewDuplicates([weekly, assessment], [saved], { calendar, fromDate: "2026-11-02", timeZone: "America/Toronto" });
   assert.equal(firstOnly.items.length, 2);
   assert.equal(firstOnly.duplicateCount, 1);
+  assert.equal(firstOnly.items[0].selected, true);
+  assert.match(importer.duplicateNotice(firstOnly.items[0]), /已有.*1.*新增/);
   const second = { ...saved, startsAt: "2026-11-09T15:00Z" };
   const all = importer.reviewDuplicates([weekly, assessment], [saved, second], { calendar, fromDate: "2026-11-02", timeZone: "America/Toronto" });
-  assert.deepEqual(all.items, [assessment]);
+  assert.equal(all.items.length, 2);
+  assert.equal(all.items[0].selected, false);
+  assert.equal(all.items[0].duplicateReview.existingCount, 2);
+  assert.equal(all.items[1].selected, true);
   assert.equal(all.duplicateCount, 2);
   const noCalendar = importer.reviewDuplicates([weekly], [saved, second]);
-  assert.deepEqual(noCalendar.items, [weekly]);
+  assert.equal(noCalendar.items.length, 1);
+  assert.equal(noCalendar.items[0].selected, true);
 });
 
 test("review deduplication does not mutate imported drafts or saved completion metadata", () => {
@@ -63,6 +69,26 @@ test("review deduplication does not mutate imported drafts or saved completion m
   const before = JSON.stringify({ saved, drafts });
   const result = importer.reviewDuplicates(drafts, [saved], { timeZone: "America/Toronto" });
   assert.equal(result.duplicateCount, 1);
-  assert.equal(result.items.length, 1);
+  assert.equal(result.items.length, 2);
+  assert.equal(result.items[0].selected, false);
+  assert.equal(result.items[1].selected, true);
   assert.equal(JSON.stringify({ saved, drafts }), before);
+});
+
+
+test("either upload order marks saved lectures, supports manual selection and preserves separate assessments", () => {
+  for (const [incoming, existing] of [[syllabus, saved], [saved, syllabus]]) {
+    const result = importer.reviewDuplicates([incoming, { ...syllabus, kind: "DDL", title: "Quiz 1" }], [existing], { timeZone: "America/Toronto" });
+    assert.equal(result.items.length, 2);
+    assert.equal(result.items[0].selected, false);
+    assert.match(importer.duplicateNotice(result.items[0]), /日历中已有/);
+    assert.equal(result.items[1].selected, true);
+    const manual = { ...result.items[0], selected: true, selectionTouched: true };
+    assert.equal(importer.reviewDuplicates([manual], [existing], { timeZone: "America/Toronto", preserveSelection: true }).items[0].selected, true);
+    assert.equal(importer.deduplicate([manual], [existing]).items.length, 0, "explicit selection never bypasses final duplicate safety");
+  }
+  const result = importer.reviewDuplicates([syllabus, { ...syllabus }], [], { timeZone: "America/Toronto" });
+  assert.equal(result.items[0].selected, true);
+  assert.equal(result.items[1].selected, false);
+  assert.match(importer.duplicateNotice(result.items[1]), /本次导入中已有/);
 });

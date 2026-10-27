@@ -187,24 +187,34 @@
     }
     return { items: unique, duplicates };
   }
-  function reviewDuplicates(items, existing, { calendar = null, fromDate = "", timeZone = "" } = {}) {
+  function reviewDuplicates(items, existing, { calendar = null, fromDate = "", timeZone = "", preserveSelection = false } = {}) {
+    const saved = duplicateIndex(existing);
     const index = duplicateIndex(existing);
-    const drafts = [];
     let duplicateCount = 0;
-    for (const item of items) {
+    const drafts = items.map((item) => {
       let occurrences;
       if (item.weekly) {
-        if (!calendar || !validWeekly(item.weekly)) { drafts.push(item); continue; }
-        occurrences = expandWeekly([item], calendar, { fromDate });
+        if (!calendar || !validWeekly(item.weekly)) occurrences = [];
+        else occurrences = expandWeekly([item], calendar, { fromDate });
       } else occurrences = [{ ...item, timeZone: item.timeZone || timeZone }];
-      let newCount = 0;
+      let newCount = 0, existingCount = 0, batchCount = 0;
       for (const occurrence of occurrences) {
-        if (index.has(occurrence)) duplicateCount++;
+        if (saved.has(occurrence)) existingCount++;
+        else if (index.has(occurrence)) batchCount++;
         else { newCount++; index.add(occurrence); }
       }
-      if (newCount || !occurrences.length) drafts.push(item);
-    }
+      duplicateCount += existingCount + batchCount;
+      const duplicate = existingCount + batchCount > 0 && newCount === 0;
+      return { ...item, duplicateReview: { duplicate, existingCount, batchCount, newCount },
+        selected: preserveSelection && item.selectionTouched ? item.selected : !duplicate };
+    });
     return { items: drafts, duplicateCount };
+  }
+  function duplicateNotice(item) {
+    const review = item.duplicateReview;
+    if (!review || !review.existingCount && !review.batchCount) return "";
+    if (review.duplicate) return `${review.existingCount ? "日历中已有" : "本次导入中已有"} · 默认不勾选，可手动勾选；保存时仍会检查重复`;
+    return `其中 ${review.existingCount + review.batchCount} 次安排已有，仅添加 ${review.newCount} 次新增安排`;
   }
   function completion(item, now = Date.now()) {
     const classMeeting = ["LEC", "TUT"].includes(kind(item.kind));
@@ -220,7 +230,7 @@
     if (Number.isFinite(start) && finish <= Number(new Date(now))) return { classMeeting, automatic: true, completedAt: new Date(finish).toISOString() };
     return result;
   }
-  const api = { draftDateTime, withDatePart, kind, validTime, validDate, validClock, validWeekly, parse, parseExtraction, normalizeCalendar, nonTeachingRanges, todayInZone, toUtc, expandWeekly, fingerprint, duplicateIndex, deduplicate, reviewDuplicates, completion };
+  const api = { duplicateNotice, draftDateTime, withDatePart, kind, validTime, validDate, validClock, validWeekly, parse, parseExtraction, normalizeCalendar, nonTeachingRanges, todayInZone, toUtc, expandWeekly, fingerprint, duplicateIndex, deduplicate, reviewDuplicates, completion };
   if (typeof module === "object" && module.exports) module.exports = api;
   else scope.StudyBridgeScheduleImport = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

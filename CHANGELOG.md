@@ -2,6 +2,8 @@
 
 ## 2026-10-27
 
+- Assign default eight-character alphanumeric SB IDs on the server for email and Google registrations. Accept 1–8 letters/digits with case-sensitive uniqueness, profile saving and classmate lookup; allow existing single-character IDs such as `1`, preserve omitted profile IDs, and align Profile/Settings input rules.
+
 - Configure trusted HTTPS for the existing AWS public IP with an isolated Certbot IP certificate, HTTP challenge/redirect, Nginx forwarding to the existing StudyBridge process, 70 MiB proxy requests and unbuffered AI streaming. Check renewal every six hours and reload Nginx after successful renewal; preserve the other hosted site's certificate and all StudyBridge accounts/data.
 
 - Prepare the authorized `1.1.91` AWS release of the 待完成 agenda: retain past/overdue personal plans and assignments until manual completion, preserve automatic class completion and chronological order, and distinguish the separate 下一项安排 highlight. Refresh package/frontend/cache versions; keep `1325a14` (`1.1.90`) as the rollback target and preserve production accounts, data and credentials.

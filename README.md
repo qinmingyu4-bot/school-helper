@@ -114,6 +114,10 @@ navigation on mobile. **退出登录** remains inside Settings. Categories are:
 - **账号与资料:** edit name, school, major and SB ID with explicit save; inspect the
   login email, open avatar/cover management, and request the existing manual
   password-reset workflow. Existing avatar/cover images are retained on text saves.
+  New accounts (email or Google) receive an eight-character alphanumeric SB ID on
+  the server during registration. Custom SB IDs accept 1–8 ASCII letters/digits,
+  are case-sensitive and unique; classmate requests use the exact case, including
+  single-character IDs such as `1`. Saving other profile fields preserves an omitted SB ID.
   School fields in Profile and Settings suggest full names from the bundled catalog
   when typing a name, abbreviation (such as UofT/UBC) or Chinese alias. Select by
   click or arrow keys and Enter; unlisted schools can still be entered manually.

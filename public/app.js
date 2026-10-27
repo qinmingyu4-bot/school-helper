@@ -861,7 +861,7 @@
           <datalist id="schoolOptions">${schoolOptions().map((item) => `<option value="${esc(item)}"></option>`).join("")}</datalist>
           <label>专业<input id="profileMajor" list="majorOptions" value="${esc(p.major || "")}"></label>
           <datalist id="majorOptions">${["Finance", "Economics", "Business", "Computer Science", "Engineering", "Nursing", "Mathematics", "Statistics", "Psychology", "Biology"].map((item) => `<option value="${item}"></option>`).join("")}</datalist>
-          <label>SB ID<input id="profileSbId" value="${esc(profileSbId())}" placeholder="例如 adam2026"></label>
+          <label>SB ID<input id="profileSbId" required maxlength="8" pattern="[A-Za-z0-9]{1,8}" title="1–8 位数字或字母，区分大小写" value="${esc(profileSbId())}" placeholder="1–8 位数字或字母，区分大小写"></label>
           </div>
           </section>
           <section class="profile-form-section">
@@ -998,7 +998,7 @@
           <h2>添加同学</h2>
           <p class="muted">当前学校：${esc(state.classmates?.school || profile().school || "未填写")}</p>
           <div class="inline-fields">
-            <input id="classmateSbId" aria-label="同学的 SB ID" placeholder="输入 SB ID" value="${esc(classmateListDraft)}">
+            <input id="classmateSbId" aria-label="同学的 SB ID（区分大小写）" maxlength="8" placeholder="输入 SB ID（区分大小写）" value="${esc(classmateListDraft)}">
             <button data-action="add-classmate">发送申请</button>
           </div>
           <details class="request-box" ${classmateRequestsOpen ? "open" : ""}>

@@ -186,11 +186,51 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     assert.ok(overview.data.users.some((item) => item.email === "invited@example.test" && item.inviteCode === deletedInvite.code));
   });
 
+  await t.test("SB IDs are assigned at registration and accept short case-sensitive identifiers", async () => {
+    for (const account of [admin, alice, bob]) {
+      assert.match(account.data.user.profile.sbId, /^[A-Za-z0-9]{8}$/);
+      const me = await request("/api/me", { cookie: account.cookie });
+      assert.equal(me.data.user.profile.sbId, account.data.user.profile.sbId);
+    }
+    assert.equal(new Set([admin, alice, bob].map((item) => item.data.user.profile.sbId)).size, 3);
+    const profile = (account, sbId) => request("/api/me/profile", {
+      method: "PUT", cookie: account.cookie, body: { name: account.data.user.name, sbId }
+    });
+    for (const invalid of ["", "123456789", "ab_cd", "ab-cd", "ab.cd", "@abc", "a b", "中文"]) {
+      assert.equal((await profile(alice, invalid)).status, 400, invalid);
+    }
+    for (const valid of ["0", "1", "a", "Z", "Ab12Cd34"]) {
+      const saved = await profile(alice, valid);
+      assert.equal(saved.status, 200, valid);
+      assert.equal(saved.data.user.profile.sbId, valid);
+    }
+    assert.equal((await profile(alice, "Case1")).status, 200);
+    assert.equal((await profile(bob, "case1")).status, 200);
+    assert.equal((await profile(bob, "Case1")).status, 409);
+    const omitted = await request("/api/me/profile", { method: "PUT", cookie: alice.cookie, body: { name: "Alice" } });
+    assert.equal(omitted.status, 200);
+    assert.equal(omitted.data.user.profile.sbId, "Case1");
+    assert.equal((await request("/api/classmates", { method: "POST", cookie: admin.cookie, body: { sbId: "CASE1" } })).status, 404);
+    const mixed = await request("/api/classmates", { method: "POST", cookie: admin.cookie, body: { sbId: "Case1" } });
+    assert.equal(mixed.status, 201);
+    assert.equal((await request("/api/classmates", { cookie: admin.cookie })).data.requests.outgoing.find((item) => item.id === mixed.data.request.id).to.id, alice.data.user.id);
+    assert.equal((await profile(alice, "1")).status, 200);
+    const short = await request("/api/classmates", { method: "POST", cookie: bob.cookie, body: { sbId: "1" } });
+    assert.equal(short.status, 201);
+    assert.equal((await request("/api/classmates", { cookie: bob.cookie })).data.requests.outgoing.find((item) => item.id === short.data.request.id).to.id, alice.data.user.id);
+    // Remove these requests so the following chat test starts without pending requests.
+    for (const pending of [mixed, short]) {
+      assert.equal((await request(`/api/classmate-requests/${pending.data.request.id}`, {
+        method: "PATCH", cookie: alice.cookie, body: { action: "ignore" }
+      })).status, 200);
+    }
+  });
+
   await t.test("profile uniqueness, role boundary, and exhausted invites", async () => {
     assert.equal((await request("/api/admin/overview", { cookie: alice.cookie })).status, 403);
     assert.equal((await request("/api/auth/register", { method: "POST", body: registration("Extra", "extra@example.test", code) })).status, 403);
     assert.equal((await request("/api/me/profile", { method: "PUT", cookie: alice.cookie, body: { name: "Alice", sbId: "alice", school: "Health University" } })).status, 200);
-    assert.equal((await request("/api/me/profile", { method: "PUT", cookie: bob.cookie, body: { name: "Bob", sbId: "ALICE" } })).status, 409);
+    assert.equal((await request("/api/me/profile", { method: "PUT", cookie: bob.cookie, body: { name: "Bob", sbId: "alice" } })).status, 409);
     assert.equal((await request("/api/me/profile", { method: "PUT", cookie: bob.cookie, body: { name: "Bob", sbId: "bob", school: "Health University" } })).status, 200);
     const beforeImageFailure = (await request("/api/me", { cookie: alice.cookie })).data.user;
     const oversizedImage = await request("/api/me/profile", { method: "PUT", cookie: alice.cookie, body: { name: "Must not save", sbId: "alice", avatarUrl: "data:image/jpeg;base64," + "A".repeat(2200000) } });

@@ -150,6 +150,41 @@ test("DynamoDB registrations atomically claim invitations and preserve account u
   assert.equal(current.uses, 1);
 });
 
+test("SB IDs are assigned before persistence and lookup is case-sensitive in both stores", async (t) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "studybridge-sbid-"));
+  t.after(() => fs.rm(directory, { recursive: true, force: true }));
+  const db = new StudyBridgeDatabase();
+  db.dynamo = null;
+  db.local.file = path.join(directory, "database.json");
+  const generated = await Promise.all(["email", "google"].map((id) => db.createUser({ id, email: `${id}@example.test`, authProvider: id, profile: { school: "Test school", sbId: "" } })));
+  for (const user of generated) {
+    assert.match(user.profile.sbId, /^[A-Za-z0-9]{8}$/);
+    assert.equal(user.profile.school, "Test school");
+    assert.equal((await db.findUserBySbId(user.profile.sbId)).id, user.id);
+  }
+  assert.notEqual(generated[0].profile.sbId, generated[1].profile.sbId);
+  for (const sbId of ["1", "Alpha", "alpha"]) {
+    await db.createUser({ id: sbId, email: `${sbId}@example.test`, profile: { sbId } });
+  }
+  const reloaded = new StudyBridgeDatabase();
+  reloaded.dynamo = null;
+  reloaded.local.file = db.local.file;
+  const records = await reloaded.listUsers();
+  // Exercise the DynamoDB lookup and creation paths with the same persisted records.
+  const dynamo = new StudyBridgeDatabase();
+  dynamo.dynamo = {
+    scanType: async () => records,
+    put: async (pk, sk, type, value) => { if (type === "user") records.push(value); return value; }
+  };
+  for (const store of [reloaded, dynamo]) {
+    for (const sbId of ["1", "Alpha", "alpha"]) assert.equal((await store.findUserBySbId(sbId)).id, sbId);
+    assert.equal(await store.findUserBySbId("ALPHA"), null);
+  }
+  const user = await dynamo.createUser({ id: "new-google", email: "new@example.test", authProvider: "google" });
+  assert.match(user.profile.sbId, /^[A-Za-z0-9]{8}$/);
+  assert.equal((await dynamo.findUserBySbId(user.profile.sbId)).id, user.id);
+});
+
 test("local writes recover after a duplicate SB ID is rejected", async (t) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "studybridge-db-"));
   t.after(() => fs.rm(directory, { recursive: true, force: true }));
@@ -158,7 +193,7 @@ test("local writes recover after a duplicate SB ID is rejected", async (t) => {
   db.local.file = path.join(directory, "database.json");
   await db.createUser({ id: "alice", email: "alice@example.test", profile: { sbId: "alice" } });
   await assert.rejects(
-    db.createUser({ id: "duplicate", email: "duplicate@example.test", profile: { sbId: "ALICE" } }),
+    db.createUser({ id: "duplicate", email: "duplicate@example.test", profile: { sbId: "alice" } }),
     /already taken/
   );
   await db.createCourse({ id: "course", userId: "alice", name: "Calculus" });

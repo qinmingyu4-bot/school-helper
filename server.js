@@ -458,15 +458,13 @@ function compactDocumentText(text) {
 }
 
 function normalizeSbId(value) {
-  return String(value || "")
+  return String(value ?? "")
     .trim()
-    .toLowerCase()
-    .replace(/^@+/, "")
-    .slice(0, 24);
+    .replace(/^@+/, "");
 }
 
 function cleanProfile(body = {}) {
-  const sbId = normalizeSbId(body.sbId);
+  const sbId = String(body.sbId ?? "").trim();
   const avatarUrl = String(body.avatarUrl || "").trim();
   const backgroundUrl = String(body.backgroundUrl || "").trim();
   if (avatarUrl.length > 2200000 || backgroundUrl.length > 2200000) throw new Error("资料图片过大，请刷新页面，重新选择照片后自动压缩保存。");
@@ -480,15 +478,14 @@ function cleanProfile(body = {}) {
 }
 
 function isValidSbId(value) {
-  const sbId = String(value || "").trim();
-  return !sbId || /^[a-z0-9][a-z0-9._-]{2,23}$/.test(sbId);
+  return /^[A-Za-z0-9]{1,8}$/.test(String(value ?? ""));
 }
 
 async function ensureSbIdAvailable(sbId, ownerUserId) {
   const normalized = normalizeSbId(sbId);
   if (!normalized) return;
   if (!isValidSbId(normalized)) {
-    throw new Error("SB ID must be 3-24 characters and can only use lowercase letters, numbers, dots, underscores, or hyphens.");
+    throw new Error("SB ID must be 1-8 letters or numbers (case-sensitive).");
   }
   const existing = await db.findUserBySbId(normalized);
   if (existing && existing.id !== ownerUserId) {
@@ -2218,9 +2215,9 @@ async function routeApi(req, res) {
     const name = String(body.name || "").trim().slice(0, 80);
     if (!name) return sendError(res, 400, "Name is required.");
     let profile;
-    try { profile = cleanProfile(body); } catch (error) { return sendError(res, 400, error.message); }
+    try { profile = cleanProfile({ ...body, sbId: body.sbId ?? user.profile?.sbId }); } catch (error) { return sendError(res, 400, error.message); }
     if (!isValidSbId(profile.sbId)) {
-      return sendError(res, 400, "SB ID must be 3-24 characters and can only use lowercase letters, numbers, dots, underscores, or hyphens.");
+      return sendError(res, 400, "SB ID must be 1-8 letters or numbers (case-sensitive).");
     }
     try {
       await ensureSbIdAvailable(profile.sbId, user.id);
@@ -2579,10 +2576,7 @@ if (url.pathname === "/api/classmates" && method === "POST") {
   const user = await requireUser(req, res);
   if (!user) return;
   const body = await readJson(req);
-  const sbId = String(body.sbId || body.studentId || "")
-    .trim()
-    .toLowerCase()
-    .replace(/^@+/, "");
+  const sbId = normalizeSbId(body.sbId ?? body.studentId);
   const email = normalizeEmail(body.email);
   if (sbId && !isValidSbId(sbId)) return sendError(res, 400, "Please enter a valid SB ID.");
   if (!sbId && !email.includes("@")) return sendError(res, 400, "Please enter your classmate's SB ID.");

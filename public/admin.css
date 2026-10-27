@@ -1,4 +1,8 @@
 .status-panel .status-grid > div { min-width: 0; overflow-wrap: anywhere; }
+/* Health colors convey status, independently of the user's decorative theme. */
+.status-panel .status-grid > div > span.green { background: #2c8067; }
+.status-panel .status-grid > div > span.orange { background: #d38a18; }
+.status-panel .status-grid > div > span.red { background: #c44343; }
 @media (min-width: 901px) {
   .app-shell.admin-shell { height: 100dvh; min-height: 0; overflow: hidden; }
   .workspace.admin-workspace {

@@ -2,6 +2,8 @@
 
 ## 2026-10-27
 
+- Keep developer system-health indicator colors independent of appearance themes: normal stays green, warning stays orange and failure stays red, including under gray-toned themes. Scope the semantic colors to status lights without changing theme accents or status detection.
+
 - Retain duplicate timetable/syllabus entries in import review, mark calendar/batch duplicates and default fully existing entries to unchecked in either upload order. Keep manual checkbox choices, show counts for partly overlapping weekly templates and recheck edited dates/course/calendar settings. Preserve source details, quiz/assignment separation and final server duplicate protection.
 
 - Preserve explicitly extracted dates when a deadline has no clock time. Split draft date/time inputs, show the known date with a missing-time hint, and recover a unique explicit due date from item evidence/notes without using a late-acceptance cutoff or guessing a year/time. Keep source details, incomplete-item validation, timezone conversion and duplicate checks; update file and natural-language extraction contracts.

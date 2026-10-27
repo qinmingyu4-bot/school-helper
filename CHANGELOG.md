@@ -2,6 +2,8 @@
 
 ## 2026-10-27
 
+- Hide the internal Schedule & Deadlines folder from the study chat/course list and skip it when restoring a selected chat. Preserve its course record, historical chats and documents, calendar reads, personal-event saves and duplicate checks; this is a presentation change without a data migration.
+
 - Scope saved academic response preferences to actual learning intent, including academic questions in general chat. Let the reply model infer scope from the current question and relevant follow-ups, with explicit everyday/product-question and mixed-topic rules. Ordinary questions follow the user's language without forced bilingual duplication, while useful API/HTTPS/BYOK terms remain intact. Preserve explicit language requests, academic checkbox combinations and saved preferences; clarify scope in the sidebar and settings.
 
 - Show a continuously rotating loading ring with a clear 停止 action on the Study Area send button while a reply is pending. Keep stop-generation behavior and accessible action labels, respect reduced-motion settings, and preserve the spinner node across streamed updates so the animation does not repeatedly restart.

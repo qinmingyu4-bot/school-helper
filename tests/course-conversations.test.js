@@ -4,7 +4,26 @@ const os = require("node:os");
 const path = require("node:path");
 const { test } = require("node:test");
 const { StudyBridgeDatabase } = require("../lib/database");
-const { key, title, touch } = require("../public/course-conversations");
+const { key, title, touch, visibleCourses } = require("../public/course-conversations");
+const { prepareBatch, storedItems } = require("../lib/schedule-batch");
+
+test("hiding the planner chat preserves its schedule records, duplicate checks and save target", () => {
+  const planner = { id: "planner", userId: "alice", name: "Schedule & Deadlines", term: "StudyBridge planner" };
+  const math = { id: "math", userId: "alice", name: "MAT137" };
+  const courses = [planner, math];
+  const original = JSON.stringify(courses);
+  assert.deepEqual(visibleCourses(courses), [math]);
+  assert.deepEqual(visibleCourses([planner]), []);
+  const item = { title: "Personal plan", kind: "EVENT", course: "", startsAt: "2026-11-02T20:00:00.000Z", endsAt: "", timeZone: "America/Toronto" };
+  const first = prepareBatch("alice", [item], courses, []);
+  assert.equal(first.newCourse, false);
+  assert.equal(first.records[0].courseId, planner.id);
+  assert.equal(storedItems(courses, first.records, "alice")[0].title, item.title);
+  const retry = prepareBatch("alice", [item], courses, first.records);
+  assert.equal(retry.saved, 0);
+  assert.equal(retry.duplicates, 1);
+  assert.equal(JSON.stringify(courses), original, "presentation filtering must not mutate schedule storage");
+});
 
 test("conversation identity and titles preserve distinct drafts and manual names", () => {
   assert.notEqual(key("alice", "math", "a"), key("alice", "math", "b"));

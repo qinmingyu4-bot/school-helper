@@ -434,6 +434,7 @@
   }
 
   function studySidebarHtml() {
+    const courses = courseChats.visibleCourses(state.courses);
     return `
       <section class="side-section" data-doc-dropzone="true">
         <div class="section-title"><b>对话与课程</b><button data-action="add-course">新增</button></div>
@@ -441,7 +442,7 @@
           <button class="course-item ${isGeneralChat() ? "active" : ""}" data-action="select-course" data-id="${chatSpaces.general.id}">
             <b>${chatSpaces.general.name}</b><small>${chatSpaces.general.term}</small>
           </button>
-          ${state.courses.length ? state.courses.map(courseFolderHtml).join("") : `<p class="muted">还没有课程。导入课表可自动添加，也可点击新增。</p>`}
+          ${courses.length ? courses.map(courseFolderHtml).join("") : `<p class="muted">还没有课程。导入课表可自动添加，也可点击新增。</p>`}
         </div>
       </section>
       ${isGeneralChat() ? "" : `<section class="side-section study-materials">
@@ -1622,8 +1623,9 @@
     if (!state.activeCourseId) {
       try { state.activeCourseId = localStorage.getItem(`studybridge.chatSpace.${state.user.id}`) || ""; } catch { /* Storage may be disabled. */ }
     }
-    if (!isGeneralChat() && !state.courses.some((c) => c.id === state.activeCourseId)) {
-      state.activeCourseId = state.courses[0]?.id || chatSpaces.general.id;
+    const chatCourses = courseChats.visibleCourses(state.courses);
+    if (!isGeneralChat() && !chatCourses.some((c) => c.id === state.activeCourseId)) {
+      state.activeCourseId = chatCourses[0]?.id || chatSpaces.general.id;
     }
     if (state.conversationCourseId !== state.activeCourseId) {
       state.activeConversationId = "default";

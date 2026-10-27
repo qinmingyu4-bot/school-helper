@@ -3,6 +3,8 @@
   else root.StudyBridgeCourseConversations = factory();
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   const DEFAULT_ID = "default";
+  // Keep the planner in the full course collection: schedule storage still owns it.
+  const visibleCourses = (courses) => courses.filter((course) => course.name !== "Schedule & Deadlines");
   const key = (userId, courseId, conversationId = DEFAULT_ID) => JSON.stringify([userId, courseId, conversationId]);
   function title(value) {
     if (typeof value !== "string" || !value.trim() || value.trim().length > 120) throw new Error("对话标题需为 1–120 个字符。");
@@ -14,5 +16,5 @@
     return { ...conversation, updatedAt: message.createdAt,
       ...(firstQuestion ? { autoTitled: true, title: question ? question.slice(0, 40) + (question.length > 40 ? "…" : "") : "文件讨论" } : {}) };
   }
-  return { DEFAULT_ID, key, title, touch };
+  return { DEFAULT_ID, key, title, touch, visibleCourses };
 });

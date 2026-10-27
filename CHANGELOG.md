@@ -2,6 +2,8 @@
 
 ## 2026-10-27
 
+- Release `1.1.99`: publish amber highlighting and inline guidance for incomplete import fields, persistent validation messages and automatic focus/scroll before saving. Refresh frontend/cache versions; preserve accounts, course materials and calendar data. Code rollback target: `49113ee` (`1.1.98`).
+
 - Highlight incomplete selected import drafts and exact missing/invalid fields with fixed amber status colors, inline guidance and accessible descriptions. Keep a persistent issue count beside confirmation; block saving before progress starts and expand/focus/scroll to the first problem. Clear highlighting as fields are corrected or items deselected, retain nonblocking source warnings and show server/save errors inside the preview.
 
 - Release `1.1.98`: remove university-calendar availability as a prerequisite for weekly import duplicate review. Include bounded-date comparison, conservative unknown-range pattern matching and both upload-order regression coverage. Refresh frontend/cache versions; preserve existing account/schedule data. Code rollback target: `61be81b` (`1.1.97`).

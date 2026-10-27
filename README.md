@@ -299,6 +299,26 @@ the server; no additional browser credentials or environment settings are needed
 
 ## Schedule imports
 
+The Add Arrangement panel accepts ordinary-language text or voice. Describe one
+or several plans, then choose AI 整理安排 and confirm the resulting editable drafts.
+Relative dates use the actual current date in the browser's IANA time zone;
+omitted dates use the visibly selected calendar date. Missing/ambiguous times
+stay blank, explicit end times are retained, and open-ended recurrence asks for
+an end date instead of guessing. Existing duplicate checks run before review
+and again before saving. Manual entry remains available in a collapsible form.
+
+Direct recording uses MediaRecorder, stops at two minutes/8 MiB, and releases the
+microphone on stop, cancellation, navigation, hiding or leaving the page. It needs
+a secure context (HTTPS or localhost); HTTP deployments can import a voice file
+or use the phone keyboard's dictation. Audio files are limited to 8 MiB. The
+authenticated server forwards audio in memory to OpenAI's file transcription API,
+using `OPENAI_TRANSCRIBE_MODEL` (default `gpt-transcribe`) and the existing server
+API key; audio is not written to the app database. The resulting text is editable
+before parsing. Permission denial, unavailable recording, cancellation and failed
+transcription leave typed text intact; failed audio can be retried.
+See [OpenAI file transcription](https://developers.openai.com/api/docs/guides/speech-to-text)
+and [browser microphone requirements](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia).
+
 The Schedule page accepts timetable JPG/PNG/WebP images, PDF (up to 8 MB), Word,
 PowerPoint, Excel, TXT, MD, CSV, and JSON (other files up to 12 MB). Native images
 and PDF pages accompany extracted text so the AI can use weekday columns and

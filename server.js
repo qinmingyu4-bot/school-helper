@@ -34,6 +34,8 @@ const { buildMaterialContext, selectStudyVisuals } = require("./lib/study-contex
 const { buildExerciseCoverage, coverageInstruction } = require("./lib/study-coverage");
 const { selectAiModel } = require("./lib/ai-routing");
 const scheduleImport = require("./public/schedule-import");
+const scheduleInput = require("./lib/schedule-input");
+const scheduleTranscription = require("./lib/schedule-transcription");
 const { createCalendarService } = require("./lib/academic-calendar");
 const academicCalendars = createCalendarService({ request: async (body) => {
   const response = await fetch("https://api.openai.com/v1/responses", {
@@ -979,7 +981,7 @@ function parseScheduleDocument(doc, course = {}) {
       id: doc.id,
       title: String(data.title || "").slice(0, 160),
       kind: String(data.kind || "deadline").slice(0, 40),
-      course: String(data.course || course.name || "").slice(0, 100),
+      course: String(data.course || (course.name === scheduleCourseName ? "" : course.name) || "").slice(0, 100),
       startsAt: data.startsAt,
       endsAt: data.endsAt || "",
       timeZone: data.timeZone || "",
@@ -1333,14 +1335,14 @@ async function callAiWithResponses(messages, model, toolType = "web_search", str
   return extractResponsesText(payload) || "AI \u6ca1\u6709\u8fd4\u56de\u5185\u5bb9\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5\u3002";
 }
 
-async function callAiWithChatCompletions(messages, model, stream = null) {
+async function callAiWithChatCompletions(messages, model, stream = null, { signal } = {}) {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       "content-type": "application/json"
     },
-    ...(stream ? { signal: stream.signal } : {}),
+    ...(stream ? { signal: stream.signal } : signal ? { signal } : {}),
     body: JSON.stringify({
       model,
       ...(stream ? { stream: true } : {}),
@@ -2692,6 +2694,36 @@ if (directMessageMatch && method === "POST") {
   notifyClassmates(connection.userIds, connection.id);
   return sendJson(res, 201, { message: { ...message, mine: true } });
 }
+
+  if (url.pathname === "/api/schedule/parse-text" && method === "POST") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const body = await readJson(req, 32 * 1024);
+    let context;
+    try { context = scheduleInput.inputContext(body); }
+    catch (error) { return sendError(res, 400, error.message); }
+    if (!process.env.OPENAI_API_KEY) return sendError(res, 503, "AI 服务尚未配置，仍可手动填写安排。");
+    try {
+      const content = await callAiWithChatCompletions(scheduleInput.inputMessages(context), complexAiModel, null, { signal: AbortSignal.timeout(60000) });
+      const parsed = scheduleInput.parseInput(content, context.timeZone);
+      const review = scheduleImport.reviewDuplicates(parsed.items, await listUserScheduleItems(user.id, { includeCompleted: true }), { timeZone: context.timeZone });
+      return sendJson(res, 200, { ...review, clarification: parsed.clarification, timeZone: context.timeZone });
+    } catch { return sendError(res, 502, "AI 整理未成功，原文已保留。请重试或手动填写；尚未添加任何安排。"); }
+  }
+
+  if (url.pathname === "/api/schedule/transcribe" && method === "POST") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    let file;
+    const body = await readJson(req, 12 * 1024 * 1024);
+    try { file = scheduleTranscription.audioUpload(body); }
+    catch (error) { return sendError(res, 400, error.message); }
+    if (!process.env.OPENAI_API_KEY) return sendError(res, 503, "AI 语音服务尚未配置，仍可使用文字或手机键盘语音输入。");
+    try {
+      const text = await scheduleTranscription.transcribeAudio(file, { apiKey: process.env.OPENAI_API_KEY, model: process.env.OPENAI_TRANSCRIBE_MODEL || "gpt-transcribe" });
+      return sendJson(res, 200, { text });
+    } catch (error) { return sendError(res, 502, error.name === "TimeoutError" ? "语音转写超时，请重试或输入文字。" : "没有成功转成文字，请检查录音是否清晰后重试；尚未添加安排。"); }
+  }
 
   if (url.pathname === "/api/schedule/extract" && method === "POST") {
     const user = await requireUser(req, res);

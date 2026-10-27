@@ -2,6 +2,8 @@
 
 ## 2026-10-26
 
+- Add everyday-language and voice entry to Schedule. Parse multiple personal plans/classes/deadlines into editable compact drafts with explicit timezone/current-day/selected-day context, end times and duplicate checks; save only after confirmation. Record bounded audio with microphone cleanup/cancellation or import a voice file, transcribe through the server, and retain editable text on errors. Keep manual entry and file imports, with accessible recording states, retry, mobile layout and an HTTPS/keyboard-dictation fallback.
+
 - Compact pending Schedule imports into selectable, expandable cards. Keep title/type/time, course/location and a two-line notes preview visible; preserve complete notes, tutorial topics, evidence, warnings and editable fields inside each card. Open incomplete items for correction, retain disclosure/draft state during navigation, and keep a selected-count confirmation bar within reach on mobile without pagination or a nested scrolling list.
 
 - Prioritize syllabus quizzes, tests/exams and assignment deadlines as separate manually completed tasks. Match repeated timetable Lecture/Tutorial occurrences by normalized course, meeting type, actual instant and compatible section identifiers rather than title, including school time zones and UofT term suffixes. Skip duplicates during extraction review and recheck fresh saved items at confirmation; preserve distinct courses/sections and same-time assessments, count only new occurrences in previews, and avoid creating an empty planner for duplicate-only imports.

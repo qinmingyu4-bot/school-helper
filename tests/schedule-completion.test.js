@@ -86,7 +86,7 @@ test("server AI context uses the shared completion rule without rewriting saved 
   const before = JSON.stringify(documents);
   const source = fs.readFileSync(require.resolve("../server"), "utf8");
   const helpers = source.slice(source.indexOf("function parseScheduleDocument("), source.indexOf("function formatScheduleContext("));
-  const context = vm.createContext({ scheduleItemPrefix: "[SCHEDULE_ITEM]", scheduleImport: importer, db: { listCourses: async () => [{ id: "planner" }], listDocuments: async () => documents } });
+  const context = vm.createContext({ scheduleItemPrefix: "[SCHEDULE_ITEM]", scheduleCourseName: "Schedule & Deadlines", scheduleImport: importer, db: { listCourses: async () => [{ id: "planner" }], listDocuments: async () => documents } });
   vm.runInContext(helpers, context);
   const pending = await context.listUserScheduleItems("student");
   assert.deepEqual(Array.from(pending, (item) => item.title), ["DDL", "Future class"]);

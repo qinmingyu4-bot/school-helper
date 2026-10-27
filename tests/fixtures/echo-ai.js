@@ -7,6 +7,10 @@ globalThis.fetch = async (url, options) => {
   if (!String(url).startsWith("https://api.openai.com/v1/")) {
     throw new Error(`Unexpected external request in AI test: ${url}`);
   }
+  if (String(url).endsWith("/audio/transcriptions")) {
+    if (!(options.body instanceof FormData) || !options.body.get("file")?.size || options.body.get("model") !== "gpt-transcribe") throw new Error("Transcription must send multipart audio and the configured model.");
+    return Response.json({ text: "明天下午三点到四点在图书馆复习。" });
+  }
   const body = JSON.parse(options.body);
   if (typeof body.input?.[0]?.content === "string" && body.input[0].content.startsWith("Find official academic teaching dates")) {
     const sourceUrl = "https://rotmancommerce.utoronto.ca/current-students/international-student-welcome-guide/important-dates-and-deadlines-for-rotman-commerce-international-students/";
@@ -64,6 +68,17 @@ globalThis.fetch = async (url, options) => {
     return new Response(stream, { headers: { "content-type": "text/event-stream" } });
   }
   let content = JSON.stringify(body);
+  if (body.messages?.[0]?.content.startsWith("Turn the student's everyday language")) {
+    const prompt = body.messages[0].content;
+    const text = body.messages[1].content;
+    const today = prompt.match(/today (\d{4}-\d{2}-\d{2})/)[1];
+    const selectedDate = prompt.match(/calendar day (\d{4}-\d{2}-\d{2})/)[1];
+    const date = text.includes("明天") ? new Date(Date.parse(today) + 86400000).toISOString().slice(0, 10) : selectedDate;
+    content = text.includes("FORMAT_BAD") ? "invalid" : text.includes("每周") ? JSON.stringify({ items: [], clarification: "请补充重复安排的结束日期。" }) : JSON.stringify({ items: [
+      { kind: "EVENT", title: "图书馆复习", startsAt: text.includes("没说时间") ? "" : `${date}T15:00`, endsAt: text.includes("没说时间") ? "" : `${date}T16:00`, location: "图书馆", notes: "带上 Lecture 3 笔记", evidence: text },
+      ...(text.includes("作业") ? [{ kind: "DDL", title: "STA437 作业", course: "STA437", startsAt: `${date}T20:00`, evidence: "晚上八点交作业" }] : [])
+    ] });
+  }
   if (body.messages?.[0]?.content.startsWith("Extract only DDL")) {
     const input = body.messages[1].content;
     const source = typeof input === "string" ? input : input.filter((part) => part.type === "text").map((part) => part.text).join("\n");

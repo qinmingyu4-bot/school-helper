@@ -23,12 +23,14 @@
       if (!row || typeof row !== "object" || Array.isArray(row) || !kind(row.kind)) throw new Error("AI 返回了无法识别的类型，请重新提取。");
       const string = (key, limit) => String(row[key] || "").trim().slice(0, limit);
       const startsAt = string("startsAt", 30);
+      const endsAt = string("endsAt", 30);
+      const invalidEnd = endsAt && (!validTime(endsAt) || validTime(startsAt) && endsAt <= startsAt);
       const weekly = ["LEC", "TUT"].includes(kind(row.kind)) && row.weekly && typeof row.weekly === "object" ? {
         weekdays: [...new Set(Array.isArray(row.weekly.weekdays) ? row.weekly.weekdays.filter((day) => Number.isInteger(day) && day >= 0 && day <= 6) : [])],
         startTime: String(row.weekly.startTime || "").slice(0, 5), endTime: String(row.weekly.endTime || "").slice(0, 5),
         startDate: validDate(row.weekly.startDate) ? row.weekly.startDate : "", endDate: validDate(row.weekly.endDate) ? row.weekly.endDate : ""
       } : null;
-      return { kind: kind(row.kind), title: string("title", 160), course: string("course", 80), startsAt: validTime(startsAt) ? startsAt : "", location: string("location", 160), notes: string("notes", 600), evidence: string("evidence", 600), warning: string("warning", 600) || (weekly ? validWeekly(weekly) ? "" : "星期或上课时间未识别完整，请仅补充缺失信息。" : !validTime(startsAt) ? "日期或时间不完整，请补全后确认。" : ""), ...(weekly ? { weekly } : {}), selected: true };
+      return { kind: kind(row.kind), title: string("title", 160), course: string("course", 80), startsAt: validTime(startsAt) ? startsAt : "", ...(endsAt ? { endsAt: validTime(endsAt) ? endsAt : "" } : {}), location: string("location", 160), notes: string("notes", 600), evidence: string("evidence", 600), warning: string("warning", 600) || (weekly ? validWeekly(weekly) ? "" : "星期或上课时间未识别完整，请仅补充缺失信息。" : !validTime(startsAt) ? "日期或时间不完整，请补全后确认。" : invalidEnd ? "结束时间无效或早于开始时间，请核对。" : ""), ...(weekly ? { weekly } : {}), selected: true };
     });
     const hint = !Array.isArray(payload) && payload.termHint || {};
     return { items, termHint: { year: Number.isInteger(hint.year) && hint.year >= 2000 && hint.year <= 2200 ? hint.year : null,
@@ -128,7 +130,7 @@
       const itemKind = kind(item.kind) || item.kind;
       const course = courseKey(item);
       const section = normalize(item.title).match(/\b(LEC|TUT)[\s:-]*(\d{1,4})\b/);
-      return { exact: JSON.stringify([itemKind, normalize(item.title), course || normalize(item.course), instant]), meeting: ["LEC", "TUT"].includes(itemKind) && course ? JSON.stringify([itemKind, course, instant]) : "", section: section ? `${section[1]}${section[2].padStart(4, "0")}` : "" };
+      return { exact: JSON.stringify([itemKind, normalize(item.title), course || (normalize(item.course) === "SCHEDULE & DEADLINES" ? "" : normalize(item.course)), instant]), meeting: ["LEC", "TUT"].includes(itemKind) && course ? JSON.stringify([itemKind, course, instant]) : "", section: section ? `${section[1]}${section[2].padStart(4, "0")}` : "" };
     };
     const has = (item) => {
       const key = keys(item);

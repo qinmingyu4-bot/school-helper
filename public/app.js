@@ -107,6 +107,13 @@
     scheduleClockSignature: "",
     scheduleDrafts: [],
     scheduleSource: "",
+    scheduleDraftOrigin: "file",
+    scheduleQuickText: "",
+    scheduleQuickStatus: "",
+    scheduleVoicePhase: "idle",
+    scheduleVoiceMessage: "",
+    scheduleVoicePending: false,
+    scheduleVoiceFile: null,
     scheduleImportBusy: false,
     scheduleImportStatus: "",
     scheduleCalendar: null,
@@ -136,6 +143,12 @@
     busy: false,
     uploadFiles: []
   };
+
+  let scheduleVoiceRequest = null;
+  const scheduleVoiceRecorder = window.StudyBridgeScheduleVoice.createRecorder({
+    onState: ({ phase, message }) => { state.scheduleVoicePhase = phase; state.scheduleVoiceMessage = message; updateScheduleVoiceUi(); },
+    onAudio: (blob) => transcribeScheduleVoice(new File([blob], `recording.${blob.type.includes("mp4") ? "m4a" : "webm"}`, { type: blob.type }))
+  });
 
   const $ = (id) => document.getElementById(id);
   const esc = (value) =>
@@ -219,6 +232,7 @@
   }
 
   function setPage(page) {
+    if (page !== "schedule") cancelScheduleVoice();
     if (state.mode !== "admin" && page === "email") {
       page = "tools";
       state.tool = "email";
@@ -1083,8 +1097,11 @@
       ${pageHeader("SCHEDULE", "时间表", "一个月历，收好你的课程、作业与生活安排。")}
       <section class="schedule-layout">
         <div id="scheduleCalendarView" class="planner-view">${scheduleCalendarView.render(model, { agendaView: state.scheduleAgendaView, countdown: dueText })}</div>
-        <details class="card schedule-manual" id="scheduleManual" ${state.scheduleManualOpen ? "open" : ""}>
+        <details class="card schedule-manual" id="scheduleManual" ${state.scheduleManualOpen || state.scheduleDraftOrigin === "quick" && state.scheduleDrafts.length ? "open" : ""}>
           <summary><span><b>＋ 新增安排</b><small>课程、作业截止、个人计划，都放在这里</small></span><span class="schedule-disclosure" aria-hidden="true">⌄</span></summary>
+          ${scheduleQuickHtml(model)}
+          ${state.scheduleDraftOrigin === "quick" ? scheduleReviewHtml() : ""}
+          <details class="schedule-manual-fields" ${Object.entries(draft).some(([key, value]) => key !== "date" && value) ? "open" : ""}><summary>手动填写详细信息</summary>
           <div class="schedule-manual-form">
             <label class="schedule-field-wide">标题<input id="scheduleTitle" data-manual-field="title" maxlength="160" value="${esc(draft.title || "")}" placeholder="例如 复习 STA437 或 Essay 1 截止"></label>
             <label>类型<select id="scheduleKind" data-manual-field="kind">${[["EVENT", "个人安排"], ["DDL", "作业 / 截止"], ["LEC", "Lecture"], ["TUT", "Tutorial"]].map(([kind, label]) => `<option value="${kind}" ${(draft.kind || "EVENT") === kind ? "selected" : ""}>${label}</option>`).join("")}</select></label>
@@ -1096,8 +1113,9 @@
             <label class="schedule-field-wide">备注（选填）<textarea id="scheduleNotes" data-manual-field="notes" maxlength="600" placeholder="补充要求或备注">${esc(draft.notes || "")}</textarea></label>
             <div class="schedule-field-wide schedule-form-actions"><button class="primary" data-action="add-schedule" ${state.scheduleSaving ? "disabled" : ""}>${state.scheduleSaving ? "正在保存…" : "保存安排"}</button></div>
           </div>
+          </details>
         </details>
-        <details class="card planner-import" id="scheduleImportPanel" ${state.scheduleImportOpen || state.scheduleImportBusy || state.scheduleDrafts.length ? "open" : ""}>
+        <details class="card planner-import" id="scheduleImportPanel" ${state.scheduleImportOpen || state.scheduleDraftOrigin === "file" && (state.scheduleImportBusy || state.scheduleDrafts.length) ? "open" : ""}>
           <summary><span>从课程文件导入</span><small>上传课表、syllabus 或课程资料，自动提取安排 ⌄</small></summary>
           <div class="schedule-upload">
           <div class="schedule-upload-intro">
@@ -1116,7 +1134,7 @@
           </div>
           ${state.scheduleImportStatus ? `<p class="schedule-import-status" role="status" aria-live="polite">${esc(state.scheduleImportStatus)}</p>` : ""}
           </div>
-        ${scheduleReviewHtml()}
+        ${state.scheduleDraftOrigin === "file" ? scheduleReviewHtml() : ""}
         </details>
         <p class="schedule-timezone">月历和新增安排使用当前时区：${esc(model.timeZone)} · 导入课程按学校时区换算<br>Lecture / Tutorial 按结束时间自动完成；未填写结束时间时，按课表记录的开始时间处理。</p>
       </section>
@@ -1125,6 +1143,96 @@
 
   function scheduleMonthModel() {
     return scheduleCalendarView.buildModel({ items: state.scheduleItems || [], month: state.scheduleMonth, selectedDate: state.scheduleSelectedDate });
+  }
+
+  function scheduleQuickHtml(model) {
+    const blocked = state.scheduleImportBusy || Boolean(state.scheduleDrafts.length);
+    const voiceBusy = state.scheduleVoicePhase !== "idle" || state.scheduleVoicePending;
+    return `<section class="schedule-quick" aria-label="白话或语音新增安排">
+      <label for="scheduleQuickText">说说你的安排</label><p>可以一次描述多件事。未提日期时使用所选的 ${esc(model.selectedDate)}；“明天、下周”按今天计算。</p>
+      <textarea id="scheduleQuickText" maxlength="6000" placeholder="比如：明天下午三点到四点在图书馆讨论作业；周五晚上八点交 STA437 作业。" ${blocked ? "disabled" : ""}>${esc(state.scheduleQuickText)}</textarea>
+      <div class="schedule-quick-actions"><button class="${state.scheduleVoicePhase === "recording" ? "is-recording" : ""}" data-action="schedule-voice" ${state.scheduleVoicePhase === "stopping" || state.scheduleVoicePending || state.scheduleVoicePhase === "idle" && (blocked || !scheduleVoiceRecorder.supported) ? "disabled" : ""}>${state.scheduleVoicePhase === "recording" ? "结束录音" : state.scheduleVoicePhase === "requesting" ? "取消录音" : "语音输入"}</button>
+        <label class="schedule-audio-picker ${blocked || voiceBusy ? "is-disabled" : ""}">导入语音<input id="scheduleAudioFile" type="file" aria-label="导入语音文件" accept=".mp3,.mp4,.m4a,.wav,.webm,.mpeg,.mpga" ${blocked || voiceBusy ? "disabled" : ""}></label>
+        <button data-action="schedule-voice-retry" ${state.scheduleVoiceFile && !voiceBusy ? "" : "hidden"} ${blocked ? "disabled" : ""}>重试转写</button>
+        <button class="primary" data-action="parse-schedule-text" ${blocked || voiceBusy ? "disabled" : ""}>${state.scheduleImportBusy && state.scheduleDraftOrigin === "quick" ? "正在整理…" : "AI 整理安排"}</button>
+      </div>
+      <p class="schedule-voice-hint">${scheduleVoiceRecorder.supported ? "结束录音后会转成文字，可修改后再整理。录音最多 2 分钟，语音文件最多 8 MB。" : "直接录音需要安全连接和浏览器支持；可导入语音文件，或点手机键盘的麦克风输入。"}</p>
+      ${state.scheduleDrafts.length && state.scheduleDraftOrigin === "file" ? `<p>请先确认或取消课程文件的待加入项目，再整理新的安排。</p>` : ""}
+      <p id="scheduleVoiceStatus" role="status" aria-live="polite" ${state.scheduleVoiceMessage ? "" : "hidden"}>${esc(state.scheduleVoiceMessage)}</p>
+      ${state.scheduleQuickStatus ? `<p class="schedule-import-status" role="status">${esc(state.scheduleQuickStatus)}</p>` : ""}
+    </section>`;
+  }
+
+  function updateScheduleVoiceUi() {
+    const button = root.querySelector('[data-action="schedule-voice"]');
+    if (!button) return;
+    const busy = state.scheduleVoicePhase !== "idle" || state.scheduleVoicePending;
+    const blocked = state.scheduleImportBusy || Boolean(state.scheduleDrafts.length);
+    button.textContent = state.scheduleVoicePhase === "recording" ? "结束录音" : state.scheduleVoicePhase === "requesting" ? "取消录音" : "语音输入";
+    button.disabled = state.scheduleVoicePending || state.scheduleVoicePhase === "stopping" || state.scheduleVoicePhase === "idle" && (blocked || !scheduleVoiceRecorder.supported);
+    button.classList.toggle("is-recording", state.scheduleVoicePhase === "recording");
+    const status = $("scheduleVoiceStatus");
+    status.textContent = state.scheduleVoiceMessage; status.hidden = !state.scheduleVoiceMessage;
+    root.querySelector('[data-action="parse-schedule-text"]').disabled = blocked || busy;
+    $("scheduleAudioFile").disabled = blocked || busy;
+    $("scheduleAudioFile").closest("label").classList.toggle("is-disabled", blocked || busy);
+    const retry = root.querySelector('[data-action="schedule-voice-retry"]');
+    retry.hidden = !state.scheduleVoiceFile || busy; retry.disabled = blocked;
+  }
+
+  function cancelScheduleVoice() {
+    if (scheduleVoiceRequest) state.scheduleVoiceMessage = "已取消语音转写，原有文字已保留。";
+    scheduleVoiceRequest?.abort(); scheduleVoiceRequest = null;
+    state.scheduleVoicePending = false;
+    if (scheduleVoiceRecorder.phase !== "idle") scheduleVoiceRecorder.cancel();
+    updateScheduleVoiceUi();
+  }
+
+  async function transcribeScheduleVoice(file) {
+    if (!file || state.scheduleImportBusy || state.scheduleDrafts.length || state.scheduleVoicePending) return;
+    const userId = state.user?.id;
+    if (!userId) return;
+    const controller = new AbortController();
+    scheduleVoiceRequest = controller;
+    state.scheduleVoiceFile = file; state.scheduleVoicePending = true;
+    state.scheduleVoiceMessage = "正在把语音转成文字…"; updateScheduleVoiceUi();
+    try {
+      const [payload] = await readFiles([file], 8 * 1024 * 1024);
+      if (controller.signal.aborted) return;
+      const result = await api("/api/schedule/transcribe", { method: "POST", signal: controller.signal, body: payload });
+      if (controller.signal.aborted || state.user?.id !== userId) return;
+      const text = [state.scheduleQuickText.trim(), result.text].filter(Boolean).join("\n");
+      if (text.length > 6000) throw new Error("合并后的文字超过 6000 字，请先缩短输入内容，再重试转写。");
+      state.scheduleQuickText = text;
+      if ($("scheduleQuickText")) $("scheduleQuickText").value = text;
+      state.scheduleVoiceFile = null;
+      state.scheduleVoiceMessage = "已转成文字，可修改后点击“AI 整理安排”。";
+    } catch (error) { if (!controller.signal.aborted && state.user?.id === userId) state.scheduleVoiceMessage = error.message || "语音转写失败，可以重试。"; }
+    finally {
+      if (scheduleVoiceRequest === controller) { scheduleVoiceRequest = null; state.scheduleVoicePending = false; updateScheduleVoiceUi(); }
+    }
+  }
+
+  function setScheduleImportStatus(message) {
+    if (state.scheduleDraftOrigin === "quick") state.scheduleQuickStatus = message;
+    else state.scheduleImportStatus = message;
+  }
+
+  async function parseScheduleQuick() {
+    if (state.scheduleImportBusy || state.scheduleVoicePending || state.scheduleVoicePhase !== "idle" || state.scheduleDrafts.length) return;
+    const text = state.scheduleQuickText.trim();
+    if (!text) throw new Error("先写下或说出你的安排，例如“明天下午三点去图书馆”。");
+    const userId = state.user.id;
+    state.scheduleDraftOrigin = "quick"; state.scheduleImportBusy = true;
+    state.scheduleQuickStatus = "正在整理日期、时间和安排内容…"; render();
+    try {
+      const result = await api("/api/schedule/parse-text", { method: "POST", body: { text, selectedDate: state.scheduleSelectedDate, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone } });
+      if (state.user?.id !== userId) return;
+      state.scheduleDrafts = result.items; state.scheduleSource = "白话 / 语音输入";
+      state.scheduleCalendar = null; state.scheduleFromDate = "";
+      state.scheduleQuickStatus = result.items.length ? `整理出 ${result.items.length} 条安排，请核对后确认加入。${result.duplicateCount ? `已跳过 ${result.duplicateCount} 条重复安排。` : ""}${result.clarification || ""}` : result.clarification || (result.duplicateCount ? "这些安排已存在，已跳过重复项目。" : "还没有找到明确安排，请补充日期、时间或事情内容。");
+    } catch (error) { state.scheduleQuickStatus = error.message; }
+    finally { state.scheduleImportBusy = false; if (state.page === "schedule") render(); }
   }
 
   function scheduleClockSignature(model) {
@@ -1145,10 +1253,10 @@
   function scheduleDraftSummary(item) {
     const valid = item.weekly ? scheduleImport.validWeekly(item.weekly) : scheduleImport.validTime(item.startsAt);
     return {
-      title: item.title.trim() || "未命名项目", kind: item.kind,
-      time: item.weekly ? `每周${item.weekly.weekdays.map((weekday) => ["日", "一", "二", "三", "四", "五", "六"][weekday]).join("、") || "（待补星期）"} ${item.weekly.startTime || "时间待补充"}${item.weekly.endTime ? `–${item.weekly.endTime}` : ""}` : valid ? item.startsAt.replace("T", " ") : "日期 / 时间待补充",
+      title: item.title.trim() || "未命名项目", kind: item.kind === "EVENT" ? "个人安排" : item.kind,
+      time: item.weekly ? `每周${item.weekly.weekdays.map((weekday) => ["日", "一", "二", "三", "四", "五", "六"][weekday]).join("、") || "（待补星期）"} ${item.weekly.startTime || "时间待补充"}${item.weekly.endTime ? `–${item.weekly.endTime}` : ""}` : valid ? `${item.startsAt.replace("T", " ")}${item.endsAt ? ` → ${item.endsAt.replace("T", " ")}` : ""}` : "日期 / 时间待补充",
       context: [item.course, item.location].filter(Boolean).join(" · "), notes: item.notes.trim(),
-      warning: item.warning || (!item.title.trim() || !valid ? "请补全标题或时间后再加入。" : ""), needsInput: !item.title.trim() || !valid
+      warning: item.warning || (!item.title.trim() || !valid ? "请补全标题或时间后再加入。" : ""), needsInput: !item.title.trim() || !valid || Boolean(item.endsAt && (!scheduleImport.validTime(item.endsAt) || item.endsAt <= item.startsAt))
     };
   }
 
@@ -1165,8 +1273,8 @@
           <span class="schedule-review-warning" data-review-warning ${summary.warning ? "" : "hidden"}>需核对：${esc(summary.warning)}</span>
         </summary>
         <div class="schedule-draft-fields">
-        <div class="inline-fields"><label>类型<select data-draft-field="kind">${(item.weekly ? ["LEC", "TUT"] : ["DDL", "LEC", "TUT"]).map((kind) => `<option ${item.kind === kind ? "selected" : ""}>${kind}</option>`).join("")}</select></label>
-        ${item.weekly ? `<label>每周上课时间<input type="time" data-weekly-field="startTime" value="${esc(item.weekly.startTime)}"></label><label>结束时间<input type="time" data-weekly-field="endTime" value="${esc(item.weekly.endTime)}"></label>` : `<label>日期与时间<input type="datetime-local" data-draft-field="startsAt" value="${esc(item.startsAt)}"></label>`}</div>
+        <div class="inline-fields"><label>类型<select data-draft-field="kind">${(item.weekly ? ["LEC", "TUT"] : ["EVENT", "DDL", "LEC", "TUT"]).map((kind) => `<option value="${kind}" ${item.kind === kind ? "selected" : ""}>${kind === "EVENT" ? "个人安排" : kind}</option>`).join("")}</select></label>
+        ${item.weekly ? `<label>每周上课时间<input type="time" data-weekly-field="startTime" value="${esc(item.weekly.startTime)}"></label><label>结束时间<input type="time" data-weekly-field="endTime" value="${esc(item.weekly.endTime)}"></label>` : `<label>日期与时间<input type="datetime-local" data-draft-field="startsAt" value="${esc(item.startsAt)}"></label><label>结束日期与时间（选填）<input type="datetime-local" data-draft-field="endsAt" value="${esc(item.endsAt || "")}"></label>`}</div>
         ${item.weekly ? `<div class="schedule-weekdays" aria-label="每周上课日">${["日", "一", "二", "三", "四", "五", "六"].map((day, weekday) => `<label><input type="checkbox" data-weekday="${weekday}" ${item.weekly.weekdays.includes(weekday) ? "checked" : ""}>周${day}</label>`).join("")}</div><p class="muted">每周重复；只在授课日安排，跳过官网停课日期。</p>` : ""}
         <label>标题<input data-draft-field="title" value="${esc(item.title)}" maxlength="160"></label>
         <div class="inline-fields"><label>课程<input data-draft-field="course" value="${esc(item.course)}"></label><label>地点 / 链接<input data-draft-field="location" value="${esc(item.location)}"></label></div>
@@ -1227,6 +1335,7 @@
         section.querySelector(".schedule-warning")?.remove();
       }
       if (draft && !draft.weekly && scheduleImport.validTime(draft.startsAt) && draft.warning === "日期或时间不完整，请补全后确认。") { draft.warning = ""; section.querySelector(".schedule-warning")?.remove(); }
+      if (draft && draft.warning === "结束时间无效或早于开始时间，请核对。" && (!draft.endsAt || scheduleImport.validTime(draft.endsAt) && draft.endsAt > draft.startsAt)) { draft.warning = ""; section.querySelector(".schedule-warning")?.remove(); }
       refreshScheduleDraftSummary(section, draft);
     });
     root.querySelectorAll("[data-review-selected-count]").forEach((element) => { element.textContent = `已选 ${state.scheduleDrafts.filter((item) => item.selected).length} 项`; });
@@ -1238,10 +1347,12 @@
 
   async function extractScheduleFile() {
     if (state.scheduleImportBusy || state.scheduleDrafts.length) return;
+    cancelScheduleVoice();
     const file = $("scheduleFile")?.files?.[0] || state.scheduleUploadFile;
     if (!file) throw new Error("请先选择一个文件。");
     validateUploadFile(file);
     if (/\.pdf$/i.test(file.name) && file.size > 8 * 1024 * 1024) throw new Error("PDF 最大支持 8 MB。");
+    state.scheduleDraftOrigin = "file";
     state.scheduleImportBusy = true;
     state.scheduleImportStatus = "正在读取课表版面与时间；识别到每周课程后将自动核对学校官网校历…";
     render();
@@ -1266,8 +1377,9 @@
     const selected = scheduleImport.expandWeekly(selectedDrafts, state.scheduleCalendar, { fromDate: state.scheduleFromDate });
     if (!selected.length) throw new Error(selectedDrafts.length ? "本学期已无可生成的未来上课日期，请核对学期范围。" : "请至少勾选一个项目。");
     if (selected.some((item) => !item.title.trim() || !scheduleImport.validTime(item.startsAt))) throw new Error("请为所选项目补全有效的标题、日期和时间。");
+    if (selected.some((item) => item.endsAt && (!scheduleImport.validTime(item.endsAt) || item.endsAt <= item.startsAt))) throw new Error("请核对结束时间，结束时间应晚于开始时间。");
     state.scheduleImportBusy = true;
-    state.scheduleImportStatus = "正在保存已确认的项目…";
+    setScheduleImportStatus("正在保存已确认的项目…");
     render();
     let saved = 0, duplicates = 0;
     try {
@@ -1288,8 +1400,8 @@
       }
       state.scheduleDrafts = [];
       state.scheduleUploadFile = null;
-      state.scheduleImportStatus = `已添加 ${saved} 条倒计时提醒${duplicates ? `，跳过 ${duplicates} 条重复项目` : ""}。`;
-    } catch (error) { state.scheduleImportStatus = `已保存 ${saved} 条，其余项目仍待确认；重试会跳过已保存的重复项目。${error.message}`; }
+      setScheduleImportStatus(`已添加 ${saved} 条安排${duplicates ? `，跳过 ${duplicates} 条重复项目` : ""}。`);
+    } catch (error) { setScheduleImportStatus(`已保存 ${saved} 条，其余项目仍待确认；重试会跳过已保存的重复项目。${error.message}`); }
     finally {
       await loadScheduleItems().catch(() => {});
       state.scheduleImportBusy = false;
@@ -1808,12 +1920,14 @@
         return;
       }
       if (action === "settings") {
+        cancelScheduleVoice();
         clearTimeout(learningStyleTimer);
         if ($("englishTerms")) void captureLearningStyle().saver.flush().catch(() => {});
         appearanceController.open();
         return;
       }
       if (action === "logout") {
+        cancelScheduleVoice(); state.scheduleVoiceFile = null;
         appearanceController.reset();
         for (const url of uploadPreviewUrls.values()) URL.revokeObjectURL(url);
         uploadPreviewUrls.clear();
@@ -2105,7 +2219,7 @@
         state.scheduleManualOpen = true;
         render();
         $("scheduleManual")?.scrollIntoView({ block: "center" });
-        $("scheduleTitle")?.focus({ preventScroll: true });
+        $("scheduleQuickText")?.focus({ preventScroll: true });
         return;
       }
       if (action === "add-schedule") {
@@ -2116,6 +2230,7 @@
         const title = $("scheduleTitle")?.value.trim() || "";
         if (!title || !scheduleImport.validTime(startsAt)) throw new Error("请填写标题和有效日期、时间。");
         if (endClock && (!scheduleImport.validClock(endClock) || endClock <= startsAt.slice(11))) throw new Error("结束时间应晚于开始时间；跨天安排请分天添加。");
+        cancelScheduleVoice();
         const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         const payload = { title, kind: scheduleImport.kind($("scheduleKind")?.value) || "EVENT", course: $("scheduleCourse")?.value || "", startsAt: scheduleImport.toUtc(startsAt, timeZone),
           endsAt: endClock ? scheduleImport.toUtc(`${day}T${endClock}`, timeZone) : "", timeZone, location: $("scheduleLocation")?.value || "", notes: $("scheduleNotes")?.value || "", completedAt: "" };
@@ -2134,13 +2249,21 @@
         } finally { state.scheduleSaving = false; button.disabled = false; }
         return;
       }
+      if (action === "schedule-voice") {
+        if (scheduleVoiceRecorder.phase !== "idle") { scheduleVoiceRecorder.stop(); return; }
+        if (state.scheduleImportBusy || state.scheduleDrafts.length || state.scheduleVoicePending) return;
+        await scheduleVoiceRecorder.start();
+        return;
+      }
+      if (action === "schedule-voice-retry") { await transcribeScheduleVoice(state.scheduleVoiceFile); return; }
+      if (action === "parse-schedule-text") { await parseScheduleQuick(); return; }
       if (action === "extract-schedule") { await extractScheduleFile(); return; }
       if (action === "confirm-schedule") { await confirmScheduleImport(); return; }
       if (action === "cancel-schedule") {
         if (state.scheduleImportBusy) return;
         state.scheduleDrafts = [];
-        state.scheduleUploadFile = null;
-        state.scheduleImportStatus = "已取消，未添加待确认项目。";
+        if (state.scheduleDraftOrigin === "file") state.scheduleUploadFile = null;
+        setScheduleImportStatus("已取消，未添加待确认项目。原文已保留，可修改后重新整理。");
         render(); return;
       }
       if (action === "complete-schedule") {
@@ -2368,6 +2491,7 @@
   });
 
   document.addEventListener("change", (event) => {
+    if (event.target?.id === "scheduleAudioFile") { void transcribeScheduleVoice(event.target.files?.[0]); event.target.value = ""; return; }
     if (event.target?.id === "scheduleMonthPicker") {
       if (scheduleImport.validDate(`${event.target.value}-01`)) { state.scheduleMonth = event.target.value; state.scheduleSelectedDate = `${event.target.value}-01`; render(); $("scheduleMonthPicker")?.focus({ preventScroll: true }); }
       return;
@@ -2379,7 +2503,7 @@
       updateSchedulePreviewCount();
       return;
     }
-    if (event.target.dataset?.weeklyField || event.target.dataset?.draftField === "selected") { updateSchedulePreviewCount(); return; }
+    if (event.target.dataset?.weeklyField || event.target.dataset?.draftField) { updateSchedulePreviewCount(); return; }
     if (event.target?.id === "postAnon") { state.communityDraft.anonymous = event.target.checked; return; }
     if (["englishTerms", "englishAnswers", "chineseExplanations"].includes(event.target?.id)) { scheduleLearningStyleSave(); return; }
     if (event.target?.id === "scheduleFile") {
@@ -2409,6 +2533,7 @@
   });
 
   document.addEventListener("input", (event) => {
+    if (event.target?.id === "scheduleQuickText") { state.scheduleQuickText = event.target.value; return; }
     if (event.target.dataset?.calendarField) { state.scheduleCalendarDraft[event.target.dataset.calendarField] = event.target.value; return; }
     if (event.target.dataset?.weeklyField) { const section = event.target.closest("[data-draft]"); const draft = state.scheduleDrafts[Number(section?.dataset.draft)]; if (draft?.weekly) { draft.weekly[event.target.dataset.weeklyField] = event.target.value; refreshScheduleDraftSummary(section, draft); } return; }
     if (event.target.dataset?.communityReply) { communityReplies.thread(event.target.dataset.communityReply).draft = event.target.value; return; }
@@ -2452,7 +2577,7 @@
       const draft = state.scheduleDrafts[Number(event.target.dataset.reviewEditor)];
       if (draft) scheduleDraftDisclosure.set(draft, event.target.open);
     }
-    if (event.target?.id === "scheduleManual") state.scheduleManualOpen = event.target.open;
+    if (event.target?.id === "scheduleManual") { state.scheduleManualOpen = event.target.open; if (!event.target.open && event.target.isConnected) cancelScheduleVoice(); }
     if (event.target?.id === "scheduleImportPanel") state.scheduleImportOpen = event.target.open;
   }, true);
 
@@ -2532,7 +2657,8 @@
     }
   });
   window.addEventListener("online", () => void syncClassmatesLive());
-  window.addEventListener("pagehide", stopClassmatesLive);
+  window.addEventListener("pagehide", () => { stopClassmatesLive(); cancelScheduleVoice(); });
+  document.addEventListener("visibilitychange", () => { if (document.hidden) cancelScheduleVoice(); });
   window.addEventListener("pageshow", startClassmatesLive);
 
   document.addEventListener("paste", (event) => {

@@ -58,6 +58,22 @@
 .schedule-manual-form textarea { min-height: 70px; }
 .schedule-field-wide { grid-column: 1 / -1; }
 .schedule-form-actions { display: flex; justify-content: flex-end; }
+.schedule-quick { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+.schedule-quick > label { font-size: 14px; font-weight: 600; }
+.schedule-quick > p { font-size: 12px; line-height: 1.7; color: var(--muted); margin: 7px 0 12px; }
+.schedule-quick textarea { min-height: 100px; font-size: 15px; line-height: 1.7; resize: vertical; }
+.schedule-quick-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.schedule-quick-actions button, .schedule-audio-picker { min-height: 40px; font-size: 13px; padding: 9px 12px; }
+.schedule-quick-actions .primary { margin-left: auto; }
+.schedule-quick-actions [hidden], .schedule-quick [hidden] { display: none; }
+.schedule-audio-picker { position: relative; display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; margin: 0; overflow: hidden; }
+.schedule-audio-picker input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: inherit; }
+.schedule-audio-picker.is-disabled { opacity: .5; }
+.schedule-audio-picker:focus-within { outline: 2px solid var(--green); outline-offset: 2px; }
+.schedule-quick-actions .is-recording { color: #a43e35; border-color: #cc7c73; background: #fff4f2; }
+.schedule-manual-fields { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 16px; }
+.schedule-manual-fields > summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+.schedule-manual > .schedule-review { margin-top: 18px; border: 1px solid var(--line); }
 .schedule-list-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
 .schedule-list-header p { font-size: 13px; color: var(--muted); margin: 7px 0 0; }
 .schedule-type-legend { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -127,6 +143,8 @@
   .schedule-manual-form, .schedule-draft .inline-fields { grid-template-columns: 1fr; }
   .schedule-draft { padding: 12px; }
   .schedule-draft input:not([type="checkbox"]), .schedule-draft textarea, .schedule-draft select { font-size: 16px; }
+  .schedule-quick textarea { font-size: 16px; }
+  .schedule-quick-actions .primary { width: 100%; margin: 0; }
   .schedule-item { grid-template-columns: auto minmax(0,1fr); gap: 10px; }
   .schedule-item > strong { grid-column: 2; }
   .schedule-item > button { grid-column: 2; justify-self: start; }

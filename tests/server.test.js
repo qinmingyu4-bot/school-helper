@@ -365,6 +365,49 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     assert.ok((await request("/api/community/channels", { cookie: bob.cookie })).data.majors.includes("Psychology"));
   });
 
+  await t.test("community explicit publishing, anonymous replies, private notices and owner deletion", async () => {
+    const onlyAll = await request("/api/community/posts", { method: "POST", cookie: alice.cookie, body: { channels: [{ type: "all" }], anonymous: true, content: "Anonymous only in all" } });
+    assert.equal(onlyAll.status, 201);
+    for (const field of ["school", "schoolKey", "major", "userId"]) assert.equal(onlyAll.data.post[field], undefined);
+    assert.equal(onlyAll.data.post.authorName, "匿名同学");
+    assert.equal((await request("/api/community?channel=school", { cookie: alice.cookie })).data.posts.some((post) => post.id === onlyAll.data.post.id), false);
+    const multi = await request("/api/community/posts", { method: "POST", cookie: alice.cookie, body: { channels: [{ type: "all" }, { type: "major", value: "Shared Major" }], anonymous: true, topic: "Cross-channel", content: "One shared discussion" } });
+    assert.equal(multi.status, 201);
+    const id = multi.data.post.id;
+    assert.equal(multi.data.post.channels.length, 2);
+    const feed = await request("/api/community?channel=major&value=Shared%20Major&search=shared", { cookie: bob.cookie });
+    assert.ok(feed.data.posts.some((post) => post.id === id));
+    assert.equal((await request("/api/community?search=" + "x".repeat(81), { cookie: alice.cookie })).status, 400);
+    assert.equal((await request("/api/community?before=invalid", { cookie: alice.cookie })).status, 400);
+    assert.equal((await request(`/api/community/posts/${id}/replies?before=${encodeURIComponent("POST#2026-10-28T12:00:00.000Z#post")}`, { cookie: alice.cookie })).status, 400);
+    assert.equal((await request("/api/community/posts", { method: "POST", cookie: alice.cookie, body: { channels: [], content: "Invalid" } })).status, 400);
+    const like = `/api/community/posts/${id}/like?channel=all`;
+    for (let attempt = 0; attempt < 2; attempt++) assert.equal((await request(like, { method: "PATCH", cookie: bob.cookie, body: { liked: true } })).data.post.likeCount, 1);
+    const reply = await request(`/api/community/posts/${id}/replies`, { method: "POST", cookie: bob.cookie, body: { anonymous: true, content: "An anonymous reply" } });
+    assert.equal(reply.status, 201);
+    assert.equal(reply.data.reply.authorName, "匿名同学");
+    assert.equal(reply.data.reply.userId, undefined);
+    const notices = await request("/api/community/notifications", { cookie: alice.cookie });
+    const notice = notices.data.notifications.find((item) => item.postId === id);
+    assert.equal(notice.authorName, "匿名同学");
+    assert.equal((await request("/api/community/notifications")).status, 401);
+    assert.equal((await request("/api/community/notifications?before=" + encodeURIComponent("POST#2026-10-28T12:00:00.000Z#post"), { cookie: alice.cookie })).status, 400);
+    assert.equal((await request("/api/community/notifications", { cookie: bob.cookie })).data.notifications.some((item) => item.id === notice.id), false);
+    const read = `/api/community/notifications/${encodeURIComponent(notice.id)}/read`;
+    assert.equal((await request(read, { method: "PATCH", cookie: bob.cookie })).status, 404);
+    assert.equal((await request(read, { method: "PATCH", cookie: alice.cookie })).status, 200);
+    const removeReply = `/api/community/posts/${id}/replies/${encodeURIComponent(reply.data.reply.id)}?createdAt=${encodeURIComponent(reply.data.reply.createdAt)}`;
+    assert.equal((await request(removeReply, { method: "DELETE", cookie: alice.cookie })).status, 403);
+    assert.equal((await request(removeReply, { method: "DELETE", cookie: bob.cookie })).status, 200);
+    assert.equal((await request("/api/community/notifications", { cookie: alice.cookie })).data.notifications.some((item) => item.id === notice.id), false);
+    assert.equal((await request(`/api/community/posts/${id}`, { method: "DELETE", cookie: bob.cookie })).status, 403);
+    assert.equal((await request(`/api/community/posts/${id}`, { method: "DELETE", cookie: alice.cookie })).status, 200);
+    assert.equal((await request(`/api/community/posts/${id}`, { cookie: alice.cookie })).status, 404);
+    assert.equal((await request(`/api/community/posts/${id}/replies`, { method: "POST", cookie: bob.cookie, body: { content: "Late" } })).status, 404);
+    assert.equal((await request(like, { method: "PATCH", cookie: bob.cookie, body: { liked: true } })).status, 404);
+    await request(`/api/community/posts/${onlyAll.data.post.id}`, { method: "DELETE", cookie: alice.cookie });
+  });
+
   await t.test("community and accepted classmate messaging", async () => {
     const post = await request("/api/community/posts", {
       method: "POST", cookie: alice.cookie, body: { channel: "all", content: "Health check community post" }

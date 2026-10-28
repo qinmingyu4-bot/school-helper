@@ -5,25 +5,17 @@ const path = require("node:path");
 const { test } = require("node:test");
 const { StudyBridgeDatabase } = require("../lib/database");
 const { DynamoStore } = require("../lib/aws-dynamodb");
+const { memoryDynamo } = require("./helpers/community-dynamo");
 
 test("DynamoDB community likes stay in the selected channel and directory uses published labels", async () => {
   const db = new StudyBridgeDatabase();
-  let record = { id: "post", channelType: "major", channelKey: "major:psychology", channelLabel: "Psychology", schoolKey: "university-of-toronto", createdAt: "2026-10-16T12:00:00.000Z", likes: [] };
-  let writes = 0;
-  db.dynamo = {
-    query: async (pk, prefix) => { assert.equal(pk, "COMMUNITY#major:psychology"); assert.equal(prefix, "POST#"); return [record]; },
-    scanType: async (type) => { assert.equal(type, "communityPost"); return [record]; },
-    put: async (pk, sk, type, value) => {
-      assert.equal(pk, "COMMUNITY#major:psychology");
-      assert.equal(sk, `POST#${record.createdAt}#post`);
-      assert.equal(type, "communityPost");
-      record = value;
-      writes++;
-    }
-  };
+  const { store, calls } = memoryDynamo();
+  db.dynamo = store;
+  await db.createCommunityPost({ id: "post", channels: [{ type: "all", key: "all", label: "全部社区" }, { type: "major", key: "major:psychology", label: "Psychology" }], content: "hello", userId: "alice" });
   assert.equal((await db.toggleCommunityPostLike("major:psychology", "post", "bob")).likeCount, 1);
   assert.equal((await db.toggleCommunityPostLike("all", "post", "bob")).likeCount, 0);
-  assert.equal(writes, 2);
+  await assert.rejects(db.toggleCommunityPostLike("school:other", "post", "bob"), { statusCode: 404 });
+  assert.ok(calls.filter((call) => call.target === "TransactWriteItems").at(-1).body.TransactItems[0].Put.ExpressionAttributeValues[":expected"]);
   assert.deepEqual(await db.listCommunityChannels(), { schools: [], majors: ["Psychology"] });
 });
 
@@ -33,11 +25,8 @@ test("community replies use independent local and DynamoDB records with stable p
   for (const mode of ["local", "dynamodb"]) {
     const db = new StudyBridgeDatabase();
     db.local.file = path.join(directory, `${mode}.json`);
-    const rows = new Map();
-    db.dynamo = mode === "local" ? null : {
-      put: async (pk, sk, type, value) => { assert.equal(type, "communityReply"); rows.set(`${pk}|${sk}`, value); return value; },
-      query: async (pk, prefix) => [...rows].filter(([key]) => key.startsWith(`${pk}|${prefix}`)).map(([, value]) => value)
-    };
+    db.dynamo = mode === "local" ? null : memoryDynamo().store;
+    for (const id of ["post", "other-post"]) await db.createCommunityPost({ id, userId: "alice", content: id });
     const records = await Promise.all(Array.from({ length: 55 }, (_, index) => db.createCommunityReply({ id: `reply-${String(index).padStart(3, "0")}`, postId: "post", userId: "alice", content: `Reply ${index}` })));
     await db.createCommunityReply({ id: "other", postId: "other-post", userId: "bob", content: "Other post" });
     const newest = await db.listCommunityReplies("post");

@@ -52,12 +52,47 @@ become still images. HEIC/HEIF works only when the browser can decode it; otherw
 export a JPG/PNG first. Unsupported or oversized images show an error without
 silently truncating the image data or replacing the saved profile.
 
-Community posts include an expandable reply discussion. Signed-in users can read
-and send replies beneath posts in the all/school/major feeds. Replies show the
-account name and timestamp, remain attached to the original post across channels,
-and persist separately in local JSON or DynamoDB. Refresh retrieves new replies;
-older replies load in 50-reply pages. Unsent drafts survive page/channel navigation
-within the session, and failed sends retain their text. Account changes clear drafts.
+Community publishing has explicit checkboxes for all, school and major channels.
+Only checked destinations receive a new post; a shared post ID keeps likes and
+replies together across those destinations. School/major destinations use the
+selected channel, falling back to the profile. Anonymous posts hide the account
+name and omit profile school/major fields from public responses; the explicitly
+chosen destinations remain visible. Replies have their own anonymous switch.
+Authors can delete their posts/replies; administrators can also delete them.
+Deleting a post removes access to its discussion and notices in every channel.
+
+The feed loads 40 posts at a time with no fixed 80-post history cutoff. Search
+matches topic/body in the selected channel, case-insensitively after Unicode
+normalization. Each cloud search request examines at most 100 indexed feed
+references; use **继续搜索更早讨论** to continue when a batch has no matches.
+Deleted references can produce a shorter page. Older replies load in 50-reply
+pages. Unsent reply drafts and anonymous choices survive page/channel navigation
+within the session; failed sends retain text and account changes clear drafts.
+
+Reply notifications are private to the post author, omit self-replies, and honor
+reply anonymity. The community page loads the latest 30 notifications, supports
+older pages and manual refresh, and marks a notification read when opening its
+discussion. There is no background polling, email or push delivery. The unread
+number counts the currently loaded notifications. Notices for deleted posts or
+replies are hidden.
+
+DynamoDB community posts use one canonical record with small per-channel feed
+references. Conditional transactions with bounded conflict retries prevent likes
+from overwriting concurrent updates; the current client sends the desired liked
+state so repeated requests are idempotent. Replies and notifications are committed
+atomically after checking the post still exists. Soft deletion retains a content-free
+tombstone to stop in-flight writes or legacy indexing from restoring a deleted post.
+Deleted reply tombstones retain only the IDs/date needed for stable pagination.
+
+Existing cloud posts are indexed incrementally: each feed request advances at most
+one 100-item table-scan page, with a persistent restart-safe checkpoint. The page
+shows a historical-indexing message until this one-time upgrade is complete; refresh
+to advance it. Legacy posts retain their previous aggregate-feed visibility, and
+legacy replies remain attached to the same post IDs. Once complete, normal feed,
+search, post lookup and reply/notification pagination use bounded queries or direct
+reads. Channel suggestions are capped at 100 stored entries; other names can still
+be typed. No database credentials or infrastructure changes are required. Older
+clients without destination checkboxes retain their prior aggregate-feed behavior.
 
 Course-material uploads accept files up to **50 MiB each**, including PDF, Word,
 PowerPoint, Excel and text files. Multiple selected files are read and uploaded

@@ -19,7 +19,7 @@ function harness() {
     profile: () => ({ school: "University of Toronto", major: "Computer Science" }),
     setPage: (page) => { state.page = page; },
     setToast: (message) => notices.push(message),
-    api: (path) => new Promise((resolve, reject) => requests.push({ path, resolve, reject }))
+    api: (path) => path === "/api/community/notifications" ? Promise.resolve({ notifications: [] }) : new Promise((resolve, reject) => requests.push({ path, resolve, reject }))
   });
   // Rendering stops classmates polling on non-classmate pages, changing its generation.
   // Community loading must complete independently of that lifecycle.

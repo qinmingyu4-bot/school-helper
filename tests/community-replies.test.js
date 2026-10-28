@@ -61,3 +61,24 @@ test("late reply reads and sends cannot update another account or reveal its dra
   assert.deepEqual(controller.thread("read").replies, []);
   assert.equal(changed.length, before);
 });
+
+test("anonymous reply sends retain their choice and deletion retains unsent drafts", async () => {
+  const { controller, requests } = harness();
+  const thread = controller.thread("post");
+  thread.anonymous = true; thread.draft = "Anonymous text";
+  const send = controller.send("post");
+  assert.equal(requests[0].options.body.anonymous, true);
+  requests[0].resolve({ reply: { id: "reply", createdAt: "2026-10-28T12:00:00.000Z", content: "Anonymous text", authorName: "匿名同学", mine: true } });
+  await send;
+  assert.equal(thread.anonymous, true);
+  thread.draft = "My next reply";
+  const remove = controller.remove("post", "reply");
+  await controller.remove("post", "reply");
+  assert.equal(requests.length, 2);
+  assert.equal(requests[1].options.method, "DELETE");
+  assert.match(requests[1].route, /createdAt=/);
+  requests[1].resolve({ deleted: true });
+  await remove;
+  assert.deepEqual(thread.replies, []);
+  assert.equal(thread.draft, "My next reply");
+});

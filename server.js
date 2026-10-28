@@ -301,28 +301,17 @@ function communityChannelForUser(user, requestedType = "all", requestedValue) {
     const label = value.trim();
     return { type: channelType, label, key: communityChannelKey(channelType, label) };
   }
-  return { type: "all", label: "StudyBridge", key: "all" };
+  return { type: "all", label: "全部社区", key: "all" };
 }
 
 function publicCommunityPost(post, viewer) {
   const likes = Array.isArray(post.likes) ? post.likes : [];
-  const anonymous = post.anonymous === true;
+  const channels = post.channels || [{ type: post.channelType || (post.schoolKey ? "school" : "all"), key: post.channelKey || post.schoolKey || "all", label: post.channelLabel || post.school || "全部社区" }];
   return {
-    id: post.id,
-    school: post.school || "",
-    schoolKey: post.schoolKey || "",
-    major: post.major || "",
-    channelType: post.channelType || (post.schoolKey ? "school" : "all"),
-    channelKey: post.channelKey || post.schoolKey || "all",
-    channelLabel: post.channelLabel || post.school || "StudyBridge",
-    topic: post.topic || "问问题",
-    content: post.content || "",
-    anonymous,
-    authorName: anonymous ? "匿名同学" : post.authorName || "同校同学",
-    createdAt: post.createdAt,
-    updatedAt: post.updatedAt,
-    likeCount: Number(post.likeCount || likes.length || 0),
-    likedByMe: likes.includes(viewer?.id)
+    id: post.id, channels, channelType: channels[0].type, channelKey: channels[0].key, channelLabel: channels[0].label,
+    topic: post.topic || "问问题", content: post.content || "", anonymous: post.anonymous === true,
+    authorName: post.anonymous ? "匿名同学" : post.authorName || "同学", mine: post.userId === viewer.id,
+    createdAt: post.createdAt, updatedAt: post.updatedAt, likeCount: likes.length, likedByMe: likes.includes(viewer.id)
   };
 }
 
@@ -2245,93 +2234,117 @@ async function routeApi(req, res) {
     return sendJson(res, 200, await db.listCommunityChannels());
   }
 
-  if (url.pathname === "/api/community" && method === "GET") {
-  const user = await requireUser(req, res);
-  if (!user) return;
-  let channel;
-  try {
-    channel = communityChannelForUser(user, url.searchParams.get("channel") || "all", url.searchParams.get("value"));
-  } catch (error) {
-    return sendError(res, 400, error.message);
-  }
-  const posts = await db.listCommunityPosts(channel.key);
-  return sendJson(res, 200, {
-    channel,
-    school: String(user.profile?.school || "").trim(),
-    major: String(user.profile?.major || "").trim(),
-    posts: posts.map((post) => publicCommunityPost(post, user))
-  });
-}
-
-if (url.pathname === "/api/community/posts" && method === "POST") {
-  const user = await requireUser(req, res);
-  if (!user) return;
-  const body = await readJson(req);
-  let channel;
-  try {
-    channel = communityChannelForUser(user, body.channel || "all", body.channelValue);
-  } catch (error) {
-    return sendError(res, 400, error.message);
-  }
-  const content = String(body.content || "").trim().slice(0, 1600);
-  const topic = String(body.topic || "Question").trim().slice(0, 40);
-  if (content.length < 3) return sendError(res, 400, "Post content is too short.");
-  const school = String(user.profile?.school || "").trim();
-  const major = String(user.profile?.major || "").trim();
-  const post = await db.createCommunityPost({
-    id: createId("post"),
-    school,
-    schoolKey: communitySchoolKey(school),
-    major,
-    channelType: channel.type,
-    channelKey: channel.key,
-    channelLabel: channel.label,
-    topic,
-    content,
-    anonymous: body.anonymous === true,
-    userId: user.id,
-    authorName: user.name,
-    authorRole: user.role || "student"
-  });
-  return sendJson(res, 201, { post: publicCommunityPost(post, user) });
-}
-
-const communityRepliesMatch = url.pathname.match(/^\/api\/community\/posts\/([^/]+)\/replies$/);
-if (communityRepliesMatch && (method === "GET" || method === "POST")) {
-  const user = await requireUser(req, res);
-  if (!user) return;
-  const postId = communityRepliesMatch[1];
-  const post = await db.getCommunityPost(postId);
-  if (!post) return sendError(res, 404, "帖子不存在。");
-  const publicReply = (reply) => ({ id: reply.id, postId: reply.postId, content: reply.content,
-    authorName: reply.authorName, createdAt: reply.createdAt, mine: reply.userId === user.id });
-  if (method === "GET") {
+  const communityBefore = (prefix = "POST#") => {
     const before = url.searchParams.get("before") || "";
-    if (before.length > 200) return sendError(res, 400, "回复分页参数无效。");
-    const result = await db.listCommunityReplies(postId, before);
-    return sendJson(res, 200, { replies: result.replies.map(publicReply), nextBefore: result.nextBefore });
+    if (before.length > 240 || (before && (!/^(POST#|NOTICE#)?\d{4}-\d{2}-\d{2}T[^#]+#[\w~:.\-]+$/.test(before) || (prefix ? !before.startsWith(prefix) : !/^\d/.test(before))))) throw Object.assign(new Error("分页参数无效。"), { statusCode: 400 });
+    return before;
+  };
+  if (url.pathname === "/api/community" && method === "GET") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    let channel;
+    try { channel = communityChannelForUser(user, url.searchParams.get("channel") || "all", url.searchParams.get("value")); }
+    catch (error) { return sendError(res, 400, error.message); }
+    const search = (url.searchParams.get("search") || "").trim();
+    if (search.length > 80) return sendError(res, 400, "搜索词最多 80 字。");
+    const result = await db.listCommunityPage(channel.key, { before: communityBefore(), search });
+    return sendJson(res, 200, { channel, ...result, posts: result.posts.map((post) => publicCommunityPost(post, user)) });
   }
-  const body = await readJson(req);
-  const content = typeof body.content === "string" ? body.content.trim() : "";
-  if (!content || content.length > 1600) return sendError(res, 400, "回复内容须为 1–1600 字。");
-  const reply = await db.createCommunityReply({ id: createId("reply"), postId, content, userId: user.id, authorName: user.name });
-  return sendJson(res, 201, { reply: publicReply(reply) });
-}
 
-const openCommunityLikeMatch = url.pathname.match(/^\/api\/community\/posts\/([^/]+)\/like$/);
-if (openCommunityLikeMatch && method === "PATCH") {
-  const user = await requireUser(req, res);
-  if (!user) return;
-  let channel;
-  try {
-    channel = communityChannelForUser(user, url.searchParams.get("channel") || "all", url.searchParams.get("value"));
-  } catch (error) {
-    return sendError(res, 400, error.message);
+  if (url.pathname === "/api/community/posts" && method === "POST") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const body = await readJson(req);
+    let selected;
+    try {
+      if (body.channels !== undefined) {
+        if (!Array.isArray(body.channels) || !body.channels.length || body.channels.length > 3) throw new Error("请选择 1–3 个发布频道。");
+        selected = body.channels.map((entry) => {
+          if (!entry || !["all", "school", "major"].includes(entry.type)) throw new Error("发布频道无效。");
+          return communityChannelForUser(user, entry.type, entry.value);
+        });
+        if (new Set(selected.map((entry) => entry.type)).size !== selected.length) throw new Error("每种频道只能选择一次。");
+      } else {
+        // Old clients retain the aggregate-feed behavior until their assets refresh.
+        const channel = communityChannelForUser(user, body.channel || "all", body.channelValue);
+        selected = channel.type === "all" ? [channel] : [channel, communityChannelForUser(user, "all")];
+      }
+    } catch (error) { return sendError(res, 400, error.message); }
+    const content = typeof body.content === "string" ? body.content.trim() : "";
+    const topic = typeof body.topic === "string" ? body.topic.trim() : "问问题";
+    if (content.length < 3 || content.length > 1600 || topic.length > 40) return sendError(res, 400, "正文须为 3–1600 字，主题最多 40 字。");
+    const first = selected[0];
+    const post = await db.createCommunityPost({ id: createId("post"), channels: selected, channelType: first.type,
+      channelKey: first.key, channelLabel: first.label, topic, content, anonymous: body.anonymous === true,
+      userId: user.id, authorName: user.name });
+    return sendJson(res, 201, { post: publicCommunityPost(post, user) });
   }
-  const post = await db.toggleCommunityPostLike(channel.key, openCommunityLikeMatch[1], user.id);
-  if (!post) return sendError(res, 404, "Community post not found.");
-  return sendJson(res, 200, { post: publicCommunityPost(post, user) });
-}
+
+  const communityPostMatch = url.pathname.match(/^\/api\/community\/posts\/([^/]+)$/);
+  if (communityPostMatch && ["GET", "DELETE"].includes(method)) {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const post = method === "DELETE" ? await db.deleteCommunityPost(communityPostMatch[1], user.id, ["admin", "owner"].includes(user.role)) : await db.getCommunityPost(communityPostMatch[1]);
+    if (!post) return sendError(res, 404, "帖子不存在或已删除。");
+    return sendJson(res, 200, method === "DELETE" ? { deleted: true } : { post: publicCommunityPost(post, user) });
+  }
+
+  const communityReplyDelete = url.pathname.match(/^\/api\/community\/posts\/([^/]+)\/replies\/([^/]+)$/);
+  if (communityReplyDelete && method === "DELETE") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    if (!await db.getCommunityPost(communityReplyDelete[1])) return sendError(res, 404, "帖子不存在。");
+    await db.deleteCommunityReply(communityReplyDelete[1], decodeURIComponent(communityReplyDelete[2]), user.id, ["admin", "owner"].includes(user.role), url.searchParams.get("createdAt") || "");
+    return sendJson(res, 200, { deleted: true });
+  }
+
+  const communityRepliesMatch = url.pathname.match(/^\/api\/community\/posts\/([^/]+)\/replies$/);
+  if (communityRepliesMatch && (method === "GET" || method === "POST")) {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const postId = communityRepliesMatch[1];
+    if (!await db.getCommunityPost(postId)) return sendError(res, 404, "帖子不存在。");
+    const publicReply = (reply) => ({ id: reply.id, postId: reply.postId, content: reply.content, anonymous: reply.anonymous === true,
+      authorName: reply.anonymous ? "匿名同学" : reply.authorName, createdAt: reply.createdAt, mine: reply.userId === user.id });
+    if (method === "GET") {
+      const result = await db.listCommunityReplies(postId, communityBefore(""));
+      return sendJson(res, 200, { replies: result.replies.map(publicReply), nextBefore: result.nextBefore });
+    }
+    const body = await readJson(req);
+    const content = typeof body.content === "string" ? body.content.trim() : "";
+    if (!content || content.length > 1600) return sendError(res, 400, "回复内容须为 1–1600 字。");
+    const createdAt = new Date().toISOString();
+    const reply = await db.createCommunityReply({ id: `${createdAt}~${crypto.randomUUID()}`, postId, content, createdAt,
+      anonymous: body.anonymous === true, userId: user.id, authorName: user.name });
+    return sendJson(res, 201, { reply: publicReply(reply) });
+  }
+
+  if (url.pathname === "/api/community/notifications" && method === "GET") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    return sendJson(res, 200, await db.listCommunityNotifications(user.id, communityBefore("NOTICE#")));
+  }
+  const communityNoticeMatch = url.pathname.match(/^\/api\/community\/notifications\/([^/]+)\/read$/);
+  if (communityNoticeMatch && method === "PATCH") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    await db.readCommunityNotification(user.id, decodeURIComponent(communityNoticeMatch[1]));
+    return sendJson(res, 200, { read: true });
+  }
+
+  const openCommunityLikeMatch = url.pathname.match(/^\/api\/community\/posts\/([^/]+)\/like$/);
+  if (openCommunityLikeMatch && method === "PATCH") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    let channel;
+    try { channel = communityChannelForUser(user, url.searchParams.get("channel") || "all", url.searchParams.get("value")); }
+    catch (error) { return sendError(res, 400, error.message); }
+    const body = await readJson(req);
+    if (body.liked !== undefined && typeof body.liked !== "boolean") return sendError(res, 400, "点赞状态无效。");
+    const post = await db.toggleCommunityPostLike(channel.key, openCommunityLikeMatch[1], user.id, body.liked);
+    if (!post) return sendError(res, 404, "帖子不存在。");
+    return sendJson(res, 200, { post: publicCommunityPost(post, user) });
+  }
 
   if (url.pathname === "/api/community/school" && method === "GET") {
     const user = await requireUser(req, res);

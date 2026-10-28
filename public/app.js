@@ -88,6 +88,7 @@
   let classmateProfileChatScroll = 0;
   let classmateProfileChatAtBottom = true;
   const classmateReadPending = new Set();
+  const communityMutations = new Set();
   const state = {
     version: VERSION,
     user: null,
@@ -139,7 +140,9 @@
     communitySelections: { school: null, major: null },
     communityChoices: null,
     communityError: "",
-    communityDraft: { topic: "", content: "", anonymous: false },
+    communityDraft: { topic: "", content: "", anonymous: false, channels: ["all"] },
+    communitySearch: "", communitySearchDraft: "", communityNotices: null, communityNoticeError: "",
+    communityFocusedPost: null, communityMoreLoading: false, communityPosting: false,
     classmates: null,
     activeClassmateId: "",
     classmateChatOpen: false,
@@ -944,6 +947,7 @@
   function communityQuery() {
     const query = new URLSearchParams({ channel: state.communityChannel });
     if (state.communityChannel !== "all") query.set("value", communityValue());
+    if (state.communitySearch) query.set("search", state.communitySearch);
     return query.toString();
   }
 
@@ -953,11 +957,11 @@
     return `<section class="community-thread" id="community-thread-${esc(postId)}" data-community-thread="${esc(postId)}" aria-label="帖子回复" ${thread.open ? "" : "hidden"}>
       ${thread.open ? `<div class="community-thread-heading"><h5>帖子回复</h5><button type="button" data-action="community-replies-refresh" data-id="${esc(postId)}" ${disabled ? "disabled" : ""}>刷新回复</button></div>
       ${thread.nextBefore ? `<button type="button" data-action="community-replies-older" data-id="${esc(postId)}" ${disabled ? "disabled" : ""}>加载更早回复</button>` : ""}
-      <div class="community-reply-list">${thread.replies.map((reply) => `<article class="community-reply"><div><b>${esc(reply.authorName)}${reply.mine ? " · 我" : ""}</b><time datetime="${esc(reply.createdAt)}">${esc(formatDate(reply.createdAt))}</time></div><p>${esc(reply.content)}</p></article>`).join("")}</div>
+      <div class="community-reply-list">${thread.replies.map((reply) => `<article class="community-reply"><div><b>${esc(reply.authorName)}${reply.mine ? " · 我" : ""}</b><time datetime="${esc(reply.createdAt)}">${esc(formatDate(reply.createdAt))}</time></div><p>${esc(reply.content)}</p>${reply.mine || ["admin", "owner"].includes(state.user?.role) ? `<button type="button" data-action="community-reply-delete" data-id="${esc(postId)}" data-reply-id="${esc(reply.id)}" ${disabled ? "disabled" : ""}>删除回复</button>` : ""}</article>`).join("")}</div>
       ${thread.loading ? `<p role="status" class="muted">正在加载回复…</p>` : thread.loaded && !thread.replies.length ? `<p class="muted">还没有回复，来分享你的想法吧。</p>` : ""}
       ${thread.error ? `<p class="community-reply-error" role="alert">${esc(thread.error)}</p>` : ""}
       <label for="community-reply-${esc(postId)}">参与讨论</label><textarea id="community-reply-${esc(postId)}" data-community-reply="${esc(postId)}" maxlength="1600" rows="3" placeholder="写下你的回复…" ${thread.sending ? "disabled" : ""}>${esc(thread.draft)}</textarea>
-      <div class="community-reply-actions"><small>回复将以你的账号姓名公开显示。</small><button type="button" class="primary" data-action="community-reply-send" data-id="${esc(postId)}" ${disabled ? "disabled" : ""}>${thread.sending ? "发送中…" : "发送回复"}</button></div>` : ""}
+      <div class="community-reply-actions"><label class="community-anonymous"><input type="checkbox" data-community-reply-anon="${esc(postId)}" ${thread.anonymous ? "checked" : ""} ${disabled ? "disabled" : ""}>匿名回复</label><small>${thread.anonymous ? "显示为匿名同学" : "显示账号姓名"}</small><button type="button" class="primary" data-action="community-reply-send" data-id="${esc(postId)}" ${disabled ? "disabled" : ""}>${thread.sending ? "发送中…" : "发送回复"}</button></div>` : ""}
     </section>`;
   }
 
@@ -978,15 +982,22 @@
 
   function communityPage() {
     const data = state.community;
-    const posts = data?.posts || [];
+    const posts = state.communityFocusedPost ? [state.communityFocusedPost] : data?.posts || [];
     const channel = state.communityChannel;
     const channelName = channel === "all" ? "全部社区" : communityValue() || (channel === "school" ? "请选择学校" : "请选择专业");
-    const canPost = !state.busy && !state.communityError && (channel === "all" || Boolean(communityValue().trim()));
+    const canPost = !state.communityPosting && state.communityDraft.channels.length > 0;
     const kind = channel === "school" ? "学校" : "专业";
     const choices = [...new Set([profile()[channel], communityValue(), ...(channel === "school" ? schoolOptions() : ["Finance", "Economics", "Business", "Computer Science", "Engineering", "Nursing", "Mathematics", "Statistics", "Psychology", "Biology"]), ...(state.communityChoices?.[channel === "school" ? "schools" : "majors"] || [])].filter(Boolean))];
     const conversationIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l-3 3V11.5A7.5 7.5 0 0 1 9.5 4h3a7.5 7.5 0 0 1 7.5 7.5Z"/><path d="M7 10h8M7 14h5"/></svg>`;
     return `
       ${pageHeader("COMMUNITY", "社区", "与同学交流想法，一起找到答案。")}
+      <details class="community-notifications" ${state.communityNoticesOpen ? "open" : ""}><summary>回复通知 · ${(state.communityNotices?.notifications || []).filter((notice) => !notice.read).length} 条未读（已加载）</summary>
+        <p>你的帖子收到回复时，会在这里通知你。进入社区或点击刷新可获取新回复。</p>
+        <button type="button" data-action="community-notifications-refresh">刷新通知</button>
+        ${state.communityNoticeError ? `<p role="alert">${esc(state.communityNoticeError)}</p>` : ""}
+        <div>${(state.communityNotices?.notifications || []).map((notice) => `<button type="button" class="community-notification ${notice.read ? "is-read" : ""}" data-action="community-notification-open" data-id="${esc(notice.id)}" data-post-id="${esc(notice.postId)}"><strong>${notice.read ? "" : "● "}${esc(notice.authorName)} 回复了「${esc(notice.topic || "讨论") }」</strong><span>${esc(notice.content)}</span><time>${esc(formatDate(notice.createdAt))}</time></button>`).join("") || `<p class="muted">还没有回复通知。</p>`}</div>
+        ${state.communityNotices?.nextBefore ? `<button type="button" data-action="community-notifications-more">加载更早通知</button>` : ""}
+      </details>
       <div class="community-layout">
         <section class="community-discussions" aria-labelledby="communityFeedTitle">
           <div class="community-intro"><span class="community-kicker">一起学习 · 一起交流</span><h2>在这里，遇见同路的同学</h2><p>聊聊选课、分享经验，或把卡住你的问题交给大家。</p></div>
@@ -994,28 +1005,35 @@
             ${["all", "school", "major"].map((item) => `<button type="button" class="${channel === item ? "active" : ""}" aria-pressed="${channel === item}" data-action="community-channel" data-channel="${item}">${item === "all" ? "全部社区" : item === "school" ? "学校社区" : "专业社区"}</button>`).join("")}
           </nav>
           ${channel !== "all" ? `<div class="community-channel-picker"><label for="communityChannelValue">选择${kind}</label><div class="community-picker-row"><input id="communityChannelValue" list="communityChannelChoices" maxlength="90" value="${esc(communityValue())}" placeholder="选择或输入${kind}名称"><datalist id="communityChannelChoices">${choices.map((item) => `<option value="${esc(item)}"></option>`).join("")}</datalist><button type="button" data-action="community-select">查看</button></div><div class="community-picker-hint"><span>可从列表选择，也可以输入其他${kind}名称。</span>${profile()[channel] ? `<button type="button" data-action="community-default">我的${kind}</button>` : ""}</div></div>` : ""}
-          <div class="community-feed-heading"><h3 id="communityFeedTitle">${esc(channelName)}</h3><span>${posts.length} 条讨论</span></div>
+          <div class="community-search"><label for="communitySearchInput">搜索当前频道</label><div class="community-picker-row"><input id="communitySearchInput" type="search" maxlength="80" value="${esc(state.communitySearchDraft)}" placeholder="搜索主题或正文"><button type="button" data-action="community-search">搜索</button>${state.communitySearch ? `<button type="button" data-action="community-search-clear">清除</button>` : ""}<button type="button" data-action="community-retry">刷新</button></div></div>
+          ${data?.indexing ? `<p class="community-feed-status" role="status">正在分批整理历史讨论，点击刷新可继续加载。</p>` : ""}
+          ${state.communityFocusedPost ? `<button type="button" data-action="community-focus-close">返回频道列表</button>` : ""}
+          <div class="community-feed-heading"><h3 id="communityFeedTitle">${state.communityFocusedPost ? "通知中的讨论" : esc(channelName)}</h3><span>已加载 ${posts.length} 条讨论</span></div>
           <div class="community-feed">
-            ${state.busy ? `<p class="community-feed-status" role="status">正在加载讨论…</p>` : state.communityError ? `<div class="community-feed-status" role="alert"><p>${esc(state.communityError)}</p><button type="button" data-action="community-retry">重新加载</button></div>` : channel !== "all" && !communityValue().trim() ? `<p class="community-feed-status">先选择或输入一个${kind}，看看大家在聊什么。</p>` : posts.length ? posts.map((post) => `
+            ${state.busy ? `<p class="community-feed-status" role="status">正在加载讨论…</p>` : state.communityError ? `<div class="community-feed-status" role="alert"><p>${esc(state.communityError)}</p><button type="button" data-action="community-retry">重新加载</button></div>` : !state.communityFocusedPost && channel !== "all" && !communityValue().trim() ? `<p class="community-feed-status">先选择或输入一个${kind}，看看大家在聊什么。</p>` : posts.length ? posts.map((post) => `
               <article class="community-post">
-                <div class="community-post-meta"><span class="community-avatar" aria-hidden="true">${esc((post.authorName || "同").slice(0, 1))}</span><div><b>${esc(post.authorName)}</b><time datetime="${esc(post.createdAt)}">${esc(formatDate(post.createdAt))}</time></div><span class="community-channel-badge">${esc(post.channelLabel || "全部社区")}</span></div>
+                <div class="community-post-meta"><span class="community-avatar" aria-hidden="true">${esc((post.authorName || "同").slice(0, 1))}</span><div><b>${esc(post.authorName)}</b><time datetime="${esc(post.createdAt)}">${esc(formatDate(post.createdAt))}</time></div><span class="community-channel-badge">${esc(post.channels?.map((entry) => entry.label).join(" · ") || post.channelLabel || "全部社区")}</span></div>
                 <h4>${esc(post.topic)}</h4>
                 <div class="formatted-text">${formatText(post.content)}</div>
-                <footer><button type="button" class="community-like ${post.likedByMe ? "is-liked" : ""}" aria-pressed="${Boolean(post.likedByMe)}" aria-label="${post.likedByMe ? "取消赞同" : "赞同"}" data-action="community-like" data-id="${esc(post.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11H3V10h4Zm0 0 5-7c2 0 3 1 2 4l-1 3h5a2 2 0 0 1 2 2l-1 7a2 2 0 0 1-2 2H7"/></svg>赞同 <span>${post.likeCount || 0}</span></button></footer>
+                <footer><button type="button" class="community-like ${post.likedByMe ? "is-liked" : ""}" aria-pressed="${Boolean(post.likedByMe)}" aria-label="${post.likedByMe ? "取消赞同" : "赞同"}" data-action="community-like" data-id="${esc(post.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11H3V10h4Zm0 0 5-7c2 0 3 1 2 4l-1 3h5a2 2 0 0 1 2 2l-1 7a2 2 0 0 1-2 2H7"/></svg>赞同 <span>${post.likeCount || 0}</span></button>${post.mine || ["admin", "owner"].includes(state.user?.role) ? `<button type="button" data-action="community-delete" data-id="${esc(post.id)}">删除帖子</button>` : ""}</footer>
                 <button type="button" class="community-replies-toggle" data-action="community-replies-toggle" data-id="${esc(post.id)}" aria-expanded="${communityReplies.thread(post.id).open}" aria-controls="community-thread-${esc(post.id)}">${communityReplies.thread(post.id).open ? "收起讨论" : "回复 / 讨论"}</button>
                 ${communityThreadHtml(post.id)}
-              </article>`).join("") : `<div class="community-empty"><span class="community-empty-icon">${conversationIcon}</span><h4>第一条讨论，从你开始</h4><p>这里还没有讨论。一个问题、一点经验，<br>都可能成为帮助同学的开始。</p><div class="community-topic-hints"><span>选课交流</span><span>作业求助</span><span>学习搭子</span></div><button type="button" data-action="community-compose">发起第一条讨论 <span aria-hidden="true">↗</span></button></div>`}
+              </article>`).join("") : `<div class="community-empty"><span class="community-empty-icon">${conversationIcon}</span><h4>${state.communitySearch ? "这一批没有匹配的讨论" : "第一条讨论，从你开始"}</h4><p>${state.communitySearch ? "可继续加载更早内容，或换一个关键词。" : "这里还没有讨论，分享一个问题或一点经验吧。"}</p><div class="community-topic-hints"><span>选课交流</span><span>作业求助</span><span>学习搭子</span></div><button type="button" data-action="community-compose">发起第一条讨论 <span aria-hidden="true">↗</span></button></div>`}
           </div>
+          ${!state.communityFocusedPost && data?.nextBefore ? `<button type="button" data-action="community-more" ${state.communityMoreLoading ? "disabled" : ""}>${state.communityMoreLoading ? "加载中…" : state.communitySearch ? "继续搜索更早讨论" : "加载更多讨论"}</button>` : ""}
         </section>
         <aside class="community-compose-column" aria-labelledby="communityComposeTitle">
           <section class="community-composer-card">
             <div class="community-compose-heading"><span>${conversationIcon}</span><div><h3 id="communityComposeTitle">发起讨论</h3><p>让交流从一个想法开始</p></div></div>
-            <div class="community-destination"><span>发布到</span><strong>${esc(channelName)}</strong></div>
+            <fieldset class="community-destinations"><legend>发布到（可多选）</legend>
+              ${["all", "school", "major"].map((type) => { const value = type === "all" ? "" : state.communitySelections[type] ?? profile()[type] ?? ""; return `<label><input type="checkbox" data-community-destination="${type}" ${state.communityDraft.channels.includes(type) ? "checked" : ""} ${type !== "all" && !value ? "disabled" : ""}>${esc(type === "all" ? "全部社区" : (type === "school" ? "学校：" : "专业：") + (value || "请先选择或填写"))}</label>`; }).join("")}
+              <small>仅发布到勾选的频道；所有频道共享点赞、回复和匿名设置。</small>
+            </fieldset>
             <label for="postTopic">讨论主题</label>
             <input id="postTopic" maxlength="40" value="${esc(state.communityDraft.topic)}" placeholder="例如 ECO101 / 选课建议">
             <label for="postContent">想和大家聊什么？</label>
             <textarea id="postContent" maxlength="1600" placeholder="写下你的问题，或分享一段学习经验……">${esc(state.communityDraft.content)}</textarea>
-            <div class="community-compose-footer"><label class="community-anonymous"><input id="postAnon" type="checkbox" ${state.communityDraft.anonymous ? "checked" : ""}>匿名发布</label><button type="button" class="primary" data-action="community-post" ${canPost ? "" : "disabled"}>发布讨论 <span aria-hidden="true">↗</span></button></div>
+            <div class="community-compose-footer"><label class="community-anonymous"><input id="postAnon" type="checkbox" ${state.communityDraft.anonymous ? "checked" : ""}>匿名发布</label><button type="button" class="primary" data-action="community-post" ${canPost ? "" : "disabled"}>${state.communityPosting ? "发布中…" : "发布讨论"} <span aria-hidden="true">↗</span></button></div>
           </section>
           <p class="community-guidance">友善交流，尊重每一种声音。<br>分享时请留意自己和他人的隐私。</p>
         </aside>
@@ -1763,20 +1781,23 @@
     const generation = ++classmatesGeneration;
     setPage(page);
     state.busy = true;
-    if (page === "community") { state.community = null; state.communityError = ""; }
+    if (page === "community") { state.community = null; state.communityError = ""; state.communityFocusedPost = null; state.communityMoreLoading = false; }
     render();
     try {
       if (page === "study") await loadStudy();
       if (page === "community") {
         const query = communityQuery();
         const hasSelection = state.communityChannel === "all" || Boolean(communityValue().trim());
-        const [data, choices] = await Promise.all([
+        const [data, choices, notices] = await Promise.all([
           hasSelection ? api(`/api/community?${query}`) : Promise.resolve(null),
-          state.communityChoices || api("/api/community/channels").catch(() => null)
+          state.communityChoices || api("/api/community/channels").catch(() => null),
+          api("/api/community/notifications").catch((error) => ({ error: error.message }))
         ]);
         if (pageGeneration !== pageLoadGeneration) return;
         state.community = data;
         state.communityChoices = choices;
+        state.communityNoticeError = notices.error || "";
+        state.communityNotices = notices.error ? null : notices;
       }
       if (page === "classmates") {
         const data = await api("/api/classmates");
@@ -2295,12 +2316,36 @@
         await loadPage("community");
         return;
       }
+      if (action === "community-search" || action === "community-search-clear") {
+        state.communitySearch = action === "community-search-clear" ? "" : state.communitySearchDraft.trim();
+        state.communitySearchDraft = state.communitySearch;
+        await loadPage("community"); return;
+      }
+      if (action === "community-more") {
+        if (state.communityMoreLoading || !state.community?.nextBefore) return;
+        const generation = pageLoadGeneration, query = communityQuery(), userId = state.user.id;
+        const before = state.community.nextBefore;
+        state.communityMoreLoading = true; render();
+        try {
+          const data = await api(`/api/community?${query}&before=${encodeURIComponent(before)}`);
+          if (state.user?.id !== userId || generation !== pageLoadGeneration || state.page !== "community") return;
+          state.community = { ...data, posts: [...new Map([...state.community.posts, ...data.posts].map((post) => [post.id, post])).values()] };
+        } finally { if (generation === pageLoadGeneration) { state.communityMoreLoading = false; render(); } }
+        return;
+      }
       if (action === "community-post") {
-        if (state.busy || state.communityError) return;
-        await api("/api/community/posts", { method: "POST", body: { channel: state.communityChannel, channelValue: communityValue(), topic: $("postTopic")?.value || "Question", content: $("postContent")?.value || "", anonymous: $("postAnon")?.checked } });
-        state.communityDraft = { topic: "", content: "", anonymous: false };
-        state.communityChoices = null;
-        await loadPage("community");
+        if (state.communityPosting || !state.communityDraft.channels.length) return;
+        const userId = state.user.id, draft = JSON.stringify(state.communityDraft);
+        const channels = state.communityDraft.channels.map((type) => ({ type, ...(type === "all" ? {} : { value: state.communitySelections[type] ?? profile()[type] ?? "" }) }));
+        state.communityPosting = true; render();
+        try {
+          await api("/api/community/posts", { method: "POST", body: { channels, topic: state.communityDraft.topic || "问问题", content: state.communityDraft.content, anonymous: state.communityDraft.anonymous } });
+          if (state.user?.id !== userId) return;
+          if (JSON.stringify(state.communityDraft) === draft) state.communityDraft = { topic: "", content: "", anonymous: false, channels: state.communityDraft.channels.slice() };
+          state.communityChoices = null;
+          setToast("讨论已发布到所选频道。");
+          if (state.page === "community") await loadPage("community");
+        } finally { state.communityPosting = false; if (state.page === "community") render(); }
         return;
       }
       if (action === "community-replies-toggle") {
@@ -2311,16 +2356,59 @@
         return;
       }
       if (action === "community-replies-refresh" || action === "community-replies-older") {
-        await communityReplies.load(button.dataset.id, action === "community-replies-older");
+        await communityReplies.load(button.dataset.id, action === "community-replies-older"); return;
+      }
+      if (action === "community-reply-send") { await communityReplies.send(button.dataset.id); return; }
+      if (action === "community-reply-delete") {
+        if (confirm("删除这条回复？")) await communityReplies.remove(button.dataset.id, button.dataset.replyId);
         return;
       }
-      if (action === "community-reply-send") {
-        await communityReplies.send(button.dataset.id);
-        return;
-      }
-      if (action === "community-like") {
-        await api(`/api/community/posts/${button.dataset.id}/like?${communityQuery()}`, { method: "PATCH" });
-        await loadPage("community");
+      if (action === "community-focus-close") { state.communityFocusedPost = null; render(); return; }
+      if (["community-notifications-refresh", "community-notifications-more", "community-notification-open", "community-like", "community-delete"].includes(action)) {
+        const userId = state.user.id, pageGeneration = pageLoadGeneration, mutation = `${userId}:${action}:${button.dataset.id || ""}`;
+        if (communityMutations.has(mutation)) return;
+        communityMutations.add(mutation); button.disabled = true;
+        try {
+          if (action === "community-like" || action === "community-delete") {
+            const post = state.communityFocusedPost?.id === button.dataset.id ? state.communityFocusedPost : state.community?.posts.find((post) => post.id === button.dataset.id);
+            if (!post) return;
+            if (action === "community-delete") {
+              if (!confirm("删除这条帖子？它将从所有发布频道移除，回复也将无法访问。")) return;
+              await api(`/api/community/posts/${post.id}`, { method: "DELETE" });
+              if (state.user?.id !== userId) return;
+              if (state.community) state.community.posts = state.community.posts.filter((item) => item.id !== post.id);
+              if (state.communityFocusedPost?.id === post.id) state.communityFocusedPost = null;
+              if (state.communityNotices) state.communityNotices.notifications = state.communityNotices.notifications.filter((notice) => notice.postId !== post.id);
+            } else {
+              const channel = post.channels.find((entry) => entry.type === state.communityChannel && (entry.type === "all" || entry.label === communityValue())) || post.channels[0];
+              const query = new URLSearchParams({ channel: channel.type });
+              if (channel.type !== "all") query.set("value", channel.label);
+              const result = await api(`/api/community/posts/${post.id}/like?${query}`, { method: "PATCH", body: { liked: !post.likedByMe } });
+              if (state.user?.id !== userId) return;
+              if (state.community) state.community.posts = state.community.posts.map((item) => item.id === post.id ? result.post : item);
+              if (state.communityFocusedPost?.id === post.id) state.communityFocusedPost = result.post;
+            }
+          } else if (action === "community-notification-open") {
+            const result = await api(`/api/community/posts/${button.dataset.postId}`);
+            await api(`/api/community/notifications/${encodeURIComponent(button.dataset.id)}/read`, { method: "PATCH" });
+            if (state.user?.id !== userId || state.page !== "community" || pageGeneration !== pageLoadGeneration) return;
+            const notice = state.communityNotices?.notifications.find((item) => item.id === button.dataset.id);
+            if (notice) notice.read = true;
+            state.communityFocusedPost = result.post;
+            communityReplies.thread(result.post.id).open = true;
+            render();
+            await communityReplies.load(result.post.id);
+            document.getElementById(`community-thread-${result.post.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+          } else {
+            const before = action === "community-notifications-more" ? state.communityNotices?.nextBefore : "";
+            if (action === "community-notifications-more" && !before) return;
+            const result = await api(`/api/community/notifications${before ? `?before=${encodeURIComponent(before)}` : ""}`);
+            if (state.user?.id !== userId || state.page !== "community" || pageGeneration !== pageLoadGeneration) return;
+            state.communityNotices = { ...result, notifications: before ? [...new Map([...state.communityNotices.notifications, ...result.notifications].map((notice) => [notice.id, notice])).values()] : result.notifications };
+            state.communityNoticeError = "";
+          }
+          if (state.page === "community") render();
+        } finally { communityMutations.delete(mutation); button.disabled = false; }
         return;
       }
       if (action === "refresh-classmates") {
@@ -2718,6 +2806,10 @@
     }
   });
 
+  document.addEventListener("toggle", (event) => {
+    if (event.target.isConnected && event.target.classList?.contains("community-notifications")) state.communityNoticesOpen = event.target.open;
+  }, true);
+
   document.addEventListener("change", (event) => {
     if (event.target?.id === "scheduleAudioFile") { void transcribeScheduleVoice(event.target.files?.[0]); event.target.value = ""; return; }
     if (event.target?.id === "scheduleMonthPicker") {
@@ -2737,6 +2829,8 @@
       }
       updateSchedulePreviewCount(); return;
     }
+    if (event.target.dataset?.communityDestination) { const type = event.target.dataset.communityDestination; state.communityDraft.channels = event.target.checked ? [...new Set([...state.communityDraft.channels, type])] : state.communityDraft.channels.filter((entry) => entry !== type); const postButton = root.querySelector('[data-action="community-post"]'); if (postButton) postButton.disabled = state.communityPosting || !state.communityDraft.channels.length; return; }
+    if (event.target.dataset?.communityReplyAnon) { const postId = event.target.dataset.communityReplyAnon; communityReplies.thread(postId).anonymous = event.target.checked; updateCommunityThread(postId); return; }
     if (event.target?.id === "postAnon") { state.communityDraft.anonymous = event.target.checked; return; }
     if (["englishTerms", "englishAnswers", "chineseExplanations"].includes(event.target?.id)) { scheduleLearningStyleSave(); return; }
     if (event.target?.id === "scheduleFile") {
@@ -2770,6 +2864,7 @@
     if (event.target.dataset?.calendarField) { state.scheduleCalendarDraft[event.target.dataset.calendarField] = event.target.value; return; }
     if (event.target.dataset?.weeklyField) { const section = event.target.closest("[data-draft]"); const draft = state.scheduleDrafts[Number(section?.dataset.draft)]; if (draft?.weekly) { draft.weekly[event.target.dataset.weeklyField] = event.target.value; refreshScheduleDraftSummary(section, draft); } return; }
     if (event.target.dataset?.communityReply) { communityReplies.thread(event.target.dataset.communityReply).draft = event.target.value; return; }
+    if (event.target?.id === "communitySearchInput") { state.communitySearchDraft = event.target.value; return; }
     if (event.target?.id === "postTopic") { state.communityDraft.topic = event.target.value; return; }
     if (event.target?.id === "postContent") { state.communityDraft.content = event.target.value; return; }
     if (event.target?.id === "customInstruction") { scheduleLearningStyleSave(); return; }
@@ -2799,6 +2894,7 @@
       root.querySelector('[data-action="send-chat"]')?.click();
       return;
     }
+    if (event.target?.id === "communitySearchInput" && event.key === "Enter") { event.preventDefault(); root.querySelector('[data-action="community-search"]')?.click(); return; }
     if (event.target?.id === "communityChannelValue" && event.key === "Enter") {
       event.preventDefault();
       root.querySelector('[data-action="community-select"]')?.click();

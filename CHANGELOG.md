@@ -2,6 +2,10 @@
 
 ## 2026-10-28
 
+- Add explicit multi-channel community publishing with one shared discussion and consistent anonymity; omit profile school/major metadata from public posts. Add anonymous replies, author/admin deletion of posts and replies, channel topic/body search, and private paginated reply notifications with read tracking and discussion links.
+- Replace the 80-post cutoff with 40-post history pages. Bound cloud search to 100 feed references per request, replies to 50 and notifications to 30; avoid notification polling. Introduce canonical cloud post records, conditional/idempotent like updates, atomic reply/notification writes, deletion tombstones and a checkpointed incremental legacy index. Keep old posts/replies and legacy-client visibility compatible. Prepared on a task branch for review; not deployed to AWS.
+- Validate with 219 passing tests and 169-file syntax/asset/version checks, including 32 concurrent simulated DynamoDB likes, legacy indexing/restart, history beyond 80 posts, anonymous notices and delete permissions. Local browser checks cover explicit all+major publishing with school exclusion, notification opening/read state, anonymous reply drafts/sends, and a 390 px layout without horizontal overflow.
+
 - Release `1.1.102`: apply the approved vivid calendar palette: rose deadlines, sky-blue lectures, bright-green tutorials and yellow personal plans. Match legend dots, calendar chips and agenda badges with soft tinted backgrounds and readable dark text. Refresh frontend/cache versions; preserve schedule and account data. Code rollback target: `ce9e4d6` (`1.1.101`).
 
 - Release `1.1.101`: publish the viewed-month navigation label and relocated return-to-today action. Refresh frontend/cache versions; preserve saved schedules and account data. Code rollback target: `ccad539` (`1.1.100`).

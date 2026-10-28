@@ -58,6 +58,9 @@
         });
         return settingsProfileSave;
       },
+      loadSecurity: async () => (await api("/api/me/security")).security,
+      savePassword: async (values, csrfToken) => (await api("/api/me/password", { method: "POST",
+        headers: { "x-csrf-token": csrfToken }, body: values })).security,
       requestPasswordReset: () => api("/api/auth/request-manual-reset", { method: "POST", body: { email: state.user.email } }),
       logout: () => handleAction({ dataset: { action: "logout" } }),
       navigate: (page) => loadPage(page)

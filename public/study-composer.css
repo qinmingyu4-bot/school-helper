@@ -1,0 +1,43 @@
+/* Compact Study composer. All surfaces and controls use account theme tokens. */
+:root .study-workspace .composer-light { --composer-secondary:color-mix(in srgb, var(--muted) 85%, var(--ink)); gap:10px; padding:14px 28px 16px; border-top:0; background:var(--panel); color:var(--ink); }
+:root .study-workspace .composer-light .study-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:6px 16px; }
+:root .study-workspace .composer-light .study-mode-control { display:flex; align-items:center; gap:6px; min-width:0; color:var(--green); }
+:root .study-workspace .composer-light svg { width:18px; height:18px; flex:0 0 auto; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+:root .study-workspace .composer-light #studyMode { width:auto; max-width:180px; height:36px; padding:4px 2px; border:0; border-radius:6px; background:transparent; color:var(--green); font-size:13px; }
+:root .study-workspace .composer-light #studyMode option { background:var(--panel); color:var(--ink); }
+:root .study-workspace .composer-light .quick-prompts { display:flex; flex:1; flex-wrap:wrap; align-items:center; gap:2px; min-width:0; padding:0; overflow:visible; background:transparent; }
+:root .study-workspace .composer-light .quick-prompts button,
+:root .study-workspace .composer-light .quick-prompts-more > summary { display:inline-flex; align-items:center; justify-content:center; gap:4px; min-height:36px; padding:6px 9px; border:0; border-radius:8px; background:transparent; color:var(--composer-secondary); font-size:13px; font-weight:400; line-height:20px; white-space:nowrap; }
+:root .study-workspace .composer-light .quick-prompts button:hover,
+:root .study-workspace .composer-light .quick-prompts-more > summary:hover { background:var(--sb-tint, var(--soft)); color:var(--green); }
+.composer-light .quick-prompts-more { position:relative; }
+.composer-light .quick-prompts-more > summary { list-style:none; cursor:pointer; }
+.composer-light .quick-prompts-more > summary::-webkit-details-marker { display:none; }
+:root .study-workspace .composer-light .quick-prompts-more > summary svg { width:14px; height:14px; }
+.composer-light .quick-prompts-menu { position:absolute; bottom:calc(100% + 8px); right:0; z-index:15; display:grid; min-width:164px; max-height:min(260px, 40dvh); overflow-y:auto; padding:6px; border:1px solid var(--line); border-radius:12px; background:var(--panel); box-shadow:0 8px 24px color-mix(in srgb, var(--ink) 10%, transparent); }
+:root .study-workspace .composer-light .quick-prompts-menu button { justify-content:flex-start; color:var(--ink); }
+:root .study-workspace .composer-light .compose-row { grid-template-columns:36px minmax(0, 1fr) 36px; align-items:end; gap:8px; padding:8px 10px; border:1px solid var(--line); border-radius:18px; background:var(--panel); box-shadow:0 3px 14px color-mix(in srgb, var(--ink) 3%, transparent); }
+:root .study-workspace .composer-light .compose-row:focus-within { border-color:var(--green); box-shadow:0 0 0 3px color-mix(in srgb, var(--green) 9%, transparent); }
+:root .study-workspace .composer-light .compose-row textarea { width:100%; min-width:0; height:44px; min-height:44px; max-height:140px; padding:10px 2px; border:0; border-radius:0; resize:none; background:transparent; color:var(--ink); font-size:16px; font-weight:400; line-height:24px; }
+:root .study-workspace .composer-light .compose-row textarea::placeholder { color:var(--composer-secondary); opacity:1; }
+:root .study-workspace .composer-light .attach,
+:root .study-workspace .composer-light .send { display:inline-flex; align-items:center; justify-content:center; width:36px; min-width:36px; height:36px; margin-block:4px; padding:0; border:0; border-radius:11px; }
+:root .study-workspace .composer-light .attach { background:transparent; color:var(--composer-secondary); }
+:root .study-workspace .composer-light .attach:hover { background:var(--sb-tint, var(--soft)); color:var(--green); }
+:root .study-workspace .composer.composer-light .compose-row .send { background:var(--green); color:var(--panel); }
+:root .study-workspace .composer.composer-light .compose-row .send:hover { background:var(--green); filter:brightness(.94); }
+:root .study-workspace .composer-light .send:disabled { opacity:.45; cursor:default; }
+:root .study-workspace .composer-light .send svg { width:20px; height:20px; stroke-width:2; }
+:root .study-workspace .composer-light :is(button, summary, select):focus-visible { outline:2px solid var(--green); outline-offset:2px; }
+:root .study-workspace .composer-light.drop-ready .compose-row { border-color:var(--green); background:var(--sb-tint, var(--soft)); }
+@media (max-width:700px) {
+  :root .study-workspace .composer-light { padding:12px 16px max(12px, env(safe-area-inset-bottom)); }
+  :root .study-workspace .composer-light .quick-prompts { flex-basis:100%; }
+  :root .study-workspace .composer-light .compose-row { grid-template-columns:44px minmax(0, 1fr) 44px; padding:6px; gap:5px; }
+  :root .study-workspace .composer-light :is(.attach, .send) { width:44px; min-width:44px; height:44px; margin:0; }
+  :root .study-workspace .composer-light :is(.quick-prompts button, .quick-prompts-more > summary) { min-height:40px; padding-inline:7px; font-size:12px; }
+  :root .study-workspace .composer-light #studyMode { height:40px; font-size:16px; }
+}
+@media (pointer:coarse) {
+  :root .study-workspace .composer-light :is(.quick-prompts button, .quick-prompts-more > summary, #studyMode) { min-height:44px; }
+}

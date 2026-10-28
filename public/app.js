@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.120";
+  const VERSION = "1.1.121";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -34,7 +34,8 @@
   const communityReplies = window.StudyBridgeCommunityReplies.createController({ api, getUser: () => state.user, onChange: updateCommunityThread });
 
   const root = document.getElementById("root");
-  const mobileNavigation = window.StudyBridgeMobileNavigation.create({ navigate: (page) => loadPage(page) });
+  const studyComposer = window.StudyBridgeComposer.create({ root });
+  const mobileNavigation = window.StudyBridgeMobileNavigation.create({ navigate: (page) => loadPage(page), resizeComposer: () => studyComposer.resize() });
   const brandMarkHtml = () => `<span class="sb-brand-symbol" aria-hidden="true"><img class="sb-logo-monochrome" src="/brand/book-bridge-monochrome.svg" width="128" height="72" alt=""><img class="sb-logo-color" src="/brand/book-bridge-color.svg" width="128" height="72" alt=""></span>`;
   const appearanceController = window.StudyBridgeAppearance.createController({
     load: async () => (await api("/api/me/appearance")).appearance,
@@ -494,12 +495,23 @@
     `;
   }
 
+  // Keep the main icons self-contained: external <use> references can briefly
+  // lose their painted SVG instance when route renders replace the sidebar.
+  // Match the existing Lucide-derived symbols; retain the sprite for old clients.
+  const navIconPaths = Object.freeze({
+    community: '<path d="M21 15a2 2 0 0 1-2 2H7l-5 4V5a2 2 0 0 1 2-2h15a2 2 0 0 1 2 2z"/><path d="M7 7h10M7 11h6"/>',
+    classmates: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/><circle cx="9" cy="7" r="4"/>',
+    schedule: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h2M14 14h2"/>',
+    study: '<path d="M12 7v14M3 3h3a6 6 0 0 1 6 3 6 6 0 0 1 6-3h3v16h-3a6 6 0 0 0-6 2 6 6 0 0 0-6-2H3z"/>',
+    tools: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 17.5h7M17.5 14v7"/>'
+  });
+
   function navButton(page) {
     const [, title, sub] = pageLabels[page];
     const active = state.page === page ? "active" : "";
     return `
       <button class="nav-card ${active}" data-page="${page}" ${active ? 'aria-current="page"' : ""}>
-        <span aria-hidden="true"><svg><use href="/classmates-icons.svg?v=1.1.120#nav-${esc(page)}"></use></svg></span>
+        <span aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false">${navIconPaths[page]}</svg></span>
         <b>${esc(title)}</b>
         <small>${esc(page === "schedule" && nextDue() ? `${nextDue().title} · 还有 ${dueText(nextDue().startsAt)}` : sub)}</small>
       </button>
@@ -691,29 +703,30 @@
   }
 
   function quickPromptsHtml() {
-    if (isGeneralChat()) return chatSpaces.prompts.map(([label, prompt]) => `<button data-action="quick-prompt" data-prompt="${esc(prompt)}" title="${esc(prompt)}">${esc(label)}</button>`).join("");
     const selected = studyModes.getMode(state.studyMode) || studyModes.getMode(studyModes.defaultMode);
-    return (state.studyMode === "cheatsheet" ? '<button data-action="cheatsheet-pdf" title="制作可打印的 PDF">制作 PDF</button>' : "") + [...selected.prompts, ...studyModes.globalPrompts]
-      .map(([label, prompt]) => `<button data-action="quick-prompt" data-prompt="${esc(prompt)}" title="${esc(prompt)}">${esc(label)}</button>`).join("");
+    const prompts = isGeneralChat() ? chatSpaces.prompts : [...selected.prompts, ...studyModes.globalPrompts];
+    const buttons = prompts.map(([label, prompt]) => `<button type="button" data-action="quick-prompt" data-prompt="${esc(prompt)}" title="${esc(prompt)}">${esc(label)}</button>`);
+    if (!isGeneralChat() && state.studyMode === "cheatsheet") buttons.unshift('<button type="button" data-action="cheatsheet-pdf" title="制作可打印的 PDF">制作 PDF</button>');
+    return buttons.slice(0, 3).join("") + (buttons.length > 3 ? `<details class="quick-prompts-more"><summary>更多<svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></summary><div class="quick-prompts-menu">${buttons.slice(3).join("")}</div></details>` : "");
   }
 
   function sendButtonContent(pending) {
-    return pending ? '<span class="reply-spinner send-spinner" aria-hidden="true"></span><span>停止</span>' : "发送";
+    return `<svg aria-hidden="true" viewBox="0 0 24 24">${pending ? '<rect x="5" y="5" width="14" height="14" rx="2"/>' : '<path d="M12 19V5m-7 7 7-7 7 7"/>'}</svg>`;
   }
 
   function composerHtml() {
     return `
-      <footer class="composer" data-chat-dropzone="true">
+      <footer class="composer composer-light" data-chat-dropzone="true">
         <div class="study-toolbar${isGeneralChat() ? " general-toolbar" : ""}">
-          ${isGeneralChat() ? "" : `<select id="studyMode" aria-label="学习模式" title="学习模式">
+          ${isGeneralChat() ? "" : `<label class="study-mode-control"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 7v14M3 3h3a6 6 0 0 1 6 3 6 6 0 0 1 6-3h3v16h-3a6 6 0 0 0-6 2 6 6 0 0 0-6-2H3z"/></svg><select id="studyMode" aria-label="学习模式" title="学习模式">
             ${Object.entries(studyModes.modes).map(([id, mode]) => `<option value="${id}" ${state.studyMode === id ? "selected" : ""}>${esc(mode.label)}</option>`).join("")}
-          </select>`}
+          </select></label>`}
           <div class="quick-prompts" aria-label="${isGeneralChat() ? "自由问答快捷问题" : "学习快捷指令"}">${quickPromptsHtml()}</div>
         </div>
         <div class="compose-row">
-          <button class="attach" data-action="pick-chat-file" aria-label="上传附件" title="上传附件；也可拖放文件，或在输入框按 Ctrl+V 粘贴截图">+</button>
+          <button type="button" class="attach" data-action="pick-chat-file" aria-label="上传附件" title="上传附件；也可拖放文件，或在输入框按 Ctrl+V 粘贴截图"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.19 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
           <input id="chatFile" class="hidden" type="file" multiple accept="${SUPPORTED_UPLOAD_ACCEPT},*/*">
-          <textarea id="chatInput" rows="1" placeholder="输入问题，可 Ctrl+V 粘贴截图..." aria-label="问题"></textarea>
+          <textarea id="chatInput" rows="1" placeholder="输入问题…" aria-label="问题"></textarea>
           <button class="send" data-action="${activeStudyReply() ? "stop-chat" : "send-chat"}" ${state.busy ? "disabled" : ""} ${activeStudyReply() ? 'title="正在生成，点击停止" aria-label="停止生成"' : 'aria-label="发送"'}>${sendButtonContent(Boolean(activeStudyReply()))}</button>
         </div>
         ${selectedUploadFilesHtml()}
@@ -919,7 +932,7 @@
         state.uploadFiles.unshift(...files);
         render();
         if ($("chatInput") && !$("chatInput").value) $("chatInput").value = text;
-        mobileNavigation.resizeComposer();
+        studyComposer.resize();
       }
       if (!reply.controller.signal.aborted && studyReplyKey() === reply.key) {
         setToast(error.message);
@@ -2393,7 +2406,7 @@
         const input = $("chatInput");
         if (input) {
           input.value = button.dataset.prompt || "";
-          mobileNavigation.resizeComposer();
+          studyComposer.resize();
           input.focus();
           input.setSelectionRange(input.value.length, input.value.length);
         }
@@ -2953,7 +2966,7 @@
         || previousMessages !== chat.querySelector(".messages")?.innerHTML;
       chat.scrollTop = showLatest ? chat.scrollHeight : previousScrollTop;
       keepLatestAfterFontLoad(chat);
-      mobileNavigation.resizeComposer();
+      studyComposer.resize();
     }
     const dm = root.querySelector(".dm-list");
     if (dm) {

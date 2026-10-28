@@ -50,6 +50,15 @@ Session-dependent page redirects use `Cache-Control: no-store`.
 Preview this change with an isolated local database. Push review work to a task
 branch: pushing to `main` triggers the AWS deployment workflow.
 
+## Study input
+
+Study uses the approved **轻量横排** input on desktop and mobile: a quiet
+mode/shortcut row, integrated attachment/input/send field and an upward-opening
+**更多** menu. All seven Study modes, general prompts, Cheatsheet PDF, attachments
+and stop-generation remain available. Text and restored drafts grow the field up
+to 140 px, then scroll within it. Colors follow all eight account palettes and
+independent dark mode through the existing Settings controls.
+
 ## Mobile navigation
 
 At widths up to 700 px, the student app uses a main menu and separate full-screen

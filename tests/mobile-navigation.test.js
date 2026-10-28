@@ -83,22 +83,3 @@ test("browser forward restores the destination while stale history from another 
   assert.deepEqual(h.navigations, ["tools"]);
   h.sync({ page: "tools" }); assert.equal(h.shell.dataset.mobileView, "page");
 });
-
-test("mobile composer grows for complete wrapped lines, caps long drafts and restores desktop sizing", () => {
-  const h = harness();
-  const style = { removeProperty(key) { delete this[key === "overflow-y" ? "overflowY" : key]; } };
-  const input = { id: "chatInput", tagName: "TEXTAREA", dataset: {}, style, scrollHeight: 42, placeholder: "输入问题，可 Ctrl+V 粘贴截图..." };
-  const query = h.root.querySelector;
-  h.root.querySelector = (selector) => selector === "#chatInput" ? input : query(selector);
-  h.sync();
-  assert.equal(input.placeholder, "输入问题…"); assert.equal(style.height, "44px");
-  input.scrollHeight = 64; h.documentListeners.input({ target: input });
-  assert.equal(style.height, "66px"); assert.equal(style.overflowY, "hidden");
-  input.scrollHeight = 240; h.controller.resizeComposer();
-  assert.equal(style.height, "120px"); assert.equal(style.overflowY, "auto");
-  input.scrollHeight = 42; h.documentListeners.input({ target: input });
-  assert.equal(style.height, "44px");
-  h.media.matches = false; h.media.change();
-  assert.equal(input.placeholder, "输入问题，可 Ctrl+V 粘贴截图...");
-  assert.equal(style.height, undefined); assert.equal(style.overflowY, undefined);
-});

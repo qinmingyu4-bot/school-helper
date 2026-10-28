@@ -13,7 +13,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-KEYS = ("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "APP_BASE_URL", "GOOGLE_REDIRECT_URI")
+KEYS = ("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "APP_BASE_URL", "GOOGLE_REDIRECT_URI", "NODE_ENV")
 BASE_URL = "https://studybridge.ink"
 
 
@@ -25,7 +25,8 @@ def settings(payload):
     if not isinstance(secret, str) or not re.fullmatch(r"GOCSPX-[A-Za-z0-9_-]+", secret):
         raise ValueError("Invalid Google client secret format")
     return {"GOOGLE_CLIENT_ID": client_id, "GOOGLE_CLIENT_SECRET": secret,
-            "APP_BASE_URL": BASE_URL, "GOOGLE_REDIRECT_URI": BASE_URL + "/api/auth/google/callback"}
+            "APP_BASE_URL": BASE_URL, "GOOGLE_REDIRECT_URI": BASE_URL + "/api/auth/google/callback",
+            "NODE_ENV": "production"}
 
 
 def render_env(original, values):
@@ -72,13 +73,15 @@ def verify(client_id):
         response = error
     url = urllib.parse.urlsplit(response.headers.get("Location", ""))
     query = urllib.parse.parse_qs(url.query)
-    checks = (response.status == 302, url.scheme == "https", url.hostname == "accounts.google.com",
-              query.get("client_id") == [client_id], query.get("redirect_uri") == [BASE_URL + "/api/auth/google/callback"],
-              query.get("scope") == ["openid email profile"], query.get("code_challenge_method") == ["S256"],
-              bool(query.get("code_challenge")), "__Host-sb_google_oauth=" in response.headers.get("Set-Cookie", ""))
+    cookie = response.headers.get("Set-Cookie", "")
+    checks = {"redirect_status": response.status == 302, "https_provider": url.scheme == "https", "provider_host": url.hostname == "accounts.google.com",
+              "client_id": query.get("client_id") == [client_id], "callback": query.get("redirect_uri") == [BASE_URL + "/api/auth/google/callback"],
+              "basic_scopes": query.get("scope") == ["openid email profile"], "PKCE_method": query.get("code_challenge_method") == ["S256"],
+              "PKCE_challenge": bool(query.get("code_challenge")), "host_cookie": "__Host-sb_google_oauth=" in cookie,
+              "secure_cookie": "; Secure" in cookie, "http_only_cookie": "HttpOnly" in cookie}
     response.close()
-    if not all(checks):
-        raise RuntimeError("Google login redirect or browser protection validation failed")
+    if not all(checks.values()):
+        raise RuntimeError("Google login checks failed: " + ", ".join(key for key, passed in checks.items() if not passed))
 
 
 def main():
@@ -128,14 +131,16 @@ def main():
             try:
                 verify(values["GOOGLE_CLIENT_ID"])
                 break
-            except Exception:
+            except Exception as error:
                 if attempt == 29:
-                    raise RuntimeError("Google login startup validation failed") from None
+                    detail = str(error) if isinstance(error, RuntimeError) else "local startup endpoint unavailable"
+                    raise RuntimeError("Google login startup validation failed: " + detail) from None
                 time.sleep(1)
-    except Exception:
+    except Exception as error:
         replace_private(env_file, original)
         restart(previous)
-        raise RuntimeError("Google configuration failed; previous private configuration restored") from None
+        detail = str(error) if isinstance(error, RuntimeError) else "configuration update failed"
+        raise RuntimeError("Google configuration failed; previous private configuration restored. " + detail) from None
     print("Google login enabled; callback, basic scopes, PKCE and browser binding verified.")
     print("Existing application data and accounts were not migrated. Private configuration backup:", backup)
 
@@ -143,6 +148,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
-        print("Google login configuration failed; inspect the configuration and process state without exposing credentials.", file=sys.stderr)
+    except Exception as error:
+        detail = str(error) if isinstance(error, RuntimeError) else "Inspect configuration and process state without exposing credentials."
+        print("Google login configuration failed. " + detail, file=sys.stderr)
         raise SystemExit(1)

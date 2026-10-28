@@ -2,6 +2,8 @@
 
 ## 2026-10-28
 
+- Correct the Google activation preflight for the existing server's development runtime: explicitly enable production mode with the private Google settings so host-prefixed OAuth cookies and login session cookies are Secure. Preserve and restore the previous runtime mode on failure, and report only non-secret validation labels when configuration checks fail.
+
 - Prepare owner-authorized Google sign-in on the verified domain, with server-only encrypted credentials, the canonical callback, browser-bound signed state, PKCE, strict verified-email/Google-subject checks, and existing-account/course preservation. Preserve password login and invitation-gated registration. Add private configuration backups, atomic updates and startup rollback; Google Cloud setup, production activation and real account login require live verification.
 
 - Connect `studybridge.ink` and `www.studybridge.ink` to the existing AWS site, with independent Nginx domain routing, canonical HTTPS redirects, a two-name Let's Encrypt certificate, existing automatic renewal, DNS propagation checks and configuration rollback. Verify successful issuance and simulated renewal, trusted TLS on both names, HTTP/www redirects preserving paths and queries, identical new/IP website responses, and continued access to the other hosted site. The domain setup workflow and repository checks passed; retain the application version, accounts and data.

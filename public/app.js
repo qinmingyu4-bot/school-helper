@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.117";
+  const VERSION = "1.1.118";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -59,6 +59,25 @@
         });
         return settingsProfileSave;
       },
+      loadMembership: async () => {
+        const userId = state.user.id, generation = membershipGeneration;
+        const membership = (await api("/api/me/membership")).membership;
+        if (state.user?.id !== userId || membership.userId !== userId) throw new Error("登录账号已变更，请重新打开设置。");
+        if (generation === membershipGeneration) applyMembership(membership.tier);
+        return { ...membership, tier: state.user.membershipTier };
+      },
+      redeemMembershipInvite: (inviteCode, csrfToken) => {
+        const userId = state.user.id;
+        const operation = settingsProfileSave.catch(() => {}).then(async () => {
+          if (state.user?.id !== userId) throw new Error("登录账号已变更，请重新打开设置。");
+          const result = await api("/api/me/membership/redeem", { method: "POST", headers: { "x-csrf-token": csrfToken }, body: { userId, inviteCode } });
+          if (state.user?.id !== userId) throw new Error("登录账号已变更，请重新打开设置。");
+          applyMembership(result.user.membershipTier);
+          return result;
+        });
+        settingsProfileSave = operation.then(() => {}, () => {});
+        return operation;
+      },
       loadSecurity: async () => (await api("/api/me/security")).security,
       savePassword: async (values, csrfToken) => (await api("/api/me/password", { method: "POST",
         headers: { "x-csrf-token": csrfToken }, body: values })).security,
@@ -68,6 +87,8 @@
     })
   });
   let settingsProfileSave = Promise.resolve();
+  let membershipGeneration = 0;
+  const adminMembershipPending = new Set();
   const emailDraft = {};
   const studyReplies = new Map();
   const studyDrafts = new Map();
@@ -377,7 +398,7 @@
           <div class="auth-intro">
             <p class="auth-eyebrow">YOUR STUDY, CONNECTED</p>
             <h1 id="authTitle">${register ? "创建你的学习空间" : "欢迎回到 StudyBridge"}</h1>
-            <p>${register ? "使用邀请码注册，连接学习的每一步。" : "登录账号，继续你的学习节奏。"}</p>
+            <p>${register ? "注册普通账号，填写有效邀请码可成为 Plus 用户。" : "Google 可直接进入，首次使用将自动创建普通账号。"}</p>
           </div>
           <div class="segmented" role="group" aria-label="选择登录或注册">
             <button data-action="auth-tab" data-tab="login" aria-pressed="${!register}" class="${register ? "" : "active"}">登录</button>
@@ -388,7 +409,7 @@
           <label>密码<input id="authPassword" type="password" autocomplete="${register ? "new-password" : "current-password"}" placeholder="至少 8 位"></label>
           ${register ? `
             <label>确认密码<input id="authPasswordConfirm" type="password" autocomplete="new-password" placeholder="再输入一次密码"></label>
-            <label>邀请码<input id="authInvite" placeholder="向创作者索取邀请码"></label>
+            <label>邀请码（选填）<input id="authInvite" placeholder="有邀请码可成为 Plus 用户" aria-describedby="authInviteHelp"></label><p id="authInviteHelp" class="auth-code-help">留空即可注册普通用户，也可登录后在设置中补填。Plus 目前仅作分类。</p>
             ${state.authConfig?.emailVerificationRequired !== false ? `<label for="authEmailCode">邮箱验证码</label>
             <div class="inline-fields">
               <input id="authEmailCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" aria-describedby="authCodeHelp" placeholder="输入 6 位验证码">
@@ -398,7 +419,7 @@
           ` : ""}
           <button class="primary wide" data-action="${register ? "register" : "login"}" ${register && !state.authConfig ? "disabled" : ""}>${register ? "创建账号" : "登录"}</button>
           <div class="or-line"><span>或</span></div>
-          <button class="ghost wide auth-google" data-action="google-login" data-auth-mode="${mode}" ${state.googleEnabled ? "" : "disabled"}>Google 登录${state.googleEnabled ? "" : "待配置"}</button>
+          <button class="ghost wide auth-google" data-action="google-login" data-auth-mode="${mode}" ${state.googleEnabled ? "" : "disabled"}>使用 Google 继续${state.googleEnabled ? "" : "待配置"}</button>
           ${register ? "" : `<button class="link-button" data-action="forgot-password">忘记密码？</button>`}
           <p class="notice auth-feedback" role="status" aria-live="polite" ${state.toast ? "" : "hidden"}>${esc(state.toast)}</p>
         </section>
@@ -437,7 +458,7 @@
     const userNav = navOrder.map((page) => navButton(page)).join("");
     const devSwitch = isAdmin()
       ? `<div class="mode-switch">
-          <button class="${state.mode === "student" ? "active" : ""}" data-action="mode-student">普通用户端</button>
+          <button class="${state.mode === "student" ? "active" : ""}" data-action="mode-student">用户端</button>
           <button class="${state.mode === "admin" ? "active" : ""}" data-action="mode-admin">开发者端</button>
         </div>`
       : "";
@@ -456,6 +477,7 @@
             <div class="profile-card-info">
               <h3>${esc(state.user.name)}</h3>
               <p>${esc([p.school, p.major].filter(Boolean).join(" · ") || "完善学校和专业")}</p>
+              <span class="membership-badge" data-current-membership data-membership="${state.user.membershipTier === "plus" ? "plus" : "standard"}">${state.user.membershipTier === "plus" ? "Plus 用户" : "普通用户"}</span>
               <strong>SB ID: ${esc(profileSbId() || "未设置")}</strong>
             </div>
             <span class="profile-card-arrow" aria-hidden="true">↗</span>
@@ -473,7 +495,7 @@
     const active = state.page === page ? "active" : "";
     return `
       <button class="nav-card ${active}" data-page="${page}" ${active ? 'aria-current="page"' : ""}>
-        <span aria-hidden="true"><svg><use href="/classmates-icons.svg?v=1.1.117#nav-${esc(page)}"></use></svg></span>
+        <span aria-hidden="true"><svg><use href="/classmates-icons.svg?v=1.1.118#nav-${esc(page)}"></use></svg></span>
         <b>${esc(title)}</b>
         <small>${esc(page === "schedule" && nextDue() ? `${nextDue().title} · 还有 ${dueText(nextDue().startsAt)}` : sub)}</small>
       </button>
@@ -1655,28 +1677,28 @@
     const overview = state.admin;
     const invites = overview?.invites || [];
     const users = overview?.users || [];
-    const roleLabel = (role) => ["admin", "co-admin"].includes(String(role).toLowerCase()) ? "管理员" : "普通用户";
+    const roleLabel = (role) => ["admin", "co-admin"].includes(String(role).toLowerCase()) ? "管理员" : "用户";
     return `
       ${pageHeader("CREATOR CONSOLE", "开发者端", "管理邀请码、用户、系统状态和密码重置申请。", false)}
       ${adminStatusHtml()}
       <section class="admin-management">
         <article class="admin-section" aria-labelledby="adminInvitesTitle">
-          <div class="section-title"><h2 id="adminInvitesTitle">邀请码</h2><small>共 ${invites.length} 个</small></div>
+          <div class="section-title"><h2 id="adminInvitesTitle">Plus 邀请码</h2><small>共 ${invites.length} 个</small></div>
           <div class="admin-invite-form">
             <label class="admin-invite-label" for="inviteLabel">备注<input id="inviteLabel" placeholder="例如 Kevin / ECO101 小组"></label>
-            <label for="inviteRole">用户角色<select id="inviteRole"><option value="student">普通用户</option><option value="admin">Co-admin</option></select></label>
+            <label for="inviteRole">权限角色<select id="inviteRole"><option value="student">Plus 用户</option><option value="admin">Co-admin（同时为 Plus）</option></select></label>
             <button class="primary" data-action="generate-invite">生成邀请码</button>
           </div>
           <div class="admin-list">${invites.length ? invites.map((invite) => `<div class="invite-row">
-            <div class="admin-record-details"><b class="admin-invite-code">${esc(invite.code)}</b><div class="admin-record-meta"><span>${roleLabel(invite.role)}</span><span>仅限一次</span><span class="admin-invite-status ${invite.uses > 0 || !invite.active ? "is-disabled" : "is-active"}">${invite.uses > 0 ? "已使用" : invite.active ? "未使用" : "已停用"}</span></div>${invite.label ? `<p class="admin-record-note">${esc(invite.label)}</p>` : ""}</div>
+            <div class="admin-record-details"><b class="admin-invite-code">${esc(invite.code)}</b><div class="admin-record-meta"><span>${roleLabel(invite.role)}</span><span>注册为 Plus</span><span>仅限一次</span><span class="admin-invite-status ${invite.uses > 0 || !invite.active ? "is-disabled" : "is-active"}">${invite.uses > 0 ? "已使用" : invite.active ? "未使用" : "已停用"}</span></div>${invite.label ? `<p class="admin-record-note">${esc(invite.label)}</p>` : ""}</div>
             <div class="admin-row-actions"><button data-copy="${esc(invite.code)}" aria-label="复制邀请码 ${esc(invite.code)}">复制</button><button data-action="toggle-invite" data-id="${esc(invite.id)}" data-active="${invite.active ? "false" : "true"}" ${invite.uses > 0 ? "disabled" : ""}>${invite.uses > 0 ? "已使用" : invite.active ? "停用" : "启用"}</button><button class="admin-delete-invite" data-action="delete-invite" data-id="${esc(invite.id)}" data-code="${esc(invite.code)}" aria-label="删除邀请码 ${esc(invite.code)}">删除</button></div>
           </div>`).join("") : `<p class="muted admin-empty">暂无邀请码。</p>`}</div>
         </article>
         <article class="admin-section" aria-labelledby="adminUsersTitle">
-          <div class="section-title"><h2 id="adminUsersTitle">用户</h2><small>共 ${users.length} 人</small></div>
-          <div class="admin-list">${users.length ? users.map((user) => `<div class="user-row">
-            <div class="admin-record-details"><b>${esc(user.name)}</b><p class="admin-record-note">${esc(user.email)}</p><div class="admin-record-meta"><span>${roleLabel(user.role)}</span>${user.inviteCode ? `<span>邀请码 <span class="admin-invite-code">${esc(user.inviteCode)}</span></span>` : ""}</div><p class="admin-record-note">最近在线：<time data-last-seen-user="${esc(user.id)}" ${user.lastSeenAt ? `datetime="${esc(user.lastSeenAt)}" title="${esc(new Date(user.lastSeenAt).toLocaleString())}"` : ""}>${userActivity.relativeTime(user.lastSeenAt)}</time></p></div>
-            <dl class="admin-user-stats"><div><dt>课程</dt><dd>${user.stats?.courses || 0}</dd></div><div><dt>文档</dt><dd>${user.stats?.documents || 0}</dd></div><div><dt>聊天</dt><dd>${user.stats?.messages || 0}</dd></div></dl>
+          <div class="section-title"><h2 id="adminUsersTitle">用户</h2><small data-membership-count>共 ${users.length} 人 · 普通 ${users.filter(user => user.membershipTier !== "plus").length} · Plus ${users.filter(user => user.membershipTier === "plus").length}</small></div>
+          <div class="admin-list">${users.length ? users.map((user) => `<div class="user-row" data-membership-user-row="${esc(user.id)}">
+            <div class="admin-record-details"><b>${esc(user.name)}</b><p class="admin-record-note">${esc(user.email)}</p><div class="admin-record-meta"><span>${roleLabel(user.role)}</span><span class="membership-badge" data-membership="${user.membershipTier === "plus" ? "plus" : "standard"}">${user.membershipTier === "plus" ? "Plus 用户" : "普通用户"}</span>${user.inviteCode ? `<span>邀请码 <span class="admin-invite-code">${esc(user.inviteCode)}</span></span>` : ""}</div><p class="admin-record-note">最近在线：<time data-last-seen-user="${esc(user.id)}" ${user.lastSeenAt ? `datetime="${esc(user.lastSeenAt)}" title="${esc(new Date(user.lastSeenAt).toLocaleString())}"` : ""}>${userActivity.relativeTime(user.lastSeenAt)}</time></p></div>
+            <div class="admin-user-controls"><dl class="admin-user-stats"><div><dt>课程</dt><dd>${user.stats?.courses || 0}</dd></div><div><dt>文档</dt><dd>${user.stats?.documents || 0}</dd></div><div><dt>聊天</dt><dd>${user.stats?.messages || 0}</dd></div></dl><button type="button" data-action="set-user-membership" data-id="${esc(user.id)}" data-tier="${user.membershipTier === "plus" ? "standard" : "plus"}" data-expected="${user.membershipTier === "plus" ? "plus" : "standard"}" ${adminMembershipPending.has(user.id) ? "disabled" : ""}>${user.membershipTier === "plus" ? "设为普通用户" : "设为 Plus"}</button><span class="admin-membership-status" role="status" aria-live="polite"></span></div>
           </div>`).join("") : `<p class="muted admin-empty">暂无用户。</p>`}</div>
         </article>
       </section>
@@ -2739,6 +2761,34 @@
         await loadPage("admin");
         return;
       }
+      if (action === "set-user-membership") {
+        const userId = button.dataset.id, actorId = state.user.id;
+        if (adminMembershipPending.has(userId)) return;
+        const row = button.closest("[data-membership-user-row]"), status = row.querySelector(".admin-membership-status");
+        adminMembershipPending.add(userId); button.disabled = true; status.classList.remove("is-error"); status.textContent = "正在更新…";
+        try {
+          const result = await api(`/api/admin/users/${encodeURIComponent(userId)}/membership`, { method: "PATCH",
+            headers: { "x-csrf-token": state.admin.membershipCsrfToken }, body: { actorId, membershipTier: button.dataset.tier, expectedTier: button.dataset.expected } });
+          if (state.user?.id !== actorId) return;
+          const target = state.admin?.users.find(user => user.id === userId);
+          if (target) target.membershipTier = result.user.membershipTier;
+          if (userId === actorId) applyMembership(result.user.membershipTier);
+          updateAdminMembershipLabels(); status.textContent = result.user.membershipTier === "plus" ? "已设为 Plus 用户" : "已设为普通用户";
+        } catch (error) {
+          if (state.user?.id !== actorId) return;
+          status.classList.add("is-error"); status.textContent = error.message || "更新失败，请重试。";
+          if (error.status === 409) {
+            try {
+              const overview = await api("/api/admin/overview");
+              if (state.user?.id === actorId && state.page === "admin") mergeAdminMembership(overview);
+            } catch { /* Keep the explicit error and allow a manual refresh. */ }
+          }
+        } finally {
+          adminMembershipPending.delete(userId); if (button.isConnected) button.disabled = false;
+          if (state.user?.id === actorId) updateAdminMembershipLabels();
+        }
+        return;
+      }
       if (action === "generate-invite") {
         await api("/api/admin/invites", { method: "POST", body: { label: $("inviteLabel")?.value || "", role: $("inviteRole")?.value || "student" } });
         await loadPage("admin");
@@ -3050,6 +3100,36 @@
     if (event.target?.id === "scheduleImportPanel") state.scheduleImportOpen = event.target.open;
   }, true);
 
+  function applyMembership(tier) {
+    if (!state.user || !["standard", "plus"].includes(tier)) return;
+    if (state.user.membershipTier !== tier) { state.user = { ...state.user, membershipTier: tier }; membershipGeneration++; }
+    root.querySelectorAll("[data-current-membership]").forEach((badge) => { badge.dataset.membership = tier; badge.textContent = tier === "plus" ? "Plus 用户" : "普通用户"; });
+    appearanceController.refreshMembership(tier);
+  }
+
+  function updateAdminMembershipLabels() {
+    const users = state.admin?.users || [], byId = new Map(users.map(user => [user.id, user]));
+    const count = root.querySelector("[data-membership-count]");
+    if (count) count.textContent = `共 ${users.length} 人 · 普通 ${users.filter(user => user.membershipTier !== "plus").length} · Plus ${users.filter(user => user.membershipTier === "plus").length}`;
+    root.querySelectorAll("[data-membership-user-row]").forEach((row) => {
+      const user = byId.get(row.dataset.membershipUserRow); if (!user) return;
+      const tier = user.membershipTier === "plus" ? "plus" : "standard", badge = row.querySelector(".membership-badge"), button = row.querySelector('[data-action="set-user-membership"]');
+      badge.dataset.membership = tier; badge.textContent = tier === "plus" ? "Plus 用户" : "普通用户";
+      button.disabled = adminMembershipPending.has(user.id);
+      if (!adminMembershipPending.has(user.id)) { button.dataset.tier = tier === "plus" ? "standard" : "plus"; button.dataset.expected = tier; button.textContent = tier === "plus" ? "设为普通用户" : "设为 Plus"; }
+    });
+  }
+
+  function mergeAdminMembership(overview) {
+    const fresh = new Map(overview.users.map(user => [user.id, user]));
+    for (const user of state.admin?.users || []) {
+      const value = fresh.get(user.id); if (!value) continue;
+      user.lastSeenAt = value.lastSeenAt; user.membershipTier = value.membershipTier;
+    }
+    state.admin.membershipCsrfToken = overview.membershipCsrfToken;
+    updateAdminActivityLabels(); updateAdminMembershipLabels();
+  }
+
   async function reportUserActivity() {
     const userId = state.user?.id;
     if (!userId) return;
@@ -3059,7 +3139,9 @@
     report.pending = true;
     report.time = Date.now();
     try {
-      await api("/api/me/activity", { method: "POST" });
+      const generation = membershipGeneration;
+      const result = await api("/api/me/activity", { method: "POST" });
+      if (state.user?.id === userId && result.userId === userId && generation === membershipGeneration) applyMembership(result.membershipTier);
       report.time = Date.now();
     } catch { /* Presence failures must not interrupt studying. */ }
     finally { report.pending = false; }
@@ -3089,9 +3171,7 @@
     try {
       const overview = await api("/api/admin/overview");
       if (state.user?.id === userId && state.page === "admin") {
-        const latest = new Map(overview.users.map((user) => [user.id, user.lastSeenAt]));
-        for (const user of state.admin?.users || []) user.lastSeenAt = latest.get(user.id) || null;
-        updateAdminActivityLabels();
+        mergeAdminMembership(overview);
       }
     } catch { /* Retain the last successful status during connection failures. */ }
     finally { adminActivityRefreshing = false; }

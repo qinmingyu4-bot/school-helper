@@ -22,6 +22,7 @@ const {
 const { validEmail, emailPolicy, createEmailVerification } = require("./lib/email-verification");
 const { startGoogleOAuth, verifyGoogleOAuth, clearGoogleOAuthCookie } = require("./lib/google-oauth");
 const { StudyBridgeDatabase } = require("./lib/database");
+const { membershipTier } = require("./lib/membership");
 const studyModes = require("./public/study-modes");
 const learningStyle = require("./public/learning-style");
 const appearance = require("./public/appearance");
@@ -103,7 +104,6 @@ const office = createOfficeService(db);
 const publicDir = path.join(__dirname, "public");
 const port = Number(process.env.PORT || 3000);
 const serverStartedAt = new Date().toISOString();
-const requireInviteCode = process.env.REQUIRE_INVITE_CODE !== "false";
 const verificationPolicy = emailPolicy();
 const requireEmailVerification = verificationPolicy.required;
 const allowEmailCodeFallback = verificationPolicy.fallbackAllowed;
@@ -444,14 +444,18 @@ async function requireUser(req, res) {
   return auth.user;
 }
 
-async function requireAdmin(req, res) {
-  const user = await requireUser(req, res);
-  if (!user) return null;
-  if (user.role !== "admin") {
+async function requireAdminSession(req, res) {
+  const auth = await currentUser(req);
+  if (!auth) { sendError(res, 401, "Please log in first."); return null; }
+  if (auth.user.role !== "admin") {
     sendError(res, 403, "Only the StudyBridge creator can open this area.");
     return null;
   }
-  return user;
+  return auth;
+}
+
+async function requireAdmin(req, res) {
+  return (await requireAdminSession(req, res))?.user || null;
 }
 
 function validatePassword(password) {
@@ -1437,10 +1441,9 @@ async function streamCourseChat(req, res, context) {
 }
 
 async function validateInviteForRegistration(inviteCode, email) {
-  if (!requireInviteCode) return { type: "open", label: "Open registration" };
   const normalized = normalizeInviteCode(inviteCode);
+  if (!normalized) return { type: "open", label: "Standard registration" };
   const ownerCode = normalizeInviteCode(process.env.OWNER_INVITE_CODE || process.env.REGISTRATION_CODE || "");
-  if (!normalized) throw new Error("Registration requires an invitation code from the creator.");
   if (ownerCode && normalized === ownerCode) {
     if (!adminEmails().includes(email)) throw new Error("Creator invitation code can only be used by the creator email.");
     if ((await db.listUsers()).some((user) => normalizeInviteCode(user.inviteCode) === normalized)) throw new Error("Invitation code has already been used.");
@@ -1765,6 +1768,11 @@ function authRedirect(req, params = {}) {
   return target.toString();
 }
 
+async function linkGoogleIdentity(user, googleProfile) {
+  if (user.googleSub && user.googleSub !== googleProfile.sub) throw new Error("This email is already linked to a different Google account.");
+  return db.updateUser(user.id, { googleSub: googleProfile.sub, authProvider: user.authProvider || "google" });
+}
+
 async function signInWithGoogle(req, res, url) {
   const redirect = (params, session) => sendRedirect(res, authRedirect(req, params), {
     "set-cookie": session ? [clearGoogleOAuthCookie(), sessionCookie(session)] : clearGoogleOAuthCookie()
@@ -1809,44 +1817,43 @@ async function signInWithGoogle(req, res, url) {
     if (googleProfile.email_verified !== true || !googleProfile.sub) throw new Error("Google did not confirm a verified account identity.");
 
     const email = normalizeEmail(googleProfile.email);
-    const existing = await db.findUserByEmail(email);
+    const existing = await db.findUserByEmail(email, { consistent: true });
     let user = existing;
 
     if (user) {
-      if (user.googleSub && user.googleSub !== googleProfile.sub) throw new Error("This email is already linked to a different Google account.");
-      user = await db.updateUser(user.id, {
-        googleSub: googleProfile.sub || user.googleSub || "",
-        authProvider: user.authProvider || "google"
-      });
+      user = await linkGoogleIdentity(user, googleProfile);
     } else {
-      if (statePayload.mode !== "register") {
-        throw new Error("This Google email is not registered yet. Switch to Register and enter your invite code first.");
+      try {
+        const inviteGrant = await validateInviteForRegistration(statePayload.inviteCode, email);
+        user = await db.createUser({
+          id: createId("user"),
+          name: String(googleProfile.name || email.split("@")[0] || "StudyBridge Student").trim().slice(0, 80),
+          email,
+          passwordHash: "",
+          role: adminEmails().includes(email) || normalizeInviteRole(inviteGrant.invite?.role) === "admin" ? "admin" : "student",
+          inviteCode: inviteGrant.code || inviteGrant.invite?.code || "",
+          inviteId: inviteGrant.invite?.id || "",
+          googleSub: googleProfile.sub || "",
+          authProvider: "google",
+          profile: {
+            avatarUrl: googleProfile.picture || "",
+            backgroundUrl: "",
+            school: "",
+            major: "",
+            sbId: ""
+          },
+          preferences: {
+            englishTerms: true,
+            englishAnswers: false,
+            chineseExplanations: false,
+            customInstruction: ""
+          }
+        }, inviteGrant.invite);
+      } catch (error) {
+        const concurrent = await db.findUserByEmail(email, { consistent: true });
+        if (!concurrent) throw error;
+        user = await linkGoogleIdentity(concurrent, googleProfile);
       }
-      const inviteGrant = await validateInviteForRegistration(statePayload.inviteCode, email);
-      user = await db.createUser({
-        id: createId("user"),
-        name: String(googleProfile.name || email.split("@")[0] || "StudyBridge Student").trim().slice(0, 80),
-        email,
-        passwordHash: "",
-        role: adminEmails().includes(email) || normalizeInviteRole(inviteGrant.invite?.role) === "admin" ? "admin" : "student",
-        inviteCode: inviteGrant.code || inviteGrant.invite?.code || "",
-        inviteId: inviteGrant.invite?.id || "",
-        googleSub: googleProfile.sub || "",
-        authProvider: "google",
-        profile: {
-          avatarUrl: googleProfile.picture || "",
-          backgroundUrl: "",
-          school: "",
-          major: "",
-          sbId: ""
-        },
-        preferences: {
-          englishTerms: true,
-          englishAnswers: false,
-          chineseExplanations: false,
-          customInstruction: ""
-        }
-      }, inviteGrant.invite);
     }
 
     const token = createSessionToken();
@@ -1947,7 +1954,7 @@ async function routeApi(req, res) {
   }
 
   if (url.pathname === "/api/auth/config" && method === "GET") {
-    return sendJson(res, 200, { emailVerificationRequired: requireEmailVerification, inviteRequired: requireInviteCode, resendAfter: verificationPolicy.resendSeconds, expiresIn: verificationPolicy.ttlMs / 1000 });
+    return sendJson(res, 200, { emailVerificationRequired: requireEmailVerification, inviteRequired: false, inviteGrantsPlus: true, resendAfter: verificationPolicy.resendSeconds, expiresIn: verificationPolicy.ttlMs / 1000 });
   }
 
   if (url.pathname === "/api/auth/google/config" && method === "GET") {
@@ -1960,9 +1967,6 @@ async function routeApi(req, res) {
     }
     const mode = url.searchParams.get("mode") === "register" ? "register" : "login";
     const inviteCode = normalizeInviteCode(url.searchParams.get("inviteCode"));
-    if (mode === "register" && requireInviteCode && !inviteCode) {
-      return sendRedirect(res, authRedirect(req, { authError: "Google registration also needs an invite code." }));
-    }
     const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
     const oauth = startGoogleOAuth({ mode, inviteCode });
     authUrl.searchParams.set("client_id", googleClientId);
@@ -2141,13 +2145,45 @@ async function routeApi(req, res) {
     const user = await requireUser(req, res);
     if (!user) return;
     await db.recordUserActivity(user.id);
-    return sendJson(res, 200, { ok: true });
+    return sendJson(res, 200, { ok: true, userId: user.id, membershipTier: membershipTier(user) }, { "cache-control": "private, no-store" });
   }
 
   if (url.pathname === "/api/me" && method === "GET") {
     const user = await requireUser(req, res);
     if (!user) return;
     return sendJson(res, 200, { user: publicUser(user) });
+  }
+
+  if (url.pathname === "/api/me/membership" && method === "GET") {
+    const auth = await currentUser(req);
+    if (!auth) return sendError(res, 401, "登录已过期，请重新登录。");
+    return sendJson(res, 200, { membership: { userId: auth.user.id, tier: membershipTier(auth.user), csrfToken: hashToken(`account-membership:${auth.tokenHash}`) } }, { "cache-control": "private, no-store" });
+  }
+
+  if (url.pathname === "/api/me/membership/redeem" && method === "POST") {
+    const auth = await currentUser(req);
+    if (!auth) return sendError(res, 401, "登录已过期，请重新登录。");
+    const expected = hashToken(`account-membership:${auth.tokenHash}`), csrf = String(req.headers["x-csrf-token"] || "");
+    if (!/^[a-f0-9]{64}$/.test(csrf) || !crypto.timingSafeEqual(Buffer.from(csrf), Buffer.from(expected))
+      || !/^application\/json(?:;|$)/i.test(req.headers["content-type"] || "")) return sendError(res, 403, "请重新打开账号设置后再试。");
+    const body = await readJson(req);
+    if (body.userId !== auth.user.id) return sendError(res, 409, "登录账号已变更，请重新打开设置。");
+    if (membershipTier(auth.user) === "plus") return sendJson(res, 200, { user: publicUser(auth.user), redeemed: false }, { "cache-control": "private, no-store" });
+    if (typeof body.inviteCode !== "string" || !body.inviteCode.trim() || body.inviteCode.trim().length > 128) return sendError(res, 400, "请填写有效的邀请码（最多 128 个字符）。");
+    let grant;
+    try { grant = await validateInviteForRegistration(body.inviteCode, auth.user.email); }
+    catch (error) {
+      const fresh = await db.getUser(auth.user.id, { consistent: true });
+      if (fresh && membershipTier(fresh) === "plus") return sendJson(res, 200, { user: publicUser(withEffectiveRole(fresh)), redeemed: false }, { "cache-control": "private, no-store" });
+      return sendError(res, 400, "邀请码无效、已使用或已停用，请核对后重试。");
+    }
+    let result;
+    try { result = await db.redeemMembershipInvite(auth.user.id, grant.invite); }
+    catch (error) {
+      if (error.statusCode === 403) return sendError(res, 403, "邀请码已使用或已停用，请核对后重试。");
+      throw error;
+    }
+    return sendJson(res, 200, { user: publicUser(withEffectiveRole(result.user)), redeemed: result.redeemed }, { "cache-control": "private, no-store" });
   }
 
   if (url.pathname === "/api/me/security" && method === "GET") {
@@ -2380,8 +2416,9 @@ async function routeApi(req, res) {
   }
 
   if (url.pathname === "/api/admin/overview" && method === "GET") {
-    const admin = await requireAdmin(req, res);
-    if (!admin) return;
+    const auth = await requireAdminSession(req, res);
+    if (!auth) return;
+    const admin = auth.user;
     const [users, invites, activity] = await Promise.all([db.listUsers(), db.listInvites(), db.listUserActivity()]);
     const lastSeenByUser = new Map(activity.map((item) => [item.userId, item.lastSeenAt]));
     const usersWithStats = await Promise.all(
@@ -2390,6 +2427,7 @@ async function routeApi(req, res) {
         name: user.name,
         email: user.email,
         role: withEffectiveRole(user).role,
+        membershipTier: membershipTier(user),
         inviteCode: user.inviteCode || "",
         createdAt: user.createdAt,
         lastSeenAt: lastSeenByUser.get(user.id) || null,
@@ -2401,8 +2439,9 @@ async function routeApi(req, res) {
       users: usersWithStats,
       invites: invites.filter((invite) => !isResetRequest(invite)).map(publicInvite),
       resetRequests,
-      creator: publicUser(admin)
-    });
+      creator: publicUser(admin),
+      membershipCsrfToken: hashToken(`admin-membership:${auth.tokenHash}`)
+    }, { "cache-control": "private, no-store" });
   }
 
   if (url.pathname === "/api/admin/system-status" && method === "GET") {
@@ -2436,6 +2475,20 @@ async function routeApi(req, res) {
       },
       autoSync: autoSyncStatusClean()
     });
+  }
+
+  const membershipMatch = url.pathname.match(/^\/api\/admin\/users\/([\w-]{1,100})\/membership$/);
+  if (membershipMatch && method === "PATCH") {
+    const auth = await requireAdminSession(req, res);
+    if (!auth) return;
+    const expected = hashToken(`admin-membership:${auth.tokenHash}`), csrf = String(req.headers["x-csrf-token"] || "");
+    if (!/^[a-f0-9]{64}$/.test(csrf) || !crypto.timingSafeEqual(Buffer.from(csrf), Buffer.from(expected))
+      || !/^application\/json(?:;|$)/i.test(req.headers["content-type"] || "")) return sendError(res, 403, "请刷新开发者端后再试。");
+    const body = await readJson(req);
+    if (body.actorId !== auth.user.id) return sendError(res, 409, "登录账号已变更，请刷新后再试。");
+    if (!["standard", "plus"].includes(body.membershipTier) || !["standard", "plus"].includes(body.expectedTier)) return sendError(res, 400, "请选择普通用户或 Plus 用户。");
+    const result = await db.setUserMembership(membershipMatch[1], body.membershipTier, auth.user.id, body.expectedTier);
+    return sendJson(res, 200, { user: publicUser(withEffectiveRole(result.user)), changed: result.changed }, { "cache-control": "private, no-store" });
   }
 
   if (url.pathname === "/api/admin/invites" && method === "POST") {

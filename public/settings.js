@@ -23,7 +23,7 @@
   }
 
   function createView({ document: doc = document, themes, logos, version, getUser, getContext, getAppearance, flushAppearance,
-    learning, saveProfile, loadSecurity, savePassword, requestPasswordReset, navigate, logout }) {
+    learning, saveProfile, loadMembership, redeemMembershipInvite, loadSecurity, savePassword, requestPasswordReset, navigate, logout }) {
     const dialog = doc.createElement("dialog");
     dialog.className = "settings-dialog";
     dialog.setAttribute("aria-labelledby", "settings-title");
@@ -39,6 +39,9 @@
       <div class="settings-content"><button type="button" class="settings-back">‹ 返回设置</button>
         <section id="settings-panel-account" class="settings-panel" aria-labelledby="settings-account-heading">${heading("account", "管理你的个人信息，让学习与交流更贴近你。")}
           <form class="settings-profile-form"><div class="settings-block"><h4>基本资料</h4><div class="settings-fields"><label>显示姓名<input name="name" required maxlength="80" autocomplete="name"></label><label>SB ID<input name="sbId" placeholder="例如 adam2026" required maxlength="8" pattern="[A-Za-z0-9]{1,8}" title="1–8 位数字或字母，区分大小写"></label><label>学校<input name="school" maxlength="160" autocomplete="organization"></label><label>专业<input name="major" maxlength="160"></label></div><p class="settings-caption">学校、专业和 SB ID 会用于个人资料与同学功能。</p><div class="settings-form-actions"><span class="settings-profile-status" role="status"></span><button type="submit" class="settings-primary">保存资料</button></div></div></form>
+          <div class="settings-block"><h4>账号类型</h4><div class="settings-row"><div><strong class="settings-membership-name"></strong><small>目前仅作用户分类，普通用户与 Plus 暂无功能差异。</small></div></div>
+            <form class="settings-invite-form"><fieldset class="settings-invite-fields" disabled><label>补填邀请码<input name="inviteCode" autocomplete="off" maxlength="128" required placeholder="输入有效邀请码，升级为 Plus"></label><p class="settings-caption">注册时没填邀请码，也可以在这里兑换。账号资料、课程和登录方式会保留。</p><div class="settings-form-actions"><span class="settings-invite-status" role="status" aria-live="polite"></span><button type="submit" class="settings-primary">兑换邀请码</button></div></fieldset></form><p class="settings-membership-status settings-caption" role="status" aria-live="polite"></p><button type="button" class="settings-membership-retry" hidden>重新读取账号类型</button>
+          </div>
           <div class="settings-block"><h4>登录与资料</h4><div class="settings-row"><div><strong>登录邮箱</strong><small class="settings-login-email"></small></div><span class="settings-static-value">当前账号</span></div><div class="settings-row"><div><strong>头像与封面</strong><small>在个人资料页上传或替换图片。</small></div><button type="button" data-settings-route="profile">管理图片 ↗</button></div><div class="settings-row"><div><strong>网站密码</strong><small>在「账号安全」中设置或修改密码。</small></div><button type="button" data-settings-open="security">管理密码 ›</button></div></div>
         </section>
         <section id="settings-panel-security" class="settings-panel" aria-labelledby="settings-security-heading" hidden>${heading("security", "管理网站密码；Google 与邮箱密码登录使用同一个账号。")}
@@ -68,6 +71,7 @@
       </div></div>`;
     let profileDirty = false, disposed = false, learningTimer = 0;
     let security = null, securityGeneration = 0, passwordPending = false;
+    let membership = null, membershipGeneration = 0, invitePending = false;
     const currentUserId = String(getUser().id);
     const active = () => !disposed && String(getUser()?.id || "") === currentUserId;
     const form = dialog.querySelector(".settings-profile-form");
@@ -78,9 +82,53 @@
       dialog.querySelector(".settings-account-email").textContent = user.email;
       dialog.querySelector(".settings-account-avatar").textContent = String(user.name || "S").slice(0, 1);
       dialog.querySelector(".settings-login-email").textContent = user.email;
+      dialog.querySelector(".settings-membership-name").textContent = user.membershipTier === "plus" ? "Plus 用户" : "普通用户";
       if (!profileDirty) for (const key of ["name", "school", "major", "sbId"]) form.elements[key].value = key === "name" ? user.name : p[key] || "";
       dialog.querySelector(".settings-course-count").textContent = `当前账号有 ${getContext().courseCount} 门课程；在「学习」中管理资料和对话。`;
     }
+    const inviteForm = dialog.querySelector(".settings-invite-form");
+    function renderMembership() {
+      if (!active()) return;
+      const plus = (membership?.tier || getUser().membershipTier) === "plus";
+      dialog.querySelector(".settings-membership-name").textContent = plus ? "Plus 用户" : "普通用户";
+      inviteForm.hidden = plus;
+      inviteForm.querySelector("fieldset").disabled = invitePending || !membership;
+      inviteForm.querySelector('button[type="submit"]').textContent = invitePending ? "正在兑换…" : "兑换邀请码";
+    }
+    async function readMembership() {
+      const generation = ++membershipGeneration;
+      membership = null; renderMembership();
+      dialog.querySelector(".settings-membership-retry").hidden = true;
+      setStatus(".settings-membership-status", "正在读取账号类型…");
+      try {
+        const result = await loadMembership();
+        if (!active() || generation !== membershipGeneration) return;
+        membership = result; renderMembership();
+        setStatus(".settings-membership-status", result.tier === "plus" ? "你已是 Plus 用户，无需重复兑换邀请码。" : "");
+      } catch (error) {
+        if (!active() || generation !== membershipGeneration) return;
+        setStatus(".settings-membership-status", error.message || "读取失败，请重试。", true);
+        dialog.querySelector(".settings-membership-retry").hidden = false;
+      }
+    }
+    dialog.querySelector(".settings-membership-retry").addEventListener("click", readMembership);
+    inviteForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!active() || invitePending || !membership || membership.tier === "plus") return;
+      invitePending = true; renderMembership(); setStatus(".settings-invite-status", "正在兑换…");
+      try {
+        const result = await redeemMembershipInvite(inviteForm.elements.inviteCode.value.trim(), membership.csrfToken);
+        if (!active()) return;
+        membership.tier = result.user.membershipTier; inviteForm.reset(); refreshUser(); renderMembership();
+        setStatus(".settings-invite-status", "");
+        setStatus(".settings-membership-status", result.redeemed ? "已升级为 Plus 用户。账号和学习资料保持不变。" : "你已是 Plus 用户，无需重复兑换邀请码。");
+      } catch (error) {
+        if (!active()) return;
+        setStatus(".settings-invite-status", error.message || "兑换失败，请重试。", true);
+        if ([401, 403, 409].includes(error.status)) await readMembership();
+      } finally { invitePending = false; renderMembership(); }
+    });
+    dialog.addEventListener("close", () => inviteForm.reset());
     const passwordForm = dialog.querySelector(".settings-password-form");
     const passwordFields = dialog.querySelector(".settings-password-fields");
     function clearPasswords() { for (const key of ["currentPassword", "password", "passwordConfirm"]) passwordForm.elements[key].value = ""; }
@@ -190,6 +238,7 @@
       dialog.dataset.detail = "true"; dialog.querySelector(".settings-content").scrollTop = 0;
       refreshUser(); refreshLearning();
       if (button.dataset.settingsSection === "security" && !passwordPending) void readSecurity();
+      if (button.dataset.settingsSection === "account" && !invitePending) void readMembership();
     }));
     dialog.querySelectorAll("[data-settings-open]").forEach((button) => button.addEventListener("click", () => dialog.querySelector(`[data-settings-section="${button.dataset.settingsOpen}"]`).click()));
     dialog.querySelector(".settings-back").addEventListener("click", () => { clearPasswords(); delete dialog.dataset.detail; dialog.querySelector('[aria-current="page"]').focus(); });
@@ -204,9 +253,15 @@
       setTimeout(() => doc.defaultView.URL.revokeObjectURL(url), 1000);
       setStatus(".settings-export-status", "已导出当前选择的偏好副本。");
     });
-    dialog.refreshSettings = () => { refreshUser(); refreshLearning(); if (dialog.querySelector('[data-settings-section="security"]').hasAttribute("aria-current") && !passwordPending) void readSecurity(); };
+    dialog.refreshSettings = () => { refreshUser(); refreshLearning(); if (dialog.querySelector('[data-settings-section="account"]').hasAttribute("aria-current") && !invitePending) void readMembership(); if (dialog.querySelector('[data-settings-section="security"]').hasAttribute("aria-current") && !passwordPending) void readSecurity(); };
+    dialog.refreshMembership = (tier) => {
+      if (!active()) return;
+      if (membership) membership = { ...membership, tier };
+      renderMembership();
+      if (!invitePending) setStatus(".settings-membership-status", tier === "plus" ? "你已是 Plus 用户，无需重复兑换邀请码。" : "可以补填有效邀请码，升级为 Plus 用户。");
+    };
     dialog.refreshLearning = refreshLearning;
-    dialog.disposeSettings = () => { disposed = true; ++securityGeneration; clearPasswords(); clearTimeout(learningTimer); };
+    dialog.disposeSettings = () => { disposed = true; ++securityGeneration; ++membershipGeneration; inviteForm.reset(); clearPasswords(); clearTimeout(learningTimer); };
     refreshUser(); refreshLearning();
     return dialog;
   }

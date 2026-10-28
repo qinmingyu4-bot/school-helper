@@ -154,7 +154,7 @@
       update();
       if (!dialog.open) dialog.showModal();
     }
-    return { sync, open, reset, refreshLearning: () => dialog?.refreshLearning?.() };
+    return { sync, open, reset, refreshLearning: () => dialog?.refreshLearning?.(), refreshMembership: (tier) => dialog?.refreshMembership?.(tier) };
   }
   return { themes, logos, isValid, normalize, createSaver, createController };
 });

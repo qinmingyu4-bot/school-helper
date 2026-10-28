@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.112";
+  const VERSION = "1.1.113";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -446,7 +446,7 @@
     const active = state.page === page ? "active" : "";
     return `
       <button class="nav-card ${active}" data-page="${page}" ${active ? 'aria-current="page"' : ""}>
-        <span aria-hidden="true"><svg><use href="/classmates-icons.svg?v=1.1.112#nav-${esc(page)}"></use></svg></span>
+        <span aria-hidden="true"><svg><use href="/classmates-icons.svg?v=1.1.113#nav-${esc(page)}"></use></svg></span>
         <b>${esc(title)}</b>
         <small>${esc(page === "schedule" && nextDue() ? `${nextDue().title} · 还有 ${dueText(nextDue().startsAt)}` : sub)}</small>
       </button>
@@ -1562,6 +1562,18 @@
       state.scheduleDrafts = [];
       state.scheduleUploadFile = null;
       setScheduleImportStatus(`已添加 ${saved} 条安排${duplicates ? `，跳过 ${duplicates} 条重复项目` : ""}。`);
+      if (state.scheduleDraftOrigin === "quick") {
+        const message = state.scheduleQuickStatus;
+        cancelScheduleVoice();
+        state.scheduleQuickText = "";
+        state.scheduleQuickStatus = "";
+        state.scheduleVoiceFile = null;
+        state.scheduleVoiceMessage = "";
+        state.scheduleVoicePhase = "idle";
+        state.scheduleSource = "";
+        state.scheduleManualOpen = false;
+        setToast(message);
+      }
     } catch (error) {
       if (state.user?.id === userId) {
         state.scheduleReviewError = `${error.message} 本次已保存 ${saved} 条，跳过重复 ${duplicates} 条；预览已保留，可修改后重试。`;

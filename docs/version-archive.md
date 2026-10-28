@@ -10,6 +10,19 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.113 - 2026-10-28
+
+Purpose:
+- Clear typed/transcribed input and audio retry state, and collapse Add schedule after successful AI schedule confirmation. Keep failures and partial saves retryable.
+- Refresh frontend/cache versions without changing saved accounts, schedules or preferences.
+
+Validation:
+- Run full automated tests, source/assets/version checks and deployment-script syntax checks.
+- Deploy with the existing verified private backup, unchanged-data checks and automatic code rollback.
+
+Rollback target:
+- `0344fe4` (1.1.112). Restore code only; retain current data and backups.
+
 ### 1.1.112 - 2026-10-28
 
 Purpose:

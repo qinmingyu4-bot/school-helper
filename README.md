@@ -1,6 +1,6 @@
 # StudyBridge Cloud
 
-StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, invitation-only registration, a creator console, per-student cloud data, and a backend AI API so the OpenAI key never appears in browser code.
+StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, open registration with optional Plus invitations, a creator console, per-student cloud data, and a backend AI API so the OpenAI key never appears in browser code.
 
 ## Features
 
@@ -178,7 +178,7 @@ Production defaults to verification required when the requirement flag is absent
 an explicit `false` retains the previous registration mode during rollout.
 
 Existing password logins and manual password-reset requests remain available.
-Google registration uses Google's verified email plus the existing invitation gate.
+Google registration accepts Google's verified email and the same optional Plus invitation.
 The delivered-code password-reset API shares expiration, resend and attempt limits.
 
 Before release: configure and verify a sender, set the requirement flag to `true`,
@@ -590,13 +590,26 @@ behavior is deliberately outside this integrity change, as requested by the owne
 
 ## Important Environment Variables
 
+Registration is open for email and Google accounts. Leave the invite blank for
+**普通用户** (`membershipTier: "standard"`); a valid supplied invitation creates
+**Plus 用户** (`"plus"`). Invalid, disabled or spent codes are rejected; users may
+clear the field to register normally. Existing users with saved `inviteCode` or
+`inviteId` automatically resolve to Plus, even if their invitation was deleted.
+This compatibility rule does not rewrite credentials or other historical data.
+New account tiers are persisted by the server; client-supplied tiers are ignored.
+Settings, the sidebar and the admin user list show the tier. Membership is separate
+from student/admin roles, and no feature or entitlement difference is enforced yet.
+The obsolete `REQUIRE_INVITE_CODE` environment value is ignored, including existing
+production `true` values. Email verification remains required when configured;
+Google registration still verifies the Google identity. Signing in to an existing
+account does not consume an invitation or change its tier.
+
 Each invitation permits one successful registration. Previously used codes cannot
 be reused, even if their old usage limit was higher or they are re-enabled.
 
 ```text
 SESSION_SECRET=replace-with-a-long-random-secret
 ADMIN_EMAILS=your-real-email@example.com
-REQUIRE_INVITE_CODE=true
 OWNER_INVITE_CODE=your-private-creator-code
 OPENAI_API_KEY=your-openai-api-key
 OPENAI_SIMPLE_MODEL=gpt-6-luna

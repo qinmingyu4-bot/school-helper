@@ -77,4 +77,16 @@ test("production registration requires delivered mailbox-bound codes and preserv
   assert.equal(failed.status, 503);
   assert.ok(!JSON.stringify(failed.data).includes("private transport"));
   assert.ok(!failed.data.emailCode);
+  const standardDetails = { email: "open-standard@example.test" };
+  const standardRegistration = { ...registration, ...standardDetails, inviteCode: "", membershipTier: "plus" };
+  assert.equal((await request("/api/auth/register", standardRegistration)).status, 403, "Open registration still requires email verification");
+  const standardSent = await request("/api/auth/send-verification", standardDetails);
+  assert.equal(standardSent.status, 200);
+  const standardMail = JSON.parse((await fs.readFile(mailFile, "utf8")).trim().split("\n").at(-1));
+  const standardCode = standardMail.text.match(/\d{6}/)[0];
+  const standardAccount = await request("/api/auth/register", { ...standardRegistration, emailCode: standardCode });
+  assert.equal(standardAccount.status, 201);
+  assert.equal(standardAccount.data.user.membershipTier, "standard");
+  assert.equal(account.data.user.membershipTier, "plus");
+
 });

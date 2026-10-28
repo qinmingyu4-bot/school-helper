@@ -38,6 +38,7 @@
       <div class="settings-content"><button type="button" class="settings-back">‹ 返回设置</button>
         <section id="settings-panel-account" class="settings-panel" aria-labelledby="settings-account-heading">${heading("account", "管理你的个人信息，让学习与交流更贴近你。")}
           <form class="settings-profile-form"><div class="settings-block"><h4>基本资料</h4><div class="settings-fields"><label>显示姓名<input name="name" required maxlength="80" autocomplete="name"></label><label>SB ID<input name="sbId" placeholder="例如 adam2026" required maxlength="8" pattern="[A-Za-z0-9]{1,8}" title="1–8 位数字或字母，区分大小写"></label><label>学校<input name="school" maxlength="160" autocomplete="organization"></label><label>专业<input name="major" maxlength="160"></label></div><p class="settings-caption">学校、专业和 SB ID 会用于个人资料与同学功能。</p><div class="settings-form-actions"><span class="settings-profile-status" role="status"></span><button type="submit" class="settings-primary">保存资料</button></div></div></form>
+          <div class="settings-block"><h4>账号类型</h4><div class="settings-row"><div><strong class="settings-membership-name"></strong><small>目前仅作用户分类，普通用户与 Plus 暂无功能差异。</small></div></div></div>
           <div class="settings-block"><h4>登录与资料</h4><div class="settings-row"><div><strong>登录邮箱</strong><small class="settings-login-email"></small></div><span class="settings-static-value">当前账号</span></div><div class="settings-row"><div><strong>头像与封面</strong><small>在个人资料页上传或替换图片。</small></div><button type="button" data-settings-route="profile">管理图片 ↗</button></div><div class="settings-row"><div><strong>网站密码</strong><small>在「账号安全」中设置或修改密码。</small></div><button type="button" data-settings-open="security">管理密码 ›</button></div></div>
         </section>
         <section id="settings-panel-security" class="settings-panel" aria-labelledby="settings-security-heading" hidden>${heading("security", "管理网站密码；Google 与邮箱密码登录使用同一个账号。")}
@@ -76,6 +77,7 @@
       dialog.querySelector(".settings-account-email").textContent = user.email;
       dialog.querySelector(".settings-account-avatar").textContent = String(user.name || "S").slice(0, 1);
       dialog.querySelector(".settings-login-email").textContent = user.email;
+      dialog.querySelector(".settings-membership-name").textContent = user.membershipTier === "plus" ? "Plus 用户" : "普通用户";
       if (!profileDirty) for (const key of ["name", "school", "major", "sbId"]) form.elements[key].value = key === "name" ? user.name : p[key] || "";
       dialog.querySelector(".settings-course-count").textContent = `当前账号有 ${getContext().courseCount} 门课程；在「学习」中管理资料和对话。`;
     }

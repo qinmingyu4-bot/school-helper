@@ -22,6 +22,7 @@ const {
 const { validEmail, emailPolicy, createEmailVerification } = require("./lib/email-verification");
 const { startGoogleOAuth, verifyGoogleOAuth, clearGoogleOAuthCookie } = require("./lib/google-oauth");
 const { StudyBridgeDatabase } = require("./lib/database");
+const { membershipTier } = require("./lib/membership");
 const studyModes = require("./public/study-modes");
 const learningStyle = require("./public/learning-style");
 const appearance = require("./public/appearance");
@@ -103,7 +104,6 @@ const office = createOfficeService(db);
 const publicDir = path.join(__dirname, "public");
 const port = Number(process.env.PORT || 3000);
 const serverStartedAt = new Date().toISOString();
-const requireInviteCode = process.env.REQUIRE_INVITE_CODE !== "false";
 const verificationPolicy = emailPolicy();
 const requireEmailVerification = verificationPolicy.required;
 const allowEmailCodeFallback = verificationPolicy.fallbackAllowed;
@@ -1437,10 +1437,9 @@ async function streamCourseChat(req, res, context) {
 }
 
 async function validateInviteForRegistration(inviteCode, email) {
-  if (!requireInviteCode) return { type: "open", label: "Open registration" };
   const normalized = normalizeInviteCode(inviteCode);
+  if (!normalized) return { type: "open", label: "Standard registration" };
   const ownerCode = normalizeInviteCode(process.env.OWNER_INVITE_CODE || process.env.REGISTRATION_CODE || "");
-  if (!normalized) throw new Error("Registration requires an invitation code from the creator.");
   if (ownerCode && normalized === ownerCode) {
     if (!adminEmails().includes(email)) throw new Error("Creator invitation code can only be used by the creator email.");
     if ((await db.listUsers()).some((user) => normalizeInviteCode(user.inviteCode) === normalized)) throw new Error("Invitation code has already been used.");
@@ -1820,7 +1819,7 @@ async function signInWithGoogle(req, res, url) {
       });
     } else {
       if (statePayload.mode !== "register") {
-        throw new Error("This Google email is not registered yet. Switch to Register and enter your invite code first.");
+        throw new Error("This Google email is not registered yet. Switch to Register to create an account; an invite code is optional for Plus.");
       }
       const inviteGrant = await validateInviteForRegistration(statePayload.inviteCode, email);
       user = await db.createUser({
@@ -1947,7 +1946,7 @@ async function routeApi(req, res) {
   }
 
   if (url.pathname === "/api/auth/config" && method === "GET") {
-    return sendJson(res, 200, { emailVerificationRequired: requireEmailVerification, inviteRequired: requireInviteCode, resendAfter: verificationPolicy.resendSeconds, expiresIn: verificationPolicy.ttlMs / 1000 });
+    return sendJson(res, 200, { emailVerificationRequired: requireEmailVerification, inviteRequired: false, inviteGrantsPlus: true, resendAfter: verificationPolicy.resendSeconds, expiresIn: verificationPolicy.ttlMs / 1000 });
   }
 
   if (url.pathname === "/api/auth/google/config" && method === "GET") {
@@ -1960,9 +1959,6 @@ async function routeApi(req, res) {
     }
     const mode = url.searchParams.get("mode") === "register" ? "register" : "login";
     const inviteCode = normalizeInviteCode(url.searchParams.get("inviteCode"));
-    if (mode === "register" && requireInviteCode && !inviteCode) {
-      return sendRedirect(res, authRedirect(req, { authError: "Google registration also needs an invite code." }));
-    }
     const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
     const oauth = startGoogleOAuth({ mode, inviteCode });
     authUrl.searchParams.set("client_id", googleClientId);
@@ -2390,6 +2386,7 @@ async function routeApi(req, res) {
         name: user.name,
         email: user.email,
         role: withEffectiveRole(user).role,
+        membershipTier: membershipTier(user),
         inviteCode: user.inviteCode || "",
         createdAt: user.createdAt,
         lastSeenAt: lastSeenByUser.get(user.id) || null,

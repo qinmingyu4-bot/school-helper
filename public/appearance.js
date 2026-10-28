@@ -11,7 +11,8 @@
     { id: "mist-blue", name: "白 · 雾蓝灰", accent: "#586b7b", tint: "#f1f4f6", detail: "清爽、克制" },
     { id: "dusty-rose", name: "白 · 灰玫瑰", accent: "#806b6f", tint: "#f6f2f3", detail: "细腻、温和" },
     { id: "celadon", name: "白 · 青瓷灰", accent: "#5a7473", tint: "#f0f5f4", detail: "清透、平静" },
-    { id: "silver", name: "白 · 冷银灰", accent: "#69747c", tint: "#f2f4f5", detail: "利落、轻盈" }
+    { id: "silver", name: "白 · 冷银灰", accent: "#69747c", tint: "#f2f4f5", detail: "利落、轻盈" },
+    { id: "monochrome", name: "黑白灰简约", accent: "#202020", tint: "#ededed", detail: "与首页一致 · 清晰边框" }
   ].map(Object.freeze));
   const isValid = (value) => Boolean(value && typeof value === "object" && !Array.isArray(value)
     && Object.keys(value).every((key) => key === "theme" || key === "mode")

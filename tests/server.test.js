@@ -127,6 +127,11 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
       assert.equal((await request(route, { cookie: alice.cookie, method: "PUT", body })).status, 400);
     }
     const prefs = (await request("/api/me", { cookie: alice.cookie })).data.user.preferences;
+    const existingChoice = { theme: "graphite", mode: "dark" };
+    await request(route, { cookie: alice.cookie, method: "PUT", body: existingChoice });
+    await stop(); await start();
+    assert.deepEqual((await request(route, { cookie: alice.cookie })).data.appearance, existingChoice,
+      "Adding another palette must retain an existing saved palette and dark-mode choice");
     for (const theme of require("../public/appearance").themes) {
       const result = await request(route, { cookie: alice.cookie, method: "PUT", body: { theme: theme.id } });
       assert.equal(result.status, 200);
@@ -134,7 +139,7 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     }
     await request("/api/me/preferences", { cookie: alice.cookie, method: "PUT", body: prefs });
     await stop(); await start();
-    assert.deepEqual((await request(route, { cookie: alice.cookie })).data.appearance, { theme: "silver" });
+    assert.deepEqual((await request(route, { cookie: alice.cookie })).data.appearance, { theme: "monochrome" });
     assert.deepEqual((await request(route, { cookie: bob.cookie })).data.appearance, { theme: "default" });
     assert.deepEqual((await request("/api/me", { cookie: alice.cookie })).data.user.preferences, require("../public/learning-style").normalize(prefs));
     await request(route, { cookie: alice.cookie, method: "PUT", body: { theme: "default" } });
@@ -144,12 +149,12 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
   await t.test("dark mode survives restart and preserves the selected daytime palette", async () => {
     const route = "/api/me/appearance";
     for (const mode of [null, "auto", true]) assert.equal((await request(route, { cookie: alice.cookie, method: "PUT", body: { theme: "celadon", mode } })).status, 400);
-    const dark = { theme: "celadon", mode: "dark" };
+    const dark = { theme: "monochrome", mode: "dark" };
     assert.deepEqual((await request(route, { cookie: alice.cookie, method: "PUT", body: dark })).data.appearance, dark);
     await stop(); await start();
     assert.deepEqual((await request(route, { cookie: alice.cookie })).data.appearance, dark);
     assert.deepEqual((await request(route, { cookie: bob.cookie })).data.appearance, { theme: "default" });
-    assert.deepEqual((await request(route, { cookie: alice.cookie, method: "PUT", body: { theme: "celadon", mode: "light" } })).data.appearance, { theme: "celadon" });
+    assert.deepEqual((await request(route, { cookie: alice.cookie, method: "PUT", body: { theme: "monochrome", mode: "light" } })).data.appearance, { theme: "monochrome" });
   });
 
   await t.test("simultaneous profile and learning saves preserve both through the HTTP API", async () => {

@@ -7,8 +7,8 @@ const { themes, normalize, isValid, createSaver, createController } = require(".
 const { StudyBridgeDatabase } = require("../lib/database");
 const turn = () => new Promise((resolve) => setImmediate(resolve));
 
-test("appearance defaults safely and accepts exactly the six requested alternatives", () => {
-  assert.deepEqual(themes.map((theme) => theme.id), ["default", "smoke-purple", "graphite", "mist-blue", "dusty-rose", "celadon", "silver"]);
+test("appearance keeps the original palettes and allows the new monochrome option", () => {
+  assert.deepEqual(themes.map((theme) => theme.id), ["default", "smoke-purple", "graphite", "mist-blue", "dusty-rose", "celadon", "silver", "monochrome"]);
   for (const theme of themes) assert.equal(isValid({ theme: theme.id }), true);
   for (const value of [null, [], {}, "graphite", { theme: "<style>" }, { theme: 1 }, { theme: "graphite", userId: "another" }]) {
     assert.equal(isValid(value), false);
@@ -129,9 +129,9 @@ test("local appearance survives reloads, stays account scoped and does not overw
   t.after(() => fs.rm(directory, { recursive: true, force: true }));
   const db = new StudyBridgeDatabase(); db.dynamo = null; db.local.file = path.join(directory, "db.json");
   await db.createUser({ id: "alice", email: "alice@example.test", name: "Alice" });
-  await Promise.all([db.setUserAppearance("alice", { theme: "graphite" }), db.updateUser("alice", { preferences: { englishTerms: true } })]);
+  await Promise.all([db.setUserAppearance("alice", { theme: "monochrome" }), db.updateUser("alice", { preferences: { englishTerms: true } })]);
   db.local.state = null;
-  assert.deepEqual(await db.getUserAppearance("alice"), { theme: "graphite" });
+  assert.deepEqual(await db.getUserAppearance("alice"), { theme: "monochrome" });
   assert.equal(await db.getUserAppearance("bob"), null);
   assert.deepEqual((await db.getUser("alice")).preferences, { englishTerms: true });
   assert.equal((await db.getUser("alice")).name, "Alice");

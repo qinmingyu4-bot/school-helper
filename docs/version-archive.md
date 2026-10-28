@@ -10,6 +10,19 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.111 - 2026-10-28
+
+Purpose:
+- Release the optional **黑白灰简约** palette (`118b744`) under Settings → 外观与显示 → 界面色调.
+- Keep all seven original palettes, existing default behavior, saved per-account selections and independent dark mode. No account/data migration, appearance reset or automatic selection of the new option.
+
+Validation:
+- Passed 266 regression tests, 182-file source/assets/version checks and deployment-script syntax. Covers retention of an existing graphite/dark-mode choice across restart, alongside saving the new option and account isolation.
+- Require production dependency audit and verified private backup before installation; compare the original account's palette/mode and course list after deployment without changing its selection.
+
+Rollback target:
+- `6e665ce` (1.1.110 with account security). Restore code only and retain current account data and backups.
+
 ### 1.1.110 - 2026-10-28
 
 Purpose:

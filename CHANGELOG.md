@@ -2,6 +2,9 @@
 
 ## 2026-10-28
 
+- Release `1.1.110`: publish the owner-approved **黑白灰简约** appearance option from `118b744`. Add it alongside the seven existing palettes without changing defaults, saved appearance records or dark-mode choices. Retain all accounts, courses, calendars, chats, authored files and login configuration; use the existing verified private backup and unchanged-data checks. Refresh release/cache versions. Previous production code: `fc0cc7d` (1.1.109).
+- Release validation: 256 passing tests and 181-file syntax/assets/version checks, including an existing graphite/dark selection retained across restart, new-palette persistence, account isolation and unchanged preferences. Record the signed-in production account's appearance/mode and courses for read-only post-deployment comparison.
+
 - Add **黑白灰简约** as an eighth optional Settings → 外观与显示 palette (`monochrome`), matching the homepage's white/light-gray/charcoal surfaces and thin frames. Retain all original palettes, current selections, account-scoped saving and independent dark mode; retain semantic calendar/status colors and authored Office content. Prepared on a task branch without deployment.
 - Validate 256 passing tests and 181-file source/assets/version checks, including new-palette HTTP acceptance, persistence through restart, account isolation and dark/light restoration. Local browser checks cover eight choices, saved selection after reload, night-mode restoration, retained unsent drafts, a 390 px option list without overflow, other main destinations and neutral editor surrounds with unchanged white document paper.
 

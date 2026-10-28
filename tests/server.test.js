@@ -127,6 +127,11 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
       assert.equal((await request(route, { cookie: alice.cookie, method: "PUT", body })).status, 400);
     }
     const prefs = (await request("/api/me", { cookie: alice.cookie })).data.user.preferences;
+    const existingChoice = { theme: "graphite", mode: "dark" };
+    await request(route, { cookie: alice.cookie, method: "PUT", body: existingChoice });
+    await stop(); await start();
+    assert.deepEqual((await request(route, { cookie: alice.cookie })).data.appearance, existingChoice,
+      "Adding another palette must retain an existing saved palette and dark-mode choice");
     for (const theme of require("../public/appearance").themes) {
       const result = await request(route, { cookie: alice.cookie, method: "PUT", body: { theme: theme.id } });
       assert.equal(result.status, 200);

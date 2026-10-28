@@ -28,7 +28,7 @@
 .planner-day-number { display: grid; place-items: center; align-self: flex-start; width: 25px; height: 25px; border-radius: 50%; font-size: 12px; line-height: 1; }
 .planner-day.is-today .planner-day-number { background: var(--green); color: white; font-weight: 700; }
 .planner-day-events { display: grid; gap: 4px; }
-.planner-chip { display: flex; align-items: center; gap: 4px; border-radius: 3px; padding: 3px; min-width: 0; background: var(--planner-tint); color: var(--planner-color); font-size: 10px; line-height: 1.4; }
+.planner-chip { display: flex; align-items: center; gap: 4px; border-radius: 3px; padding: 3px; min-width: 0; background: var(--planner-tint); color: #22324a; font-size: 10px; line-height: 1.4; }
 .planner-chip > span { text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
 .planner-chip i, .planner-dot { flex-shrink: 0; width: 5px; height: 5px; border-radius: 50%; background: var(--planner-color); }
 .planner-day-events > small { font-size: 10px; color: var(--muted); padding-left: 3px; }
@@ -36,11 +36,11 @@
 .planner-legend { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-top: 14px; font-size: 11px; color: var(--muted); }
 .planner-legend > span { display: inline-flex; align-items: center; gap: 6px; }
 .planner-dot { display: inline-block; width: 7px; height: 7px; }
-.planner-deadline { --planner-color: #9c4d35; --planner-tint: #fcf0e9; }
-.planner-lecture { --planner-color: #3c6389; --planner-tint: #edf3fb; }
-.planner-tutorial { --planner-color: #79639a; --planner-tint: #f3eff9; }
-.planner-personal { --planner-color: #317b64; --planner-tint: #eaf5ef; }
-.planner-badge { display: inline-block; align-self: flex-start; padding: 3px 7px; border-radius: 4px; color: var(--planner-color); background: var(--planner-tint); font-size: 10px; line-height: 1.6; white-space: nowrap; font-weight: 500; }
+.planner-deadline { --planner-color: #f43f5e; --planner-tint: #fde0e5; }
+.planner-lecture { --planner-color: #0ea5e9; --planner-tint: #d8f1fb; }
+.planner-tutorial { --planner-color: #22c55e; --planner-tint: #dcf6e5; }
+.planner-personal { --planner-color: #eab308; --planner-tint: #fcf3d7; }
+.planner-badge { display: inline-block; align-self: flex-start; padding: 3px 7px; border-radius: 4px; color: #22324a; background: var(--planner-tint); border-left: 3px solid var(--planner-color); font-size: 10px; line-height: 1.6; white-space: nowrap; font-weight: 500; }
 .planner-day-detail > h2 { margin-top: 6px; display: flex; gap: 9px; align-items: center; }
 .planner-today-label { font-size: 11px; padding: 3px 7px; border-radius: 4px; background: #eaf5ef; color: var(--green); }
 .planner-day-subtitle { font-size: 12px; line-height: 1.6; color: var(--muted); margin: 8px 0 16px; }

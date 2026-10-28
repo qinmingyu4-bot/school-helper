@@ -2,6 +2,8 @@
 
 ## 2026-10-28
 
+- Release `1.1.102`: apply the approved vivid calendar palette: rose deadlines, sky-blue lectures, bright-green tutorials and yellow personal plans. Match legend dots, calendar chips and agenda badges with soft tinted backgrounds and readable dark text. Refresh frontend/cache versions; preserve schedule and account data. Code rollback target: `ce9e4d6` (`1.1.101`).
+
 - Release `1.1.101`: publish the viewed-month navigation label and relocated return-to-today action. Refresh frontend/cache versions; preserve saved schedules and account data. Code rollback target: `ccad539` (`1.1.100`).
 
 - Show the viewed month between the calendar navigation arrows and update it when changing months or years. Move the return-to-today action beside today's date below the header.

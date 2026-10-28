@@ -60,7 +60,7 @@
       return [{ ...item, ...importer.completion(item, now), start, end, startDay, endDay: end > start ? dayKey(end - 1, timeZone) : startDay }];
     }).sort((first, second) => first.start - second.start || String(first.title).localeCompare(String(second.title)));
     const firstDay = new Date(`${month}-01T12:00:00Z`);
-    const gridStart = firstDay.getTime() - ((firstDay.getUTCDay() + 6) % 7) * 86400000;
+    const gridStart = firstDay.getTime() - firstDay.getUTCDay() * 86400000;
     const onDay = (date) => rows.filter((item) => item.startDay <= date && item.endDay >= date);
     const days = Array.from({ length: 42 }, (_, index) => {
       const date = new Date(gridStart + index * 86400000).toISOString().slice(0, 10);
@@ -121,7 +121,7 @@
         <article class="card planner-month" aria-label="月历">
           <div class="planner-month-header"><div><span class="schedule-kicker">MONTHLY CALENDAR</span><h2>${escape(model.month.slice(0, 4))}年${Number(model.month.slice(5))}月</h2></div><div class="planner-month-nav"><button data-action="schedule-month" data-offset="-1" aria-label="上个月" ${model.month === "2000-01" ? "disabled" : ""}>‹</button><button data-action="schedule-today">今天</button><button data-action="schedule-month" data-offset="1" aria-label="下个月" ${model.month === "2200-12" ? "disabled" : ""}>›</button></div></div>
           <div class="planner-month-meta"><span>今天 · ${escape(dateLabel(model.today))}</span><label>跳至<input type="month" id="scheduleMonthPicker" aria-label="选择月份" min="2000-01" max="2200-12" value="${escape(model.month)}"></label></div>
-          <div class="planner-weekdays" aria-hidden="true">${["一", "二", "三", "四", "五", "六", "日"].map((day) => `<span>${day}</span>`).join("")}</div>
+          <div class="planner-weekdays" aria-hidden="true">${["日", "一", "二", "三", "四", "五", "六"].map((day) => `<span>${day}</span>`).join("")}</div>
           <div class="planner-grid">${model.days.map((day) => `<button class="planner-day ${day.inMonth ? "" : "is-outside"} ${day.today ? "is-today" : ""} ${day.selected ? "is-selected" : ""}" data-action="schedule-day" data-date="${day.date}" aria-label="${escape(dateLabel(day.date))}${day.today ? "，今天" : ""}，${day.items.length} 项安排" aria-pressed="${day.selected}" ${day.today ? 'aria-current="date"' : ""}>
             <span class="planner-day-number">${Number(day.date.slice(8))}</span><span class="planner-day-events" aria-hidden="true">${day.items.slice(0, 2).map((item) => `<span class="planner-chip planner-${type(item.kind)[1]} ${item.completedAt ? "is-completed" : ""}"><i></i><span>${escape(clock(item.start, model.timeZone))} ${escape(item.title)}</span></span>`).join("")}${day.items.length > 2 ? `<small>+${day.items.length - 2} 项</small>` : ""}</span>${day.items.length ? `<span class="planner-mobile-count" aria-hidden="true">${day.items.length}项</span>` : ""}</button>`).join("")}</div>
           <div class="planner-legend">${Object.values(types).map(([label, name]) => `<span><i class="planner-dot planner-${name}"></i>${label}</span>`).join("")}</div>

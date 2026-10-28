@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-28
+
+- Start the monthly calendar week on Sunday, followed by Monday through Saturday. Shift the date grid with the headings so saved meetings, adjacent-month dates, leap days and today/selection markers retain their correct dates.
+
 ## 2026-10-27
 
 - Make mock-exam generation default to the format and structure of available previously uploaded questions in the current conversation or shared course materials. Preserve supported question types, sections, numbering/subparts, answer requirements, marks and difficulty while generating new content; honor current overrides and identify references or source gaps.

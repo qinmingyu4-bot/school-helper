@@ -47,16 +47,23 @@ test("month navigation crosses years and clamps the supported calendar range", (
   assert.throws(() => calendar.shiftMonth("2026-13", 1));
 });
 
-test("Monday-first month grids include leap days, adjacent months and the local today", () => {
+test("Sunday-first month grids include leap days, adjacent months and the local today", () => {
   const model = calendar.buildModel({ ...context, month: "2028-02", selectedDate: "2028-02-29" });
   assert.equal(model.days.length, 42);
-  assert.equal(model.days[0].date, "2028-01-31");
+  assert.equal(model.days[0].date, "2028-01-30");
   assert.equal(model.days.filter((day) => day.inMonth).length, 29);
   assert.equal(model.days.find((day) => day.selected).date, "2028-02-29");
   assert.equal(calendar.buildModel({ ...context, month: "2026-02", selectedDate: "2026-02-29" }).selectedDate, "2026-02-01");
   const today = calendar.buildModel({ ...context, now: "2026-10-27T01:00:00Z" });
   assert.equal(today.today, "2026-10-26");
   assert.equal(today.days.find((day) => day.today).date, "2026-10-26");
+  const january = calendar.buildModel({ ...context, month: "2027-01", items: [row("Monday lecture", "2027-01-11T15:00Z")] });
+  assert.equal(january.days[0].date, "2026-12-27");
+  assert.equal(january.days[5].date, "2027-01-01");
+  assert.equal(january.days[15].date, "2027-01-11");
+  assert.equal(january.days[15].items[0].title, "Monday lecture");
+  assert.equal(calendar.buildModel({ ...context, month: "2026-11" }).days[0].date, "2026-11-01");
+  assert.match(calendar.render(january), /planner-weekdays[^>]*><span>日<\/span><span>一<\/span><span>二<\/span><span>三<\/span><span>四<\/span><span>五<\/span><span>六<\/span>/);
 });
 
 test("agenda mixes all event types and months in chronological order independently of selected day", () => {

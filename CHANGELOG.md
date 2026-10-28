@@ -2,6 +2,8 @@
 
 ## 2026-10-28
 
+- Fix the mobile Study composer clipping a wrapped placeholder or typed second line. Use a short mobile prompt and grow the input with its text up to 120 px, then scroll within the field; recalculate after draft restoration and screen resizing. Retain the desktop prompt and sizing.
+
 - Add mobile-only main-menu navigation at widths up to 700 px: all five student destinations open as full-screen pages sliding in from the right, with an upper-left return and browser Back support. Keep the current page mounted when returning/reopening so forms, file selections and unsent chat text survive. Open Study directly to chat and move course selection/materials/preferences into a separate accessible panel. Preserve larger-screen and creator-console layouts, account themes and existing data. Prepared on a task branch without AWS deployment.
 - Validate 316 passing automated tests and 201-file syntax/assets/version checks. Browser checks cover 320/390/430 px layouts, all five destinations, direct page links, browser Back/Forward, retained unsent chat and schedule text/disclosures/scroll position, and matching 1280 px desktop Study/Tools geometry against the unchanged application using isolated fixture accounts.
 

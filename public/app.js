@@ -919,6 +919,7 @@
         state.uploadFiles.unshift(...files);
         render();
         if ($("chatInput") && !$("chatInput").value) $("chatInput").value = text;
+        mobileNavigation.resizeComposer();
       }
       if (!reply.controller.signal.aborted && studyReplyKey() === reply.key) {
         setToast(error.message);
@@ -2392,6 +2393,7 @@
         const input = $("chatInput");
         if (input) {
           input.value = button.dataset.prompt || "";
+          mobileNavigation.resizeComposer();
           input.focus();
           input.setSelectionRange(input.value.length, input.value.length);
         }
@@ -2951,6 +2953,7 @@
         || previousMessages !== chat.querySelector(".messages")?.innerHTML;
       chat.scrollTop = showLatest ? chat.scrollHeight : previousScrollTop;
       keepLatestAfterFontLoad(chat);
+      mobileNavigation.resizeComposer();
     }
     const dm = root.querySelector(".dm-list");
     if (dm) {

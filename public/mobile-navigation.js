@@ -8,6 +8,27 @@
     let menuScroll = 0, returnPage = "study", hasMenuEntry = false, entering = "";
     const marker = () => ({ ...(win.history.state || {}), sbMobile: { userId, view, page, hasMenuEntry } });
     const active = () => media.matches && student && Boolean(userId);
+    function resizeComposer() {
+      const input = root?.querySelector("#chatInput");
+      if (input?.tagName !== "TEXTAREA") return;
+      if (!active()) {
+        if (input.dataset.mobileComposerSized) {
+          input.placeholder = input.dataset.desktopPlaceholder;
+          input.style.removeProperty("height");
+          input.style.removeProperty("overflow-y");
+          delete input.dataset.mobileComposerSized;
+        }
+        return;
+      }
+      if (!input.dataset.mobileComposerSized) input.dataset.desktopPlaceholder = input.placeholder;
+      input.dataset.mobileComposerSized = "true";
+      input.placeholder = "输入问题…";
+      // One complete line at rest; grow for wrapped text, then scroll at the cap.
+      input.style.height = "44px";
+      const height = Math.min(120, Math.max(44, input.scrollHeight + 2));
+      input.style.height = `${height}px`;
+      input.style.overflowY = input.scrollHeight + 2 > height ? "auto" : "hidden";
+    }
     function apply(focus = false) {
       const shell = root?.querySelector(".app-shell");
       if (!shell) return;
@@ -22,6 +43,7 @@
       }
       if (workspace) workspace.inert = enabled && (view === "menu" || panel);
       shell.querySelector('[data-mobile-action="study-panel"]')?.setAttribute("aria-expanded", String(panel));
+      resizeComposer();
       if (enabled && focus) {
         const target = panel ? sidebar?.querySelector('[data-mobile-action="close-panel"]')
           : view === "menu" ? sidebar?.querySelector(`[data-page="${returnPage}"]`)
@@ -114,8 +136,10 @@
     win.addEventListener("popstate", popstate);
     win.document.addEventListener("click", click);
     win.document.addEventListener("keydown", keydown);
+    win.document.addEventListener("input", (event) => { if (event.target.id === "chatInput") resizeComposer(); });
+    win.addEventListener("resize", resizeComposer);
     media.addEventListener("change", () => { panel = false; apply(); });
-    return { sync, enter, historyState: () => active() ? win.history.state : null,
+    return { sync, enter, resizeComposer, historyState: () => active() ? win.history.state : null,
       closeStudyPanel: () => { if (active() && panel) closePanel(); },
       snapshot: () => ({ view, page, panel, active: active() }) };
   }

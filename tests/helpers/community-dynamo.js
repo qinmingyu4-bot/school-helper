@@ -10,6 +10,7 @@ function memoryDynamo() {
   store.call = async (target, body) => {
     calls.push({ target, body: clone(body) });
     if (target === "GetItem") return { Item: clone(rows.get(id(body.Key))) };
+    if (target === "DeleteItem") { rows.delete(id(body.Key)); return {}; }
     if (target === "PutItem") { rows.set(id(body.Item), clone(body.Item)); return {}; }
     if (target === "TransactWriteItems") {
       for (const item of body.TransactItems) {

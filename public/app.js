@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.115";
+  const VERSION = "1.1.116";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -156,6 +156,7 @@
     admin: null,
     status: null,
     googleEnabled: false,
+    authConfig: null,
     toast: "",
     busy: false,
     uploadFiles: []
@@ -233,7 +234,7 @@
     }
     const response = await fetch(path, init);
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw Object.assign(new Error(data.error || data.message || `请求失败 (${response.status})`), { status: response.status });
+    if (!response.ok) throw Object.assign(new Error(data.error || data.message || `请求失败 (${response.status})`), { status: response.status, retryAfter: Number(response.headers.get("retry-after")) || 0 });
     return data;
   }
 
@@ -387,21 +388,46 @@
           ${register ? `
             <label>确认密码<input id="authPasswordConfirm" type="password" autocomplete="new-password" placeholder="再输入一次密码"></label>
             <label>邀请码<input id="authInvite" placeholder="向创作者索取邀请码"></label>
+            ${state.authConfig?.emailVerificationRequired !== false ? `<label for="authEmailCode">邮箱验证码</label>
             <div class="inline-fields">
-              <input id="authEmailCode" placeholder="邮箱验证码（可先不填）">
+              <input id="authEmailCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" aria-describedby="authCodeHelp" placeholder="输入 6 位验证码">
               <button data-action="send-email-code">发送验证码</button>
             </div>
+            <p id="authCodeHelp" class="auth-code-help">确认邮箱无误后发送验证码，收取邮件并填写后才能创建账号。</p>` : ""}
           ` : ""}
-          <button class="primary wide" data-action="${register ? "register" : "login"}">${register ? "创建账号" : "登录"}</button>
+          <button class="primary wide" data-action="${register ? "register" : "login"}" ${register && !state.authConfig ? "disabled" : ""}>${register ? "创建账号" : "登录"}</button>
           <div class="or-line"><span>或</span></div>
-          <button class="ghost wide auth-google" data-action="google-login" ${state.googleEnabled ? "" : "disabled"}>Google 登录${state.googleEnabled ? "" : "待配置"}</button>
+          <button class="ghost wide auth-google" data-action="google-login" data-auth-mode="${mode}" ${state.googleEnabled ? "" : "disabled"}>Google 登录${state.googleEnabled ? "" : "待配置"}</button>
           ${register ? "" : `<button class="link-button" data-action="forgot-password">忘记密码？</button>`}
-          ${state.toast ? `<p class="notice" role="status" aria-live="polite">${esc(state.toast)}</p>` : ""}
+          <p class="notice auth-feedback" role="status" aria-live="polite" ${state.toast ? "" : "hidden"}>${esc(state.toast)}</p>
         </section>
         <p class="auth-footnote">课程、资料与对话，都在你的学习空间。</p>
         </div>
       </main>
     `;
+  }
+
+  const emailCooldowns = new Map();
+  let emailCooldownTimer;
+  function authMessage(message) {
+    const node = root.querySelector(".auth-feedback");
+    if (node) { node.textContent = message; node.hidden = !message; }
+  }
+  function updateEmailCooldown() {
+    const button = root.querySelector('[data-action="send-email-code"]');
+    if (!button) { clearInterval(emailCooldownTimer); emailCooldownTimer = null; return; }
+    const email = $("authEmail")?.value.trim().toLowerCase();
+    const seconds = Math.max(0, Math.ceil(((emailCooldowns.get(email) || 0) - Date.now()) / 1000));
+    button.disabled = button.dataset.sending === "true" || seconds > 0;
+    button.textContent = button.dataset.sending === "true" ? "发送中…" : seconds ? `${seconds} 秒后重发` : "发送验证码";
+    if (seconds > 0 && !emailCooldownTimer) emailCooldownTimer = setInterval(updateEmailCooldown, 1000);
+    if (!seconds && emailCooldownTimer) { clearInterval(emailCooldownTimer); emailCooldownTimer = null; }
+  }
+  function startEmailCooldown(email, seconds) {
+    emailCooldowns.set(email, Date.now() + seconds * 1000);
+    clearInterval(emailCooldownTimer);
+    emailCooldownTimer = null;
+    updateEmailCooldown();
   }
 
   function sidebarHtml() {
@@ -446,7 +472,7 @@
     const active = state.page === page ? "active" : "";
     return `
       <button class="nav-card ${active}" data-page="${page}" ${active ? 'aria-current="page"' : ""}>
-        <span aria-hidden="true"><svg><use href="/classmates-icons.svg?v=1.1.115#nav-${esc(page)}"></use></svg></span>
+        <span aria-hidden="true"><svg><use href="/classmates-icons.svg?v=1.1.116#nav-${esc(page)}"></use></svg></span>
         <b>${esc(title)}</b>
         <small>${esc(page === "schedule" && nextDue() ? `${nextDue().title} · 还有 ${dueText(nextDue().startsAt)}` : sub)}</small>
       </button>
@@ -2100,7 +2126,9 @@
 
   async function handleAction(button) {
     const action = button.dataset.action;
-    if (!action) return;
+    if (!action || button.disabled) return;
+    const authSubmission = action === "register" || action === "login";
+    if (authSubmission) button.disabled = true;
     try {
       if (action === "view-chat-image") { showChatImage(button.dataset.imageUrl, button.dataset.imageName); return; }
       if (action.startsWith("creative-")) { await creativeTools.handle(button, creativeContext()); return; }
@@ -2118,7 +2146,9 @@
         return;
       }
       if (action === "auth-tab") {
+        state.toast = "";
         root.innerHTML = authHtml(button.dataset.tab);
+        updateEmailCooldown();
         return;
       }
       if (action === "login") {
@@ -2129,6 +2159,11 @@
         return;
       }
       if (action === "register") {
+        if (!state.authConfig) throw new Error("注册配置暂时无法读取，请刷新后重试。");
+        if (state.authConfig.emailVerificationRequired && !/^\d{6}$/.test($("authEmailCode")?.value.trim() || "")) {
+          $("authEmailCode")?.focus();
+          throw new Error("请先向邮箱发送验证码，再填写收到的 6 位验证码。");
+        }
         const data = await api("/api/auth/register", {
           method: "POST",
           body: {
@@ -2146,13 +2181,33 @@
         return;
       }
       if (action === "send-email-code") {
-        const data = await api("/api/auth/send-verification", { method: "POST", body: { email: $("authEmail")?.value || "", inviteCode: $("authInvite")?.value || "" } });
-        setToast(data.message || "验证码已处理。");
-        render();
+        const input = $("authEmail");
+        const email = input?.value.trim().toLowerCase() || "";
+        if (!email || !input.checkValidity()) { input?.reportValidity(); throw new Error("请先填写正确的邮箱地址。"); }
+        if (state.authConfig?.inviteRequired && !$("authInvite")?.value.trim()) { $("authInvite")?.focus(); throw new Error("请先填写邀请码。"); }
+        if (button.disabled) return;
+        button.dataset.sending = "true";
+        updateEmailCooldown();
+        authMessage("");
+        try {
+          const data = await api("/api/auth/send-verification", { method: "POST", body: { email, inviteCode: $("authInvite")?.value || "" } });
+          if (!button.isConnected) return;
+          startEmailCooldown(email, data.resendAfter || 0);
+          if (data.emailDelivery === "disabled") authMessage(data.message);
+          else if (data.emailDelivery === "page") {
+            if (input.value.trim().toLowerCase() === email) $("authEmailCode").value = data.emailCode;
+            authMessage(data.message);
+          } else authMessage(`验证码已发送至 ${email}，${Math.ceil(data.expiresIn / 60)} 分钟内有效。请查看收件箱或垃圾邮件。`);
+        } catch (error) {
+          if (error.retryAfter) startEmailCooldown(email, error.retryAfter);
+          throw error;
+        } finally { delete button.dataset.sending; updateEmailCooldown(); }
         return;
       }
       if (action === "google-login") {
-        location.assign("/api/auth/google/start");
+        const params = new URLSearchParams({ mode: button.dataset.authMode || "login" });
+        if (button.dataset.authMode === "register") params.set("inviteCode", $("authInvite")?.value || "");
+        location.assign(`/api/auth/google/start?${params}`);
         return;
       }
       if (action === "forgot-password") {
@@ -2712,8 +2767,10 @@
         return;
       }
     } catch (error) {
-      setToast(error.message);
-      render();
+      if (!state.user && root.querySelector(".auth-feedback")) authMessage(error.message);
+      else { setToast(error.message); render(); }
+    } finally {
+      if (authSubmission && button.isConnected) button.disabled = false;
     }
   }
 
@@ -2825,13 +2882,15 @@
 
   async function boot() {
     try {
-      const google = await api("/api/auth/google/config").catch(() => ({ enabled: false }));
+      const [google, authConfig] = await Promise.all([api("/api/auth/google/config").catch(() => ({ enabled: false })), api("/api/auth/config").catch(() => null)]);
+      state.authConfig = authConfig;
       state.googleEnabled = Boolean(google.enabled);
       const data = await api("/api/me").catch(() => null);
       if (!data?.user) {
         history.replaceState(null, "", `/login${location.search}`);
         const authError = new URL(location.href).searchParams.get("authError");
         if (authError) state.toast = authError;
+        else if (!authConfig) state.toast = "注册配置暂时无法读取，请刷新后重试。";
         document.title = "登录 · StudyBridge";
         render();
         return;
@@ -2875,6 +2934,14 @@
     if (actionTarget) {
       event.preventDefault();
       await handleAction(actionTarget);
+    }
+  });
+
+  document.addEventListener("input", (event) => {
+    if (event.target.id === "authEmail") {
+      if ($("authEmailCode")) $("authEmailCode").value = "";
+      authMessage("");
+      updateEmailCooldown();
     }
   });
 

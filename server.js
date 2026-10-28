@@ -19,6 +19,7 @@ const {
   sessionCookie,
   verifyPassword
 } = require("./lib/security");
+const { validEmail, emailPolicy, createEmailVerification } = require("./lib/email-verification");
 const { startGoogleOAuth, verifyGoogleOAuth, clearGoogleOAuthCookie } = require("./lib/google-oauth");
 const { StudyBridgeDatabase } = require("./lib/database");
 const studyModes = require("./public/study-modes");
@@ -103,9 +104,10 @@ const publicDir = path.join(__dirname, "public");
 const port = Number(process.env.PORT || 3000);
 const serverStartedAt = new Date().toISOString();
 const requireInviteCode = process.env.REQUIRE_INVITE_CODE !== "false";
-const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION === "true";
-const allowEmailCodeFallback = process.env.ALLOW_EMAIL_CODE_FALLBACK !== "false";
-const emailCodeTtlMs = Number(process.env.EMAIL_CODE_TTL_MINUTES || 15) * 60 * 1000;
+const verificationPolicy = emailPolicy();
+const requireEmailVerification = verificationPolicy.required;
+const allowEmailCodeFallback = verificationPolicy.fallbackAllowed;
+const { issue: issueEmailCode, verify: verifyEmailCode } = createEmailVerification({ db, sendEmail, policy: verificationPolicy });
 const maxJsonBytes = 32 * 1024 * 1024;
 const maxPdfBytes = 8 * 1024 * 1024;
 const maxOfficeBytes = 12 * 1024 * 1024;
@@ -895,92 +897,26 @@ function buildUserPromptContent(text, attachments = []) {
   return [{ type: "text", text: promptText }, ...visualParts];
 }
 
-function generateEmailCode() {
-  return String(crypto.randomInt(100000, 1000000));
-}
-
-function emailCodeHash(email, purpose, code) {
-  return hashToken(`${purpose}:${email}:${String(code || "").trim()}`);
-}
-
-function mailSetupMessage() {
-  return "Email sending is not configured yet. Add SMTP_HOST, SMTP_USER, SMTP_PASS, and MAIL_FROM in the server .env file first.";
-}
-
-function isEmailSetupError(error) {
-  const message = String(error?.message || "");
-  return message.includes("configured") || message.includes("installed");
-}
-
-async function sendEmail({ to, subject, text }) {
-  if (!nodemailer) throw new Error("Email sender is not installed yet. Please wait for the server deploy to finish and try again.");
+async function sendEmail({ to, subject, text, html }) {
+  if (!nodemailer) throw Object.assign(new Error("Email sender is unavailable."), { emailSetup: true });
   const host = process.env.SMTP_HOST;
   const portNumber = Number(process.env.SMTP_PORT || 587);
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   const from = process.env.MAIL_FROM || process.env.SMTP_FROM || user;
-  if (!host || !from || (user && !pass)) throw new Error(mailSetupMessage());
+  if (!host || !from || (user && !pass)) throw Object.assign(new Error("Email delivery is not configured."), { emailSetup: true });
 
   const transporter = nodemailer.createTransport({
     host,
     port: portNumber,
     secure: process.env.SMTP_SECURE === "true" || portNumber === 465,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
     auth: user ? { user, pass } : undefined
   });
 
-  await transporter.sendMail({ from, to, subject, text });
-}
-
-async function issueEmailCode(email, purpose) {
-  const code = generateEmailCode();
-  await db.createAuthCode({
-    email,
-    purpose,
-    codeHash: emailCodeHash(email, purpose, code),
-    expiresAt: Date.now() + emailCodeTtlMs,
-    attempts: 0
-  });
-
-  const action = purpose === "password-reset" ? "reset your StudyBridge password" : "create your StudyBridge account";
-  try {
-    await sendEmail({
-      to: email,
-      subject: `Your StudyBridge verification code: ${code}`,
-      text: `Your StudyBridge code is ${code}. Use it within ${Math.round(emailCodeTtlMs / 60000)} minutes to ${action}. If you did not request this, you can ignore this email.`
-    });
-    return { sent: true };
-  } catch (error) {
-    if (allowEmailCodeFallback && isEmailSetupError(error)) {
-      console.warn(`Email delivery is not configured. Showing temporary verification code for ${email}.`);
-      return {
-        sent: false,
-        fallbackCode: code,
-        message: "Email sending is not configured yet, so a temporary verification code is shown on this page."
-      };
-    }
-    throw error;
-  }
-}
-
-async function verifyEmailCode(email, purpose, code) {
-  const cleanCode = String(code || "").trim();
-  if (!/^\d{6}$/.test(cleanCode)) throw new Error("Please enter the 6-digit email verification code.");
-  const record = await db.getAuthCode(email, purpose);
-  if (!record) throw new Error("Please send an email verification code first.");
-  if (Number(record.expiresAt || 0) < Date.now()) {
-    await db.deleteAuthCode(email, purpose);
-    throw new Error("The email verification code expired. Please send a new one.");
-  }
-  if (Number(record.attempts || 0) >= 5) throw new Error("Too many incorrect code attempts. Please send a new code.");
-
-  const expected = Buffer.from(String(record.codeHash || ""), "hex");
-  const candidate = Buffer.from(emailCodeHash(email, purpose, cleanCode), "hex");
-  const matches = expected.length === candidate.length && crypto.timingSafeEqual(expected, candidate);
-  if (!matches) {
-    await db.createAuthCode({ ...record, attempts: Number(record.attempts || 0) + 1 });
-    throw new Error("Email verification code is incorrect.");
-  }
-  await db.deleteAuthCode(email, purpose);
+  await transporter.sendMail({ from, to, subject, text, html });
 }
 
 const scheduleCourseName = "Schedule & Deadlines";
@@ -2010,6 +1946,10 @@ async function routeApi(req, res) {
     return sendJson(res, 200, { ok: true, db: process.env.STUDYBRIDGE_DB || "local" });
   }
 
+  if (url.pathname === "/api/auth/config" && method === "GET") {
+    return sendJson(res, 200, { emailVerificationRequired: requireEmailVerification, inviteRequired: requireInviteCode, resendAfter: verificationPolicy.resendSeconds, expiresIn: verificationPolicy.ttlMs / 1000 });
+  }
+
   if (url.pathname === "/api/auth/google/config" && method === "GET") {
     return sendJson(res, 200, { enabled: googleAuthEnabled() });
   }
@@ -2043,27 +1983,29 @@ async function routeApi(req, res) {
   if (url.pathname === "/api/auth/send-verification" && method === "POST") {
     const body = await readJson(req);
     const email = normalizeEmail(body.email);
-    if (!email.includes("@")) return sendError(res, 400, "Please enter a valid email address first.");
+    if (!validEmail(email)) return sendError(res, 400, "Please enter a valid email address first.");
     if (await db.findUserByEmail(email)) return sendError(res, 409, "This email is already registered.");
     try {
       await validateInviteForRegistration(body.inviteCode, email);
       const verification = requireEmailVerification ? await issueEmailCode(email, "register") : { sent: false };
       return sendJson(res, 200, {
         ok: true,
-        message: verification.message || "Verification code sent.",
+        message: verification.message || (verification.sent ? "验证码已发送，请查看邮箱（包括垃圾邮件）。" : "当前注册无需邮箱验证码。"),
         emailCode: verification.fallbackCode || "",
+        resendAfter: verification.resendAfter || 0,
+        expiresIn: verification.expiresIn || 0,
         emailDelivery: verification.sent ? "email" : verification.fallbackCode ? "page" : "disabled"
       });
     } catch (error) {
-      const status = isEmailSetupError(error) ? 503 : 400;
-      return sendError(res, status, error.message);
+      if (error.retryAfter) res.setHeader("retry-after", String(error.retryAfter));
+      return sendError(res, error.status || 400, error.message);
     }
   }
 
   if (url.pathname === "/api/auth/request-manual-reset" && method === "POST") {
     const body = await readJson(req);
     const email = normalizeEmail(body.email);
-    if (!email.includes("@")) return sendError(res, 400, "Please enter a valid email address first.");
+    if (!validEmail(email)) return sendError(res, 400, "Please enter a valid email address first.");
     const user = await db.findUserByEmail(email);
     if (user) {
       const existingRequests = (await db.listInvites()).filter(
@@ -2093,7 +2035,7 @@ async function routeApi(req, res) {
   if (url.pathname === "/api/auth/request-password-reset" && method === "POST") {
     const body = await readJson(req);
     const email = normalizeEmail(body.email);
-    if (!email.includes("@")) return sendError(res, 400, "Please enter a valid email address first.");
+    if (!validEmail(email)) return sendError(res, 400, "Please enter a valid email address first.");
     const user = await db.findUserByEmail(email);
     try {
       const verification = user ? await issueEmailCode(email, "password-reset") : { sent: false };
@@ -2101,11 +2043,13 @@ async function routeApi(req, res) {
         ok: true,
         message: verification.message || "If this email exists, a reset code has been sent.",
         emailCode: verification.fallbackCode || "",
+        resendAfter: verification.resendAfter || 0,
+        expiresIn: verification.expiresIn || 0,
         emailDelivery: verification.sent ? "email" : verification.fallbackCode ? "page" : "disabled"
       });
     } catch (error) {
-      const status = isEmailSetupError(error) ? 503 : 400;
-      return sendError(res, status, error.message);
+      if (error.retryAfter) res.setHeader("retry-after", String(error.retryAfter));
+      return sendError(res, error.status || 400, error.message);
     }
   }
 
@@ -2133,7 +2077,7 @@ async function routeApi(req, res) {
     } catch (error) {
       return sendError(res, 400, error.message);
     }
-    if (!name || !email.includes("@")) {
+    if (!name || !validEmail(email)) {
       return sendError(res, 400, "Please provide name and valid email.");
     }
     if (await db.findUserByEmail(email)) return sendError(res, 409, "This email is already registered.");

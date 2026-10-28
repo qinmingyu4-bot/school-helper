@@ -309,3 +309,12 @@
     font-size: 16px;
   }
 }
+
+:root .auth-entry .auth-code-help {
+  margin: -6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+:root .auth-entry .auth-feedback { overflow-wrap: anywhere; }
+:root .auth-entry .auth-feedback[hidden] { display: none; }

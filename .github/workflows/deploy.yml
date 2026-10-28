@@ -37,6 +37,7 @@ jobs:
           LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}
           LIGHTSAIL_USER: ${{ secrets.LIGHTSAIL_USER }}
           LIGHTSAIL_SSH_KEY_B64: ${{ secrets.LIGHTSAIL_SSH_KEY_B64 }}
+          SMTP_CONFIG_JSON: ${{ secrets.SMTP_CONFIG_JSON }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         run: |
@@ -71,4 +72,10 @@ jobs:
           import json, os, sys
           json.dump({key: os.environ[key] for key in ('GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET')}, sys.stdout)
           PY
+          fi
+          if [[ -n "${SMTP_CONFIG_JSON:-}" ]]; then
+            python3 - <<'PYSMTP' | ssh -i ~/.ssh/studybridge_deploy_key "$LIGHTSAIL_USER@$LIGHTSAIL_HOST" "cd ~/school-helper && python3 aws/configure-smtp-email.py '$GITHUB_SHA'"
+          import json, os, sys
+          json.dump(json.loads(os.environ['SMTP_CONFIG_JSON']), sys.stdout)
+          PYSMTP
           fi

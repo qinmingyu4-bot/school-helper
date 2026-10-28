@@ -10,6 +10,18 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.116 - 2026-10-28
+
+Purpose:
+- Require delivered registration codes with StudyBridge HTML mail cards, clear six-digit entry, expiry/resend/attempt limits, and production fallback disabled. Preserve existing login, Google verification and all saved data.
+- Configure sender-restricted SES through encrypted Secrets and private SSH input, with configuration backup and rollback.
+
+Validation:
+- 282 passing tests and 191-file syntax/assets/version checks; live SMTP sender restriction, HTML delivery and Gmail SPF/DKIM verified. Verify production delivery and registration after activation.
+
+Rollback target:
+- `c759615` (1.1.115); restore code and previous private SMTP settings if needed, retain all current user data.
+
 ### 1.1.115 - 2026-10-28
 
 Purpose:

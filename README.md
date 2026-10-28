@@ -156,6 +156,37 @@ OWNER_INVITE_CODE=your-private-creator-code
 
 Register with that email and owner invite code. After login, the creator console appears inside the app.
 
+### Registration email verification
+
+Email/password registration uses a six-digit code delivered to the entered mailbox.
+Set `REQUIRE_EMAIL_VERIFICATION=true` and configure `SMTP_HOST`, `SMTP_PORT`,
+`SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` and `MAIL_FROM` privately on the server.
+A domain alone does not provide email delivery: provision a mail service and complete
+its sender/domain verification before activation. Keep credentials out of Git.
+Use port 465 with `SMTP_SECURE=true`, or port 587 with `SMTP_SECURE=false` for STARTTLS.
+
+Codes last 15 minutes (`EMAIL_CODE_TTL_MINUTES`, valid range >0–60), bind to the exact
+normalized email and purpose, and can be used once. Resending is limited to once per
+60 seconds per mailbox/purpose; five incorrect attempts require a new code. Sending
+and consuming codes are serialized per mailbox in the current single Node process;
+multiple application instances would need database-level conditional operations.
+Changing the email clears the code input; send/error feedback retains other fields.
+Missing or failed email delivery blocks verified registration with a retry message.
+Production never exposes a page code, even if `ALLOW_EMAIL_CODE_FALLBACK=true`.
+For isolated development only, explicitly enable this flag to use a setup fallback.
+Production defaults to verification required when the requirement flag is absent;
+an explicit `false` retains the previous registration mode during rollout.
+
+Existing password logins and manual password-reset requests remain available.
+Google registration uses Google's verified email plus the existing invitation gate.
+The delivered-code password-reset API shares expiration, resend and attempt limits.
+
+Before release: configure and verify a sender, set the requirement flag to `true`,
+check the developer email status, then test real inbox delivery (including spam),
+resending, incorrect/expired codes, changed addresses, successful invited registration,
+and an existing account login. This branch uses isolated mail fixtures; no live mail
+service has been configured and no AWS deployment is included.
+
 Recent online times begin with successful logins and authenticated browser activity.
 Visible tabs report at most once per minute while recently active; hidden tabs and
 tabs idle for five minutes stop reporting. The admin list refreshes times once per

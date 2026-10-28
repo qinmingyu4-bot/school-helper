@@ -19,6 +19,7 @@ const {
   sessionCookie,
   verifyPassword
 } = require("./lib/security");
+const { startGoogleOAuth, verifyGoogleOAuth, clearGoogleOAuthCookie } = require("./lib/google-oauth");
 const { StudyBridgeDatabase } = require("./lib/database");
 const studyModes = require("./public/study-modes");
 const learningStyle = require("./public/learning-style");
@@ -1795,34 +1796,6 @@ async function aiHealthStatus() {
   return payload;
 }
 
-function signOAuthState(payload) {
-  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  const signature = crypto
-    .createHmac("sha256", process.env.SESSION_SECRET || "dev-studybridge-secret")
-    .update(body)
-    .digest("base64url");
-  return `${body}.${signature}`;
-}
-
-function verifyOAuthState(state) {
-  const [body, signature] = String(state || "").split(".");
-  if (!body || !signature) throw new Error("Google login state is invalid.");
-  const expected = crypto
-    .createHmac("sha256", process.env.SESSION_SECRET || "dev-studybridge-secret")
-    .update(body)
-    .digest("base64url");
-  const received = Buffer.from(signature);
-  const wanted = Buffer.from(expected);
-  if (received.length !== wanted.length || !crypto.timingSafeEqual(received, wanted)) {
-    throw new Error("Google login state is invalid.");
-  }
-  const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
-  if (!payload.createdAt || Date.now() - Number(payload.createdAt) > 10 * 60 * 1000) {
-    throw new Error("Google login session expired. Please try again.");
-  }
-  return payload;
-}
-
 function authRedirect(req, params = {}) {
   const target = new URL("/", appBaseUrl(req));
   for (const [key, value] of Object.entries(params)) {
@@ -1832,19 +1805,22 @@ function authRedirect(req, params = {}) {
 }
 
 async function signInWithGoogle(req, res, url) {
+  const redirect = (params, session) => sendRedirect(res, authRedirect(req, params), {
+    "set-cookie": session ? [clearGoogleOAuthCookie(), sessionCookie(session)] : clearGoogleOAuthCookie()
+  });
   if (!googleAuthEnabled()) {
-    return sendRedirect(res, authRedirect(req, { authError: "Google login is not configured yet." }));
+    return redirect({ authError: "Google login is not configured yet." });
   }
 
   let statePayload;
   try {
-    statePayload = verifyOAuthState(url.searchParams.get("state"));
+    statePayload = verifyGoogleOAuth(url.searchParams.get("state"), req.headers.cookie);
   } catch (error) {
-    return sendRedirect(res, authRedirect(req, { authError: error.message }));
+    return redirect({ authError: error.message });
   }
 
   const code = url.searchParams.get("code");
-  if (!code) return sendRedirect(res, authRedirect(req, { authError: "Google did not return an authorization code." }));
+  if (!code) return redirect({ authError: "Google did not return an authorization code." });
 
   try {
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
@@ -1854,6 +1830,7 @@ async function signInWithGoogle(req, res, url) {
         code,
         client_id: googleClientId,
         client_secret: googleClientSecret,
+        code_verifier: statePayload.codeVerifier,
         redirect_uri: googleRedirectUri(req),
         grant_type: "authorization_code"
       })
@@ -1868,13 +1845,14 @@ async function signInWithGoogle(req, res, url) {
     });
     const googleProfile = await profileResponse.json();
     if (!profileResponse.ok || !googleProfile.email) throw new Error("Google did not return an email address.");
-    if (googleProfile.email_verified === false) throw new Error("Please verify your Google email first.");
+    if (googleProfile.email_verified !== true || !googleProfile.sub) throw new Error("Google did not confirm a verified account identity.");
 
     const email = normalizeEmail(googleProfile.email);
     const existing = await db.findUserByEmail(email);
     let user = existing;
 
     if (user) {
+      if (user.googleSub && user.googleSub !== googleProfile.sub) throw new Error("This email is already linked to a different Google account.");
       user = await db.updateUser(user.id, {
         googleSub: googleProfile.sub || user.googleSub || "",
         authProvider: user.authProvider || "google"
@@ -1912,9 +1890,9 @@ async function signInWithGoogle(req, res, url) {
 
     const token = createSessionToken();
     await db.createSession({ tokenHash: hashToken(token), userId: user.id, expiresAt: Date.now() + SESSION_TTL_MS });
-    return sendRedirect(res, authRedirect(req, { googleAuth: "ok" }), { "set-cookie": sessionCookie(token) });
+    return redirect({ googleAuth: "ok" }, token);
   } catch (error) {
-    return sendRedirect(res, authRedirect(req, { authError: error.message || "Google login failed." }));
+    return redirect({ authError: error.message || "Google login failed." });
   }
 }
 
@@ -2021,21 +1999,16 @@ async function routeApi(req, res) {
       return sendRedirect(res, authRedirect(req, { authError: "Google registration also needs an invite code." }));
     }
     const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+    const oauth = startGoogleOAuth({ mode, inviteCode });
     authUrl.searchParams.set("client_id", googleClientId);
     authUrl.searchParams.set("redirect_uri", googleRedirectUri(req));
     authUrl.searchParams.set("response_type", "code");
     authUrl.searchParams.set("scope", "openid email profile");
     authUrl.searchParams.set("prompt", "select_account");
-    authUrl.searchParams.set(
-      "state",
-      signOAuthState({
-        mode,
-        inviteCode,
-        createdAt: Date.now(),
-        nonce: crypto.randomBytes(12).toString("hex")
-      })
-    );
-    return sendRedirect(res, authUrl.toString());
+    authUrl.searchParams.set("state", oauth.state);
+    authUrl.searchParams.set("code_challenge", oauth.codeChallenge);
+    authUrl.searchParams.set("code_challenge_method", "S256");
+    return sendRedirect(res, authUrl.toString(), { "set-cookie": oauth.cookie });
   }
 
   if (url.pathname === "/api/auth/google/callback" && method === "GET") {

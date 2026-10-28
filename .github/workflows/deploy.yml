@@ -37,6 +37,8 @@ jobs:
           LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}
           LIGHTSAIL_USER: ${{ secrets.LIGHTSAIL_USER }}
           LIGHTSAIL_SSH_KEY_B64: ${{ secrets.LIGHTSAIL_SSH_KEY_B64 }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         run: |
           set -euo pipefail
           mkdir -p ~/.ssh
@@ -64,3 +66,9 @@ jobs:
             fi
             git show "$1:scripts/deploy-release.sh" | bash -s -- "$1" "$PWD"
           EOF
+          if [[ -n "${GOOGLE_CLIENT_ID:-}" && -n "${GOOGLE_CLIENT_SECRET:-}" ]]; then
+            python3 - <<'PY' | ssh -i ~/.ssh/studybridge_deploy_key "$LIGHTSAIL_USER@$LIGHTSAIL_HOST" "cd ~/school-helper && python3 aws/configure-google-login.py '$GITHUB_SHA'"
+          import json, os, sys
+          json.dump({key: os.environ[key] for key in ('GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET')}, sys.stdout)
+          PY
+          fi

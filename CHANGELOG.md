@@ -2,6 +2,9 @@
 
 ## 2026-10-28
 
+- Prevent the five main navigation icons from flashing during route changes by drawing their existing SVG paths inline instead of recreating external sprite references whenever the sidebar renders. Keep the same shapes, dimensions, colors, selection highlights and destinations, retain the legacy sprite for already-open clients, and refresh the application asset cache key. Prepared on a task branch for review; no AWS deployment.
+- Validate 310 passing regression tests and 199-file source/assets/version checks. With external sprite loading blocked, reproduce five missing legacy icons, then verify all five fixed icons across 30 day/night route switches and 624 sampled frames without blank geometry or page errors; confirm every SVG path exactly matches its existing symbol.
+
 - Release `1.1.120`: publish the owner-approved agenda filter scroll fix with trailing space for short/empty results and restored schedule scroll position across redraws. Refresh frontend/cache versions; retain all accounts, schedules, course management and preferences. Previous production code: `33e3058` (`1.1.119`).
 
 - Keep the full-agenda area at least one viewport tall with natural-height cards and trailing blank space for short/empty filters. Restore the schedule page's scroll position across redraws so switching from a long list to a single item does not push the filter controls down the screen.

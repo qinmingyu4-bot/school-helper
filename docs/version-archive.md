@@ -10,6 +10,19 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.112 - 2026-10-28
+
+Purpose:
+- Place Add schedule and Import from course files between the calendar and full agenda, keeping both entry points accessible above long lists.
+- Refresh frontend/cache versions. Preserve form drafts during clock refreshes and retain account data, security and appearance settings.
+
+Validation:
+- Run calendar regression tests, full automated tests, source/assets/version checks and deployment-script syntax checks before release.
+- Use the existing deployment workflow's verified private backup, unchanged-data checks and automatic code rollback.
+
+Rollback target:
+- `c453ed5` (1.1.111). Restore code only and retain current account data and backups.
+
 ### 1.1.111 - 2026-10-28
 
 Purpose:

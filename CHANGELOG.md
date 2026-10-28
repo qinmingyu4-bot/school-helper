@@ -2,6 +2,10 @@
 
 ## 2026-10-28
 
+- Release `1.1.112`: publish owner-approved Add schedule and Import from course files entry points above the full agenda. Refresh frontend/cache versions; preserve drafts during clock refreshes and retain all accounts, calendar data, security and appearance settings. Previous production code: `c453ed5` (`1.1.111`).
+
+- Move Add schedule and Import from course files between the monthly calendar and the full agenda so long lists no longer bury either entry point. Keep form drafts/disclosure state intact during calendar/agenda clock refreshes.
+
 - Release `1.1.111`: publish the owner-approved **黑白灰简约** appearance option from `118b744`. Add it alongside the seven existing palettes without changing defaults, saved appearance records or dark-mode choices. Retain all accounts, courses, calendars, chats, authored files and login configuration; use the existing verified private backup and unchanged-data checks. Refresh release/cache versions. Previous production code: `6e665ce` (1.1.110, including account security).
 - Release validation: 266 passing tests and 182-file syntax/assets/version checks, including retained account security, an existing graphite/dark selection retained across restart, new-palette persistence, account isolation and unchanged preferences. Record the signed-in production account's appearance/mode and courses for read-only post-deployment comparison.
 

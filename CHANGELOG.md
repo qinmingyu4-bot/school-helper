@@ -2,6 +2,8 @@
 
 ## 2026-10-28
 
+- Apply the same request lifetime to every page: reject stale data/errors/completion after navigation or account changes, preserve newer loading state and inputs, and load the normalized destination of legacy saved routes. Retain the existing community/classmates lifecycle, chat identities and background streamed replies.
+
 - Prepare an integrity repair from `1.1.106` (`caf5c5f`): preserve existing data formats and release features while preventing concurrent account saves from overwriting unrelated fields, retrying conditional DynamoDB account conflicts, and following every cloud directory scan page, including filtered empty pages.
 - Extract the local store into a dedicated module with isolated transaction drafts and single-flight startup loading. Publish memory only after durable file replacement; failed creations, nested edits and deletions cannot leak into later saves. Retain large upload strings, unknown legacy fields, schedule deduplication and Office/conversation save protection; remove superseded per-operation rollback callbacks.
 

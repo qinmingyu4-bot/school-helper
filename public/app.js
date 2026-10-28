@@ -1684,10 +1684,10 @@
     };
   }
 
-  async function refreshCourseConversations(courseId) {
+  async function refreshCourseConversations(courseId, isCurrent = () => true) {
     const userId = state.user.id;
     const data = await api(`/api/courses/${courseId}/conversations`);
-    if (state.user?.id === userId) state.courseConversations[courseId] = data.conversations || [];
+    if (state.user?.id === userId && isCurrent()) state.courseConversations[courseId] = data.conversations || [];
     return data.conversations || [];
   }
 
@@ -1707,8 +1707,9 @@
     await loadPage("study");
   }
 
-  async function loadStudy() {
+  async function loadStudy(isCurrent = () => true) {
     const coursesData = await api("/api/courses");
+    if (!isCurrent()) return;
     state.courses = coursesData.courses || [];
     if (!state.activeCourseId) {
       try { state.activeCourseId = localStorage.getItem(`studybridge.chatSpace.${state.user.id}`) || ""; } catch { /* Storage may be disabled. */ }
@@ -1725,13 +1726,15 @@
     if (isGeneralChat()) state.activeConversationId = "default";
     else {
       const courseId = state.activeCourseId;
-      let chats = await refreshCourseConversations(courseId);
+      let chats = await refreshCourseConversations(courseId, isCurrent);
+      if (!isCurrent() || state.activeCourseId !== courseId) return;
       if (!chats.length) {
         const data = await api(`/api/courses/${courseId}/conversations`, { method: "POST", body: { title: "新对话" } });
+        if (!isCurrent() || state.activeCourseId !== courseId) return;
         chats = [data.conversation];
         state.courseConversations[courseId] = chats;
       }
-      if (state.activeCourseId !== courseId) return;
+      if (!isCurrent() || state.activeCourseId !== courseId) return;
       if (!chats.some((chat) => chat.id === state.activeConversationId)) state.activeConversationId = chats[0].id;
       if (state.expandedCourses[courseId] === undefined) state.expandedCourses[courseId] = true;
     }
@@ -1744,20 +1747,20 @@
         isGeneralChat() ? Promise.resolve({ documents: [] }) : api(`/api/courses/${courseId}/documents`),
         api(`/api/courses/${courseId}/messages?conversationId=${encodeURIComponent(conversationId)}`)
       ]);
-      if (courseId !== state.activeCourseId || conversationId !== state.activeConversationId) return;
+      if (!isCurrent() || courseId !== state.activeCourseId || conversationId !== state.activeConversationId) return;
       state.docs = docsData.documents || [];
       state.messages = mergeStudyReply(messagesData.messages || [], activeStudyReply() || replyAtLoad);
     } else {
       state.docs = [];
       state.messages = [];
     }
-    await loadScheduleItems(false);
+    await loadScheduleItems(false, false, isCurrent);
   }
 
-  async function loadScheduleItems(refreshCourses = true, strict = false) {
+  async function loadScheduleItems(refreshCourses = true, strict = false, isCurrent = () => true) {
     const userId = state.user?.id;
     const data = await api("/api/schedule/items");
-    if (state.user?.id !== userId) return;
+    if (state.user?.id !== userId || !isCurrent()) return;
     if (refreshCourses) state.courses = data.courses || [];
     state.scheduleItems = data.items || [];
   }
@@ -1780,11 +1783,17 @@
     const pageGeneration = ++pageLoadGeneration;
     const generation = ++classmatesGeneration;
     setPage(page);
+    page = state.page;
+    const userId = state.user?.id;
+    // Every page shares the same request lifetime. Old successes, failures and
+    // finally blocks must leave the newer page's data, drafts and busy state alone.
+    const isCurrent = () => pageGeneration === pageLoadGeneration && state.user?.id === userId && state.page === page
+      && (page !== "classmates" || generation === classmatesGeneration);
     state.busy = true;
     if (page === "community") { state.community = null; state.communityError = ""; state.communityFocusedPost = null; state.communityMoreLoading = false; }
     render();
     try {
-      if (page === "study") await loadStudy();
+      if (page === "study") await loadStudy(isCurrent);
       if (page === "community") {
         const query = communityQuery();
         const hasSelection = state.communityChannel === "all" || Boolean(communityValue().trim());
@@ -1793,7 +1802,7 @@
           state.communityChoices || api("/api/community/channels").catch(() => null),
           api("/api/community/notifications").catch((error) => ({ error: error.message }))
         ]);
-        if (pageGeneration !== pageLoadGeneration) return;
+        if (!isCurrent()) return;
         state.community = data;
         state.communityChoices = choices;
         state.communityNoticeError = notices.error || "";
@@ -1801,7 +1810,7 @@
       }
       if (page === "classmates") {
         const data = await api("/api/classmates");
-        if (generation !== classmatesGeneration) return;
+        if (!isCurrent()) return;
         state.classmates = data;
         const classmates = state.classmates.classmates || [];
         if (state.activeClassmateId && !classmates.some((item) => item.id === state.activeClassmateId)) {
@@ -1810,7 +1819,7 @@
         }
         if (state.classmateChatOpen && state.activeClassmateId) {
           const dm = await api(`/api/classmates/${state.activeClassmateId}/messages`);
-          if (generation !== classmatesGeneration) return;
+          if (!isCurrent()) return;
           state.directMessages = dm.messages || [];
           state.directMessageReadIds = dm.readMessageIds || [];
         } else {
@@ -1818,25 +1827,29 @@
           state.directMessageReadIds = [];
         }
       }
-      if (page === "schedule") await loadScheduleItems();
+      if (page === "schedule") await loadScheduleItems(true, false, isCurrent);
       if (page === "tools" && state.tool !== "email") {
         const data = await api("/api/courses");
+        if (!isCurrent()) return;
         state.courses = data.courses || [];
         if (!officeTools.supports(state.tool || "docs") || state.toolView === "generate") await creativeTools.load(creativeContext());
       }
       if (page === "admin") {
-        state.admin = await api("/api/admin/overview");
-        state.status = await api("/api/admin/system-status").catch(() => state.status);
+        const overview = await api("/api/admin/overview");
+        if (!isCurrent()) return;
+        const status = await api("/api/admin/system-status").catch(() => state.status);
+        if (!isCurrent()) return;
+        state.admin = overview;
+        state.status = status;
       }
     } catch (error) {
+      if (!isCurrent()) return;
       if (page === "community") {
-        if (pageGeneration !== pageLoadGeneration) return;
         state.communityError = error.message;
       }
       setToast(error.message);
     } finally {
-      if ((page !== "classmates" || generation === classmatesGeneration)
-        && (page !== "community" || pageGeneration === pageLoadGeneration)) {
+      if (isCurrent()) {
         state.busy = false;
         render();
         if (state.page === "classmates") void syncClassmatesLive();

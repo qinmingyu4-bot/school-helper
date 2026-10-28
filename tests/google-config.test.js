@@ -9,11 +9,13 @@ import contextlib, io, json, os, pathlib, runpy, sys, tempfile, types
 from unittest.mock import patch
 ns = runpy.run_path('aws/configure-google-login.py')
 values = ns['settings']({'GOOGLE_CLIENT_ID':'123456-fixture.apps.googleusercontent.com','GOOGLE_CLIENT_SECRET':'GOCSPX-fixture-only-not-real'})
-original = b'# existing configuration\nSESSION_SECRET=private-fixture\nSTUDYBRIDGE_DB=local\nAPP_BASE_URL=https://old.example.test\nGOOGLE_CLIENT_ID=old\nGOOGLE_CLIENT_ID=duplicate\n'
+original = b'# existing configuration\nSESSION_SECRET=private-fixture\nSTUDYBRIDGE_DB=local\nNODE_ENV=development\nAPP_BASE_URL=https://old.example.test\nGOOGLE_CLIENT_ID=old\nGOOGLE_CLIENT_ID=duplicate\n'
 rendered = ns['render_env'](original.decode(), values)
 assert 'SESSION_SECRET=private-fixture\nSTUDYBRIDGE_DB=local\n' in rendered
 assert rendered.count('GOOGLE_CLIENT_ID=') == 1
 assert 'APP_BASE_URL=https://studybridge.ink\n' in rendered
+assert 'NODE_ENV=production\n' in rendered
+assert 'NODE_ENV=development' not in rendered
 for payload in ({}, {'GOOGLE_CLIENT_ID':'wrong','GOOGLE_CLIENT_SECRET':'GOCSPX-fixture-only-not-real'}, {'GOOGLE_CLIENT_ID':values['GOOGLE_CLIENT_ID'],'GOOGLE_CLIENT_SECRET':'bad\nOTHER=value'}):
     try: ns['settings'](payload); raise AssertionError('Unsafe credentials accepted')
     except ValueError: pass
@@ -38,6 +40,7 @@ with tempfile.TemporaryDirectory(prefix='studybridge-google-config-test-') as di
         assert env_file.read_bytes() == original
         assert len(restarted) == 2
         assert restarted[-1]['APP_BASE_URL'] == 'https://old.example.test'
+        assert restarted[-1]['NODE_ENV'] == 'development'
         assert all((p.stat().st_mode & 0o077) == 0 for p in (root/'.studybridge-private-backups').rglob('*') if p.is_file())
         # A successful run changes only the named settings and validates the active login.
         restarted.clear()
@@ -46,6 +49,7 @@ with tempfile.TemporaryDirectory(prefix='studybridge-google-config-test-') as di
         assert env_file.read_text() == rendered
         assert 'GOCSPX' not in output.getvalue()
         assert restarted[0]['GOOGLE_CLIENT_ID'] == values['GOOGLE_CLIENT_ID']
+        assert restarted[0]['NODE_ENV'] == 'production'
     finally: os.chdir(before)
 print('Private configuration success, rollback and credential validation passed.')
 `;

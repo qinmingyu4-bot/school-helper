@@ -9,7 +9,7 @@
 
 这次只更新页面和入口，沿用线上账号、会话密钥、Google 配置、数据库及
 课程/聊天/日程/作品，不迁移或清空数据。使用下述已验证的发布前私有备份
-与代码回退流程，之前的生产代码为 `199b8d8`（1.1.107，含 Google 登录）。
+与代码回退流程，之前的生产代码为 `1165f3c`（1.1.107，含 Google 登录）。
 
 ## 正式域名的 Google 登录
 
@@ -21,7 +21,8 @@ profile`，用于登录身份验证。测试期间需按 Google 控制台设置�
 `GOOGLE_CLIENT_ID` 和 `GOOGLE_CLIENT_SECRET` 仅保存在 GitHub Actions 加密
 配置及生产服务器私有配置中，不能写入代码、日志或工作流产物。部署完成后，
 `.github/workflows/deploy.yml` 通过加密 SSH 标准输入交给
-`aws/configure-google-login.py`，只更新这两个值、正式网站地址和回调地址。
+`aws/configure-google-login.py`，只更新这两个值、正式网站地址、回调地址及
+`NODE_ENV=production`，保证正式 HTTPS 登录使用 Secure 的浏览器保护 cookie。
 更新前在服务器 `~/.studybridge-private-backups/` 创建权限受限的配置备份；
 启动校验失败恢复旧配置。应用账号、课程和其他数据不迁移。
 

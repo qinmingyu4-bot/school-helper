@@ -16,7 +16,7 @@
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
   function preferenceBackup({ appearance, learning, version, date = new Date() }) {
     return { format: "studybridge-preferences", formatVersion: 1, appVersion: String(version), exportedAt: date.toISOString(),
-      appearance: { theme: appearance.theme }, learningStyle: { englishTerms: Boolean(learning.englishTerms), englishAnswers: Boolean(learning.englishAnswers),
+      appearance: { theme: appearance.theme, ...(appearance.mode === "dark" ? { mode: "dark" } : {}) }, learningStyle: { englishTerms: Boolean(learning.englishTerms), englishAnswers: Boolean(learning.englishAnswers),
         chineseExplanations: Boolean(learning.chineseExplanations), customInstruction: String(learning.customInstruction || "") } };
   }
 
@@ -44,6 +44,7 @@
           <div class="settings-block"><h4>自定义学习要求</h4><label class="settings-instruction-label">补充你的偏好<textarea data-settings-instruction maxlength="500" placeholder="例如：先给提示，再一步步讲；解释时多举生活中的例子。"></textarea></label><p class="settings-caption">本次提问中的明确要求优先，其次是自定义要求，再参考上面的开关。</p></div><div class="settings-save-row"><span class="settings-learning-status" role="status" aria-live="polite"></span><button type="button" class="settings-learning-retry" hidden>重试保存</button></div>
         </section>
         <section id="settings-panel-appearance" class="settings-panel" aria-labelledby="settings-appearance-heading" hidden>${heading("appearance", "保留熟悉的布局，换一种更适合你的色调。")}
+          <div class="settings-block settings-display-mode"><label class="settings-toggle-row"><span><strong>黑夜模式</strong><small>暮色深灰：炭灰底色与香槟色点缀。关闭后恢复你选择的白天色调。</small></span><input type="checkbox" name="sb-dark-mode" role="switch"></label></div>
           <fieldset class="settings-themes"><legend>界面色调</legend><p>默认保留蓝绿；其他色调以白色为主，低饱和颜色做辅助。</p><div class="settings-theme-grid">${themes.map((theme) => `<label class="settings-theme-option"><input type="radio" name="sb-theme" value="${theme.id}"><span class="settings-theme-sample" style="--sample-accent:${theme.accent};--sample-tint:${theme.tint}"><i></i><i></i><i></i></span><span class="settings-theme-name">${theme.name}<small>${theme.detail}</small></span></label>`).join("")}</div></fieldset><div class="settings-save-row"><span class="settings-save-status" role="status" aria-live="polite"></span><button type="button" class="settings-retry" hidden>重试</button></div><p class="settings-caption">界面色调不会改变文档、幻灯片或表格中已经设置的内容颜色。</p>
         </section>
         <section id="settings-panel-reminders" class="settings-panel" aria-labelledby="settings-reminders-heading" hidden>${heading("reminders", "把课程、资料和重要时间放在一起管理。")}

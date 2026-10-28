@@ -2,6 +2,9 @@
 
 ## 2026-10-28
 
+- Add an account-saved 黑夜模式 in Settings with the reviewed 暮色深灰 charcoal/champagne appearance. Preserve all seven daytime palettes and restore the selected one when dark mode is disabled; retain legacy appearance records, serialized saves, retries, account isolation and authored Office content colors. Replace the five main navigation letters with outline icons and matching rounded selection highlights without moving the layout. Prepared on a task branch for testing; no AWS deployment.
+- Validate the display update with 225 passing tests, syntax/asset/version checks and real browser checks across the five destinations, all seven daytime palettes, saved dark mode after reload, retained input drafts and a 390 px Settings view. Confirm Docs paper, Sheets cells and Slides backgrounds retain their content colors.
+
 - Release `1.1.104`: publish the owner-tested three-entry calendar cells with increased desktop space and accurate overflow counts. Refresh frontend/cache versions; retain the deployed community upgrade and all saved schedules/accounts. Code rollback target: `bf6b9e6` (`1.1.103`).
 
 - Show up to three schedule entries directly in each calendar date cell, increase desktop cell space to accommodate them, and count only entries beyond the third in the overflow indicator. Keep compact mobile dots/counts and full day details.

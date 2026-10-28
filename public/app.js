@@ -427,11 +427,11 @@
   }
 
   function navButton(page) {
-    const [icon, title, sub] = pageLabels[page];
+    const [, title, sub] = pageLabels[page];
     const active = state.page === page ? "active" : "";
     return `
-      <button class="nav-card ${active}" data-page="${page}">
-        <span>${esc(icon)}</span>
+      <button class="nav-card ${active}" data-page="${page}" ${active ? 'aria-current="page"' : ""}>
+        <span aria-hidden="true"><svg><use href="/classmates-icons.svg?v=dark-nav-1#nav-${esc(page)}"></use></svg></span>
         <b>${esc(title)}</b>
         <small>${esc(page === "schedule" && nextDue() ? `${nextDue().title} · 还有 ${dueText(nextDue().startsAt)}` : sub)}</small>
       </button>

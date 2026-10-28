@@ -14,22 +14,27 @@
     { id: "silver", name: "白 · 冷银灰", accent: "#69747c", tint: "#f2f4f5", detail: "利落、轻盈" }
   ].map(Object.freeze));
   const isValid = (value) => Boolean(value && typeof value === "object" && !Array.isArray(value)
-    && Object.keys(value).length === 1 && themes.some((theme) => theme.id === value.theme));
-  const normalize = (value) => ({ theme: themes.some((theme) => theme.id === value?.theme) ? value.theme : "default" });
+    && Object.keys(value).every((key) => key === "theme" || key === "mode")
+    && themes.some((theme) => theme.id === value.theme)
+    && (value.mode === undefined || value.mode === "light" || value.mode === "dark"));
+  // Omit light mode for compatibility with existing records and clients.
+  const normalize = (value) => ({ theme: themes.some((theme) => theme.id === value?.theme) ? value.theme : "default",
+    ...(value?.mode === "dark" ? { mode: "dark" } : {}) });
+  const sameAppearance = (a, b) => a.theme === b.theme && a.mode === b.mode;
 
   // Serialize writes while retaining the latest choice; a slow earlier save cannot win.
   function createSaver({ initial, save, onChange = () => {} }) {
     let draft = normalize(initial), saved = normalize(initial), pending = null, error = null, uncertain = false, disposed = false;
     const snapshot = () => ({ draft: { ...draft }, saved: { ...saved },
-      status: error ? "error" : pending ? "saving" : draft.theme === saved.theme ? "saved" : "unsaved" });
+      status: error ? "error" : pending ? "saving" : sameAppearance(draft, saved) ? "saved" : "unsaved" });
     const notify = () => { if (!disposed) onChange(snapshot()); };
     function flush() {
       if (disposed) return Promise.resolve();
       if (pending) return pending;
-      if (draft.theme === saved.theme && !uncertain) { error = null; notify(); return Promise.resolve(); }
+      if (sameAppearance(draft, saved) && !uncertain) { error = null; notify(); return Promise.resolve(); }
       error = null;
       pending = Promise.resolve().then(async () => {
-        while (!disposed && (uncertain || draft.theme !== saved.theme)) {
+        while (!disposed && (uncertain || !sameAppearance(draft, saved))) {
           const next = { ...draft };
           await save(next);
           if (disposed) return;
@@ -53,18 +58,22 @@
     const cacheKey = (id) => `studybridge.appearance.${id}`;
     function cache(value) { try { storage?.setItem(cacheKey(userId), JSON.stringify(normalize(value))); } catch { /* Storage is optional. */ } }
     function apply(value) {
-      const theme = normalize(value).theme;
+      const { theme, mode } = normalize(value);
       if (theme === "default") doc.documentElement.removeAttribute("data-sb-theme");
       else doc.documentElement.setAttribute("data-sb-theme", theme);
+      if (mode === "dark") doc.documentElement.setAttribute("data-sb-mode", "dark");
+      else doc.documentElement.removeAttribute("data-sb-mode");
     }
     function update() {
       if (!dialog || !saver) return;
       const current = saver.snapshot();
       dialog.querySelectorAll('input[name="sb-theme"]').forEach((input) => { input.checked = input.value === current.draft.theme; });
+      dialog.querySelector('input[name="sb-dark-mode"]').checked = current.draft.mode === "dark";
+      dialog.querySelector(".settings-themes").disabled = current.draft.mode === "dark";
       const failed = current.status === "error" || loadError;
       const status = dialog.querySelector(".settings-save-status");
-      status.textContent = current.status === "error" ? "保存失败，当前仅预览此色调。请重试。"
-        : loading ? "正在读取你的设置…" : loadError ? "暂时无法读取已保存的色调，请重试。"
+      status.textContent = current.status === "error" ? "保存失败，当前仅预览此外观。请重试。"
+        : loading ? "正在读取你的设置…" : loadError ? "暂时无法读取已保存的外观，请重试。"
         : current.status === "saving" ? "正在保存…" : current.status === "unsaved" ? "尚未保存"
         : "已保存到你的账号，下次登录会继续使用。";
       status.classList.toggle("is-error", failed);
@@ -115,9 +124,11 @@
           if (loadError && !edited) void read(); else void saver.flush().catch(() => {});
         });
         dialog.addEventListener("change", (event) => {
-          if (!event.target.matches('input[name="sb-theme"]')) return;
+          if (!event.target.matches('input[name="sb-theme"], input[name="sb-dark-mode"]')) return;
           edited = true; loadError = false; loading = false; ++generation;
-          const next = { theme: event.target.value };
+          const next = { ...saver.snapshot().draft };
+          if (event.target.name === "sb-dark-mode") next.mode = event.target.checked ? "dark" : "light";
+          else next.theme = event.target.value;
           saver.setDraft(next); apply(next);
           void saver.flush().catch(() => {});
         });

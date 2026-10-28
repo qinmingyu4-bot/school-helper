@@ -162,7 +162,11 @@ navigation on mobile. **退出登录** remains inside Settings. Categories are:
   choices plus custom instructions. Uses the same serialized saver as the Study
   Area sidebar, with automatic save, synchronized controls and failure/retry status.
 - **外观与显示:** keep the blue/green default or choose 烟紫灰, 石墨灰, 雾蓝灰,
-  灰玫瑰, 青瓷灰 or 冷银灰. Changes preview immediately and save to the account.
+  灰玫瑰, 青瓷灰 or 冷银灰 for daytime. The independent **黑夜模式** switch applies
+  暮色深灰 (charcoal surfaces and champagne accents); switching it off restores
+  the selected daytime palette. Both choices preview immediately and save to the
+  account. The five main destinations share outline icons and a rounded selected
+  row with a filled icon, while retaining their existing order and layout.
 - **课程与提醒:** open course/document management and the timetable; distinguish
   available in-app reminders from email/system push, which is not yet available.
 - **隐私与数据:** inspect profile visibility through the profile page and download
@@ -175,11 +179,12 @@ not rebuild the current page or interrupt attachments and active replies. Closin
 and reopening Settings retains unsaved profile edits until logout. Category
 definitions and panel builders in `public/settings.js` allow future expansion.
 
-`GET/PUT /api/me/appearance` stores an allowlisted theme independently of Learning
-Style and profile data, in local `appearances` or DynamoDB's user-owned
+`GET/PUT /api/me/appearance` stores an allowlisted theme and optional `mode: "dark"`
+independently of Learning Style and profile data, in local `appearances` or DynamoDB's user-owned
 `APPEARANCE` record. Existing accounts default to the original colors without a
-migration. Optional browser caches are scoped by user ID. Restoring the default
-removes theme overrides; Office document/slide/cell content colors are preserved.
+migration. Optional browser caches are scoped by user ID. Disabling dark mode
+restores the saved daytime theme; selecting the default daytime theme removes
+its palette overrides. Office document/slide/cell content colors are preserved.
 
 The Study Area mode selector sits beside the question shortcuts above the input.
 Each mode supplies four editable prompts, with course introduction and deadline

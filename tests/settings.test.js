@@ -13,3 +13,8 @@ test("preference exports include only the selected appearance and learning choic
   assert.deepEqual(result.learningStyle, { englishTerms: true, englishAnswers: false, chineseExplanations: true, customInstruction: "先举例，再总结。" });
   assert.doesNotMatch(JSON.stringify(result), /private/);
 });
+
+test("preference exports retain dark mode and its remembered daytime palette", () => {
+  const value = preferenceBackup({ version: "1.1.104", appearance: { theme: "celadon", mode: "dark" }, learning: {} });
+  assert.deepEqual(value.appearance, { theme: "celadon", mode: "dark" });
+});

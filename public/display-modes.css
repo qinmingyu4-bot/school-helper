@@ -1,0 +1,155 @@
+/* Shared navigation treatment; geometry and the five destinations stay intact. */
+:root .sidebar .side-nav .nav-card {
+  border-color: transparent;
+  border-radius: 12px;
+  background: transparent;
+}
+:root .sidebar .side-nav .nav-card > span {
+  border-radius: 11px;
+  background: transparent;
+  color: var(--muted);
+}
+.side-nav .nav-card svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.65;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+:root .sidebar .side-nav .nav-card:hover { background: var(--sb-tint, #edf5f1); }
+:root .sidebar .side-nav .nav-card.active {
+  background: color-mix(in srgb, var(--green) 10%, var(--panel));
+  border-color: var(--green);
+}
+:root .sidebar .side-nav .nav-card.active > span { background: var(--green); color: #fff; }
+.side-nav .nav-card:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.settings-display-mode .settings-toggle-row { padding: 0; border: 0; }
+.settings-themes:disabled { opacity: .55; }
+
+/* Independent of the saved daytime palette. Removing this attribute restores it. */
+:root[data-sb-mode="dark"] {
+  color-scheme: dark;
+  --ink: #e7e5df; --muted: #a4a6a8; --line: #3c3e40;
+  --soft: #232528; --panel: #292b2e; --card: #292b2e;
+  --green: #c9b48f; --teal: #c9b48f; --blue: #d4bf9e;
+  --sb-accent: #c9b48f; --sb-tint: #38362f; --green-soft: #38362f;
+  --danger: #f19a93; --warn: #e5bd79;
+  --shadow: 0 12px 36px #00000026;
+}
+:root[data-sb-mode="dark"] body,
+:root[data-sb-mode="dark"] .workspace,
+:root[data-sb-mode="dark"] .study-workspace .chat-area { background: #1e2023; }
+:root[data-sb-mode="dark"] .sidebar { background: #242629; }
+:root[data-sb-mode="dark"] :is(button, input, textarea, select):not(.office-grid input) {
+  background: var(--soft); color: var(--ink); border-color: var(--line);
+}
+:root[data-sb-mode="dark"] ::placeholder { color: var(--muted); opacity: 1; }
+:root[data-sb-mode="dark"] :is(label, .message, .message strong, .community-post .formatted-text, .creative-workspace) { color: var(--ink); }
+:root[data-sb-mode="dark"] :is(.page-header, .side-section, .card, .profile-card, .composer, .quick-prompts,
+  .mini-row, .friend-row, .request-box, .chat-panel, .peer-profile-page, .auth-card,
+  .community-channel-picker, .community-feed-status, .community-empty, .community-post,
+  .community-composer-card, .community-notifications, .settings-dialog, .settings-block,
+  .settings-account-avatar, .busy, .toast, .user-row, .invite-row, .schedule-upload,
+  .schedule-draft, .schedule-review, .schedule-review-actions, .creative-input, .creative-result,
+  .office-shell, .admin-management, .admin-delete-dialog) {
+  background: var(--panel); border-color: var(--line);
+}
+:root[data-sb-mode="dark"] :is(.brand-mark, .cover b) {
+  background: linear-gradient(145deg, #d9c9a9, #ad9774); color: #282720;
+}
+:root[data-sb-mode="dark"] .profile-card { background: linear-gradient(145deg, #303133, #26282a); }
+:root[data-sb-mode="dark"] .profile-card::before { background: #c9b48f; }
+:root[data-sb-mode="dark"] .cover { background-color: #38362f; }
+:root[data-sb-mode="dark"] .cover b { border-color: var(--panel); }
+:root[data-sb-mode="dark"] :is(.brand-row span, .page-header span, .section-title span, .profile-card-arrow) { color: var(--green); }
+:root[data-sb-mode="dark"] .profile-overview > .school-info { background: var(--panel); }
+:root[data-sb-mode="dark"] .profile-overview .fact-grid span { background: transparent; }
+:root[data-sb-mode="dark"] .study-course-directory { background: transparent; }
+:root[data-sb-mode="dark"] .course-folder-heading button,
+:root[data-sb-mode="dark"] .course-chat-row button { background: transparent; }
+:root[data-sb-mode="dark"] .community-layout .community-empty { background: var(--panel); }
+:root[data-sb-mode="dark"] :is(.primary, .send, .settings-dialog .settings-primary,
+  .office-ai-compose > button, .office-ai-preview-actions > button:first-child:not(:last-child)) {
+  background: linear-gradient(145deg, #d5c3a2, #b7a17d); color: #282720; border-color: #c9b48f;
+}
+:root[data-sb-mode="dark"] :is(.link-button, .creative-download, .creative-revision,
+  .community-tabs button.active, .community-tabs button:hover, .community-picker-hint > button,
+  .community-empty > button) { color: var(--green); }
+:root[data-sb-mode="dark"] :is(.nav-card.active, .course-item.active, .course-chat-row.active,
+  .friend-row.active, .tools-tabs .active, .profile-card.active, .creative-history-item.selected,
+  .community-tabs button.active, .community-like.is-liked, .settings-nav button[aria-current="page"]) {
+  background: var(--sb-tint); border-color: var(--green);
+}
+:root[data-sb-mode="dark"] .sidebar .side-nav .nav-card.active > span { background: #c9b48f; color: #282720; }
+:root[data-sb-mode="dark"] :is(.deadline-banner, .planner-next) { background: linear-gradient(110deg, #302f2c, #292b2d); border-color: var(--line); }
+:root[data-sb-mode="dark"] .deadline-banner span { color: var(--green); }
+:root[data-sb-mode="dark"] .deadline-banner > strong { background: var(--sb-tint); color: var(--green); }
+:root[data-sb-mode="dark"] .message.ai > div { background: var(--panel); border-color: #4d4c48; border-left-color: var(--green); }
+:root[data-sb-mode="dark"] :is(.message.user > div, .classmates-workspace .dm.mine) { background: #383b3e; border-color: var(--line); }
+:root[data-sb-mode="dark"] .message > b { background: var(--panel); color: var(--green); }
+:root[data-sb-mode="dark"] :is(.markdown-table th, .message .markdown-table th, .reply-code,
+  .message pre, .message code, .community-tabs, .community-destination, .community-channel-badge,
+  .community-topic-hints span, .community-like, .community-reply, .creative-preview,
+  .creative-empty, .settings-sidebar, .office-toolbar, .office-ai, .office-ai-inline,
+  .office-statusbar, .office-page-settings, .office-doc-scroll, .office-stage-wrap,
+  .office-sheet-tabs, .office-thumbnails, .office-slide-work, .planner-tabs) { background: var(--soft); border-color: var(--line); }
+:root[data-sb-mode="dark"] :is(.markdown-table td, .message .markdown-table td,
+  .quick-prompts button, .chat-image, .chat-file, .community-post, .community-empty,
+  .creative-download, .creative-preview, .creative-empty, .creative-history-heading,
+  .creative-history-item, .community-tabs, .community-destination) { border-color: var(--line); }
+:root[data-sb-mode="dark"] :is(.markdown-table tr:nth-child(even) td, .message .markdown-table tr:nth-child(even) td) { background: #25272a; }
+:root[data-sb-mode="dark"] :is(.reply-content a, .reply-content blockquote) { color: var(--green); }
+:root[data-sb-mode="dark"] .reply-content :is(h1, h2, h3, h4, h5, h6) { color: var(--ink); }
+:root[data-sb-mode="dark"] .reply-content :is(blockquote, hr, pre) { border-color: var(--line); }
+:root[data-sb-mode="dark"] :is(.reply-notice, .chat-image span) { color: var(--muted); }
+:root[data-sb-mode="dark"] .chat-image-dialog { background: var(--panel); color: var(--ink); border-color: var(--line); }
+:root[data-sb-mode="dark"] :is(.reply-status, .creative-course-label, .creative-history-item small,
+  .creative-result-status, .creative-download small, .creative-empty, .schedule-steps,
+  .schedule-empty b, .office-shell label, .office-statusbar, .office-page-settings,
+  .office-ai-heading > span, .office-ai-change small, .office-ai p, .office-ai-shortcuts > span,
+  .office-inspector p, .office-formula-bar b, .office-formula-help, .office-loading,
+  .office-thumbnails small) { color: var(--muted); }
+:root[data-sb-mode="dark"] .office-ai .office-ai-warning { color: var(--danger); }
+:root[data-sb-mode="dark"] :is(.classmate-avatar, .community-avatar, .community-empty-icon,
+  .community-compose-heading > span, .community-picker-row > button, .schedule-steps b,
+  .schedule-file-symbol, .schedule-import-status, .schedule-type-legend span,
+  .schedule-empty > span, .planner-today-label, .upload-pill) { background: var(--sb-tint); color: var(--green); border-color: var(--line); }
+:root[data-sb-mode="dark"] :is(.classmates-workspace .dm-list, .classmates-workspace .dm) { background: var(--panel); border-color: var(--line); }
+:root[data-sb-mode="dark"] .peer-profile-cover { background-color: var(--sb-tint); }
+:root[data-sb-mode="dark"] :is(.settings-nav button:hover, .settings-footer .settings-logout,
+  .settings-theme-option, .schedule-file-picker, .schedule-file-picker:hover,
+  .schedule-file-picker:focus-within, .schedule-calendar, .schedule-draft-fields,
+  .schedule-review-source) { background: var(--soft); border-color: var(--line); }
+:root[data-sb-mode="dark"] .settings-theme-option:has(input:checked) { background: var(--sb-tint); border-color: var(--green); }
+:root[data-sb-mode="dark"] :is(.settings-dialog .is-error, .notice, .toast, .community-reply-error, .creative-error) { color: var(--danger); }
+:root[data-sb-mode="dark"] input[type="checkbox"] { accent-color: var(--green); }
+:root[data-sb-mode="dark"] .settings-toggle-row input { background: #686a6d; }
+:root[data-sb-mode="dark"] .settings-toggle-row input:checked { background: var(--green); }
+:root[data-sb-mode="dark"] .reply-spinner { border-color: var(--line); border-top-color: var(--green); }
+:root[data-sb-mode="dark"] :is(.composer.drop-ready, .side-section.drop-ready) { background: var(--sb-tint); }
+:root[data-sb-mode="dark"] .planner-grid .planner-day { background: var(--panel); }
+:root[data-sb-mode="dark"] .planner-grid .planner-day.is-outside { background: #232528; color: var(--muted); }
+:root[data-sb-mode="dark"] .planner-grid .planner-day.is-selected { background: var(--sb-tint); }
+:root[data-sb-mode="dark"] .planner-day.is-today .planner-day-number { color: #282720; }
+:root[data-sb-mode="dark"] .planner-tabs button[aria-pressed="true"] { background: var(--panel); color: var(--ink); }
+:root[data-sb-mode="dark"] .planner-type-filters button[aria-pressed="true"] { background: var(--sb-tint); }
+/* Retain the calendar's vivid category identities against dark surfaces. */
+:root[data-sb-mode="dark"] .planner-deadline { --planner-tint: #542c38; }
+:root[data-sb-mode="dark"] .planner-lecture { --planner-tint: #193f52; }
+:root[data-sb-mode="dark"] .planner-tutorial { --planner-tint: #204735; }
+:root[data-sb-mode="dark"] .planner-personal { --planner-tint: #4c421e; }
+:root[data-sb-mode="dark"] :is(.planner-chip, .planner-badge) { color: var(--ink); }
+:root[data-sb-mode="dark"] .planner-overdue-notice { background: #442f24; color: #efba86; }
+:root[data-sb-mode="dark"] .planner-item-actions .planner-overdue { color: #efba86; }
+:root[data-sb-mode="dark"] :is(.schedule-warning, .schedule-review-required, .schedule-review-validation,
+  .schedule-review .schedule-draft [aria-invalid="true"], .office-import-notice) { background: #442f24; color: #efba86; }
+:root[data-sb-mode="dark"] :is(.schedule-field-error, .schedule-review-warning) { color: #efba86; }
+:root[data-sb-mode="dark"] :is(.office-shell button[aria-pressed="true"], .office-view-switch button[aria-pressed="true"],
+  .office-thumbnails button.selected, .office-ai-change > div:last-child) { background: var(--sb-tint); border-color: var(--green); color: var(--green); }
+/* Authored pages/slides/cells stay in their original colors; only chrome changes. */
+:root[data-sb-mode="dark"] :is(.office-paper, .office-stage, .office-thumb-canvas, .office-grid, .office-presentation-stage) { color-scheme: light; color: #071b3a; }
+:root[data-sb-mode="dark"] .office-paper { --ink: #071b3a; }
+:root[data-sb-mode="dark"] .office-ai-inline h3 { color: var(--green); }
+:root[data-sb-mode="dark"] input[type="file"]::file-selector-button { background: var(--soft); color: var(--ink); border-color: var(--line); }

@@ -141,6 +141,17 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     assert.deepEqual((await request(route, { cookie: alice.cookie })).data.appearance, { theme: "default" });
   });
 
+  await t.test("dark mode survives restart and preserves the selected daytime palette", async () => {
+    const route = "/api/me/appearance";
+    for (const mode of [null, "auto", true]) assert.equal((await request(route, { cookie: alice.cookie, method: "PUT", body: { theme: "celadon", mode } })).status, 400);
+    const dark = { theme: "celadon", mode: "dark" };
+    assert.deepEqual((await request(route, { cookie: alice.cookie, method: "PUT", body: dark })).data.appearance, dark);
+    await stop(); await start();
+    assert.deepEqual((await request(route, { cookie: alice.cookie })).data.appearance, dark);
+    assert.deepEqual((await request(route, { cookie: bob.cookie })).data.appearance, { theme: "default" });
+    assert.deepEqual((await request(route, { cookie: alice.cookie, method: "PUT", body: { theme: "celadon", mode: "light" } })).data.appearance, { theme: "celadon" });
+  });
+
   await t.test("single-use invitations cannot be reused or raced", async () => {
     assert.equal((await request("/api/auth/register", { method: "POST", body: registration("Other owner", "other-admin@example.test", "health-owner-invite") })).status, 403);
     const generated = await request("/api/admin/invites", { method: "POST", cookie: admin.cookie, body: { maxUses: 100, role: "admin" } });

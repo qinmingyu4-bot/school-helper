@@ -2,6 +2,11 @@
 
 ## 2026-10-28
 
+- Release `1.1.106`: publish the owner-authorized 暮色深灰 dark mode and outline navigation icons, retaining the existing seven daytime palettes and restoring the selected one when dark mode is disabled. Keep the `1.1.105` 日程/学习 naming update, refresh package/frontend/cache versions, and preserve production accounts, course materials, schedules, chats and authored Office content. Previous code release/rollback target: `d33bb89` (`1.1.105`).
+
+- Add an account-saved 黑夜模式 in Settings with the reviewed 暮色深灰 charcoal/champagne appearance. Preserve all seven daytime palettes and restore the selected one when dark mode is disabled; retain legacy appearance records, serialized saves, retries, account isolation and authored Office content colors. Replace the five main navigation letters with outline icons and matching rounded selection highlights without moving the layout. Prepared on a task branch for testing; no AWS deployment.
+- Validate the display update with 225 passing tests, syntax/asset/version checks and real browser checks across the five destinations, all seven daytime palettes, saved dark mode after reload, retained input drafts and a 390 px Settings view. Confirm Docs paper, Sheets cells and Slides backgrounds retain their content colors.
+
 - Release `1.1.105`: rename the main navigation modules 时间表 to 日程 and 学习区 to 学习. Align the schedule heading, back links, import/accessibility text, settings shortcuts/help and deployment guide with the new names. Refresh package/frontend/cache versions. Previous code release: `9efdd9d` (`1.1.104`).
 
 - Release `1.1.104`: publish the owner-tested three-entry calendar cells with increased desktop space and accurate overflow counts. Refresh frontend/cache versions; retain the deployed community upgrade and all saved schedules/accounts. Code rollback target: `bf6b9e6` (`1.1.103`).

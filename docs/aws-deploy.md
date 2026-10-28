@@ -1,9 +1,57 @@
 # AWS 部署路线
 
+## 正式域名的 Google 登录
+
+正式回调为 `https://studybridge.ink/api/auth/google/callback`，Google Cloud
+中创建 Web application 客户端，并在 Google Auth Platform 配置 StudyBridge、
+支持邮箱、External 受众及授权域名 `studybridge.ink`。只请求 `openid email
+profile`，用于登录身份验证。测试期间需按 Google 控制台设置测试账号及发布状态。
+
+`GOOGLE_CLIENT_ID` 和 `GOOGLE_CLIENT_SECRET` 仅保存在 GitHub Actions 加密
+配置及生产服务器私有配置中，不能写入代码、日志或工作流产物。部署完成后，
+`.github/workflows/deploy.yml` 通过加密 SSH 标准输入交给
+`aws/configure-google-login.py`，只更新这两个值、正式网站地址和回调地址。
+更新前在服务器 `~/.studybridge-private-backups/` 创建权限受限的配置备份；
+启动校验失败恢复旧配置。应用账号、课程和其他数据不迁移。
+
+Google 登录使用浏览器绑定的十分钟 HttpOnly/Secure/SameSite cookie、
+签名 state 和 PKCE。仅接受 Google 已确认验证的邮箱和稳定账号 ID，已有相同
+邮箱账号继续使用原账号及资料；已绑定不同 Google ID 的账号拒绝覆盖绑定。
+原邮箱密码登录继续保留，新用户仍需在注册页面按现有规则填写邀请码。
+已有用户应选择与 StudyBridge 注册邮箱相同的 Google 账号，不会自动合并不同邮箱。
+
+## 正式域名 studybridge.ink
+
+正式入口为 **https://studybridge.ink/**，2026-10-28 已完成域名实名认证、
+解析、HTTPS 签发及续期测试。初次签发的证书覆盖根域名与 www，有效期至
+2027-01-26，之后由现有自动续期任务更新。新域名和原 IP 入口返回同一网站，
+原 IP 与同服务器其他网站的访问检查均通过。
+
+阿里云中已配置两条默认线路 A 记录：`@` 与 `www` 都指向 `3.98.63.195`，
+TTL 为 10 分钟。域名及信息模板需分别完成实名认证；注册局解除暂停解析后，
+公共 DNS 仍可能暂时缓存此前的不存在结果。
+
+`aws/domain-https.sh` 为现有 Nginx 增加独立域名站点。`prepare` 准备 HTTP-01
+验证路由；`apply` 确认根域名及 www 的公共 A 记录正确、无意外 IPv6 记录后，
+通过现有 Certbot 签发两域名证书、安装 HTTPS，并测试续期。DNS 未就绪返回 75，
+不请求证书。失败恢复本次修改前的域名站点，备份位于服务器私有的
+`/root/studybridge-domain-backup.*`。
+
+`.github/workflows/domain-https.yml` 使用已有部署连接在独立任务分支运行，
+最多等待 30 分钟 DNS 同步，不发布或重启应用。HTTPS 使用原有每六小时运行的
+`studybridge-certbot.timer` 自动续期及 Nginx reload hook。根域名提供网站，
+HTTP 和 www 保留请求路径及参数并跳转至 `https://studybridge.ink`。
+保留 70 MiB 上传上限及 AI 流式响应，并继续保留原 IP HTTPS 入口和其他站点。
+现有账号、数据库和资料继续使用同一应用；新域名首次访问需要重新登录。
+
+维护时检查公共 DNS、两个域名的证书、HTTP/www 跳转和 `/api/health`。
+域名初次启用时，应用根据可信反向代理的正式域名生成地址。Google 登录配置
+会明确写入正式网站和回调地址，维护步骤见上方 Google 登录章节。
+
 ## 现有 Lightsail 公网 IP HTTPS
 
 现有生产实例的 StudyBridge 在 `127.0.0.1:3000`，对外 HTTPS 入口为
-`https://3.98.63.195/`。无需购买域名。手机请使用这个地址，在日程的
+`https://3.98.63.195/`，继续兼容旧链接。手机也可使用正式域名，在日程的
 「新增安排」里点「语音输入」，首次使用允许浏览器访问麦克风。
 
 `aws/ip-https.sh` 由 `.github/workflows/ip-https.yml` 使用已有部署连接运行，

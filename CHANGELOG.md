@@ -2,6 +2,8 @@
 
 ## 2026-10-28
 
+- After successfully confirming AI-organized typed or voice-transcribed schedules, collapse Add schedule and clear the input text, transcription status, audio retry file and source. Keep the success notice visible as a toast; retain drafts/text on failed or partial saves for retry.
+
 - Release `1.1.112`: publish owner-approved Add schedule and Import from course files entry points above the full agenda. Refresh frontend/cache versions; preserve drafts during clock refreshes and retain all accounts, calendar data, security and appearance settings. Previous production code: `c453ed5` (`1.1.111`).
 
 - Move Add schedule and Import from course files between the monthly calendar and the full agenda so long lists no longer bury either entry point. Keep form drafts/disclosure state intact during calendar/agenda clock refreshes.

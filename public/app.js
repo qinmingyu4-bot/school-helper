@@ -1562,6 +1562,18 @@
       state.scheduleDrafts = [];
       state.scheduleUploadFile = null;
       setScheduleImportStatus(`已添加 ${saved} 条安排${duplicates ? `，跳过 ${duplicates} 条重复项目` : ""}。`);
+      if (state.scheduleDraftOrigin === "quick") {
+        const message = state.scheduleQuickStatus;
+        cancelScheduleVoice();
+        state.scheduleQuickText = "";
+        state.scheduleQuickStatus = "";
+        state.scheduleVoiceFile = null;
+        state.scheduleVoiceMessage = "";
+        state.scheduleVoicePhase = "idle";
+        state.scheduleSource = "";
+        state.scheduleManualOpen = false;
+        setToast(message);
+      }
     } catch (error) {
       if (state.user?.id === userId) {
         state.scheduleReviewError = `${error.message} 本次已保存 ${saved} 条，跳过重复 ${duplicates} 条；预览已保留，可修改后重试。`;

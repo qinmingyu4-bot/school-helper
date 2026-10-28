@@ -13,7 +13,13 @@ function harness({ origin = "quick", count = 1, failAt = 0, duplicates = false }
     scheduleQuickText: text, scheduleQuickStatus: "待确认", scheduleManualOpen: true,
     scheduleVoiceMessage: "已转成文字", scheduleVoiceFile: { name: "voice.webm" },
     scheduleVoicePhase: "idle", scheduleVoicePending: false, scheduleSource: text,
-    scheduleUploadFile: null, courses: [], scheduleItems: []
+    scheduleUploadFile: origin === "file" ? { name: "syllabus.pdf" } : null,
+    scheduleImportOpen: true, scheduleImportStatus: "提取完成",
+    scheduleImportedCourses: [{ id: "course", name: "Statistics" }],
+    scheduleCalendar: { teachingPeriods: [{ startDate: "2026-09-01", endDate: "2026-12-10" }] },
+    scheduleCalendarNotice: "已识别学期", scheduleCalendarEditing: true,
+    scheduleCalendarDraft: { startDate: "2026-09-01", endDate: "2026-12-10", breaks: "", timeZone: "America/Toronto" },
+    scheduleFromDate: "2026-10-28", courses: [{ id: "course", name: "Statistics" }], scheduleItems: []
   };
   const notices = [], renders = [];
   let calls = 0, cancelled = 0;
@@ -69,4 +75,41 @@ test("course-file confirmation preserves unrelated quick-entry text and disclosu
   assert.equal(h.state.scheduleQuickText, h.text);
   assert.equal(h.state.scheduleManualOpen, true);
   assert.equal(h.cancelled(), 0);
+});
+
+test("successful course-file confirmation clears upload and extraction settings and collapses import", async () => {
+  for (const duplicates of [false, true]) {
+    const h = harness({ origin: "file", duplicates }); await h.run();
+    assert.equal(h.state.scheduleUploadFile, null);
+    assert.equal(h.state.scheduleDrafts.length, 0);
+    assert.equal(h.state.scheduleImportOpen, false);
+    assert.equal(h.state.scheduleImportStatus, "");
+    assert.equal(h.state.scheduleSource, "");
+    assert.equal(h.state.scheduleImportedCourses.length, 0);
+    assert.equal(h.state.scheduleCalendar, null);
+    assert.equal(h.state.scheduleCalendarNotice, "");
+    assert.equal(h.state.scheduleCalendarEditing, false);
+    assert.ok(Object.values(h.state.scheduleCalendarDraft).every((value) => value === ""));
+    assert.equal(h.state.scheduleFromDate, "");
+    assert.match(h.notices[0], /已添加/);
+    assert.equal(h.state.courses[0].id, "course");
+    assert.equal(h.state.scheduleQuickText, h.text);
+  }
+});
+
+test("failed and partial course-file saves retain upload, preview and semester settings for retry", async () => {
+  for (const options of [{ failAt: 1 }, { count: 81, failAt: 2 }]) {
+    const h = harness({ origin: "file", ...options });
+    const file = h.state.scheduleUploadFile, calendar = h.state.scheduleCalendar, drafts = h.state.scheduleDrafts;
+    await h.run();
+    assert.equal(h.state.scheduleUploadFile, file);
+    assert.equal(h.state.scheduleDrafts, drafts);
+    assert.equal(h.state.scheduleImportOpen, true);
+    assert.equal(h.state.scheduleCalendar, calendar);
+    assert.equal(h.state.scheduleImportedCourses.length, 1);
+    assert.equal(h.state.scheduleSource, h.text);
+    assert.equal(h.state.scheduleFromDate, "2026-10-28");
+    assert.match(h.state.scheduleReviewError, /预览已保留/);
+    assert.equal(h.notices.length, 0);
+  }
 });

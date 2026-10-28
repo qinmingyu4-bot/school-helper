@@ -1573,6 +1573,18 @@
         state.scheduleSource = "";
         state.scheduleManualOpen = false;
         setToast(message);
+      } else {
+        const message = state.scheduleImportStatus;
+        state.scheduleImportOpen = false;
+        state.scheduleImportStatus = "";
+        state.scheduleSource = "";
+        state.scheduleImportedCourses = [];
+        state.scheduleCalendar = null;
+        state.scheduleCalendarNotice = "";
+        state.scheduleCalendarDraft = { startDate: "", endDate: "", breaks: "", timeZone: "" };
+        state.scheduleCalendarEditing = false;
+        state.scheduleFromDate = "";
+        setToast(message);
       }
     } catch (error) {
       if (state.user?.id === userId) {

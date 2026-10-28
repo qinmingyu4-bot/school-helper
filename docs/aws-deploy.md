@@ -1,5 +1,28 @@
 # AWS 部署路线
 
+## 正式域名 studybridge.ink
+
+阿里云中已配置两条默认线路 A 记录：`@` 与 `www` 都指向 `3.98.63.195`，
+TTL 为 10 分钟。域名及信息模板需分别完成实名认证；注册局解除暂停解析后，
+公共 DNS 仍可能暂时缓存此前的不存在结果。
+
+`aws/domain-https.sh` 为现有 Nginx 增加独立域名站点。`prepare` 准备 HTTP-01
+验证路由；`apply` 确认根域名及 www 的公共 A 记录正确、无意外 IPv6 记录后，
+通过现有 Certbot 签发两域名证书、安装 HTTPS，并测试续期。DNS 未就绪返回 75，
+不请求证书。失败恢复本次修改前的域名站点，备份位于服务器私有的
+`/root/studybridge-domain-backup.*`。
+
+`.github/workflows/domain-https.yml` 使用已有部署连接在独立任务分支运行，
+最多等待 30 分钟 DNS 同步，不发布或重启应用。HTTPS 使用原有每六小时运行的
+`studybridge-certbot.timer` 自动续期及 Nginx reload hook。根域名提供网站，
+HTTP 和 www 保留请求路径及参数并跳转至 `https://studybridge.ink`。
+保留 70 MiB 上传上限及 AI 流式响应，并继续保留原 IP HTTPS 入口和其他站点。
+现有账号、数据库和资料继续使用同一应用；新域名首次访问需要重新登录。
+
+完成后检查公共 DNS、两个域名的证书、HTTP/www 跳转和 `/api/health`。
+如果生产配置显式指定 `APP_BASE_URL` 或 Google 登录回调，另行核对正式域名；
+启用 Google 登录时还需在 Google Cloud 的授权回调列表添加正式域名回调。
+
 ## 现有 Lightsail 公网 IP HTTPS
 
 现有生产实例的 StudyBridge 在 `127.0.0.1:3000`，对外 HTTPS 入口为

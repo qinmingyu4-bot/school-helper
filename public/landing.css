@@ -1,10 +1,9 @@
 :root {
-  --paper: #f6f7f2;
-  --ink: #183d34;
-  --muted: #64736b;
-  --line: #dbe1d7;
-  --lime: #dbefb3;
-  --white: #fff;
+  --paper: #f4f4f4;
+  --ink: #202020;
+  --muted: #686868;
+  --line: #d2d2d2;
+  --soft: #e8e8e8;
   scroll-behavior: smooth;
   scroll-padding-top: 28px;
 }
@@ -31,12 +30,12 @@ button,a,summary {
 }
 
 a:focus-visible,summary:focus-visible {
-  outline: 3px solid #4b795d;
+  outline: 3px solid #343434;
   outline-offset: 5px;
 }
 
 ::selection {
-  background: var(--lime);
+  background: var(--soft);
   color: var(--ink);
 }
 
@@ -61,6 +60,7 @@ a:focus-visible,summary:focus-visible {
 }
 
 .site-header {
+  border-bottom: 1px solid var(--line);
   height: 104px;
   display: flex;
   align-items: center;
@@ -84,7 +84,7 @@ a:focus-visible,summary:focus-visible {
 }
 
 .brand-dot {
-  color: #73974e;
+  color: #202020;
 }
 
 .header-nav {
@@ -94,7 +94,7 @@ a:focus-visible,summary:focus-visible {
 }
 
 .header-nav a:hover,.text-link:hover,.site-footer>a:last-child:hover {
-  color: #54823b;
+  color: #555555;
 }
 
 .button {
@@ -121,16 +121,16 @@ a:focus-visible,summary:focus-visible {
 }
 
 .button-dark:hover {
-  background: #2d5744;
+  background: #3b3b3b;
 }
 
 .button-light {
-  background: var(--lime);
+  background: var(--soft);
   color: var(--ink);
 }
 
 .button-light:hover {
-  background: #e9f6ce;
+  background: #f0f0f0;
 }
 
 .button-large {
@@ -168,7 +168,7 @@ a:focus-visible,summary:focus-visible {
 .small-spark {
   font-size: 22px;
   line-height: 1;
-  color: #638645;
+  color: #555555;
 }
 
 .hero h1 {
@@ -182,16 +182,8 @@ a:focus-visible,summary:focus-visible {
 
 .accent-word {
   position: relative;
-  z-index: 0;
-}
-
-.accent-word svg {
-  position: absolute;
-  width: 100%;
-  left: 0;
-  bottom: -9px;
-  color: #b8d783;
-  z-index: -1;
+  border-bottom: 2px solid #626262;
+  padding-bottom: 3px;
 }
 
 .hero-description {
@@ -236,7 +228,7 @@ a:focus-visible,summary:focus-visible {
   display: inline-block;
   width: 32px;
   height: 1px;
-  background: #a8b3a2;
+  background: #a9a9a9;
 }
 
 .workspace-figure {
@@ -255,7 +247,7 @@ a:focus-visible,summary:focus-visible {
   letter-spacing: .8px;
   font-weight: 550;
   margin: 0 0 12px 3px;
-  color: #6c7e6c;
+  color: #737373;
 }
 
 .preview-topline>span:first-child {
@@ -268,19 +260,18 @@ a:focus-visible,summary:focus-visible {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #719355;
+  background: #555555;
 }
 
 .workspace-preview {
   display: grid;
   grid-template-columns: 128px 1fr;
   background: #fff;
-  border: 1px solid #d6dfd2;
+  border: 1px solid #b8b8b8;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 22px 55px -28px #183d3452;
+  box-shadow: 0 10px 28px #20202008;
   min-height: 378px;
-  transform: rotate(-1deg);
 }
 
 .preview-sidebar {
@@ -288,8 +279,8 @@ a:focus-visible,summary:focus-visible {
   flex-direction: column;
   gap: 4px;
   padding: 22px 11px 14px;
-  background: #f0f3eb;
-  border-right: 1px solid #e4e8df;
+  background: #f3f3f3;
+  border-right: 1px solid #dddddd;
   font-size: 9px;
   min-width: 0;
 }
@@ -314,17 +305,17 @@ a:focus-visible,summary:focus-visible {
   gap: 8px;
   padding: 8px 10px;
   border-radius: 5px;
-  color: #7a8777;
+  color: #777777;
 }
 
 .preview-nav.selected {
-  background: #e0e9d6;
-  color: #234b36;
+  background: #e2e2e2;
+  color: #202020;
 }
 
 .preview-nav-label {
   font-size: 7px;
-  color: #899581;
+  color: #808080;
   margin: 24px 10px 7px;
   letter-spacing: 1px;
 }
@@ -340,7 +331,7 @@ a:focus-visible,summary:focus-visible {
   font-size: 7px;
   margin-left: 18px;
   padding: 5px 3px;
-  color: #6e7f65;
+  color: #727272;
 }
 
 .preview-user {
@@ -355,7 +346,7 @@ a:focus-visible,summary:focus-visible {
 .avatar {
   display: grid;
   place-items: center;
-  background: #dfe9d1;
+  background: #e0e0e0;
   width: 22px;
   height: 22px;
   border-radius: 50%;
@@ -372,12 +363,12 @@ a:focus-visible,summary:focus-visible {
   justify-content: space-between;
   align-items: center;
   font-size: 7px;
-  color: #7b897c;
+  color: #777777;
   gap: 8px;
 }
 
 .preview-tag {
-  border: 1px solid #e0e6d8;
+  border: 1px solid #d5d5d5;
   padding: 3px 5px;
   border-radius: 4px;
   font-size: 6px;
@@ -393,15 +384,15 @@ a:focus-visible,summary:focus-visible {
 }
 
 .preview-subtitle {
-  color: #8b9489;
+  color: #858585;
   font-size: 7px;
   margin: 0 0 19px;
 }
 
 .preview-material {
   padding: 9px;
-  border: 1px solid #e7eadd;
-  background: #fbfcf8;
+  border: 1px solid #dedede;
+  background: #fafafa;
   border-radius: 6px;
   display: flex;
   align-items: center;
@@ -409,7 +400,7 @@ a:focus-visible,summary:focus-visible {
 }
 
 .file-icon {
-  color: #829763;
+  color: #6a6a6a;
   font-size: 18px;
 }
 
@@ -425,17 +416,17 @@ a:focus-visible,summary:focus-visible {
 
 .preview-material div>span {
   font-size: 6px;
-  color: #8c9686;
+  color: #858585;
 }
 
 .material-check {
   margin-left: auto;
-  color: #748958;
+  color: #555555;
   font-size: 10px;
 }
 
 .preview-question {
-  background: #eaf1e3;
+  background: #ededed;
   border-radius: 9px 9px 2px 9px;
   padding: 10px 12px;
   margin: 20px 0 15px 32px;
@@ -452,7 +443,7 @@ a:focus-visible,summary:focus-visible {
 }
 
 .ai-mark {
-  color: #6e8e52;
+  color: #555555;
   font-size: 16px;
 }
 
@@ -462,32 +453,32 @@ a:focus-visible,summary:focus-visible {
 }
 
 .preview-answer p {
-  color: #6c786b;
+  color: #6b6b6b;
   margin: 5px 0 9px;
 }
 
 .equation {
-  background: #f6f7f2;
-  border-left: 2px solid #bbd58d;
+  background: #f4f4f4;
+  border-left: 2px solid #a0a0a0;
   padding: 7px 9px;
   font-size: 7px;
 }
 
 .equation>span {
   margin: 0 8px;
-  color: #8ba562;
+  color: #777777;
 }
 
 .preview-composer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border: 1px solid #e1e6db;
+  border: 1px solid #d5d5d5;
   border-radius: 6px;
   padding: 9px;
   margin-top: 20px;
   font-size: 7px;
-  color: #9ba491;
+  color: #898989;
 }
 
 .preview-composer>span:last-child {
@@ -508,23 +499,22 @@ a:focus-visible,summary:focus-visible {
   display: flex;
   align-items: center;
   gap: 11px;
-  background: #f8f6e9;
-  border: 1px solid #e5e1c9;
-  box-shadow: 0 8px 24px #183d3410;
+  background: #fafafa;
+  border: 1px solid #cccccc;
+  box-shadow: 0 8px 24px #20202008;
   padding: 14px 18px;
   border-radius: 9px;
-  transform: rotate(2deg);
 }
 
 .schedule-note-icon {
   display: grid;
   place-items: center;
-  background: #ece8c7;
+  background: #e8e8e8;
   width: 32px;
   height: 32px;
   border-radius: 8px;
   font-size: 22px;
-  color: #878751;
+  color: #555555;
 }
 
 .schedule-note>div {
@@ -539,7 +529,7 @@ a:focus-visible,summary:focus-visible {
 
 .schedule-note div>span {
   font-size: 8px;
-  color: #7f826b;
+  color: #737373;
 }
 
 .workspace-figure figcaption {
@@ -547,7 +537,7 @@ a:focus-visible,summary:focus-visible {
   bottom: 0;
   left: 5px;
   font-size: 8px;
-  color: #8c9686;
+  color: #858585;
 }
 
 .connection-strip {
@@ -579,7 +569,7 @@ a:focus-visible,summary:focus-visible {
 .connection-strip b {
   font-size: 15px;
   font-weight: 400;
-  color: #95aa7b;
+  color: #888888;
 }
 
 .section-space {
@@ -617,9 +607,9 @@ a:focus-visible,summary:focus-visible {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 70px;
-  background: #eaf0e1;
-  border: 1px solid #e0e6d7;
-  border-radius: 16px;
+  background: #fdfdfd;
+  border: 1px solid #cccccc;
+  border-radius: 10px;
   padding: 48px 55px;
 }
 
@@ -627,7 +617,7 @@ a:focus-visible,summary:focus-visible {
   display: inline-block;
   font-size: 10px;
   letter-spacing: 1px;
-  color: #6d8065;
+  color: #686868;
   margin-bottom: 19px;
 }
 
@@ -642,7 +632,7 @@ a:focus-visible,summary:focus-visible {
 .feature-copy>p,.feature-pair article>p {
   font-size: 12px;
   line-height: 2.1;
-  color: #677661;
+  color: #686868;
   max-width: 390px;
   margin: 0;
 }
@@ -657,8 +647,8 @@ a:focus-visible,summary:focus-visible {
 
 .mode-list>span {
   font-size: 9px;
-  background: #f6f8f0;
-  border: 1px solid #d8e2c9;
+  background: #f7f7f7;
+  border: 1px solid #d5d5d5;
   border-radius: 5px;
   padding: 5px 9px;
 }
@@ -666,10 +656,9 @@ a:focus-visible,summary:focus-visible {
 .course-demo {
   align-self: center;
   padding: 24px;
-  background: #f9fbf5;
-  border: 1px solid #dce5d2;
+  background: #fafafa;
+  border: 1px solid #d2d2d2;
   border-radius: 10px;
-  box-shadow: 0 8px 20px #183d3405;
 }
 
 .course-demo-heading {
@@ -684,7 +673,7 @@ a:focus-visible,summary:focus-visible {
   align-items: center;
   gap: 9px;
   padding: 12px;
-  background: #ebf0e3;
+  background: #eeeeee;
   border-radius: 6px;
   font-size: 11px;
 }
@@ -692,27 +681,27 @@ a:focus-visible,summary:focus-visible {
 .folder-label {
   font-size: 7px;
   margin-left: auto;
-  color: #78866e;
+  color: #777777;
 }
 
 .course-threads {
   display: grid;
   gap: 4px;
   margin: 7px 0 14px 21px;
-  border-left: 1px solid #d7e1cc;
+  border-left: 1px solid #d0d0d0;
   padding-left: 10px;
 }
 
 .course-threads>span {
   font-size: 10px;
   padding: 9px 12px;
-  color: #77856e;
+  color: #777777;
 }
 
 .course-threads .active {
-  background: #e1edcc;
+  background: #e5e5e5;
   border-radius: 5px;
-  color: #2d5139;
+  color: #2c2c2c;
 }
 
 .course-threads i {
@@ -727,7 +716,7 @@ a:focus-visible,summary:focus-visible {
 }
 
 .course-demo>p {
-  color: #87927d;
+  color: #7e7e7e;
   font-size: 9px;
   margin: 22px 0 0;
 }
@@ -742,26 +731,26 @@ a:focus-visible,summary:focus-visible {
 .feature-pair article {
   padding: 40px 42px;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 10px;
   overflow: hidden;
 }
 
 .schedule-feature {
-  background: #eef1f3;
+  background: #fafafa;
 }
 
 .tools-feature {
-  background: #f3eee5;
+  background: #fafafa;
 }
 
 .feature-pair article>p {
-  color: #73766e;
+  color: #707070;
 }
 
 .agenda-demo {
   margin-top: 28px;
   background: #fff;
-  border: 1px solid #dfe4e5;
+  border: 1px solid #d4d4d4;
   border-radius: 9px;
   padding: 9px 19px;
 }
@@ -774,12 +763,12 @@ a:focus-visible,summary:focus-visible {
 }
 
 .agenda-demo>div+div {
-  border-top: 1px solid #eff1ee;
+  border-top: 1px solid #eeeeee;
 }
 
 .agenda-demo time {
   font-size: 10px;
-  color: #7c898a;
+  color: #777777;
   font-variant-numeric: tabular-nums;
   width: 33px;
 }
@@ -788,15 +777,15 @@ a:focus-visible,summary:focus-visible {
   width: 3px;
   height: 31px;
   border-radius: 2px;
-  background: #5aade3;
+  background: #4a4a4a;
 }
 
 .agenda-line.tutorial {
-  background: #76be6c;
+  background: #999999;
 }
 
 .agenda-line.deadline {
-  background: #e99ba6;
+  background: #c2c2c2;
 }
 
 .agenda-demo div>span:last-child {
@@ -811,13 +800,13 @@ a:focus-visible,summary:focus-visible {
 
 .agenda-demo small {
   font-size: 8px;
-  color: #8b9692;
+  color: #858585;
 }
 
 .demo-caption {
   display: block;
   font-size: 8px;
-  color: #8b9692;
+  color: #858585;
   margin-top: 8px;
 }
 
@@ -827,16 +816,15 @@ a:focus-visible,summary:focus-visible {
   gap: 12px;
   max-width: 335px;
   margin: 31px auto 0;
-  transform: rotate(-3deg);
 }
 
 .demo-paper {
   grid-row: span 2;
-  background: #fffefb;
-  border: 1px solid #e4dfd0;
+  background: #ffffff;
+  border: 1px solid #cccccc;
   border-radius: 5px;
   padding: 17px;
-  box-shadow: 0 5px 10px #183d3408;
+  box-shadow: 0 5px 10px #20202008;
 }
 
 .document-demo span {
@@ -845,7 +833,7 @@ a:focus-visible,summary:focus-visible {
 }
 
 .demo-paper>span {
-  color: #799366;
+  color: #666666;
 }
 
 .demo-paper>strong {
@@ -860,7 +848,7 @@ a:focus-visible,summary:focus-visible {
   display: block;
   width: 100%;
   height: 3px;
-  background: #e6e8dc;
+  background: #e3e3e3;
   margin-top: 13px;
 }
 
@@ -869,43 +857,43 @@ a:focus-visible,summary:focus-visible {
 }
 
 .demo-sheet {
-  border: 1px solid #d6e1d1;
-  background: #eff5e7;
+  border: 1px solid #cccccc;
+  background: #f3f3f3;
   border-radius: 5px;
   padding: 12px;
 }
 
 .demo-sheet>span {
-  color: #7d916b;
+  color: #707070;
 }
 
 .sheet-grid {
   display: grid;
   grid-template-columns: repeat(3,1fr);
   margin-top: 9px;
-  border-top: 1px solid #d6e2ca;
-  border-left: 1px solid #d6e2ca;
+  border-top: 1px solid #d2d2d2;
+  border-left: 1px solid #d2d2d2;
 }
 
 .sheet-grid>* {
   height: 15px;
-  border-right: 1px solid #d6e2ca;
-  border-bottom: 1px solid #d6e2ca;
+  border-right: 1px solid #d2d2d2;
+  border-bottom: 1px solid #d2d2d2;
   text-align: center;
   font-size: 7px;
   font-weight: 400;
 }
 
 .sheet-grid b {
-  background: #e0ebd2;
+  background: #e3e3e3;
 }
 
 .demo-slide {
-  border: 1px solid #ded8bc;
-  background: #e9e4cb;
+  border: 1px solid #cccccc;
+  background: #e9e9e9;
   border-radius: 5px;
   padding: 12px;
-  color: #827a4e;
+  color: #5f5f5f;
 }
 
 .demo-slide>strong {
@@ -939,7 +927,7 @@ a:focus-visible,summary:focus-visible {
   display: grid;
   place-items: center;
   font-size: 26px;
-  color: #6d8065;
+  color: #686868;
   flex-shrink: 0;
 }
 
@@ -966,11 +954,11 @@ a:focus-visible,summary:focus-visible {
   font-size: 9px;
   letter-spacing: 1.2px;
   margin-left: auto;
-  color: #88947f;
+  color: #808080;
 }
 
 .getting-started {
-  background: #edf0e7;
+  background: #ebebeb;
   border-block: 1px solid var(--line);
 }
 
@@ -984,13 +972,13 @@ a:focus-visible,summary:focus-visible {
 }
 
 .steps li {
-  border-top: 1px solid #cad3c0;
+  border-top: 1px solid #c2c2c2;
   padding-top: 23px;
 }
 
 .step-number {
   font-size: 12px;
-  color: #839575;
+  color: #7a7a7a;
 }
 
 .steps h3 {
@@ -1038,7 +1026,7 @@ a:focus-visible,summary:focus-visible {
 }
 
 .faq-items summary>span {
-  color: #829474;
+  color: #707070;
   font-size: 18px;
 }
 
@@ -1055,19 +1043,19 @@ a:focus-visible,summary:focus-visible {
 }
 
 .closing-section {
-  background: #183d34;
-  border-radius: 17px;
+  background: #202020;
+  border-radius: 10px;
   padding: 57px 62px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 50px;
   overflow: hidden;
-  color: #f6f7f2;
+  color: #f4f4f4;
 }
 
 .closing-section .eyebrow {
-  color: #b6c6ad;
+  color: #bfbfbf;
   font-size: 9px;
 }
 
@@ -1082,7 +1070,7 @@ a:focus-visible,summary:focus-visible {
 .closing-bridge {
   width: 40%;
   max-width: 400px;
-  color: #a7c680;
+  color: #bdbdbd;
   opacity: .6;
 }
 
@@ -1100,7 +1088,7 @@ a:focus-visible,summary:focus-visible {
 
 .site-footer p {
   font-size: 10px;
-  color: #839079;
+  color: #808080;
   margin: 0;
 }
 
@@ -1415,7 +1403,6 @@ a:focus-visible,summary:focus-visible {
   .workspace-preview {
     grid-template-columns: 80px 1fr;
     min-height: 350px;
-    transform: rotate(-.7deg);
   }
   .preview-sidebar {
     padding: 17px 6px;

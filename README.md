@@ -27,7 +27,9 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, in
 ## Website entry paths
 
 The bare domain serves `public/landing.html` with its own responsive styles and
-no application scripts or account requests. All **进入 StudyBridge / 开始使用**
+no application scripts or account requests. Its neutral white/light-gray surfaces,
+charcoal text and thin frames are independent of saved learning-space themes.
+All **进入 StudyBridge / 开始使用**
 links point to `/app`, where the server checks the existing session cookie.
 `/login` serves the existing authentication UI and sends an already authenticated
 visitor to `/app`. Login and registration continue in the learning space;

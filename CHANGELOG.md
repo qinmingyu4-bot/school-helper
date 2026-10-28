@@ -2,6 +2,8 @@
 
 ## 2026-10-28
 
+- Restyle the introduction homepage in neutral white, light gray and charcoal, replacing every green and colored demo accent. Add a thin header divider, simplify the headline underline and straighten the framed previews with lighter shadows. Retain mobile layouts, content and entry/login routing. Verify 5 entry-route regression tests, 177-file syntax/asset checks, neutral-only color values, and desktop/390 px browser layouts without overflow. Prepared on the review branch without deployment.
+
 - Add a responsive StudyBridge introduction homepage at `/`, with upper-right **进入 StudyBridge** and **开始使用** links into `/app`. Route guests to `/login` and valid sessions directly into the learning space; keep the homepage accessible to both. Retain existing account, registration, course, schedule, tools, appearance and data behavior. Preserve legacy root/index bookmarks and requested pages through login, return Google sign-in to the appropriate entry, show escaped OAuth errors and link login back to the homepage. Prepared on a task branch for review; no AWS deployment.
 - Validate 253 passing automated tests and 177-file syntax/asset/version checks, including isolated HTTP checks for authenticated/guest/revoked sessions, legacy bookmarks and simulated Google callbacks. Verify desktop and 390 px mobile layouts, 320 px overflow bounds, homepage entry before/after login, logout, legacy schedule-page restoration, feature anchors and expandable FAQs in Chrome with an isolated temporary database.
 

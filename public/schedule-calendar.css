@@ -21,7 +21,7 @@
 .planner-weekdays, .planner-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .planner-weekdays { color: var(--muted); font-size: 12px; text-align: center; padding: 4px 0 10px; }
 .planner-grid { gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-.planner-grid .planner-day { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0; min-height: 76px; padding: 7px 5px; border: 0; border-radius: 0; background: var(--panel, #fff); color: var(--ink); text-align: left; font-weight: 400; box-shadow: none; }
+.planner-grid .planner-day { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0; min-height: 116px; padding: 7px 5px; border: 0; border-radius: 0; background: var(--panel, #fff); color: var(--ink); text-align: left; font-weight: 400; box-shadow: none; }
 .planner-day:hover { background: #f4f8f7; }
 .planner-grid .planner-day.is-outside { background: #f7f9fb; color: #8995a3; }
 .planner-grid .planner-day.is-selected { background: #eef7f3; box-shadow: inset 0 0 0 2px var(--green); }

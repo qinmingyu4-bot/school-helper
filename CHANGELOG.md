@@ -2,6 +2,10 @@
 
 ## 2026-10-28
 
+- Release `1.1.104`: publish the owner-tested three-entry calendar cells with increased desktop space and accurate overflow counts. Refresh frontend/cache versions; retain the deployed community upgrade and all saved schedules/accounts. Code rollback target: `bf6b9e6` (`1.1.103`).
+
+- Show up to three schedule entries directly in each calendar date cell, increase desktop cell space to accommodate them, and count only entries beyond the third in the overflow indicator. Keep compact mobile dots/counts and full day details.
+
 - Release `1.1.103`: deploy the owner-approved community upgrade: explicit multi-channel anonymous posts, concurrent/idempotent likes, paginated history/search, anonymous replies, deletion and private reply notifications. Refresh package/frontend/cache versions and retain `4c2bcf7` (`1.1.102`) as the previous code release. Preserve existing accounts and study/calendar data; cloud historical community indexing advances in bounded restart-safe pages.
 
 - Add explicit multi-channel community publishing with one shared discussion and consistent anonymity; omit profile school/major metadata from public posts. Add anonymous replies, author/admin deletion of posts and replies, channel topic/body search, and private paginated reply notifications with read tracking and discussion links.

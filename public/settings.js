@@ -7,6 +7,7 @@
   // Categories and their persistent panels form the extension point for future settings.
   const sections = Object.freeze([
     { id: "account", name: "账号与资料", hint: "个人信息与登录", icon: "◎", group: "你的账号" },
+    { id: "security", name: "账号安全", hint: "设置或修改网站密码", icon: "◇", group: "你的账号" },
     { id: "learning", name: "学习与 AI", hint: "回答语言与学习方式", icon: "✦", group: "偏好设置" },
     { id: "appearance", name: "外观与显示", hint: "界面色调", icon: "◐", group: "偏好设置" },
     { id: "reminders", name: "课程与提醒", hint: "课程资料与截止日期", icon: "◷", group: "学习空间" },
@@ -21,7 +22,7 @@
   }
 
   function createView({ document: doc = document, themes, version, getUser, getContext, getAppearance, flushAppearance,
-    learning, saveProfile, requestPasswordReset, navigate, logout }) {
+    learning, saveProfile, loadSecurity, savePassword, requestPasswordReset, navigate, logout }) {
     const dialog = doc.createElement("dialog");
     dialog.className = "settings-dialog";
     dialog.setAttribute("aria-labelledby", "settings-title");
@@ -37,7 +38,13 @@
       <div class="settings-content"><button type="button" class="settings-back">‹ 返回设置</button>
         <section id="settings-panel-account" class="settings-panel" aria-labelledby="settings-account-heading">${heading("account", "管理你的个人信息，让学习与交流更贴近你。")}
           <form class="settings-profile-form"><div class="settings-block"><h4>基本资料</h4><div class="settings-fields"><label>显示姓名<input name="name" required maxlength="80" autocomplete="name"></label><label>SB ID<input name="sbId" placeholder="例如 adam2026" required maxlength="8" pattern="[A-Za-z0-9]{1,8}" title="1–8 位数字或字母，区分大小写"></label><label>学校<input name="school" maxlength="160" autocomplete="organization"></label><label>专业<input name="major" maxlength="160"></label></div><p class="settings-caption">学校、专业和 SB ID 会用于个人资料与同学功能。</p><div class="settings-form-actions"><span class="settings-profile-status" role="status"></span><button type="submit" class="settings-primary">保存资料</button></div></div></form>
-          <div class="settings-block"><h4>登录与安全</h4><div class="settings-row"><div><strong>登录邮箱</strong><small class="settings-login-email"></small></div><span class="settings-static-value">当前账号</span></div><div class="settings-row"><div><strong>头像与封面</strong><small>在个人资料页上传或替换图片。</small></div><button type="button" data-settings-route="profile">管理图片 ↗</button></div><div class="settings-row"><div><strong>密码帮助</strong><small>提交重置申请后，请联系创作者获取临时密码。</small></div><button type="button" class="settings-password-reset">申请重置</button></div><p class="settings-password-status settings-caption" role="status"></p></div>
+          <div class="settings-block"><h4>登录与资料</h4><div class="settings-row"><div><strong>登录邮箱</strong><small class="settings-login-email"></small></div><span class="settings-static-value">当前账号</span></div><div class="settings-row"><div><strong>头像与封面</strong><small>在个人资料页上传或替换图片。</small></div><button type="button" data-settings-route="profile">管理图片 ↗</button></div><div class="settings-row"><div><strong>网站密码</strong><small>在「账号安全」中设置或修改密码。</small></div><button type="button" data-settings-open="security">管理密码 ›</button></div></div>
+        </section>
+        <section id="settings-panel-security" class="settings-panel" aria-labelledby="settings-security-heading" hidden>${heading("security", "管理网站密码；Google 与邮箱密码登录使用同一个账号。")}
+          <div class="settings-block"><h4>登录方式</h4><div class="settings-row"><div><strong>登录邮箱</strong><small class="settings-security-email"></small></div><span class="settings-static-value">同一个账号</span></div><div class="settings-row"><div><strong>Google 登录</strong><small class="settings-google-status">正在读取…</small></div></div><div class="settings-row"><div><strong>网站密码</strong><small class="settings-password-state">正在读取…</small></div></div></div>
+          <div class="settings-block"><h4 class="settings-password-title">网站密码</h4><p class="settings-security-status settings-caption" role="status" aria-live="polite"></p><button type="button" class="settings-security-retry" hidden>重新读取</button><a class="settings-google-reauth" href="/api/auth/google/start" hidden>重新用 Google 验证</a>
+            <form class="settings-password-form"><input name="username" type="email" autocomplete="username" readonly hidden><fieldset class="settings-password-fields" disabled><label class="settings-current-password" hidden>当前密码<input name="currentPassword" type="password" autocomplete="current-password" maxlength="1024"></label><label>新密码<input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required aria-describedby="settings-password-help"></label><label>确认新密码<input name="passwordConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label><p id="settings-password-help" class="settings-caption">使用 8–128 个字符。这是 StudyBridge 的网站密码，与 Google 密码分开管理。</p><p class="settings-caption">保存后当前设备保持登录，其他设备需重新登录。账号资料、课程和 Google 登录保持不变。</p><div class="settings-form-actions"><span class="settings-password-save-status" role="status" aria-live="polite"></span><button type="submit" class="settings-primary">设置密码</button></div></fieldset></form>
+          </div><div class="settings-block"><h4>忘记网站密码？</h4><p class="settings-caption">已有密码但忘记时，可以提交重置申请，联系创作者获取临时密码。</p><button type="button" class="settings-password-reset">申请重置</button><p class="settings-password-status settings-caption" role="status"></p></div>
         </section>
         <section id="settings-panel-learning" class="settings-panel" aria-labelledby="settings-learning-heading" hidden>${heading("learning", "告诉学习搭子，你希望怎样理解和回答问题。")}
           <div class="settings-block"><h4>回答与讲解</h4><p class="settings-caption">仅用于课程学习、作业、考试和学术写作。日常问题按提问语言自然回答，必要的英文缩写照常保留。</p><label class="settings-toggle-row"><span><strong>保留 English terms</strong><small>中文讲解中保留有用的英文术语。</small></span><input type="checkbox" data-settings-pref="englishTerms" role="switch"></label><label class="settings-toggle-row"><span><strong>英文作答 / 英文草稿</strong><small>最终答案或草稿使用英文。</small></span><input type="checkbox" data-settings-pref="englishAnswers" role="switch"></label><label class="settings-toggle-row"><span><strong>中文拆解 reasoning</strong><small>用中文讲解概念、步骤与解题理由。</small></span><input type="checkbox" data-settings-pref="chineseExplanations" role="switch"></label></div>
@@ -58,6 +65,7 @@
         </section>
       </div></div>`;
     let profileDirty = false, disposed = false, learningTimer = 0;
+    let security = null, securityGeneration = 0, passwordPending = false;
     const currentUserId = String(getUser().id);
     const active = () => !disposed && String(getUser()?.id || "") === currentUserId;
     const form = dialog.querySelector(".settings-profile-form");
@@ -71,6 +79,65 @@
       if (!profileDirty) for (const key of ["name", "school", "major", "sbId"]) form.elements[key].value = key === "name" ? user.name : p[key] || "";
       dialog.querySelector(".settings-course-count").textContent = `当前账号有 ${getContext().courseCount} 门课程；在「学习」中管理资料和对话。`;
     }
+    const passwordForm = dialog.querySelector(".settings-password-form");
+    const passwordFields = dialog.querySelector(".settings-password-fields");
+    function clearPasswords() { for (const key of ["currentPassword", "password", "passwordConfirm"]) passwordForm.elements[key].value = ""; }
+    function renderSecurity() {
+      if (!active()) return;
+      passwordForm.elements.username.value = getUser().email;
+      dialog.querySelector(".settings-security-email").textContent = getUser().email;
+      dialog.querySelector(".settings-google-status").textContent = security ? security.googleLinked ? "已绑定，可继续使用 Google 登录。" : "尚未绑定；可以使用与注册邮箱相同的 Google 账号登录。" : "正在读取…";
+      dialog.querySelector(".settings-password-state").textContent = security ? security.hasPassword ? "已设置，可使用邮箱和网站密码登录。" : "尚未设置，目前使用 Google 登录。" : "正在读取…";
+      dialog.querySelector(".settings-password-title").textContent = security?.hasPassword ? "修改网站密码" : "设置网站密码";
+      dialog.querySelector(".settings-current-password").hidden = !security?.hasPassword;
+      passwordForm.elements.currentPassword.required = Boolean(security?.hasPassword);
+      passwordForm.querySelector('button[type="submit"]').textContent = passwordPending ? "正在保存…" : security?.hasPassword ? "修改密码" : "设置密码";
+      passwordFields.disabled = passwordPending || !security || security.needsGoogleReauth;
+      dialog.querySelector(".settings-google-reauth").hidden = !security?.needsGoogleReauth;
+    }
+    async function readSecurity() {
+      const generation = ++securityGeneration;
+      security = null; renderSecurity();
+      dialog.querySelector(".settings-security-retry").hidden = true;
+      setStatus(".settings-security-status", "正在读取账号安全…");
+      try {
+        const value = await loadSecurity();
+        if (!active() || generation !== securityGeneration) return;
+        security = value; renderSecurity();
+        setStatus(".settings-security-status", value.needsGoogleReauth ? "为确认是你本人，请先重新使用 Google 登录，再回来设置网站密码。" : "");
+      } catch (error) {
+        if (!active() || generation !== securityGeneration) return;
+        setStatus(".settings-security-status", error.message || "读取失败，请重试。", true);
+        dialog.querySelector(".settings-security-retry").hidden = false;
+      }
+    }
+    dialog.querySelector(".settings-security-retry").addEventListener("click", readSecurity);
+    passwordForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (passwordPending || !active() || !security || security.needsGoogleReauth) return;
+      if (passwordForm.elements.password.value !== passwordForm.elements.passwordConfirm.value) {
+        setStatus(".settings-password-save-status", "两次输入的新密码不一致。", true); return;
+      }
+      const changing = security.hasPassword;
+      const values = { userId: currentUserId, currentPassword: passwordForm.elements.currentPassword.value,
+        password: passwordForm.elements.password.value, passwordConfirm: passwordForm.elements.passwordConfirm.value };
+      passwordPending = true; renderSecurity(); setStatus(".settings-password-save-status", "正在保存…");
+      try {
+        const result = await savePassword(values, security.csrfToken);
+        if (!active()) return;
+        security = result; clearPasswords();
+        setStatus(".settings-password-save-status", changing ? "密码已修改。请在下次邮箱登录时使用新密码。" : "密码已设置，现在可以使用邮箱和网站密码登录同一个账号。");
+      } catch (error) {
+        if (!active()) return;
+        clearPasswords(); setStatus(".settings-password-save-status", error.message || "保存失败，请重试。", true);
+        // A session/Google verification may have expired while this panel was open.
+        if ([401, 403, 409].includes(error.status)) await readSecurity();
+      } finally {
+        values.currentPassword = values.password = values.passwordConfirm = "";
+        passwordPending = false; renderSecurity();
+      }
+    });
+    dialog.addEventListener("close", clearPasswords);
     function refreshLearning() {
       if (!active()) return;
       const value = learning.snapshot();
@@ -115,12 +182,15 @@
       finally { if (active()) button.disabled = false; }
     });
     dialog.querySelectorAll("[data-settings-section]").forEach((button) => button.addEventListener("click", () => {
+      clearPasswords(); setStatus(".settings-password-save-status", "");
       dialog.querySelectorAll("[data-settings-section]").forEach((item) => { if (item === button) item.setAttribute("aria-current", "page"); else item.removeAttribute("aria-current"); });
       dialog.querySelectorAll(".settings-panel").forEach((panel) => { panel.hidden = panel.id !== button.getAttribute("aria-controls"); });
       dialog.dataset.detail = "true"; dialog.querySelector(".settings-content").scrollTop = 0;
       refreshUser(); refreshLearning();
+      if (button.dataset.settingsSection === "security" && !passwordPending) void readSecurity();
     }));
-    dialog.querySelector(".settings-back").addEventListener("click", () => { delete dialog.dataset.detail; dialog.querySelector('[aria-current="page"]').focus(); });
+    dialog.querySelectorAll("[data-settings-open]").forEach((button) => button.addEventListener("click", () => dialog.querySelector(`[data-settings-section="${button.dataset.settingsOpen}"]`).click()));
+    dialog.querySelector(".settings-back").addEventListener("click", () => { clearPasswords(); delete dialog.dataset.detail; dialog.querySelector('[aria-current="page"]').focus(); });
     dialog.querySelectorAll("[data-settings-route]").forEach((button) => button.addEventListener("click", async () => {
       await saveLearning(); if (!active()) return;
       dialog.close(); await navigate(button.dataset.settingsRoute);
@@ -132,9 +202,9 @@
       setTimeout(() => doc.defaultView.URL.revokeObjectURL(url), 1000);
       setStatus(".settings-export-status", "已导出当前选择的偏好副本。");
     });
-    dialog.refreshSettings = () => { refreshUser(); refreshLearning(); };
+    dialog.refreshSettings = () => { refreshUser(); refreshLearning(); if (dialog.querySelector('[data-settings-section="security"]').hasAttribute("aria-current") && !passwordPending) void readSecurity(); };
     dialog.refreshLearning = refreshLearning;
-    dialog.disposeSettings = () => { disposed = true; clearTimeout(learningTimer); };
+    dialog.disposeSettings = () => { disposed = true; ++securityGeneration; clearPasswords(); clearTimeout(learningTimer); };
     refreshUser(); refreshLearning();
     return dialog;
   }

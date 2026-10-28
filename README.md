@@ -50,6 +50,19 @@ Session-dependent page redirects use `Cache-Control: no-store`.
 Preview this change with an isolated local database. Push review work to a task
 branch: pushing to `main` triggers the AWS deployment workflow.
 
+## Mobile navigation
+
+At widths up to 700 px, the student app uses a main menu and separate full-screen
+pages for Community, Classmates, Schedule, Study and Tools. Opening an entry slides
+the page in from the right. **主菜单** in the upper left returns to the menu;
+the browser Back button also returns after opening a menu entry. Returning and
+reopening the same page retains its mounted forms, selected files and unsent chat
+text. A bare `/app` starts at the menu; explicit `?page=...` links open their page.
+Study opens directly to chat; **课程与资料** opens course selection, shared materials
+and learning preferences, with a separate return to Study. Larger layouts and the
+creator console keep their existing navigation. Reduced-motion preferences disable
+the slide transition.
+
 ## Manual Office editors
 
 Tools opens Docs, Slides and Sheets in **自主编辑** mode. **AI 文件生成** retains the existing file-generation and revision workflow; Images and Cheatsheet PDF are unchanged.

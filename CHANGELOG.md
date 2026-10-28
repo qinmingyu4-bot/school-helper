@@ -2,6 +2,9 @@
 
 ## 2026-10-28
 
+- Add mobile-only main-menu navigation at widths up to 700 px: all five student destinations open as full-screen pages sliding in from the right, with an upper-left return and browser Back support. Keep the current page mounted when returning/reopening so forms, file selections and unsent chat text survive. Open Study directly to chat and move course selection/materials/preferences into a separate accessible panel. Preserve larger-screen and creator-console layouts, account themes and existing data. Prepared on a task branch without AWS deployment.
+- Validate 316 passing automated tests and 201-file syntax/assets/version checks. Browser checks cover 320/390/430 px layouts, all five destinations, direct page links, browser Back/Forward, retained unsent chat and schedule text/disclosures/scroll position, and matching 1280 px desktop Study/Tools geometry against the unchanged application using isolated fixture accounts.
+
 - Release `1.1.120`: publish the owner-approved agenda filter scroll fix with trailing space for short/empty results and restored schedule scroll position across redraws. Refresh frontend/cache versions; retain all accounts, schedules, course management and preferences. Previous production code: `33e3058` (`1.1.119`).
 
 - Keep the full-agenda area at least one viewport tall with natural-height cards and trailing blank space for short/empty filters. Restore the schedule page's scroll position across redraws so switching from a long list to a single item does not push the filter controls down the screen.

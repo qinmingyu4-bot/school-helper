@@ -34,6 +34,7 @@
   const communityReplies = window.StudyBridgeCommunityReplies.createController({ api, getUser: () => state.user, onChange: updateCommunityThread });
 
   const root = document.getElementById("root");
+  const mobileNavigation = window.StudyBridgeMobileNavigation.create({ navigate: (page) => loadPage(page) });
   const brandMarkHtml = () => `<span class="sb-brand-symbol" aria-hidden="true"><img class="sb-logo-monochrome" src="/brand/book-bridge-monochrome.svg" width="128" height="72" alt=""><img class="sb-logo-color" src="/brand/book-bridge-color.svg" width="128" height="72" alt=""></span>`;
   const appearanceController = window.StudyBridgeAppearance.createController({
     load: async () => (await api("/api/me/appearance")).appearance,
@@ -291,7 +292,7 @@
     if (page !== "classmates") stopClassmatesLive();
     if (page !== "tools") creativeTools.stop();
     localStorage.setItem("studybridge.page", page);
-    history.replaceState(null, "", `/app?page=${encodeURIComponent(page)}&v=${VERSION}`);
+    history.replaceState(mobileNavigation.historyState(), "", `/app?page=${encodeURIComponent(page)}&v=${VERSION}`);
   }
 
   function formatDate(value) {
@@ -454,7 +455,7 @@
     updateEmailCooldown();
   }
 
-  function sidebarHtml() {
+  function sidebarHtml(mobileOnly = false) {
     const p = profile();
     const navOrder = ["community", "classmates", "schedule", "study", "tools"];
     const userNav = navOrder.map((page) => navButton(page)).join("");
@@ -465,7 +466,8 @@
         </div>`
       : "";
     return `
-      <aside class="sidebar" data-sidebar-context="${esc(`${state.user.id}:${state.mode}:${state.page}`)}">
+      <aside class="sidebar${mobileOnly ? " mobile-chat-menu" : ""}" data-sidebar-context="${esc(`${state.user.id}:${state.mode}:${state.page}`)}">
+        <header class="mobile-study-bar"><button type="button" data-mobile-action="close-panel">‹ 返回学习</button><strong>课程与资料</strong></header>
         <header class="side-head">
           <div class="brand-mark">${brandMarkHtml()}</div>
           <div><strong>StudyBridge</strong><span>${esc(state.user.name)} | ${esc(state.user.email)}</span></div>
@@ -604,8 +606,9 @@
     const admin = state.mode === "admin";
     return `
       <div class="app-shell${fullChat ? " classmate-chat-shell" : ""}${admin ? " admin-shell" : ""}">
-        ${fullChat ? "" : sidebarHtml()}
+        ${sidebarHtml(fullChat)}
         <main class="workspace${state.mode !== "admin" && state.page === "study" ? " study-workspace" : ""}${state.mode !== "admin" && state.page === "classmates" ? " classmates-workspace" : ""}${fullChat ? " classmate-chat-workspace" : ""}${admin ? " admin-workspace" : ""}" id="workspace" data-course-id="${esc(state.activeCourseId)}" data-conversation-id="${esc(state.activeConversationId)}">
+          <header class="mobile-page-bar"><button type="button" data-mobile-action="menu" aria-label="返回主菜单">‹ 主菜单</button><strong>${esc(pageLabels[state.page]?.[1] || "StudyBridge")}</strong>${state.page === "study" ? '<button type="button" data-mobile-action="study-panel" aria-expanded="false">课程与资料</button>' : "<span></span>"}</header>
           ${content}
         </main>
       </div>
@@ -1798,6 +1801,7 @@
       localStorage.setItem(`studybridge.conversation.${state.user.id}.${courseId}`, state.activeConversationId);
     } catch { /* Storage may be disabled. */ }
     await loadPage("study");
+    mobileNavigation.closeStudyPanel();
   }
 
   async function loadStudy(isCurrent = () => true) {
@@ -2871,6 +2875,7 @@
     creativeTools.capture();
     const previousAdminWorkspace = root.querySelector(".admin-workspace");
     const previousAdminScroll = previousAdminWorkspace?.scrollTop || 0;
+    const previousMobilePageScroll = root.querySelector(".workspace")?.scrollTop || 0;
     const previousSidebar = root.querySelector(".sidebar");
     const previousSidebarContext = previousSidebar?.dataset.sidebarContext;
     const previousSidebarScroll = previousSidebar?.scrollTop || 0;
@@ -2924,11 +2929,13 @@
     creativeTools.restoreFocus();
     void officeTools.mount(creativeContext());
     if (state.toast && state.user) root.insertAdjacentHTML("beforeend", `<div class="toast">${esc(state.toast)}</div>`);
+    mobileNavigation.sync(root, { userId: state.user?.id, mode: state.mode, page: state.page });
     const sidebar = root.querySelector(".sidebar");
     if (sidebar && sidebar.dataset.sidebarContext === previousSidebarContext) {
       // Mobile sidebars scroll with the page instead of their own container.
       sidebar.scrollTop = previousSidebarScroll;
       if (sidebarUsesPageScroll) window.scrollTo(previousPageScroll.x, previousPageScroll.y);
+      if (mobileNavigation.snapshot().active) root.querySelector(".workspace").scrollTop = previousMobilePageScroll;
     }
     const adminWorkspace = root.querySelector(".admin-workspace");
     if (previousAdminWorkspace && adminWorkspace && sidebar?.dataset.sidebarContext === previousSidebarContext) {
@@ -2990,6 +2997,7 @@
     const pageTarget = event.target.closest("[data-page]");
     if (pageTarget) {
       event.preventDefault();
+      if (mobileNavigation.enter(pageTarget.dataset.page)) return;
       await loadPage(pageTarget.dataset.page);
       return;
     }

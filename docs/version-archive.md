@@ -10,6 +10,19 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.115 - 2026-10-28
+
+Purpose:
+- Clear and collapse manual schedule fields immediately after a successful save; retain complete drafts on validation/save failure. Show a distinct refresh warning after successful persistence to prevent duplicate additions.
+- Refresh frontend/cache versions, preserving all saved accounts, schedules and preferences.
+
+Validation:
+- Run full automated tests, source/assets/version checks and deployment-script syntax checks.
+- Use the existing verified private backup, unchanged-data checks and automatic code rollback deployment workflow.
+
+Rollback target:
+- `372b391` (1.1.114). Restore code only; retain current data and backups.
+
 ### 1.1.114 - 2026-10-28
 
 Purpose:

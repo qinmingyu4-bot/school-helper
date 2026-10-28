@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.114";
+  const VERSION = "1.1.115";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -446,7 +446,7 @@
     const active = state.page === page ? "active" : "";
     return `
       <button class="nav-card ${active}" data-page="${page}" ${active ? 'aria-current="page"' : ""}>
-        <span aria-hidden="true"><svg><use href="/classmates-icons.svg?v=1.1.114#nav-${esc(page)}"></use></svg></span>
+        <span aria-hidden="true"><svg><use href="/classmates-icons.svg?v=1.1.115#nav-${esc(page)}"></use></svg></span>
         <b>${esc(title)}</b>
         <small>${esc(page === "schedule" && nextDue() ? `${nextDue().title} · 还有 ${dueText(nextDue().startsAt)}` : sub)}</small>
       </button>
@@ -2592,6 +2592,13 @@
         const startsAt = `${day}T${$("scheduleClock")?.value || ""}`;
         const endClock = $("scheduleEndClock")?.value || "";
         const title = $("scheduleTitle")?.value.trim() || "";
+        // Capture the visible form before any validation or asynchronous save so
+        // failures can restore it even when a field did not emit an input event.
+        state.scheduleManualDraft = {
+          title: $("scheduleTitle")?.value || "", kind: $("scheduleKind")?.value || "EVENT", date: day,
+          time: $("scheduleClock")?.value || "", endTime: endClock,
+          course: $("scheduleCourse")?.value || "", location: $("scheduleLocation")?.value || "", notes: $("scheduleNotes")?.value || ""
+        };
         if (!title || !scheduleImport.validTime(startsAt)) throw new Error("请填写标题和有效日期、时间。");
         if (endClock && (!scheduleImport.validClock(endClock) || endClock <= startsAt.slice(11))) throw new Error("结束时间应晚于开始时间；跨天安排请分天添加。");
         cancelScheduleVoice();
@@ -2609,7 +2616,13 @@
         state.scheduleMonth = day.slice(0, 7);
         state.scheduleSaving = false;
         setToast("安排已保存，已同步到月历和完整日程。");
-        await loadPage("schedule");
+        if (state.page === "schedule") render();
+        try {
+          await loadScheduleItems();
+        } catch {
+          setToast("安排已保存，日历刷新暂未完成，请稍后刷新页面；无需重复添加。");
+        }
+        if (state.page === "schedule") render();
         } finally { state.scheduleSaving = false; button.disabled = false; }
         return;
       }

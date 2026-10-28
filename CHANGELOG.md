@@ -2,6 +2,10 @@
 
 ## 2026-10-28
 
+- Release `1.1.115`: clear and collapse manual schedule input immediately after saving, retain complete visible fields on validation/save failure and distinguish calendar refresh failure from save failure. Refresh frontend/cache versions; preserve accounts, schedules, security and appearance settings. Previous production code: `372b391` (`1.1.114`).
+
+- Clear and collapse the manual schedule form immediately after a successful save, independently of calendar refresh. Capture all visible fields before validation/save so errors retain a complete retryable draft; distinguish a refresh failure from a save failure to avoid duplicate additions.
+
 - Release `1.1.114`: collapse course-file import and clear uploaded file, extracted results and temporary semester settings after all confirmed batches save. Keep failures and partial saves retryable, preserve saved courses and unrelated quick-entry text. Refresh frontend/cache versions; previous production code: `b7271dc` (`1.1.113`).
 
 - Collapse course-file import after all confirmed batches save successfully; clear the uploaded file, extracted preview/source, recognized-course preview and temporary semester settings, and show a success toast. Retain file, preview and settings after failed or partial saves for retry; preserve saved courses and unrelated quick-entry text.

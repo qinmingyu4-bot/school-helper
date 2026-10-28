@@ -428,8 +428,9 @@ async function currentUser(req) {
     if (session) await db.deleteSession(tokenHash);
     return null;
   }
-  const user = await db.getUser(session.userId);
-  return user ? { user: withEffectiveRole(user), tokenHash } : null;
+  const user = await db.getUser(session.userId, { consistent: true });
+  if (!user || Number(session.passwordVersion || 0) !== Number(user.passwordVersion || 0)) return null;
+  return { user: withEffectiveRole(user), tokenHash, session };
 }
 
 async function requireUser(req, res) {
@@ -458,6 +459,15 @@ function validatePassword(password) {
 function validatePasswordPair(password, passwordConfirm) {
   if (!validatePassword(password)) throw new Error("Password must be at least 8 characters.");
   if (password !== passwordConfirm) throw new Error("The two passwords do not match.");
+}
+
+const accountPasswordAttempts = new Map();
+function accountSecurity(auth) {
+  const hasPassword = Boolean(auth.user.passwordHash);
+  const age = Date.now() - Date.parse(auth.session.createdAt);
+  return { hasPassword, googleLinked: Boolean(auth.user.googleSub),
+    needsGoogleReauth: !hasPassword && (!auth.user.googleSub || auth.session.authMethod !== "google" || !Number.isFinite(age) || age < 0 || age > 10 * 60 * 1000),
+    csrfToken: hashToken(`account-password:${auth.tokenHash}`) };
 }
 
 function compactDocumentText(text) {
@@ -1904,7 +1914,7 @@ async function signInWithGoogle(req, res, url) {
     }
 
     const token = createSessionToken();
-    await db.createSession({ tokenHash: hashToken(token), userId: user.id, expiresAt: Date.now() + SESSION_TTL_MS });
+    await db.createSession({ tokenHash: hashToken(token), userId: user.id, authMethod: "google", passwordVersion: Number(user.passwordVersion || 0), expiresAt: Date.now() + SESSION_TTL_MS });
     return redirect({ googleAuth: "ok" }, token);
   } catch (error) {
     return redirect({ authError: error.message || "Google login failed." });
@@ -2107,7 +2117,7 @@ async function routeApi(req, res) {
     try {
       validatePasswordPair(body.password, body.passwordConfirm);
       await verifyEmailCode(email, "password-reset", body.emailCode);
-      await db.updateUser(user.id, { passwordHash: hashPassword(body.password) });
+      await db.updatePassword(user.id, user.passwordHash, hashPassword(body.password));
       return sendJson(res, 200, { ok: true });
     } catch (error) {
       return sendError(res, 400, error.message);
@@ -2158,7 +2168,7 @@ async function routeApi(req, res) {
     }, inviteGrant.invite);
 
     const token = createSessionToken();
-    await db.createSession({ tokenHash: hashToken(token), userId: user.id, expiresAt: Date.now() + SESSION_TTL_MS });
+    await db.createSession({ tokenHash: hashToken(token), userId: user.id, passwordVersion: Number(user.passwordVersion || 0), expiresAt: Date.now() + SESSION_TTL_MS });
     return sendJson(res, 201, { user: publicUser(withEffectiveRole(user)) }, { "set-cookie": sessionCookie(token) });
   }
 
@@ -2168,7 +2178,7 @@ async function routeApi(req, res) {
     const user = await db.findUserByEmail(email);
     if (!user || !verifyPassword(body.password, user.passwordHash)) return sendError(res, 401, "Email or password is incorrect.");
     const token = createSessionToken();
-    await db.createSession({ tokenHash: hashToken(token), userId: user.id, expiresAt: Date.now() + SESSION_TTL_MS });
+    await db.createSession({ tokenHash: hashToken(token), userId: user.id, passwordVersion: Number(user.passwordVersion || 0), expiresAt: Date.now() + SESSION_TTL_MS });
     return sendJson(res, 200, { user: publicUser(withEffectiveRole(user)) }, { "set-cookie": sessionCookie(token) });
   }
 
@@ -2194,6 +2204,48 @@ async function routeApi(req, res) {
     const user = await requireUser(req, res);
     if (!user) return;
     return sendJson(res, 200, { user: publicUser(user) });
+  }
+
+  if (url.pathname === "/api/me/security" && method === "GET") {
+    const auth = await currentUser(req);
+    if (!auth) return sendError(res, 401, "登录已过期，请重新登录。");
+    return sendJson(res, 200, { security: accountSecurity(auth) }, { "cache-control": "private, no-store" });
+  }
+
+  if (url.pathname === "/api/me/password" && method === "POST") {
+    const auth = await currentUser(req);
+    if (!auth) return sendError(res, 401, "登录已过期，请重新登录。");
+    const security = accountSecurity(auth);
+    const csrf = String(req.headers["x-csrf-token"] || "");
+    if (!/^[a-f0-9]{64}$/.test(csrf) || !crypto.timingSafeEqual(Buffer.from(csrf), Buffer.from(security.csrfToken))
+      || !/^application\/json(?:;|$)/i.test(req.headers["content-type"] || "")) {
+      return sendError(res, 403, "请重新打开账号安全后再试。");
+    }
+    const body = await readJson(req);
+    if (body.userId !== auth.user.id) return sendError(res, 409, "登录账号已变更，请重新打开设置。");
+    if (typeof body.password !== "string" || body.password.length < 8 || body.password.length > 128) return sendError(res, 400, "新密码需要 8–128 个字符。");
+    if (body.password !== body.passwordConfirm) return sendError(res, 400, "两次输入的新密码不一致。");
+    const time = Date.now();
+    for (const [id, record] of accountPasswordAttempts) if (record.expires <= time) accountPasswordAttempts.delete(id);
+    const attempts = accountPasswordAttempts.get(auth.user.id) || { count: 0, expires: time + 15 * 60 * 1000 };
+    if (attempts.count >= 5) return sendError(res, 429, "当前密码验证次数过多，请 15 分钟后重试。");
+    if (security.hasPassword) {
+      if (typeof body.currentPassword !== "string" || body.currentPassword.length > 1024 || !verifyPassword(body.currentPassword, auth.user.passwordHash)) {
+        attempts.count++; accountPasswordAttempts.set(auth.user.id, attempts);
+        return sendError(res, 400, "当前密码不正确。");
+      }
+      if (verifyPassword(body.password, auth.user.passwordHash)) return sendError(res, 400, "新密码不能与当前密码相同。");
+    } else if (security.needsGoogleReauth) {
+      return sendJson(res, 409, { error: "请先重新使用 Google 登录，再设置网站密码。", code: "GOOGLE_REAUTH_REQUIRED" });
+    }
+    const updated = await db.updatePassword(auth.user.id, auth.user.passwordHash, hashPassword(body.password));
+    const token = createSessionToken();
+    await db.createSession({ tokenHash: hashToken(token), userId: updated.id,
+      passwordVersion: updated.passwordVersion, expiresAt: Date.now() + SESSION_TTL_MS });
+    await db.deleteSession(auth.tokenHash);
+    accountPasswordAttempts.delete(updated.id);
+    const nextAuth = { user: updated, tokenHash: hashToken(token), session: {} };
+    return sendJson(res, 200, { security: accountSecurity(nextAuth) }, { "set-cookie": sessionCookie(token), "cache-control": "private, no-store" });
   }
 
   if (url.pathname === "/api/me/profile" && method === "PUT") {
@@ -2468,7 +2520,7 @@ async function routeApi(req, res) {
     const user = request.userId ? await db.getUser(request.userId) : await db.findUserByEmail(request.email);
     if (!user) return sendError(res, 404, "Student account not found.");
     const temporaryPassword = createTemporaryPassword();
-    await db.updateUser(user.id, { passwordHash: hashPassword(temporaryPassword) });
+    await db.updatePassword(user.id, user.passwordHash, hashPassword(temporaryPassword));
     const updated = await db.updateInvite(request.id, {
       active: false,
       status: "completed",

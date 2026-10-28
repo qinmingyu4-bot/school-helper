@@ -10,18 +10,31 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
-### 1.1.110 - 2026-10-28
+### 1.1.111 - 2026-10-28
 
 Purpose:
 - Release the optional **黑白灰简约** palette (`118b744`) under Settings → 外观与显示 → 界面色调.
 - Keep all seven original palettes, existing default behavior, saved per-account selections and independent dark mode. No account/data migration, appearance reset or automatic selection of the new option.
 
 Validation:
-- Passed 256 regression tests, 181-file source/assets/version checks and deployment-script syntax. Covers retention of an existing graphite/dark-mode choice across restart, alongside saving the new option and account isolation.
+- Passed 266 regression tests, 182-file source/assets/version checks and deployment-script syntax. Covers retention of an existing graphite/dark-mode choice across restart, alongside saving the new option and account isolation.
 - Require production dependency audit and verified private backup before installation; compare the original account's palette/mode and course list after deployment without changing its selection.
 
 Rollback target:
-- `fc0cc7d` (1.1.109). Restore code only and retain current account data and backups.
+- `6e665ce` (1.1.110 with account security). Restore code only and retain current account data and backups.
+
+### 1.1.110 - 2026-10-28
+
+Purpose:
+- Release the owner-approved Account Security settings (`bf4a641`), allowing Google-first users to set a website password and existing password users to change it with current-password verification.
+- Keep Google/password login on the original account, retain SB IDs, saved data and recovery, and preserve legacy sessions until a password is changed. Add CSRF/account checks, atomic password writes and credential-version session revocation.
+
+Validation:
+- Passed 266 automated tests and 182-file source/assets/version checks; isolated desktop and 390 px previews cover password setup/change modes and expired-Google re-verification prompts.
+- Require the existing production dependency-audit gate and verified private database/configuration/files backup before installation. Verify production health, versioned assets, retained account settings and enabled Google sign-in after publishing.
+
+Rollback target:
+- `fc0cc7d` (1.1.109). Restore application code only; retain production accounts, data and private backups.
 
 ### 1.1.109 - 2026-10-28
 

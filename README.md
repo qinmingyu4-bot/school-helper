@@ -175,8 +175,7 @@ left and persistent detail panels on the right, or a category list with back
 navigation on mobile. **退出登录** remains inside Settings. Categories are:
 
 - **账号与资料:** edit name, school, major and SB ID with explicit save; inspect the
-  login email, open avatar/cover management, and request the existing manual
-  password-reset workflow. Existing avatar/cover images are retained on text saves.
+  login email and open avatar/cover management. Existing avatar/cover images are retained on text saves.
   New accounts (email or Google) receive an eight-character alphanumeric SB ID on
   the server during registration. Custom SB IDs accept 1–8 ASCII letters/digits,
   are case-sensitive and unique; classmate requests use the exact case, including
@@ -184,6 +183,15 @@ navigation on mobile. **退出登录** remains inside Settings. Categories are:
   School fields in Profile and Settings suggest full names from the bundled catalog
   when typing a name, abbreviation (such as UofT/UBC) or Chinese alias. Select by
   click or arrow keys and Enter; unlisted schools can still be entered manually.
+- **账号安全:** Google-first accounts can add a StudyBridge website password after a
+  Google sign-in within the last ten minutes; older or legacy sessions prompt a
+  fresh Google login. Accounts with a website password must supply their current
+  password to change it. The password is 8–128 characters and must be confirmed.
+  Google and email/password sign-in continue to use the same account, SB ID and
+  saved data. Saving rotates the current session and invalidates other sessions;
+  Google remains linked. Forgotten passwords retain the creator-assisted recovery
+  flow. Password fields clear on close/category change and are never auto-saved,
+  exported, cached in browser storage, or returned by the API.
 - **学习与 AI:** change independent English-term, English-answer and Chinese-explanation
   choices plus custom instructions. Uses the same serialized saver as the Study
   Area sidebar, with automatic save, synchronized controls and failure/retry status.
@@ -207,6 +215,18 @@ Category switches preserve form drafts. Opening Settings and changing themes do
 not rebuild the current page or interrupt attachments and active replies. Closing
 and reopening Settings retains unsaved profile edits until logout. Category
 definitions and panel builders in `public/settings.js` allow future expansion.
+
+`GET /api/me/security` returns only password/Google availability, fresh-Google
+verification status and a session-bound CSRF token with `private, no-store`.
+`POST /api/me/password` requires the same session's token, JSON content, the current
+account ID, and either the current password or a fresh Google-only session. Five
+incorrect current-password attempts block further attempts for fifteen minutes
+per account in the running server. Password writes compare the authenticated hash
+inside the local transaction or DynamoDB conditional write, preserve unrelated
+fields, and increment a credential version. Legacy users/sessions default to
+version zero until a password changes. All new sessions carry that version; old
+versions are rejected, including after existing email/manual password recovery.
+Secrets and password hashes never appear in account responses.
 
 `GET/PUT /api/me/appearance` stores an allowlisted theme and optional `mode: "dark"`
 independently of Learning Style and profile data, in local `appearances` or DynamoDB's user-owned

@@ -2,6 +2,8 @@
 
 ## 2026-10-28
 
+- Add pre-deployment checks for task branches/pull requests and a documented regression matrix covering all existing release workflows. Verify 240 passing tests, 172-file syntax/asset/version checks and isolated Chrome checks for late-response draft retention, all six pages, existing Docs/Sheets/Slides projects, seven daytime palettes, saved dark mode, admin access and a 390 px Settings view. Preserve seeded legacy records and course content. Password-reset/email fallback behavior remains unchanged at the owner's request. Prepared on `codex/data-navigation-integrity`; no AWS deployment or production-data changes.
+
 - Apply the same request lifetime to every page: reject stale data/errors/completion after navigation or account changes, preserve newer loading state and inputs, and load the normalized destination of legacy saved routes. Retain the existing community/classmates lifecycle, chat identities and background streamed replies.
 
 - Prepare an integrity repair from `1.1.106` (`caf5c5f`): preserve existing data formats and release features while preventing concurrent account saves from overwriting unrelated fields, retrying conditional DynamoDB account conflicts, and following every cloud directory scan page, including filtered empty pages.

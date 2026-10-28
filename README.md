@@ -468,10 +468,45 @@ npm audit --omit=dev
 ```
 
 Tests use isolated temporary databases and disable external AI, email, and Google services.
-Pushes to `main` run these checks before the Lightsail deployment. Historical one-time
+Task-branch pushes and pull requests run syntax/assets/version checks, the full test
+suite and the high-severity production dependency audit without deploying. Pushes
+to `main` run these checks before the Lightsail deployment. Historical one-time
 hotfix workflows are preserved in `.github/legacy-workflows` and no longer run automatically
 or overwrite the checked source. Some archived definitions contain invalid YAML and are
 kept only as historical references.
+
+### Data and navigation integrity
+
+The integrity fixes start from release `1.1.106` (`caf5c5f`) and retain the existing
+JSON/DynamoDB keys and record formats; no data migration or reset is required.
+Local writes use isolated drafts and publish them only after atomic file replacement.
+Failed saves and rejected mutations cannot appear in later successful saves, and
+readers keep seeing the last committed data while a write is pending. Local storage
+still requires one application process per database file.
+
+Account updates merge against the latest local record inside the write queue;
+DynamoDB updates use conditional transactions and bounded retries against fresh
+consistent reads. Disjoint profile, preference and account changes survive concurrent
+saves; simultaneous changes to the same field retain the last successful value.
+Cloud directory scans follow all continuation pages, including empty filtered pages.
+Page loads reject outdated successes, failures and completion handlers before they
+change current-page data, loading indicators or drafts.
+
+Release review must retain these existing workflows in addition to the new failure
+and concurrency regression tests:
+
+| Area | Required regression coverage |
+| --- | --- |
+| Accounts | Invitations, Google integration, roles, profile images/SB IDs, preferences and admin activity |
+| Study | Seven modes, general and course conversations, retained PDF/images, 50 MiB course uploads, streamed replies and cancellation |
+| Schedule | File/voice inputs, calendar/time zones, duplicate and incomplete-field review, completion, existing calendar colors and three-entry date cells |
+| Community | Explicit channels, anonymity, concurrent likes, search/history/reply pagination, private notices, classmates and unread messages |
+| Tools | Office save/conflict/recovery, import/export, scoped AI previews/undo, generated files and images |
+| Appearance | Seven daytime palettes, saved dark mode, outline navigation icons, 日程/学习 naming, desktop/mobile layouts and retained drafts |
+
+Provider-facing tests use fixtures; live Google/email/AI connectivity and the actual
+AWS deployment require separate release verification. Password-reset/email fallback
+behavior is deliberately outside this integrity change, as requested by the owner.
 
 ## Important Environment Variables
 

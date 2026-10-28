@@ -2,6 +2,8 @@
 
 ## 2026-10-28
 
+- Release `1.1.105`: rename the main navigation modules 时间表 to 日程 and 学习区 to 学习. Align the schedule heading, back links, import/accessibility text, settings shortcuts/help and deployment guide with the new names. Refresh package/frontend/cache versions. Previous code release: `9efdd9d` (`1.1.104`).
+
 - Release `1.1.104`: publish the owner-tested three-entry calendar cells with increased desktop space and accurate overflow counts. Refresh frontend/cache versions; retain the deployed community upgrade and all saved schedules/accounts. Code rollback target: `bf6b9e6` (`1.1.103`).
 
 - Show up to three schedule entries directly in each calendar date cell, increase desktop cell space to accommodate them, and count only entries beyond the third in the overflow indicator. Keep compact mobile dots/counts and full day details.

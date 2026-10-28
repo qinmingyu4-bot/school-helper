@@ -3,7 +3,7 @@
 ## 现有 Lightsail 公网 IP HTTPS
 
 现有生产实例的 StudyBridge 在 `127.0.0.1:3000`，对外 HTTPS 入口为
-`https://3.98.63.195/`。无需购买域名。手机请使用这个地址，在时间表的
+`https://3.98.63.195/`。无需购买域名。手机请使用这个地址，在日程的
 「新增安排」里点「语音输入」，首次使用允许浏览器访问麦克风。
 
 `aws/ip-https.sh` 由 `.github/workflows/ip-https.yml` 使用已有部署连接运行，
@@ -57,7 +57,7 @@ DynamoDB 旧帖在首次访问社区后分批建立新索引，每次最多扫�
 不会创建课程。取消日历预览不会删除已识别课程；具体安排仍须确认后才保存，并归入
 对应课程。个人计划和缺少明确课程的条目继续使用原有 planner。
 
-学习区使用「课程 → 对话」结构。课程可展开/收起并创建多个独立标题的对话，课程资料
+「学习」采用「课程 → 对话」结构。课程可展开/收起并创建多个独立标题的对话，课程资料
 共享，聊天记录和对话中上传的附件按 `conversationId` 隔离。`GET/POST
 /api/courses/:courseId/conversations` 列出/创建对话，`PATCH .../conversations/:id`
 重命名；发送消息的 body 和读取消息的 query 均支持 `conversationId`。

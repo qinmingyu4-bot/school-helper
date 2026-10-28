@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.104";
+  const VERSION = "1.1.105";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -188,8 +188,8 @@
   const pageLabels = {
     community: ["社", "社区", "全部、学校和专业频道"],
     classmates: ["友", "同学", "SB ID 申请和聊天"],
-    schedule: ["时", "时间表", "Deadline 和课程提醒"],
-    study: ["学", "学习区", "课程资料、AI 对话和复习计划"],
+    schedule: ["时", "日程", "Deadline 和课程提醒"],
+    study: ["学", "学习", "课程资料、AI 对话和复习计划"],
     tools: ["工", "工具", "Docs、Sheets、Slides、邮件助手"],
     profile: ["人", "个人资料", "头像、学校、专业和 SB ID"],
     admin: ["管", "开发者端", "邀请码、用户和系统状态"]
@@ -550,7 +550,7 @@
     return `
       <header class="page-header">
         <div><h1 title="${esc(subtitle || title)}" aria-describedby="pageDescription">${esc(title)}</h1><p id="pageDescription">${esc(subtitle)}</p></div>
-        ${back && state.page !== "study" ? `<button data-page="study">返回学习区</button>` : ""}
+        ${back && state.page !== "study" ? `<button data-page="study">返回学习</button>` : ""}
       </header>
     `;
   }
@@ -1149,7 +1149,7 @@
     const draft = state.scheduleManualDraft;
     state.scheduleClockSignature = scheduleClockSignature(model);
     return `
-      ${pageHeader("SCHEDULE", "时间表", "一个月历，收好你的课程、作业与生活安排。")}
+      ${pageHeader("SCHEDULE", "日程", "一个月历，收好你的课程、作业与生活安排。")}
       <section class="schedule-layout">
         <div id="scheduleCalendarView" class="planner-view">${scheduleCalendarView.render(model, { agendaView: state.scheduleAgendaView, agendaTypes: state.scheduleAgendaTypes, countdown: dueText })}</div>
         <details class="card schedule-manual" id="scheduleManual" ${state.scheduleManualOpen || state.scheduleDraftOrigin === "quick" && state.scheduleDrafts.length ? "open" : ""}>
@@ -1175,7 +1175,7 @@
           <div class="schedule-upload">
           <div class="schedule-upload-intro">
             <span class="schedule-kicker">AI IMPORT</span>
-            <h2>把课程文件变成时间表</h2>
+            <h2>把课程文件变成日程</h2>
             <p>上传 syllabus 提取 quiz、考试和作业时间；已有课程会自动去重。课表按每周重复，并根据学校校历跳过停课日期。</p>
             <div class="schedule-steps" aria-label="导入步骤"><span><b>1</b> 上传文件</span><span><b>2</b> 核对时间</span><span><b>3</b> 开始倒计时</span></div>
           </div>
@@ -1298,7 +1298,7 @@
   function scheduleReviewHtml() {
     if (!state.scheduleDrafts.length) return "";
     return `<article class="card schedule-review"><h2>核对提取结果（${state.scheduleDrafts.length} 条）</h2>
-      <p>${esc(state.scheduleSource)} · 尚未加入时间表。勾选要加入的项目，点开卡片可编辑并查看完整备注与原文。${state.scheduleDraftOrigin === "file" && state.scheduleImportedCourses.length ? "已识别的课程已自动加入「对话与课程」，取消预览不会删除课程。" : ""}${state.scheduleDrafts.some((item) => item.weekly) ? "每周课程确认一次即可生成本学期剩余安排。" : ""}</p>
+      <p>${esc(state.scheduleSource)} · 尚未加入日程。勾选要加入的项目，点开卡片可编辑并查看完整备注与原文。${state.scheduleDraftOrigin === "file" && state.scheduleImportedCourses.length ? "已识别的课程已自动加入「对话与课程」，取消预览不会删除课程。" : ""}${state.scheduleDrafts.some((item) => item.weekly) ? "每周课程确认一次即可生成本学期剩余安排。" : ""}</p>
       ${state.scheduleDrafts.some((item) => item.weekly) ? scheduleCalendarHtml() : ""}
       <fieldset ${state.scheduleImportBusy ? "disabled" : ""}>
       ${state.scheduleDrafts.map((item, index) => scheduleDraftHtml(item, index)).join("")}
@@ -1322,7 +1322,7 @@
     const parts = scheduleImport.draftDateTime(item);
     const open = scheduleDraftDisclosure.has(item) ? scheduleDraftDisclosure.get(item) : summary.needsInput;
     return `<section class="schedule-draft" data-draft="${index}">
-      <label class="schedule-review-select"><input type="checkbox" data-draft-field="selected" aria-label="加入时间表：${esc(summary.title)}" ${item.selected ? "checked" : ""}></label>
+      <label class="schedule-review-select"><input type="checkbox" data-draft-field="selected" aria-label="加入日程：${esc(summary.title)}" ${item.selected ? "checked" : ""}></label>
       <details class="schedule-draft-editor" data-review-editor="${index}" ${open ? "open" : ""}>
         <summary class="schedule-draft-summary"><b data-review-title>${esc(summary.title)}</b><span class="schedule-review-chevron" aria-hidden="true">⌄</span>
           <span class="schedule-review-duplicate" data-review-duplicate ${scheduleImport.duplicateNotice(item) ? "" : "hidden"}>${esc(scheduleImport.duplicateNotice(item))}</span>
@@ -1360,7 +1360,7 @@
     updateScheduleReviewValidationNotice();
     const duplicate = section.querySelector("[data-review-duplicate]");
     if (duplicate) { duplicate.textContent = scheduleImport.duplicateNotice(item); duplicate.hidden = !duplicate.textContent; }
-    section.querySelector('[data-draft-field="selected"]').setAttribute("aria-label", `加入时间表：${summary.title}`);
+    section.querySelector('[data-draft-field="selected"]').setAttribute("aria-label", `加入日程：${summary.title}`);
   }
 
   function applyScheduleDraftValidation(section, item) {
@@ -2496,7 +2496,7 @@
         const output = $("toolOutput");
         output.textContent = "正在生成...";
         const course = state.activeCourseId || (state.courses[0]?.id);
-        if (!course) throw new Error("请先在学习区新增一门课程，用来保存 AI 对话。");
+        if (!course) throw new Error("请先在「学习」中新增一门课程，用来保存 AI 对话。");
         const data = await api(`/api/courses/${course}/chat`, { method: "POST", body: { conversationId: state.activeConversationId, message: prompt, mode: "email" } });
         emailDraft.output = formatText((data.messages || []).at(-1)?.content || "");
         if ($("emailOriginal")) $("toolOutput").innerHTML = emailDraft.output;

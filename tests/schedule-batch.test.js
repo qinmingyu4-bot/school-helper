@@ -34,7 +34,7 @@ test("80 local events use one write, survive restart, deduplicate retries and co
   db.local.file = path.join(directory, "database.json");
   let writes = 0;
   const save = db.local.save.bind(db.local);
-  db.local.save = async () => { writes++; return save(); };
+  db.local.save = async (...args) => { writes++; return save(...args); };
   const items = normalize(Array.from({ length: 80 }, (_, index) => ({ ...meeting, kind: "DDL", title: `Assignment ${index}`, notes: "内容".repeat(1000) })));
   const [first, retry] = await Promise.all([db.importScheduleBatch("alice", items), db.importScheduleBatch("alice", items)]);
   assert.equal(first.saved + retry.saved, 80);

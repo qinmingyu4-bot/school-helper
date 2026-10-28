@@ -26,7 +26,7 @@ test("extracted course creation is durable, isolated, idempotent and independent
   const db = new StudyBridgeDatabase(); db.local.file = path.join(directory, "db.json");
   let writes = 0;
   const save = db.local.save.bind(db.local);
-  db.local.save = async () => { writes++; return save(); };
+  db.local.save = async (...args) => { writes++; return save(...args); };
   const results = await Promise.all([
     db.ensureImportedCourses("alice", ["STA437H1F", "STA437H1", "MAT137Y1Y"], "2026 Fall"),
     db.ensureImportedCourses("alice", ["STA437H1", "MAT137Y1"], "2026 Fall")

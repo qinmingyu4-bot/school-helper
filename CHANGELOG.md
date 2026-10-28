@@ -2,6 +2,9 @@
 
 ## 2026-10-28
 
+- Prepare an integrity repair from `1.1.106` (`caf5c5f`): preserve existing data formats and release features while preventing concurrent account saves from overwriting unrelated fields, retrying conditional DynamoDB account conflicts, and following every cloud directory scan page, including filtered empty pages.
+- Extract the local store into a dedicated module with isolated transaction drafts and single-flight startup loading. Publish memory only after durable file replacement; failed creations, nested edits and deletions cannot leak into later saves. Retain large upload strings, unknown legacy fields, schedule deduplication and Office/conversation save protection; remove superseded per-operation rollback callbacks.
+
 - Release `1.1.106`: publish the owner-authorized 暮色深灰 dark mode and outline navigation icons, retaining the existing seven daytime palettes and restoring the selected one when dark mode is disabled. Keep the `1.1.105` 日程/学习 naming update, refresh package/frontend/cache versions, and preserve production accounts, course materials, schedules, chats and authored Office content. Previous code release/rollback target: `d33bb89` (`1.1.105`).
 
 - Add an account-saved 黑夜模式 in Settings with the reviewed 暮色深灰 charcoal/champagne appearance. Preserve all seven daytime palettes and restore the selected one when dark mode is disabled; retain legacy appearance records, serialized saves, retries, account isolation and authored Office content colors. Replace the five main navigation letters with outline icons and matching rounded selection highlights without moving the layout. Prepared on a task branch for testing; no AWS deployment.

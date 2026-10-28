@@ -152,6 +152,25 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     assert.deepEqual((await request(route, { cookie: alice.cookie, method: "PUT", body: { theme: "celadon", mode: "light" } })).data.appearance, { theme: "celadon" });
   });
 
+  await t.test("simultaneous profile and learning saves preserve both through the HTTP API", async () => {
+    const before = (await request("/api/me", { cookie: alice.cookie })).data.user;
+    const profileBody = { name: before.name, ...before.profile, major: "Concurrency regression" };
+    const preferences = { ...before.preferences, customInstruction: "Retain the concurrent learning change" };
+    const results = await Promise.all([
+      request("/api/me/profile", { cookie: alice.cookie, method: "PUT", body: profileBody }),
+      request("/api/me/preferences", { cookie: alice.cookie, method: "PUT", body: preferences })
+    ]);
+    assert.ok(results.every((result) => result.status === 200));
+    const saved = (await request("/api/me", { cookie: alice.cookie })).data.user;
+    assert.equal(saved.profile.major, profileBody.major);
+    assert.equal(saved.preferences.customInstruction, preferences.customInstruction);
+    assert.equal(saved.role, before.role);
+    assert.equal(saved.email, before.email);
+    assert.equal(saved.profile.sbId, before.profile.sbId);
+    await request("/api/me/profile", { cookie: alice.cookie, method: "PUT", body: { name: before.name, ...before.profile } });
+    await request("/api/me/preferences", { cookie: alice.cookie, method: "PUT", body: before.preferences });
+  });
+
   await t.test("single-use invitations cannot be reused or raced", async () => {
     assert.equal((await request("/api/auth/register", { method: "POST", body: registration("Other owner", "other-admin@example.test", "health-owner-invite") })).status, 403);
     const generated = await request("/api/admin/invites", { method: "POST", cookie: admin.cookie, body: { maxUses: 100, role: "admin" } });

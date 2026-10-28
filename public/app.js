@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.99";
+  const VERSION = "1.1.100";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;

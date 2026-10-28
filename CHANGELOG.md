@@ -2,6 +2,8 @@
 
 ## 2026-10-28
 
+- Release `1.1.100`: publish Sunday-first calendar columns and matching date-grid alignment. Refresh frontend/cache versions; preserve all saved course/event dates and account data. Code rollback target: `3e8d44e` (`1.1.99`).
+
 - Start the monthly calendar week on Sunday, followed by Monday through Saturday. Shift the date grid with the headings so saved meetings, adjacent-month dates, leap days and today/selection markers retain their correct dates.
 
 ## 2026-10-27

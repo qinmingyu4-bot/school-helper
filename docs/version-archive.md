@@ -10,6 +10,19 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.110 - 2026-10-28
+
+Purpose:
+- Release the owner-approved Account Security settings (`bf4a641`), allowing Google-first users to set a website password and existing password users to change it with current-password verification.
+- Keep Google/password login on the original account, retain SB IDs, saved data and recovery, and preserve legacy sessions until a password is changed. Add CSRF/account checks, atomic password writes and credential-version session revocation.
+
+Validation:
+- Passed 266 automated tests and 182-file source/assets/version checks; isolated desktop and 390 px previews cover password setup/change modes and expired-Google re-verification prompts.
+- Require the existing production dependency-audit gate and verified private database/configuration/files backup before installation. Verify production health, versioned assets, retained account settings and enabled Google sign-in after publishing.
+
+Rollback target:
+- `fc0cc7d` (1.1.109). Restore application code only; retain production accounts, data and private backups.
+
 ### 1.1.109 - 2026-10-28
 
 Purpose:

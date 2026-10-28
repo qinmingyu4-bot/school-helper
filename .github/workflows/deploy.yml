@@ -11,7 +11,7 @@ permissions:
 
 concurrency:
   group: studybridge-production
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   check:
@@ -24,6 +24,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - run: bash -n scripts/deploy-release.sh
       - run: npm test
       - run: npm audit --omit=dev --audit-level=high
 
@@ -47,16 +48,19 @@ jobs:
           printf '%s' "$LIGHTSAIL_SSH_KEY_B64" | tr -d '[:space:]' | base64 -d | tr -d '\r' > ~/.ssh/studybridge_deploy_key
           printf '\n' >> ~/.ssh/studybridge_deploy_key
           chmod 600 ~/.ssh/studybridge_deploy_key
+          trap 'rm -f ~/.ssh/studybridge_deploy_key' EXIT
           if ! ssh-keygen -y -f ~/.ssh/studybridge_deploy_key > /dev/null; then
             echo "LIGHTSAIL_SSH_KEY_B64 must contain the base64-encoded complete, unencrypted SSH private key."
             exit 1
           fi
           ssh-keyscan -H "$LIGHTSAIL_HOST" >> ~/.ssh/known_hosts
-          ssh -i ~/.ssh/studybridge_deploy_key "$LIGHTSAIL_USER@$LIGHTSAIL_HOST" <<'EOF'
-            set -e
+          ssh -i ~/.ssh/studybridge_deploy_key "$LIGHTSAIL_USER@$LIGHTSAIL_HOST" bash -s -- "$GITHUB_SHA" <<'EOF'
+            set -euo pipefail
             cd ~/school-helper
-            git pull --ff-only origin main
-            npm ci --omit=dev
-            pm2 restart studybridge --update-env
-            pm2 save
+            git fetch origin main
+            if [ "$(git rev-parse origin/main)" != "$1" ]; then
+              echo "A newer main commit superseded this deployment."
+              exit 0
+            fi
+            git show "$1:scripts/deploy-release.sh" | bash -s -- "$1" "$PWD"
           EOF

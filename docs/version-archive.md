@@ -10,6 +10,19 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.108 - 2026-10-28
+
+Purpose:
+- Release the approved white/light-gray/charcoal introduction homepage (`77ac29d`) and `/login` / `/app` routing (`725d0f3`).
+- Retain the deployed Google sign-in (`1165f3c`), including browser-bound state, PKCE, verified identity and existing-account/course reuse. Keep the original accounts, session secret, data locations and authored files; no migration or reset.
+
+Validation:
+- The combined release passed 256 automated tests and 181-file source/assets/version checks, including Google cookie/session handling and the retained-account/course regression.
+- Require successful production dependency audit and a verified private database/configuration/files backup before installation. Check live homepage, neutral assets, login routing and health after deployment.
+
+Rollback target:
+- `1165f3c` (1.1.107 with Google sign-in). Restore application code only; keep production data and private backups.
+
 ### 1.1.89 - 2026-10-26
 
 Purpose:

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.107";
+  const VERSION = "1.1.108";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -255,6 +255,7 @@
     if (state.mode === "admin") page = "admin";
     if (state.mode !== "admin" && !STUDENT_PAGES.includes(page)) page = "study";
     state.page = page;
+    document.title = "学习空间 · StudyBridge";
     if (page !== "classmates") {
       state.classmateChatOpen = false;
       state.classmateProfileOpen = false;
@@ -262,7 +263,7 @@
     if (page !== "classmates") stopClassmatesLive();
     if (page !== "tools") creativeTools.stop();
     localStorage.setItem("studybridge.page", page);
-    history.replaceState(null, "", `${location.pathname}?page=${encodeURIComponent(page)}&v=${VERSION}`);
+    history.replaceState(null, "", `/app?page=${encodeURIComponent(page)}&v=${VERSION}`);
   }
 
   function formatDate(value) {
@@ -360,6 +361,7 @@
     return `
       <main class="auth-shell">
         <section class="auth-card">
+          <a class="link-button" href="/">← 返回 StudyBridge 首页</a>
           <div class="brand-row">
             <div class="brand-mark">SB</div>
             <div><span>STUDYBRIDGE CLOUD</span><strong>StudyBridge</strong></div>
@@ -431,7 +433,7 @@
     const active = state.page === page ? "active" : "";
     return `
       <button class="nav-card ${active}" data-page="${page}" ${active ? 'aria-current="page"' : ""}>
-        <span aria-hidden="true"><svg><use href="/classmates-icons.svg?v=1.1.107#nav-${esc(page)}"></use></svg></span>
+        <span aria-hidden="true"><svg><use href="/classmates-icons.svg?v=1.1.108#nav-${esc(page)}"></use></svg></span>
         <b>${esc(title)}</b>
         <small>${esc(page === "schedule" && nextDue() ? `${nextDue().title} · 还有 ${dueText(nextDue().startsAt)}` : sub)}</small>
       </button>
@@ -2084,7 +2086,7 @@
         const data = await api("/api/auth/login", { method: "POST", body: { email: $("authEmail")?.value || "", password: $("authPassword")?.value || "" } });
         state.user = data.user;
         state.mode = "student";
-        await loadPage("study");
+        await loadPage(new URL(location.href).searchParams.get("page") || "study");
         return;
       }
       if (action === "register") {
@@ -2140,7 +2142,7 @@
         for (const reply of studyReplies.values()) reply.controller.abort();
         await api("/api/auth/logout", { method: "POST" }).catch(() => null);
         localStorage.removeItem("studybridge.page");
-        location.reload();
+        location.replace("/login");
         return;
       }
       if (action === "mode-student") {
@@ -2775,9 +2777,14 @@
       state.googleEnabled = Boolean(google.enabled);
       const data = await api("/api/me").catch(() => null);
       if (!data?.user) {
+        history.replaceState(null, "", `/login${location.search}`);
+        const authError = new URL(location.href).searchParams.get("authError");
+        if (authError) state.toast = authError;
+        document.title = "登录 · StudyBridge";
         render();
         return;
       }
+      document.title = "学习空间 · StudyBridge";
       state.user = data.user;
       void reportUserActivity();
       const savedTool = localStorage.getItem("studybridge.tool");

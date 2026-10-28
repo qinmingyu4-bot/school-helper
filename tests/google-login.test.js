@@ -80,6 +80,7 @@ test("Google login reuses the existing account, preserves course data and reject
   const flow = await start(), other = await start();
   for (const cookie of ["", other.cookie]) {
     const rejected = await callback("good", flow, cookie);
+    assert.equal(new URL(rejected.headers.get("location")).pathname, "/login");
     assert.ok(new URL(rejected.headers.get("location")).searchParams.get("authError"));
     assert.ok(rejected.headers.getSetCookie().every((value) => !value.startsWith("sb_session=")));
   }
@@ -89,6 +90,7 @@ test("Google login reuses the existing account, preserves course data and reject
     assert.match(rejected.headers.get("set-cookie"), /Max-Age=0/);
   }
   const success = await callback("good", await start());
+  assert.equal(new URL(success.headers.get("location")).pathname, "/app");
   assert.equal(new URL(success.headers.get("location")).searchParams.get("googleAuth"), "ok");
   assert.ok(success.headers.getSetCookie().some((value) => value.startsWith("sb_google_oauth=") && value.includes("Max-Age=0")));
   const loginCookie = success.headers.getSetCookie().find((value) => value.startsWith("sb_session=")).split(";")[0];

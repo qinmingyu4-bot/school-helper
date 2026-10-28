@@ -22,12 +22,15 @@ for (const file of files) {
   }
 }
 
-const html = fs.readFileSync(path.join(root, "public/index.html"), "utf8");
 for (const name of ["office-editor.min.js", "office-editor-LICENSE.txt"]) {
   if (!fs.existsSync(path.join(root, "public/vendor", name))) throw new Error(`Missing Office editor asset: ${name}; run npm run build:office.`);
 }
-for (const match of html.matchAll(/(?:src|href)="(\/[^"?#]+)(?:\?[^"#]*)?"/g)) {
-  if (!fs.existsSync(path.join(root, "public", match[1]))) throw new Error(`Missing asset: ${match[1]}`);
+for (const entry of ["index.html", "landing.html"]) {
+  const html = fs.readFileSync(path.join(root, "public", entry), "utf8");
+  for (const match of html.matchAll(/(?:src|href)="(\/[^"?#]*)(?:\?[^"#]*)?"/g)) {
+    if (["/", "/app", "/login"].includes(match[1])) continue;
+    if (!fs.existsSync(path.join(root, "public", match[1]))) throw new Error(`Missing asset in ${entry}: ${match[1]}`);
+  }
 }
 const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 const lock = JSON.parse(fs.readFileSync(path.join(root, "package-lock.json"), "utf8"));

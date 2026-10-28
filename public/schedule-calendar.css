@@ -113,6 +113,7 @@
   .planner-month-layout { gap: 14px; }
 }
 .planner-view { display: grid; gap: 18px; min-width: 0; }
+#scheduleAgendaView { min-height: 100vh; min-height: 100dvh; align-content: start; }
 
 .planner-type-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 20px; }
 .planner-type-filters > span { font-size: 12px; color: var(--muted); margin-right: 4px; }

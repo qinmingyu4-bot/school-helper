@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.119";
+  const VERSION = "1.1.120";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -497,7 +497,7 @@
     const active = state.page === page ? "active" : "";
     return `
       <button class="nav-card ${active}" data-page="${page}" ${active ? 'aria-current="page"' : ""}>
-        <span aria-hidden="true"><svg><use href="/classmates-icons.svg?v=1.1.119#nav-${esc(page)}"></use></svg></span>
+        <span aria-hidden="true"><svg><use href="/classmates-icons.svg?v=1.1.120#nav-${esc(page)}"></use></svg></span>
         <b>${esc(title)}</b>
         <small>${esc(page === "schedule" && nextDue() ? `${nextDue().title} · 还有 ${dueText(nextDue().startsAt)}` : sub)}</small>
       </button>
@@ -2877,6 +2877,7 @@
     const sidebarUsesPageScroll = previousSidebar
       && previousSidebar.scrollHeight <= previousSidebar.clientHeight;
     const previousPageScroll = { x: window.scrollX, y: window.scrollY };
+    const previousSchedule = root.querySelector(".schedule-layout");
     for (const id of ["emailOriginal", "emailGoal", "emailTone", "emailOutput"]) {
       if ($(id)) emailDraft[id] = $(id).value;
     }
@@ -2912,6 +2913,9 @@
         : `<main class="auth-shell"><section class="auth-card"><h1>StudyBridge</h1><p class="notice">${message}</p><button onclick="location.reload()">刷新</button></section></main>`;
     }
     if (state.page === "schedule") updateSchedulePreviewCount();
+    if (state.page === "schedule" && previousSchedule && root.querySelector(".schedule-layout")) {
+      window.scrollTo(previousPageScroll.x, previousPageScroll.y);
+    }
     if (state.busy) root.insertAdjacentHTML("beforeend", `<div class="busy">Loading...</div>`);
     for (const id of ["emailOriginal", "emailGoal", "emailTone", "emailOutput"]) {
       if ($(id) && emailDraft[id] !== undefined) $(id).value = emailDraft[id];

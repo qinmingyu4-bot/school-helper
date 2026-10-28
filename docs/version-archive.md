@@ -10,6 +10,19 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.120 - 2026-10-28
+
+Purpose:
+- Keep agenda filter controls at the same scroll position when a long list becomes a single item or empty, using a viewport-sized minimum agenda region with natural-height cards.
+- Refresh frontend/cache versions while retaining saved accounts, schedules, course management and preferences.
+
+Validation:
+- Local browser verification covers 73 entries changing to one or zero without a scroll shift. Run full automated tests, source/assets/version checks and deployment-script syntax checks.
+- Use the existing verified private backup, unchanged-data checks and automatic code rollback deployment workflow.
+
+Rollback target:
+- `33e3058` (1.1.119). Restore code only; retain current data and backups.
+
 ### 1.1.119 - 2026-10-28
 
 Purpose:

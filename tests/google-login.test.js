@@ -84,7 +84,7 @@ test("Google login reuses the existing account, preserves course data and reject
     assert.ok(new URL(rejected.headers.get("location")).searchParams.get("authError"));
     assert.ok(rejected.headers.getSetCookie().every((value) => !value.startsWith("sb_session=")));
   }
-  for (const code of ["unverified", "missing-verification", "missing-sub", "new-account"]) {
+  for (const code of ["unverified", "missing-verification", "missing-sub"]) {
     const rejected = await callback(code, await start());
     assert.ok(new URL(rejected.headers.get("location")).searchParams.get("authError"));
     assert.match(rejected.headers.get("set-cookie"), /Max-Age=0/);

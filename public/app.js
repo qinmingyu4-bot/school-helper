@@ -58,6 +58,19 @@
         });
         return settingsProfileSave;
       },
+      loadMembership: async () => (await api("/api/me/membership")).membership,
+      redeemMembershipInvite: (inviteCode, csrfToken) => {
+        const userId = state.user.id;
+        const operation = settingsProfileSave.catch(() => {}).then(async () => {
+          if (state.user?.id !== userId) throw new Error("登录账号已变更，请重新打开设置。");
+          const result = await api("/api/me/membership/redeem", { method: "POST", headers: { "x-csrf-token": csrfToken }, body: { userId, inviteCode } });
+          if (state.user?.id !== userId) throw new Error("登录账号已变更，请重新打开设置。");
+          state.user = { ...state.user, membershipTier: result.user.membershipTier }; render();
+          return result;
+        });
+        settingsProfileSave = operation.then(() => {}, () => {});
+        return operation;
+      },
       loadSecurity: async () => (await api("/api/me/security")).security,
       savePassword: async (values, csrfToken) => (await api("/api/me/password", { method: "POST",
         headers: { "x-csrf-token": csrfToken }, body: values })).security,
@@ -376,7 +389,7 @@
           <div class="auth-intro">
             <p class="auth-eyebrow">YOUR STUDY, CONNECTED</p>
             <h1 id="authTitle">${register ? "创建你的学习空间" : "欢迎回到 StudyBridge"}</h1>
-            <p>${register ? "注册普通账号，填写有效邀请码可成为 Plus 用户。" : "登录账号，继续你的学习节奏。"}</p>
+            <p>${register ? "注册普通账号，填写有效邀请码可成为 Plus 用户。" : "Google 可直接进入，首次使用将自动创建普通账号。"}</p>
           </div>
           <div class="segmented" role="group" aria-label="选择登录或注册">
             <button data-action="auth-tab" data-tab="login" aria-pressed="${!register}" class="${register ? "" : "active"}">登录</button>
@@ -387,7 +400,7 @@
           <label>密码<input id="authPassword" type="password" autocomplete="${register ? "new-password" : "current-password"}" placeholder="至少 8 位"></label>
           ${register ? `
             <label>确认密码<input id="authPasswordConfirm" type="password" autocomplete="new-password" placeholder="再输入一次密码"></label>
-            <label>邀请码（选填）<input id="authInvite" placeholder="有邀请码可成为 Plus 用户" aria-describedby="authInviteHelp"></label><p id="authInviteHelp" class="auth-code-help">留空即可注册普通用户。Plus 目前仅作分类，功能暂时相同。</p>
+            <label>邀请码（选填）<input id="authInvite" placeholder="有邀请码可成为 Plus 用户" aria-describedby="authInviteHelp"></label><p id="authInviteHelp" class="auth-code-help">留空即可注册普通用户，也可登录后在设置中补填。Plus 目前仅作分类。</p>
             ${state.authConfig?.emailVerificationRequired !== false ? `<label for="authEmailCode">邮箱验证码</label>
             <div class="inline-fields">
               <input id="authEmailCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" aria-describedby="authCodeHelp" placeholder="输入 6 位验证码">
@@ -397,7 +410,7 @@
           ` : ""}
           <button class="primary wide" data-action="${register ? "register" : "login"}" ${register && !state.authConfig ? "disabled" : ""}>${register ? "创建账号" : "登录"}</button>
           <div class="or-line"><span>或</span></div>
-          <button class="ghost wide auth-google" data-action="google-login" data-auth-mode="${mode}" ${state.googleEnabled ? "" : "disabled"}>${register ? "使用 Google 注册" : "Google 登录"}${state.googleEnabled ? "" : "待配置"}</button>
+          <button class="ghost wide auth-google" data-action="google-login" data-auth-mode="${mode}" ${state.googleEnabled ? "" : "disabled"}>使用 Google 继续${state.googleEnabled ? "" : "待配置"}</button>
           ${register ? "" : `<button class="link-button" data-action="forgot-password">忘记密码？</button>`}
           <p class="notice auth-feedback" role="status" aria-live="polite" ${state.toast ? "" : "hidden"}>${esc(state.toast)}</p>
         </section>

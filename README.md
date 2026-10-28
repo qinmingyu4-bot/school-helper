@@ -178,7 +178,7 @@ Production defaults to verification required when the requirement flag is absent
 an explicit `false` retains the previous registration mode during rollout.
 
 Existing password logins and manual password-reset requests remain available.
-Google registration accepts Google's verified email and the same optional Plus invitation.
+Google first entry accepts Google's verified email and the same optional Plus invitation; both login and registration automatically create an ordinary account when needed.
 The delivered-code password-reset API shares expiration, resend and attempt limits.
 
 Before release: configure and verify a sender, set the requirement flag to `true`,
@@ -601,8 +601,24 @@ Settings, the sidebar and the admin user list show the tier. Membership is separ
 from student/admin roles, and no feature or entitlement difference is enforced yet.
 The obsolete `REQUIRE_INVITE_CODE` environment value is ignored, including existing
 production `true` values. Email verification remains required when configured;
-Google registration still verifies the Google identity. Signing in to an existing
-account does not consume an invitation or change its tier.
+Google registration still verifies the Google identity. Existing-account Google sign-in reuses the same account. Both Google login and
+registration create an ordinary account on first entry; no invitation is needed.
+An optional signup invitation can still create Plus immediately. Concurrent first
+Google logins recover the already-created verified-email account instead of making
+a duplicate. Existing sign-in does not consume a supplied invitation or change its
+tier; existing users redeem their code explicitly in Settings.
+
+After signing in, open **设置 → 账号与资料 → 账号类型 → 补填邀请码** to become
+Plus. `GET /api/me/membership` supplies a private, noncached, session-bound CSRF
+token. `POST /api/me/membership/redeem` requires that token, JSON and the current
+account ID. The account upgrade and one-use code claim commit together in a local
+transaction or DynamoDB conditional transaction. Repeated requests and already-Plus
+accounts never consume additional codes. Redemption changes membership/invitation
+provenance only: password, Google binding, SB ID, administrator role, sessions and
+learning data stay with the same account. This does not grant administrator rights,
+including when redeeming an invitation whose signup role is Co-admin. The form
+shows immediate success or retryable validation errors, clears on success/close,
+and never stores invitations in browser storage or preference exports.
 
 Each invitation permits one successful registration. Previously used codes cannot
 be reused, even if their old usage limit was higher or they are re-enabled.

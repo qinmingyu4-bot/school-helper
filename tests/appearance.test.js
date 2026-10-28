@@ -3,7 +3,7 @@ const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const { test } = require("node:test");
-const { themes, normalize, isValid, createSaver, createController } = require("../public/appearance");
+const { themes, logos, normalize, isValid, createSaver, createController } = require("../public/appearance");
 const { StudyBridgeDatabase } = require("../lib/database");
 const turn = () => new Promise((resolve) => setImmediate(resolve));
 
@@ -41,6 +41,62 @@ test("dark mode is independent of the daytime theme and legacy records stay ligh
   assert.deepEqual(normalize({ theme: "celadon", mode: "light" }), { theme: "celadon" });
   for (const theme of themes) for (const mode of ["light", "dark"]) assert.equal(isValid({ theme: theme.id, mode }), true);
   for (const mode of [null, true, "auto", "<script>"]) assert.equal(isValid({ theme: "default", mode }), false);
+});
+
+test("logo choices default to monochrome and stay independent of palette and dark mode", () => {
+  assert.deepEqual(logos.map((logo) => logo.id), ["monochrome", "color"]);
+  for (const theme of themes) for (const logo of logos) for (const mode of ["light", "dark"]) {
+    assert.equal(isValid({ theme: theme.id, mode, logo: logo.id }), true);
+  }
+  for (const logo of [null, true, "unknown", "<svg>", {}, []]) assert.equal(isValid({ theme: "default", logo }), false);
+  assert.deepEqual(normalize({ theme: "graphite", mode: "dark" }), { theme: "graphite", mode: "dark" });
+  assert.deepEqual(normalize({ theme: "graphite", mode: "dark", logo: "color" }), { theme: "graphite", mode: "dark", logo: "color" });
+  assert.deepEqual(normalize({ theme: "graphite", logo: "monochrome" }), { theme: "graphite" });
+  assert.deepEqual(normalize({ logo: "unknown" }), { theme: "default" });
+});
+
+test("logo-only changes serialize and save returning to monochrome without losing other choices", async () => {
+  const starts = [], releases = [];
+  const saver = createSaver({ initial: { theme: "celadon", mode: "dark" },
+    save: (value) => new Promise((resolve) => { starts.push(value); releases.push(resolve); }) });
+  saver.setDraft({ theme: "celadon", mode: "dark", logo: "color" });
+  const pending = saver.flush(); await turn();
+  saver.setDraft({ theme: "celadon", mode: "dark", logo: "monochrome" });
+  releases[0](); await turn();
+  assert.deepEqual(starts, [{ theme: "celadon", mode: "dark", logo: "color" }, { theme: "celadon", mode: "dark" }]);
+  releases[1](); await pending;
+  assert.deepEqual(saver.snapshot().saved, { theme: "celadon", mode: "dark" });
+});
+
+test("logo controls await saved appearance, then preserve other choices and update the favicon", async () => {
+  const attrs = new Map(), listeners = new Map(), writes = [], elements = new Map();
+  let finishLoad;
+  const node = () => ({ addEventListener() {}, classList: { toggle() {} } });
+  for (const selector of ['input[name="sb-dark-mode"]', '.settings-logos', '.settings-themes', '.settings-save-status', '.settings-retry', '.settings-close']) elements.set(selector, node());
+  const radios = logos.map((logo) => ({ value: logo.id }));
+  const favicon = { setAttribute: (key, value) => attrs.set(`icon:${key}`, value) };
+  const dialog = { querySelector: (key) => elements.get(key),
+    querySelectorAll: (key) => key === 'input[name="sb-logo"]' ? radios : [],
+    addEventListener: (name, handler) => listeners.set(name, handler),
+    showModal() { this.open = true; }, close() {}, remove() {} };
+  const controller = createController({ document: { body: { append() {} }, querySelector: () => favicon,
+    documentElement: { setAttribute: (k, v) => attrs.set(k, v), removeAttribute: (k) => attrs.delete(k) } },
+    storage: null, load: () => new Promise((resolve) => { finishLoad = resolve; }),
+    save: async (_id, value) => writes.push(value), createSettingsView: () => dialog });
+  controller.sync({ id: "alice" }); controller.open();
+  assert.equal(elements.get('.settings-logos').disabled, true);
+  assert.equal(elements.get('.settings-themes').disabled, true);
+  finishLoad({ theme: "celadon", mode: "dark", logo: "color" }); await turn();
+  assert.equal(elements.get('.settings-logos').disabled, false);
+  assert.equal(elements.get('.settings-themes').disabled, true);
+  assert.equal(radios.find((radio) => radio.value === 'color').checked, true);
+  assert.equal(attrs.get('icon:href'), '/brand/icon-color.svg');
+  listeners.get('change')({ target: { matches: () => true, name: 'sb-logo', value: 'monochrome' } });
+  await turn();
+  assert.deepEqual(writes, [{ theme: "celadon", mode: "dark" }]);
+  assert.equal(attrs.has('data-sb-logo'), false);
+  assert.equal(attrs.get('data-sb-mode'), 'dark');
+  assert.equal(attrs.get('icon:href'), '/brand/icon-monochrome.svg');
 });
 
 test("rapid night/day changes save even when the daytime theme never changes", async () => {
@@ -89,20 +145,25 @@ test("disposed saves cannot send queued choices or notify the next account", asy
 test("account switches reject late loads, isolate cached themes and reset the default at logout", async () => {
   const attrs = new Map(), loads = new Map();
   const doc = { documentElement: { setAttribute: (k, v) => attrs.set(k, v), removeAttribute: (k) => attrs.delete(k) } };
-  const cache = new Map([["studybridge.appearance.alice", JSON.stringify({ theme: "graphite" })]]);
+  const cache = new Map([["studybridge.appearance.alice", JSON.stringify({ theme: "graphite", logo: "color" })]]);
   const controller = createController({ document: doc, storage: { getItem: (k) => cache.get(k), setItem: (k, v) => cache.set(k, v) },
     load: (id) => new Promise((resolve) => loads.set(id, resolve)), save: async () => {} });
   controller.sync({ id: "alice" });
   assert.equal(attrs.get("data-sb-theme"), "graphite");
+  assert.equal(attrs.get("data-sb-logo"), "color");
   controller.sync({ id: "bob" });
   assert.equal(attrs.has("data-sb-theme"), false);
-  loads.get("alice")({ theme: "smoke-purple" }); await turn();
+  assert.equal(attrs.has("data-sb-logo"), false);
+  loads.get("alice")({ theme: "smoke-purple", logo: "color" }); await turn();
   assert.equal(attrs.has("data-sb-theme"), false);
-  loads.get("bob")({ theme: "celadon" }); await turn();
+  assert.equal(attrs.has("data-sb-logo"), false);
+  loads.get("bob")({ theme: "celadon", logo: "color" }); await turn();
   assert.equal(attrs.get("data-sb-theme"), "celadon");
+  assert.equal(attrs.get("data-sb-logo"), "color");
   assert.equal(JSON.parse(cache.get("studybridge.appearance.alice")).theme, "graphite");
   controller.sync(null);
   assert.equal(attrs.has("data-sb-theme"), false);
+  assert.equal(attrs.has("data-sb-logo"), false);
 });
 
 test("cached dark mode applies with the saved daytime palette and clears across accounts/logout", async () => {
@@ -129,9 +190,9 @@ test("local appearance survives reloads, stays account scoped and does not overw
   t.after(() => fs.rm(directory, { recursive: true, force: true }));
   const db = new StudyBridgeDatabase(); db.dynamo = null; db.local.file = path.join(directory, "db.json");
   await db.createUser({ id: "alice", email: "alice@example.test", name: "Alice" });
-  await Promise.all([db.setUserAppearance("alice", { theme: "monochrome" }), db.updateUser("alice", { preferences: { englishTerms: true } })]);
+  await Promise.all([db.setUserAppearance("alice", { theme: "monochrome", logo: "color" }), db.updateUser("alice", { preferences: { englishTerms: true } })]);
   db.local.state = null;
-  assert.deepEqual(await db.getUserAppearance("alice"), { theme: "monochrome" });
+  assert.deepEqual(await db.getUserAppearance("alice"), { theme: "monochrome", logo: "color" });
   assert.equal(await db.getUserAppearance("bob"), null);
   assert.deepEqual((await db.getUser("alice")).preferences, { englishTerms: true });
   assert.equal((await db.getUser("alice")).name, "Alice");
@@ -143,7 +204,9 @@ test("DynamoDB appearance uses a separate user-owned record without touching PRO
     get: async (pk, sk) => { assert.equal(sk, "APPEARANCE"); return records.get(pk) || null; },
     put: async (pk, sk, type, value) => { assert.equal(sk, "APPEARANCE"); assert.equal(type, "userAppearance"); records.set(pk, value); return value; }
   };
-  await db.setUserAppearance("alice", { theme: "dusty-rose", mode: "dark", ignored: true });
+  await db.setUserAppearance("alice", { theme: "dusty-rose", mode: "dark", logo: "color", ignored: true });
+  assert.deepEqual(await db.getUserAppearance("alice"), { theme: "dusty-rose", mode: "dark", logo: "color" });
+  await db.setUserAppearance("alice", { theme: "dusty-rose", mode: "dark", logo: "monochrome" });
   assert.deepEqual(await db.getUserAppearance("alice"), { theme: "dusty-rose", mode: "dark" });
   assert.equal(await db.getUserAppearance("bob"), null);
 });

@@ -14,14 +14,20 @@
     { id: "silver", name: "白 · 冷银灰", accent: "#69747c", tint: "#f2f4f5", detail: "利落、轻盈" },
     { id: "monochrome", name: "黑白灰简约", accent: "#202020", tint: "#ededed", detail: "与首页一致 · 清晰边框" }
   ].map(Object.freeze));
+  const logos = Object.freeze([
+    { id: "monochrome", name: "黑白简约", detail: "默认 · 书页成桥", image: "/brand/book-bridge-monochrome.svg" },
+    { id: "color", name: "蓝紫 · 薄荷青", detail: "清新、轻快 · 书页成桥", image: "/brand/book-bridge-color.svg" }
+  ].map(Object.freeze));
   const isValid = (value) => Boolean(value && typeof value === "object" && !Array.isArray(value)
-    && Object.keys(value).every((key) => key === "theme" || key === "mode")
+    && Object.keys(value).every((key) => key === "theme" || key === "mode" || key === "logo")
     && themes.some((theme) => theme.id === value.theme)
-    && (value.mode === undefined || value.mode === "light" || value.mode === "dark"));
-  // Omit light mode for compatibility with existing records and clients.
+    && (value.mode === undefined || value.mode === "light" || value.mode === "dark")
+    && (value.logo === undefined || logos.some((logo) => logo.id === value.logo)));
+  // Omit default choices for compatibility with existing records and clients.
   const normalize = (value) => ({ theme: themes.some((theme) => theme.id === value?.theme) ? value.theme : "default",
-    ...(value?.mode === "dark" ? { mode: "dark" } : {}) });
-  const sameAppearance = (a, b) => a.theme === b.theme && a.mode === b.mode;
+    ...(value?.mode === "dark" ? { mode: "dark" } : {}),
+    ...(value?.logo === "color" ? { logo: "color" } : {}) });
+  const sameAppearance = (a, b) => a.theme === b.theme && a.mode === b.mode && a.logo === b.logo;
 
   // Serialize writes while retaining the latest choice; a slow earlier save cannot win.
   function createSaver({ initial, save, onChange = () => {} }) {
@@ -59,18 +65,26 @@
     const cacheKey = (id) => `studybridge.appearance.${id}`;
     function cache(value) { try { storage?.setItem(cacheKey(userId), JSON.stringify(normalize(value))); } catch { /* Storage is optional. */ } }
     function apply(value) {
-      const { theme, mode } = normalize(value);
+      const { theme, mode, logo } = normalize(value);
       if (theme === "default") doc.documentElement.removeAttribute("data-sb-theme");
       else doc.documentElement.setAttribute("data-sb-theme", theme);
       if (mode === "dark") doc.documentElement.setAttribute("data-sb-mode", "dark");
       else doc.documentElement.removeAttribute("data-sb-mode");
+      if (logo === "color") doc.documentElement.setAttribute("data-sb-logo", "color");
+      else doc.documentElement.removeAttribute("data-sb-logo");
+      const favicon = doc.querySelector?.('link[rel="icon"]');
+      if (favicon) favicon.setAttribute("href", `/brand/icon-${logo === "color" ? "color" : "monochrome"}.svg`);
     }
     function update() {
       if (!dialog || !saver) return;
       const current = saver.snapshot();
+      const awaitingAppearance = loading || (loadError && !edited);
       dialog.querySelectorAll('input[name="sb-theme"]').forEach((input) => { input.checked = input.value === current.draft.theme; });
+      dialog.querySelectorAll('input[name="sb-logo"]').forEach((input) => { input.checked = input.value === (current.draft.logo || "monochrome"); });
       dialog.querySelector('input[name="sb-dark-mode"]').checked = current.draft.mode === "dark";
-      dialog.querySelector(".settings-themes").disabled = current.draft.mode === "dark";
+      dialog.querySelector('input[name="sb-dark-mode"]').disabled = awaitingAppearance;
+      dialog.querySelector(".settings-logos").disabled = awaitingAppearance;
+      dialog.querySelector(".settings-themes").disabled = awaitingAppearance || current.draft.mode === "dark";
       const failed = current.status === "error" || loadError;
       const status = dialog.querySelector(".settings-save-status");
       status.textContent = current.status === "error" ? "保存失败，当前仅预览此外观。请重试。"
@@ -119,16 +133,17 @@
     function open() {
       if (!userId || !saver) return;
       if (!dialog) {
-        dialog = createSettingsView({ themes, getAppearance: () => saver.snapshot().draft, flushAppearance: () => saver.flush() });
+        dialog = createSettingsView({ themes, logos, getAppearance: () => saver.snapshot().draft, flushAppearance: () => saver.flush() });
         dialog.querySelector(".settings-close").addEventListener("click", () => dialog.close());
         dialog.querySelector(".settings-retry").addEventListener("click", () => {
           if (loadError && !edited) void read(); else void saver.flush().catch(() => {});
         });
         dialog.addEventListener("change", (event) => {
-          if (!event.target.matches('input[name="sb-theme"], input[name="sb-dark-mode"]')) return;
+          if (!event.target.matches('input[name="sb-theme"], input[name="sb-dark-mode"], input[name="sb-logo"]')) return;
           edited = true; loadError = false; loading = false; ++generation;
           const next = { ...saver.snapshot().draft };
           if (event.target.name === "sb-dark-mode") next.mode = event.target.checked ? "dark" : "light";
+          else if (event.target.name === "sb-logo") next.logo = event.target.value;
           else next.theme = event.target.value;
           saver.setDraft(next); apply(next);
           void saver.flush().catch(() => {});
@@ -141,5 +156,5 @@
     }
     return { sync, open, reset, refreshLearning: () => dialog?.refreshLearning?.() };
   }
-  return { themes, isValid, normalize, createSaver, createController };
+  return { themes, logos, isValid, normalize, createSaver, createController };
 });

@@ -2496,7 +2496,7 @@ async function routeApi(req, res) {
     if (!user) return;
     if (method === "GET") return sendJson(res, 200, { appearance: appearance.normalize(await db.getUserAppearance(user.id)) });
     const body = await readJson(req);
-    if (!appearance.isValid(body)) return sendError(res, 400, "Please choose one of the available interface themes.");
+    if (!appearance.isValid(body)) return sendError(res, 400, "Please choose an available logo, interface theme and display mode.");
     await db.setUserAppearance(user.id, appearance.normalize(body));
     return sendJson(res, 200, { appearance: appearance.normalize(body) });
   }

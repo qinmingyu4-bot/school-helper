@@ -157,6 +157,27 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     assert.deepEqual((await request(route, { cookie: alice.cookie, method: "PUT", body: { theme: "monochrome", mode: "light" } })).data.appearance, { theme: "monochrome" });
   });
 
+  await t.test("logo selection persists per account, validates inputs and retains palette, mode and profile", async () => {
+    const route = "/api/me/appearance";
+    const before = (await request("/api/me", { cookie: alice.cookie })).data.user;
+    for (const logo of [null, "purple", true, {}, "<svg>"]) {
+      assert.equal((await request(route, { cookie: alice.cookie, method: "PUT", body: { theme: "default", logo } })).status, 400);
+    }
+    const colorful = { theme: "celadon", mode: "dark", logo: "color" };
+    const result = await request(route, { cookie: alice.cookie, method: "PUT", body: colorful });
+    assert.equal(result.status, 200); assert.deepEqual(result.data.appearance, colorful);
+    await stop(); await start();
+    assert.deepEqual((await request(route, { cookie: alice.cookie })).data.appearance, colorful);
+    assert.deepEqual((await request(route, { cookie: bob.cookie })).data.appearance, { theme: "default" });
+    const after = (await request("/api/me", { cookie: alice.cookie })).data.user;
+    for (const field of ["id", "email", "profile", "preferences"]) assert.deepEqual(after[field], before[field]);
+    const monochrome = { theme: "celadon", mode: "dark", logo: "monochrome" };
+    assert.deepEqual((await request(route, { cookie: alice.cookie, method: "PUT", body: monochrome })).data.appearance,
+      { theme: "celadon", mode: "dark" });
+    await stop(); await start();
+    assert.deepEqual((await request(route, { cookie: alice.cookie })).data.appearance, { theme: "celadon", mode: "dark" });
+  });
+
   await t.test("simultaneous profile and learning saves preserve both through the HTTP API", async () => {
     const before = (await request("/api/me", { cookie: alice.cookie })).data.user;
     const profileBody = { name: before.name, ...before.profile, major: "Concurrency regression" };

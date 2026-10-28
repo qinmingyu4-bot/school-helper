@@ -2,6 +2,9 @@
 
 ## 2026-10-28
 
+- Keep both approved book-and-bridge identities: use the monochrome logo by default on the homepage, login, app sidebar and browser tab, and add an indigo/mint option under **设置 → 个性化 → 品牌 Logo** with visual previews and account-scoped saving. Retain existing palettes and dark-mode choices independently, reset the logo on logout, include it in preference exports and preserve both original design proofs alongside scalable SVG assets. Prepared on a task branch for review without deployment.
+- Validate 287 passing tests and 191-file syntax/assets/version checks against the latest registration-verification release. Browser checks cover the homepage/login/app identity, immediate logo switching, refresh and new-login restoration, palette/dark-mode independence, failed-save retry, logout/account isolation and a 390 px layout without horizontal overflow.
+
 - Release `1.1.116`: enable owner-approved SES registration email codes with branded HTML cards, prominent selectable six-digit codes, 15-minute expiry and plaintext fallback. Keep code values out of subjects. Validate 282 passing tests and 191-file source/assets/version checks. Store SMTP credentials in encrypted Actions Secrets and apply private server settings with backup/rollback; retain latest 1.1.115 account and schedule behavior.
 
 - Prepare SES SMTP activation through an encrypted deployment secret and SSH input. Restrict the dedicated sender to `noreply@studybridge.ink` in Canada Central, validate TLS/authentication before activation, preserve unrelated private settings and restore configuration after failed startup. SES production access, mailbox delivery, SPF and DKIM verified; alternate verified senders rejected. Validate 278 passing tests and 188-file source/assets/version checks after merging current 1.1.114 account-security and schedule updates; website activation awaits release approval.

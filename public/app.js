@@ -32,6 +32,7 @@
   const communityReplies = window.StudyBridgeCommunityReplies.createController({ api, getUser: () => state.user, onChange: updateCommunityThread });
 
   const root = document.getElementById("root");
+  const brandMarkHtml = () => `<span class="sb-brand-symbol" aria-hidden="true"><img class="sb-logo-monochrome" src="/brand/book-bridge-monochrome.svg" width="128" height="72" alt=""><img class="sb-logo-color" src="/brand/book-bridge-color.svg" width="128" height="72" alt=""></span>`;
   const appearanceController = window.StudyBridgeAppearance.createController({
     load: async () => (await api("/api/me/appearance")).appearance,
     save: async (_userId, appearance) => { await api("/api/me/appearance", { method: "PUT", body: appearance }); },
@@ -366,7 +367,7 @@
       <main class="auth-shell auth-entry">
         <header class="auth-header">
           <a class="auth-brand" href="/" aria-label="StudyBridge 首页">
-            <svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><rect width="40" height="40" rx="8" fill="currentColor"/><path d="M10 27V15m20 12V15M10 20c6 0 6-8 10-8s4 8 10 8M10 24h20M16 18v6m8-6v6" stroke="#f5f5f5" stroke-width="2" stroke-linecap="round"/></svg>
+            ${brandMarkHtml()}
             <span>StudyBridge.</span>
           </a>
           <a class="auth-home-link" href="/">返回首页 <span aria-hidden="true">↗</span></a>
@@ -443,7 +444,7 @@
     return `
       <aside class="sidebar" data-sidebar-context="${esc(`${state.user.id}:${state.mode}:${state.page}`)}">
         <header class="side-head">
-          <div class="brand-mark">SB</div>
+          <div class="brand-mark">${brandMarkHtml()}</div>
           <div><strong>StudyBridge</strong><span>${esc(state.user.name)} | ${esc(state.user.email)}</span></div>
           <button data-action="settings" aria-haspopup="dialog" title="Settings">设置</button>
         </header>

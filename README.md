@@ -18,6 +18,7 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, in
 - Backend AI calls using `OPENAI_API_KEY`
 - Incremental Study Area replies with animated activity states and a stop-generation control
 - Self-hosted Inter Variable and Noto Sans SC interface fonts, with bundled licenses and source notes in `public/fonts/SOURCES.md`
+- Shared book-and-bridge logo on the homepage, login and app, defaulting to monochrome. **设置 → 个性化 → 品牌 Logo** offers the approved indigo/mint alternative with immediate preview and account-scoped saving, independent of interface palette and dark mode. Both original design proofs and scalable assets are documented in `docs/branding/README.md`.
 - Seven Study Area modes with mode-specific question shortcuts and AI workflows: preview, guided learning, review, assignment help, mock exams, cheatsheets, and exam cramming
 - Manual SB Docs, SB Slides and SB Sheets editors with private cloud projects, browser draft recovery, Office import/export, and AI suggestions applied only after the student chooses
 - Local JSON database for development or small private deployments
@@ -226,13 +227,17 @@ navigation on mobile. **退出登录** remains inside Settings. Categories are:
 - **学习与 AI:** change independent English-term, English-answer and Chinese-explanation
   choices plus custom instructions. Uses the same serialized saver as the Study
   Area sidebar, with automatic save, synchronized controls and failure/retry status.
-- **外观与显示:** keep the blue/green default or choose 烟紫灰, 石墨灰, 雾蓝灰,
+- **个性化** (previously 外观与显示): choose the default **黑白简约** book-and-bridge
+  logo or its **蓝紫 · 薄荷青** alternative. Logo previews, the sidebar and the browser
+  tab update together, with the choice saved per account and included in preference
+  exports. Logo selection remains available in dark mode. Separately, keep the blue/green
+  interface default or choose 烟紫灰, 石墨灰, 雾蓝灰,
   灰玫瑰, 青瓷灰, 冷银灰 or **黑白灰简约** for daytime. The new monochrome option
   matches the homepage's white content panels, light-gray background, charcoal
   controls and thin frames, keeping the seven original palettes. Calendar/status
   meanings and authored document/slide/cell colors are retained. The independent **黑夜模式** switch applies
   暮色深灰 (charcoal surfaces and champagne accents); switching it off restores
-  the selected daytime palette. Both choices preview immediately and save to the
+  the selected daytime palette. All choices preview immediately and save to the
   account. The five main destinations share outline icons and a rounded selected
   row with a filled icon, while retaining their existing order and layout.
 - **课程与提醒:** open course/document management and the timetable; distinguish

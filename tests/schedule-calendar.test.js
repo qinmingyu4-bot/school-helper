@@ -5,6 +5,22 @@ const importer = require("../public/schedule-import");
 const context = { now: "2026-10-26T15:30:00Z", timeZone: "America/Toronto" };
 const row = (title, startsAt, kind = "LEC", extra = {}) => ({ title, startsAt, kind, docId: title, courseId: "planner", ...extra });
 
+test("date cells show three entries before counting overflow and retain all day details", () => {
+  const items = Array.from({ length: 5 }, (_, index) => row(`Task ${index + 1}`, `2026-10-28T${10 + index}:00Z`, "EVENT"));
+  for (const count of [3, 4, 5]) {
+    const model = calendar.buildModel({ ...context, month: "2026-10", selectedDate: "2026-10-28", items: items.slice(0, count) });
+    const html = calendar.render(model);
+    const cell = html.match(/<button class="planner-day [^>]*data-date="2026-10-28"[^>]*>([\s\S]*?)<\/button>/)[1];
+    assert.equal((cell.match(/class="planner-chip /g) || []).length, 3);
+    assert.ok(cell.includes("Task 3"));
+    assert.ok(!cell.includes("Task 4"));
+    if (count === 3) assert.ok(!cell.includes("<small>+"));
+    else assert.ok(cell.includes(`<small>+${count - 3} 项</small>`));
+    assert.equal(model.selectedItems.length, count);
+    assert.ok(html.split('class="planner-day-items"')[1].includes(`Task ${count}`));
+  }
+});
+
 test("agenda categories distinguish legacy assessments and combine with completion without changing the calendar", () => {
   const items = [
     row("Lecture about final exams", "2026-10-28T10:00Z", "LEC"),

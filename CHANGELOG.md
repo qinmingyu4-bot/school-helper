@@ -2,6 +2,8 @@
 
 ## 2026-10-28
 
+- Show up to three schedule entries directly in each calendar date cell, increase desktop cell space to accommodate them, and count only entries beyond the third in the overflow indicator. Keep compact mobile dots/counts and full day details.
+
 - Release `1.1.102`: apply the approved vivid calendar palette: rose deadlines, sky-blue lectures, bright-green tutorials and yellow personal plans. Match legend dots, calendar chips and agenda badges with soft tinted backgrounds and readable dark text. Refresh frontend/cache versions; preserve schedule and account data. Code rollback target: `ce9e4d6` (`1.1.101`).
 
 - Release `1.1.101`: publish the viewed-month navigation label and relocated return-to-today action. Refresh frontend/cache versions; preserve saved schedules and account data. Code rollback target: `ccad539` (`1.1.100`).

@@ -2,6 +2,10 @@
 
 ## 2026-10-28
 
+- Release `1.1.114`: collapse course-file import and clear uploaded file, extracted results and temporary semester settings after all confirmed batches save. Keep failures and partial saves retryable, preserve saved courses and unrelated quick-entry text. Refresh frontend/cache versions; previous production code: `b7271dc` (`1.1.113`).
+
+- Collapse course-file import after all confirmed batches save successfully; clear the uploaded file, extracted preview/source, recognized-course preview and temporary semester settings, and show a success toast. Retain file, preview and settings after failed or partial saves for retry; preserve saved courses and unrelated quick-entry text.
+
 - Release `1.1.113`: after confirming AI-organized text/voice schedules, collapse Add schedule and clear the input/transcription/audio state. Preserve input and preview on failed or partial saves, and leave file-import quick drafts intact. Refresh frontend/cache versions; retain all account and schedule data. Previous production code: `0344fe4` (`1.1.112`).
 
 - After successfully confirming AI-organized typed or voice-transcribed schedules, collapse Add schedule and clear the input text, transcription status, audio retry file and source. Keep the success notice visible as a toast; retain drafts/text on failed or partial saves for retry.

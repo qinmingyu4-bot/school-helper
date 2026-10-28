@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.113";
+  const VERSION = "1.1.114";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -446,7 +446,7 @@
     const active = state.page === page ? "active" : "";
     return `
       <button class="nav-card ${active}" data-page="${page}" ${active ? 'aria-current="page"' : ""}>
-        <span aria-hidden="true"><svg><use href="/classmates-icons.svg?v=1.1.113#nav-${esc(page)}"></use></svg></span>
+        <span aria-hidden="true"><svg><use href="/classmates-icons.svg?v=1.1.114#nav-${esc(page)}"></use></svg></span>
         <b>${esc(title)}</b>
         <small>${esc(page === "schedule" && nextDue() ? `${nextDue().title} · 还有 ${dueText(nextDue().startsAt)}` : sub)}</small>
       </button>
@@ -1572,6 +1572,18 @@
         state.scheduleVoicePhase = "idle";
         state.scheduleSource = "";
         state.scheduleManualOpen = false;
+        setToast(message);
+      } else {
+        const message = state.scheduleImportStatus;
+        state.scheduleImportOpen = false;
+        state.scheduleImportStatus = "";
+        state.scheduleSource = "";
+        state.scheduleImportedCourses = [];
+        state.scheduleCalendar = null;
+        state.scheduleCalendarNotice = "";
+        state.scheduleCalendarDraft = { startDate: "", endDate: "", breaks: "", timeZone: "" };
+        state.scheduleCalendarEditing = false;
+        state.scheduleFromDate = "";
         setToast(message);
       }
     } catch (error) {

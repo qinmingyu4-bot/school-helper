@@ -2,6 +2,8 @@
 
 ## 2026-10-28
 
+- Release `1.1.121`: publish the owner-authorized navigation icon flicker fix from `024e94d`. Render the same five main icons inline, preserving their appearance and all navigation behavior, and refresh package/frontend/cache versions. Retain the current agenda scroll fix, memberships, branding, settings, accounts and learning data. Use the existing private backup, unchanged configuration/data checks and automatic code rollback. Previous production code: `e315a95` (`1.1.120`).
+
 - Prevent the five main navigation icons from flashing during route changes by drawing their existing SVG paths inline instead of recreating external sprite references whenever the sidebar renders. Keep the same shapes, dimensions, colors, selection highlights and destinations, retain the legacy sprite for already-open clients, and refresh the application asset cache key. Prepared on a task branch for review; no AWS deployment.
 - Validate 310 passing regression tests and 199-file source/assets/version checks. With external sprite loading blocked, reproduce five missing legacy icons, then verify all five fixed icons across 30 day/night route switches and 624 sampled frames without blank geometry or page errors; confirm every SVG path exactly matches its existing symbol.
 

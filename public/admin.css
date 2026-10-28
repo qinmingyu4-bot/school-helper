@@ -86,3 +86,10 @@
 @media (max-width: 560px) {
   .admin-management { padding: 0 16px 20px; }
 }
+
+.admin-user-controls { display: grid; justify-items: end; gap: 12px; min-width: 0; }
+.admin-user-controls > button { min-height: 40px; padding: 8px 12px; font-size: 12px; }
+.admin-membership-status { min-height: 1.4em; color: var(--muted); font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+@container (max-width: 720px) { .admin-user-controls { justify-items: start; } }
+
+.admin-membership-status.is-error { color: var(--danger); }

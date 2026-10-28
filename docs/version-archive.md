@@ -10,6 +10,20 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.117 - 2026-10-28
+
+Purpose:
+- Publish the owner-approved book-and-bridge identity from `5a0f0a7`: default monochrome logo on the homepage, login, sidebar and browser tab, with an independent blue-purple/mint choice in **设置 → 个性化 → 品牌 Logo**.
+- Preserve existing accounts, courses, documents, chats, schedules, authored files, authentication configuration, palettes and dark-mode choices. The optional logo preference uses the existing account-owned appearance record, with no data migration or reset.
+- Refresh package and frontend/cache versions.
+
+Validation:
+- 287 passing tests, 191-file syntax/assets/version checks and deployment-script syntax checks on the release. Require the production dependency-audit gate before installation.
+- Retain the verified private backup and unchanged-data checks before installation, with automatic code rollback on failure. Compare the original signed-in account's courses and saved preferences and verify live logo assets after deployment.
+
+Rollback target:
+- `f351b25` (1.1.116). Restore code only; retain current user data and private backups.
+
 ### 1.1.116 - 2026-10-28
 
 Purpose:

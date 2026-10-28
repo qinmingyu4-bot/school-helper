@@ -444,14 +444,18 @@ async function requireUser(req, res) {
   return auth.user;
 }
 
-async function requireAdmin(req, res) {
-  const user = await requireUser(req, res);
-  if (!user) return null;
-  if (user.role !== "admin") {
+async function requireAdminSession(req, res) {
+  const auth = await currentUser(req);
+  if (!auth) { sendError(res, 401, "Please log in first."); return null; }
+  if (auth.user.role !== "admin") {
     sendError(res, 403, "Only the StudyBridge creator can open this area.");
     return null;
   }
-  return user;
+  return auth;
+}
+
+async function requireAdmin(req, res) {
+  return (await requireAdminSession(req, res))?.user || null;
 }
 
 function validatePassword(password) {
@@ -2141,7 +2145,7 @@ async function routeApi(req, res) {
     const user = await requireUser(req, res);
     if (!user) return;
     await db.recordUserActivity(user.id);
-    return sendJson(res, 200, { ok: true });
+    return sendJson(res, 200, { ok: true, userId: user.id, membershipTier: membershipTier(user) }, { "cache-control": "private, no-store" });
   }
 
   if (url.pathname === "/api/me" && method === "GET") {
@@ -2153,7 +2157,7 @@ async function routeApi(req, res) {
   if (url.pathname === "/api/me/membership" && method === "GET") {
     const auth = await currentUser(req);
     if (!auth) return sendError(res, 401, "登录已过期，请重新登录。");
-    return sendJson(res, 200, { membership: { tier: membershipTier(auth.user), csrfToken: hashToken(`account-membership:${auth.tokenHash}`) } }, { "cache-control": "private, no-store" });
+    return sendJson(res, 200, { membership: { userId: auth.user.id, tier: membershipTier(auth.user), csrfToken: hashToken(`account-membership:${auth.tokenHash}`) } }, { "cache-control": "private, no-store" });
   }
 
   if (url.pathname === "/api/me/membership/redeem" && method === "POST") {
@@ -2412,8 +2416,9 @@ async function routeApi(req, res) {
   }
 
   if (url.pathname === "/api/admin/overview" && method === "GET") {
-    const admin = await requireAdmin(req, res);
-    if (!admin) return;
+    const auth = await requireAdminSession(req, res);
+    if (!auth) return;
+    const admin = auth.user;
     const [users, invites, activity] = await Promise.all([db.listUsers(), db.listInvites(), db.listUserActivity()]);
     const lastSeenByUser = new Map(activity.map((item) => [item.userId, item.lastSeenAt]));
     const usersWithStats = await Promise.all(
@@ -2434,8 +2439,9 @@ async function routeApi(req, res) {
       users: usersWithStats,
       invites: invites.filter((invite) => !isResetRequest(invite)).map(publicInvite),
       resetRequests,
-      creator: publicUser(admin)
-    });
+      creator: publicUser(admin),
+      membershipCsrfToken: hashToken(`admin-membership:${auth.tokenHash}`)
+    }, { "cache-control": "private, no-store" });
   }
 
   if (url.pathname === "/api/admin/system-status" && method === "GET") {
@@ -2469,6 +2475,20 @@ async function routeApi(req, res) {
       },
       autoSync: autoSyncStatusClean()
     });
+  }
+
+  const membershipMatch = url.pathname.match(/^\/api\/admin\/users\/([\w-]{1,100})\/membership$/);
+  if (membershipMatch && method === "PATCH") {
+    const auth = await requireAdminSession(req, res);
+    if (!auth) return;
+    const expected = hashToken(`admin-membership:${auth.tokenHash}`), csrf = String(req.headers["x-csrf-token"] || "");
+    if (!/^[a-f0-9]{64}$/.test(csrf) || !crypto.timingSafeEqual(Buffer.from(csrf), Buffer.from(expected))
+      || !/^application\/json(?:;|$)/i.test(req.headers["content-type"] || "")) return sendError(res, 403, "请刷新开发者端后再试。");
+    const body = await readJson(req);
+    if (body.actorId !== auth.user.id) return sendError(res, 409, "登录账号已变更，请刷新后再试。");
+    if (!["standard", "plus"].includes(body.membershipTier) || !["standard", "plus"].includes(body.expectedTier)) return sendError(res, 400, "请选择普通用户或 Plus 用户。");
+    const result = await db.setUserMembership(membershipMatch[1], body.membershipTier, auth.user.id, body.expectedTier);
+    return sendJson(res, 200, { user: publicUser(withEffectiveRole(result.user)), changed: result.changed }, { "cache-control": "private, no-store" });
   }
 
   if (url.pathname === "/api/admin/invites" && method === "POST") {
@@ -2529,7 +2549,7 @@ async function routeApi(req, res) {
     if (!user) return;
     if (method === "GET") return sendJson(res, 200, { appearance: appearance.normalize(await db.getUserAppearance(user.id)) });
     const body = await readJson(req);
-    if (!appearance.isValid(body)) return sendError(res, 400, "Please choose one of the available interface themes.");
+    if (!appearance.isValid(body)) return sendError(res, 400, "Please choose an available logo, interface theme and display mode.");
     await db.setUserAppearance(user.id, appearance.normalize(body));
     return sendJson(res, 200, { appearance: appearance.normalize(body) });
   }

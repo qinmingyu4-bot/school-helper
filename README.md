@@ -18,6 +18,7 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, op
 - Backend AI calls using `OPENAI_API_KEY`
 - Incremental Study Area replies with animated activity states and a stop-generation control
 - Self-hosted Inter Variable and Noto Sans SC interface fonts, with bundled licenses and source notes in `public/fonts/SOURCES.md`
+- Shared book-and-bridge logo on the homepage, login and app, defaulting to monochrome. **设置 → 个性化 → 品牌 Logo** offers the approved indigo/mint alternative with immediate preview and account-scoped saving, independent of interface palette and dark mode. Both original design proofs and scalable assets are documented in `docs/branding/README.md`.
 - Seven Study Area modes with mode-specific question shortcuts and AI workflows: preview, guided learning, review, assignment help, mock exams, cheatsheets, and exam cramming
 - Manual SB Docs, SB Slides and SB Sheets editors with private cloud projects, browser draft recovery, Office import/export, and AI suggestions applied only after the student chooses
 - Local JSON database for development or small private deployments
@@ -226,13 +227,17 @@ navigation on mobile. **退出登录** remains inside Settings. Categories are:
 - **学习与 AI:** change independent English-term, English-answer and Chinese-explanation
   choices plus custom instructions. Uses the same serialized saver as the Study
   Area sidebar, with automatic save, synchronized controls and failure/retry status.
-- **外观与显示:** keep the blue/green default or choose 烟紫灰, 石墨灰, 雾蓝灰,
+- **个性化** (previously 外观与显示): choose the default **黑白简约** book-and-bridge
+  logo or its **蓝紫 · 薄荷青** alternative. Logo previews, the sidebar and the browser
+  tab update together, with the choice saved per account and included in preference
+  exports. Logo selection remains available in dark mode. Separately, keep the blue/green
+  interface default or choose 烟紫灰, 石墨灰, 雾蓝灰,
   灰玫瑰, 青瓷灰, 冷银灰 or **黑白灰简约** for daytime. The new monochrome option
   matches the homepage's white content panels, light-gray background, charcoal
   controls and thin frames, keeping the seven original palettes. Calendar/status
   meanings and authored document/slide/cell colors are retained. The independent **黑夜模式** switch applies
   暮色深灰 (charcoal surfaces and champagne accents); switching it off restores
-  the selected daytime palette. Both choices preview immediately and save to the
+  the selected daytime palette. All choices preview immediately and save to the
   account. The five main destinations share outline icons and a rounded selected
   row with a filled icon, while retaining their existing order and layout.
 - **课程与提醒:** open course/document management and the timetable; distinguish
@@ -593,8 +598,10 @@ behavior is deliberately outside this integrity change, as requested by the owne
 Registration is open for email and Google accounts. Leave the invite blank for
 **普通用户** (`membershipTier: "standard"`); a valid supplied invitation creates
 **Plus 用户** (`"plus"`). Invalid, disabled or spent codes are rejected; users may
-clear the field to register normally. Existing users with saved `inviteCode` or
+clear the field to register normally. Legacy users without an explicit tier and with saved `inviteCode` or
 `inviteId` automatically resolve to Plus, even if their invitation was deleted.
+An explicitly stored ordinary/Plus tier takes precedence, so administrator
+downgrades are not undone by historical invitation evidence.
 This compatibility rule does not rewrite credentials or other historical data.
 New account tiers are persisted by the server; client-supplied tiers are ignored.
 Settings, the sidebar and the admin user list show the tier. Membership is separate
@@ -619,6 +626,23 @@ learning data stay with the same account. This does not grant administrator righ
 including when redeeming an invitation whose signup role is Co-admin. The form
 shows immediate success or retryable validation errors, clears on success/close,
 and never stores invitations in browser storage or preference exports.
+
+In **开发者端 → 用户**, show ordinary/Plus badges and counts, with a per-user
+**设为 Plus / 设为普通用户** button. `PATCH /api/admin/users/:id/membership`
+requires an administrator session, the admin-overview CSRF token, current actor ID,
+a valid target tier and expected current tier. Atomic local/DynamoDB updates retain
+credentials, Google bindings, roles, SB IDs, invitation history and learning data;
+stale decisions return a conflict instead of overwriting a newer classification.
+Record the last membership change source/time/actor privately. Administrators can
+change their own membership without changing their administrator permission.
+A downgraded user may still redeem a new valid code; historical codes remain spent.
+
+User-side badges and open Settings update when membership is read or the existing
+foreground activity heartbeat returns a changed tier (at most once per minute while
+active). Do not rebuild the learning page or clear drafts for this update. Background
+responses from an earlier account or membership request cannot overwrite a newer
+local tier. Admin-list polling updates visible classifications and counts as well.
+
 
 Each invitation permits one successful registration. Previously used codes cannot
 be reused, even if their old usage limit was higher or they are re-enabled.

@@ -51,7 +51,12 @@ test("homepage, authenticated entry, legacy bookmarks and OAuth use distinct pag
     assert.match(html, /进入 StudyBridge/);
     assert.doesNotMatch(html, /<script|id="root"/);
     assert.ok([...html.matchAll(/class="[^"]*button[^"\n]*" href="([^"]+)"/g)].every((match) => match[1] === "/app"));
-    for (const file of ["landing.css", "typography.css"]) assert.equal((await request(`/${file}`)).status, 200);
+    for (const file of ["landing.css", "typography.css", "brand.css"]) assert.equal((await request(`/${file}`)).status, 200);
+    for (const name of ["book-bridge-monochrome", "book-bridge-color", "icon-monochrome", "icon-color"]) {
+      const asset = await request(`/brand/${name}.svg`);
+      assert.equal(asset.status, 200); assert.equal(asset.headers.get("content-type"), "image/svg+xml");
+    }
+    assert.match(html, /src="\/brand\/book-bridge-monochrome\.svg"/);
     const login = await request("/login");
     assert.equal(login.status, 200);
     assert.match(await login.text(), /id="root"/);

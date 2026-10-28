@@ -1,0 +1,30 @@
+/* Shared book-and-bridge identity. Logo choice is independent of interface themes. */
+.sb-brand-symbol { display: inline-grid; place-items: center; width: 44px; height: 40px; flex: 0 0 auto; }
+.sb-brand-symbol img { display: block; width: 100%; height: auto; }
+.sb-brand-symbol .sb-logo-color { display: none; }
+:root[data-sb-logo="color"] .sb-brand-symbol .sb-logo-monochrome { display: none; }
+:root[data-sb-logo="color"] .sb-brand-symbol .sb-logo-color { display: block; }
+:root .sidebar .side-head .brand-mark { width: 44px; height: 44px; background: transparent; border-radius: 0; }
+:root[data-sb-mode="dark"] .sidebar .sb-logo-monochrome { filter: brightness(0) invert(1); }
+:root[data-sb-mode="dark"] .sidebar .sb-logo-color { filter: brightness(1.25); }
+.brand-icon { object-fit: contain; }
+.preview-brand > img { width: 24px; height: auto; flex-shrink: 0; }
+.closing-bridge { filter: brightness(0) invert(1); }
+
+.settings-logos { min-width: 0; border: 0; padding: 0; margin: 0 0 24px; }
+.settings-logos:disabled { opacity: .55; }
+.settings-logos legend { padding: 0; font-size: 15px; font-weight: 600; }
+.settings-logos > p { margin: 8px 0 18px; color: var(--muted); font-size: 12px; line-height: 1.8; }
+.settings-logo-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.settings-logo-option { position: relative; display: grid; gap: 12px; min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+.settings-logo-option:has(input:checked) { border-color: var(--green); box-shadow: 0 0 0 1px var(--green); }
+.settings-logo-option:focus-within { outline: 2px solid var(--green); outline-offset: 3px; }
+.settings-logo-option > input { position: absolute; top: 14px; left: 14px; width: 16px; height: 16px; margin: 0; padding: 0; accent-color: var(--green); }
+.settings-logo-preview { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; min-height: 96px; padding: 22px 6px 10px; border-radius: 6px; background: #f7f8fc; }
+.settings-logo-preview img { display: block; width: 43px; height: auto; flex: 0 0 auto; }
+.settings-logo-preview > span { color: #292b38; font-size: 13px; font-weight: 650; letter-spacing: -.5px; }
+.settings-logo-name { display: block; color: var(--ink); font-size: 13px; font-weight: 500; line-height: 1.6; }
+.settings-logo-name small { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; font-weight: 400; }
+@media (max-width: 480px) {
+  .settings-logo-grid { grid-template-columns: minmax(0, 1fr); }
+}

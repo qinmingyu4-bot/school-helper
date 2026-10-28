@@ -43,7 +43,7 @@
   white-space: nowrap;
 }
 
-:root .auth-entry .auth-brand svg {
+:root .auth-entry .auth-brand .sb-brand-symbol {
   width: 40px;
   height: 40px;
   flex-shrink: 0;
@@ -277,7 +277,7 @@
     font-size: 19px;
   }
 
-  :root .auth-entry .auth-brand svg {
+  :root .auth-entry .auth-brand .sb-brand-symbol {
     width: 30px;
     height: 30px;
   }

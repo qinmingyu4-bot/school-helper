@@ -9,7 +9,7 @@
     { id: "account", name: "账号与资料", hint: "个人信息与登录", icon: "◎", group: "你的账号" },
     { id: "security", name: "账号安全", hint: "设置或修改网站密码", icon: "◇", group: "你的账号" },
     { id: "learning", name: "学习与 AI", hint: "回答语言与学习方式", icon: "✦", group: "偏好设置" },
-    { id: "appearance", name: "外观与显示", hint: "界面色调", icon: "◐", group: "偏好设置" },
+    { id: "appearance", name: "个性化", hint: "Logo、界面色调与显示", icon: "◐", group: "偏好设置" },
     { id: "reminders", name: "课程与提醒", hint: "课程资料与截止日期", icon: "◷", group: "学习空间" },
     { id: "data", name: "隐私与数据", hint: "资料可见性与偏好副本", icon: "▤", group: "学习空间" },
     { id: "about", name: "帮助与关于", hint: "使用说明与版本", icon: "ⓘ", group: "学习空间" }
@@ -17,11 +17,12 @@
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
   function preferenceBackup({ appearance, learning, version, date = new Date() }) {
     return { format: "studybridge-preferences", formatVersion: 1, appVersion: String(version), exportedAt: date.toISOString(),
-      appearance: { theme: appearance.theme, ...(appearance.mode === "dark" ? { mode: "dark" } : {}) }, learningStyle: { englishTerms: Boolean(learning.englishTerms), englishAnswers: Boolean(learning.englishAnswers),
+      appearance: { theme: appearance.theme, ...(appearance.mode === "dark" ? { mode: "dark" } : {}),
+        ...(appearance.logo === "color" ? { logo: "color" } : {}) }, learningStyle: { englishTerms: Boolean(learning.englishTerms), englishAnswers: Boolean(learning.englishAnswers),
         chineseExplanations: Boolean(learning.chineseExplanations), customInstruction: String(learning.customInstruction || "") } };
   }
 
-  function createView({ document: doc = document, themes, version, getUser, getContext, getAppearance, flushAppearance,
+  function createView({ document: doc = document, themes, logos, version, getUser, getContext, getAppearance, flushAppearance,
     learning, saveProfile, loadMembership, redeemMembershipInvite, loadSecurity, savePassword, requestPasswordReset, navigate, logout }) {
     const dialog = doc.createElement("dialog");
     dialog.className = "settings-dialog";
@@ -53,7 +54,8 @@
           <div class="settings-block"><h4>回答与讲解</h4><p class="settings-caption">仅用于课程学习、作业、考试和学术写作。日常问题按提问语言自然回答，必要的英文缩写照常保留。</p><label class="settings-toggle-row"><span><strong>保留 English terms</strong><small>中文讲解中保留有用的英文术语。</small></span><input type="checkbox" data-settings-pref="englishTerms" role="switch"></label><label class="settings-toggle-row"><span><strong>英文作答 / 英文草稿</strong><small>最终答案或草稿使用英文。</small></span><input type="checkbox" data-settings-pref="englishAnswers" role="switch"></label><label class="settings-toggle-row"><span><strong>中文拆解 reasoning</strong><small>用中文讲解概念、步骤与解题理由。</small></span><input type="checkbox" data-settings-pref="chineseExplanations" role="switch"></label></div>
           <div class="settings-block"><h4>自定义学习要求</h4><label class="settings-instruction-label">补充你的偏好<textarea data-settings-instruction maxlength="500" placeholder="例如：先给提示，再一步步讲；解释时多举生活中的例子。"></textarea></label><p class="settings-caption">本次提问中的明确要求优先，其次是自定义要求，再参考上面的开关。</p></div><div class="settings-save-row"><span class="settings-learning-status" role="status" aria-live="polite"></span><button type="button" class="settings-learning-retry" hidden>重试保存</button></div>
         </section>
-        <section id="settings-panel-appearance" class="settings-panel" aria-labelledby="settings-appearance-heading" hidden>${heading("appearance", "保留熟悉的布局，换一种更适合你的色调。")}
+        <section id="settings-panel-appearance" class="settings-panel" aria-labelledby="settings-appearance-heading" hidden>${heading("appearance", "选择喜欢的 Logo 与界面色调，定制自己的学习空间。")}
+          <fieldset class="settings-logos"><legend>品牌 Logo</legend><p>书页成桥，连接学习的每一步。Logo 可独立于界面色调选择。</p><div class="settings-logo-grid">${logos.map((logo) => `<label class="settings-logo-option"><input type="radio" name="sb-logo" value="${logo.id}"><span class="settings-logo-preview" aria-hidden="true"><img src="${logo.image}" width="128" height="72" alt=""><span>StudyBridge</span></span><span class="settings-logo-name">${logo.name}<small>${logo.detail}</small></span></label>`).join("")}</div></fieldset>
           <div class="settings-block settings-display-mode"><label class="settings-toggle-row"><span><strong>黑夜模式</strong><small>暮色深灰：炭灰底色与香槟色点缀。关闭后恢复你选择的白天色调。</small></span><input type="checkbox" name="sb-dark-mode" role="switch"></label></div>
           <fieldset class="settings-themes"><legend>界面色调</legend><p>保留默认蓝绿，也可选择柔和色调，或与首页一致的黑白灰简约。</p><div class="settings-theme-grid">${themes.map((theme) => `<label class="settings-theme-option"><input type="radio" name="sb-theme" value="${theme.id}"><span class="settings-theme-sample" style="--sample-accent:${theme.accent};--sample-tint:${theme.tint}"><i></i><i></i><i></i></span><span class="settings-theme-name">${theme.name}<small>${theme.detail}</small></span></label>`).join("")}</div></fieldset><div class="settings-save-row"><span class="settings-save-status" role="status" aria-live="polite"></span><button type="button" class="settings-retry" hidden>重试</button></div><p class="settings-caption">界面色调不会改变文档、幻灯片或表格中已经设置的内容颜色。</p>
         </section>
@@ -61,7 +63,7 @@
           <div class="settings-block"><h4>课程空间</h4><div class="settings-row"><div><strong>我的课程与资料</strong><small class="settings-course-count"></small></div><button type="button" data-settings-route="study">打开学习 ↗</button></div><div class="settings-row"><div><strong>作业、考试与课程提醒</strong><small>手动添加，或从课程资料中提取时间安排。</small></div><button type="button" data-settings-route="schedule">打开日程 ↗</button></div></div><div class="settings-block"><h4>提醒方式</h4><div class="settings-row"><div><strong>站内截止日期提醒</strong><small>在「学习」页面顶部与日程中查看。</small></div><span class="settings-static-value">已提供</span></div><div class="settings-row"><div><strong>邮件与系统推送</strong><small>目前请通过站内日程查看安排。</small></div><span class="settings-static-value">尚未开放</span></div></div>
         </section>
         <section id="settings-panel-data" class="settings-panel" aria-labelledby="settings-data-heading" hidden>${heading("data", "了解个人信息的用途，保留一份自己的偏好副本。")}
-          <div class="settings-block"><h4>资料与账号</h4><div class="settings-row"><div><strong>公开资料</strong><small>检查展示给同学的头像、学校、专业和 SB ID。</small></div><button type="button" data-settings-route="profile">查看资料 ↗</button></div><div class="settings-row"><div><strong>学习偏好与外观</strong><small>保存在当前账号中，重新登录后继续使用。</small></div><span class="settings-static-value">按账号保存</span></div></div><div class="settings-block"><h4>偏好副本</h4><p class="settings-caption">下载当前色调、回答语言与自定义学习要求。不包含课程资料、聊天记录或登录凭据。</p><button type="button" class="settings-export">导出当前偏好</button><p class="settings-export-status settings-caption" role="status"></p></div>
+          <div class="settings-block"><h4>资料与账号</h4><div class="settings-row"><div><strong>公开资料</strong><small>检查展示给同学的头像、学校、专业和 SB ID。</small></div><button type="button" data-settings-route="profile">查看资料 ↗</button></div><div class="settings-row"><div><strong>学习偏好与外观</strong><small>保存在当前账号中，重新登录后继续使用。</small></div><span class="settings-static-value">按账号保存</span></div></div><div class="settings-block"><h4>偏好副本</h4><p class="settings-caption">下载当前 Logo、色调、回答语言与自定义学习要求。不包含课程资料、聊天记录或登录凭据。</p><button type="button" class="settings-export">导出当前偏好</button><p class="settings-export-status settings-caption" role="status"></p></div>
         </section>
         <section id="settings-panel-about" class="settings-panel" aria-labelledby="settings-about-heading" hidden>${heading("about", "一些常用说明，帮助你更顺手地使用 StudyBridge。")}
           <div class="settings-block"><h4>使用帮助</h4><details class="settings-help"><summary>怎样开始一门课程？</summary><p>进入「学习」，在「对话与课程」中新增课程，然后上传或粘贴课程资料，再选择学习模式并提问。</p></details><details class="settings-help"><summary>怎样让 AI 按我的方式讲解？</summary><p>在「学习与 AI」中选择答案与讲解语言，补充学习要求。你也可以在每次提问时提出更具体的要求。</p></details><details class="settings-help"><summary>换色调会影响课程和文件吗？</summary><p>切换只调整界面颜色，课程、聊天记录和文件内容会保留。已经设置的文档文字色、幻灯片背景和单元格样式也会保留。</p></details><details class="settings-help"><summary>怎样管理截止日期？</summary><p>打开日程，手动添加作业、考试或课程提醒，也可以上传课程安排进行提取，确认后再保存。</p></details></div><div class="settings-block"><h4>关于 StudyBridge</h4><div class="settings-row"><div><strong>StudyBridge Cloud</strong><small>你的课程、学习与创作空间。</small></div><span class="settings-static-value">v${esc(version)}</span></div></div>
@@ -252,6 +254,12 @@
       setStatus(".settings-export-status", "已导出当前选择的偏好副本。");
     });
     dialog.refreshSettings = () => { refreshUser(); refreshLearning(); if (dialog.querySelector('[data-settings-section="account"]').hasAttribute("aria-current") && !invitePending) void readMembership(); if (dialog.querySelector('[data-settings-section="security"]').hasAttribute("aria-current") && !passwordPending) void readSecurity(); };
+    dialog.refreshMembership = (tier) => {
+      if (!active()) return;
+      if (membership) membership = { ...membership, tier };
+      renderMembership();
+      if (!invitePending) setStatus(".settings-membership-status", tier === "plus" ? "你已是 Plus 用户，无需重复兑换邀请码。" : "可以补填有效邀请码，升级为 Plus 用户。");
+    };
     dialog.refreshLearning = refreshLearning;
     dialog.disposeSettings = () => { disposed = true; ++securityGeneration; ++membershipGeneration; inviteForm.reset(); clearPasswords(); clearTimeout(learningTimer); };
     refreshUser(); refreshLearning();

@@ -18,3 +18,11 @@ test("preference exports retain dark mode and its remembered daytime palette", (
   const value = preferenceBackup({ version: "1.1.104", appearance: { theme: "celadon", mode: "dark" }, learning: {} });
   assert.deepEqual(value.appearance, { theme: "celadon", mode: "dark" });
 });
+
+test("preference exports retain the optional color logo and omit the default monochrome choice", () => {
+  const options = { version: "1.1.115", learning: {} };
+  assert.deepEqual(preferenceBackup({ ...options, appearance: { theme: "monochrome", mode: "dark", logo: "color" } }).appearance,
+    { theme: "monochrome", mode: "dark", logo: "color" });
+  assert.deepEqual(preferenceBackup({ ...options, appearance: { theme: "celadon", logo: "monochrome" } }).appearance,
+    { theme: "celadon" });
+});

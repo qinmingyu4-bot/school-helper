@@ -20,6 +20,7 @@ test("historical invitation evidence classifies Plus without changing records or
     assert.ok(!JSON.stringify(value).includes("private-")); assert.equal(JSON.stringify(user), before);
   }
   assert.equal(membershipTier({}), "standard");
+  assert.equal(membershipTier({ membershipTier: "standard", inviteCode: "OLD-INVITE", inviteId: "old" }), "standard", "Explicit admin downgrade overrides historical invitation evidence");
   assert.equal(membershipTier({ inviteCode: "  ", membershipTier: "untrusted" }), "standard");
   assert.equal(membershipTier({ role: "admin" }), "standard", "Admin permission is independent of membership");
   assert.equal(publicUser({ id: "admin", role: "admin", inviteCode: "OLD" }).role, "admin");
@@ -165,6 +166,37 @@ test("email and Google registrations assign standard/Plus, preserve old users, a
     const reused=await request("/api/me/membership/redeem",{userId:other.data.user.id,inviteCode:invite.code},other.cookie,"POST",{"x-csrf-token":otherStatus.data.membership.csrfToken});assert.equal(reused.status,400);
     const signedIn=await google("login-then-upgrade",{mode:"login"});const after=(await request("/api/me",undefined,signedIn.cookie)).data.user;assert.equal(after.id,account.id);assert.equal(after.membershipTier,"plus");
   });
+  await t.test("only admins can adjust memberships; downgrades override historical invitations while preserving sessions, roles and learning data",async()=>{
+    const route=`/api/admin/users/${oldId}/membership`;
+    const before=JSON.parse(await fs.readFile(file,"utf8")).users[oldId];
+    const overview=await request("/api/admin/overview",undefined,admin.cookie);
+    const token=overview.data.membershipCsrfToken;
+    assert.match(token,/^[a-f0-9]{64}$/);assert.equal(overview.response.headers.get("cache-control"),"private, no-store");
+    const body={actorId:admin.data.user.id,membershipTier:"standard",expectedTier:"plus",role:"admin"};
+    const modify=(values={},cookie=admin.cookie,csrf=token,headers={})=>request(route,{...body,...values},cookie,"PATCH",{"x-csrf-token":csrf,...headers});
+    assert.equal((await modify({},"","")).status,401);
+    assert.equal((await modify({},plain.cookie,token)).status,403);
+    assert.equal((await modify({},admin.cookie,"")).status,403);
+    assert.equal((await modify({},admin.cookie,token,{"content-type":"text/plain"})).status,403);
+    assert.equal((await modify({actorId:plain.data.user.id})).status,409);
+    assert.equal((await modify({membershipTier:"admin"})).status,400);
+    assert.equal((await modify({expectedTier:"standard"})).status,409);
+    const missing=await request("/api/admin/users/missing-user/membership",body,admin.cookie,"PATCH",{"x-csrf-token":token});assert.equal(missing.status,404);
+    const changed=await modify();assert.equal(changed.status,200);assert.equal(changed.data.user.membershipTier,"standard");assert.equal(changed.data.user.role,"student");
+    assert.equal(changed.response.headers.get("set-cookie"),null);
+    const me=(await request("/api/me",undefined,`sb_session=${oldToken}`)).data.user;
+    assert.equal(me.id,oldId);assert.equal(me.membershipTier,"standard");assert.equal(me.profile.sbId,"Legacy01");
+    const persisted=JSON.parse(await fs.readFile(file,"utf8")).users[oldId];
+    for(const key of ["passwordHash","googleSub","profile","preferences","inviteCode","role"]) assert.deepEqual(persisted[key],before[key]);
+    assert.equal(persisted.membershipSource,"admin");assert.equal(persisted.membershipUpdatedBy,admin.data.user.id);
+    assert.equal((await request("/api/courses",undefined,`sb_session=${oldToken}`)).data.courses[0].name,"Kept course");
+    const heartbeat=await request("/api/me/activity",{},`sb_session=${oldToken}`);assert.equal(heartbeat.data.userId,oldId);assert.equal(heartbeat.data.membershipTier,"standard");
+    const membership=await request("/api/me/membership",undefined,`sb_session=${oldToken}`);assert.equal(membership.data.membership.userId,oldId);assert.equal(membership.data.membership.tier,"standard");
+    assert.equal((await modify()).data.changed,false,"Repeat admin downgrade is idempotent");
+    const restored=await modify({membershipTier:"plus",expectedTier:"standard"});assert.equal(restored.status,200);assert.equal(restored.data.user.membershipTier,"plus");
+    const self=await request(`/api/admin/users/${admin.data.user.id}/membership`,{...body,membershipTier:"standard",expectedTier:"plus"},admin.cookie,"PATCH",{"x-csrf-token":token});assert.equal(self.status,200);assert.equal(self.data.user.role,"admin");
+    assert.equal((await request("/api/admin/overview",undefined,admin.cookie)).status,200,"Changing own membership never removes administrator access");
+  });
   await t.test("concurrent Google first logins share one newly created ordinary account",async()=>{
     const flows=await Promise.all([google("simultaneous",{mode:"login"}),google("simultaneous",{mode:"login"})]);
     const users=await Promise.all(flows.map(async flow=>{assert.equal(new URL(flow.response.headers.get("location")).searchParams.get("googleAuth"),"ok");return(await request("/api/me",undefined,flow.cookie)).data.user;}));
@@ -212,5 +244,35 @@ for (const mode of ["local", "dynamodb"]) test(`${mode}: redeeming Plus is atomi
     await assert.rejects(db.redeemMembershipInvite("blocked",fresh),/disk full/);
     assert.equal((await db.getUser("blocked")).membershipTier,"standard");assert.equal((await db.findInviteByCode(fresh.code)).uses,0);
     assert.equal(await fs.readFile(db.local.file,"utf8"),before);
+  }
+});
+
+for (const mode of ["local","dynamodb"]) test(`${mode}: admin membership adjustments persist, preserve unrelated fields and reject stale decisions`,async(t)=>{
+  const directory=await fs.mkdtemp(path.join(os.tmpdir(),"studybridge-admin-membership-"));
+  t.after(()=>fs.rm(directory,{recursive:true,force:true}));
+  const db=new StudyBridgeDatabase();db.local.file=path.join(directory,"database.json");
+  const cloud=mode==="dynamodb"?memoryDynamo():null;db.dynamo=cloud?.store||null;
+  if(cloud) cloud.store.scanType=async(type)=>[...cloud.rows.values()].filter(row=>row.type.S===type).map(row=>JSON.parse(row.data.S));
+  const original={id:"invited",email:"invited-admin-test@example.test",role:"student",passwordHash:"unchanged-hash",passwordVersion:3,googleSub:"unchanged-google",profile:{sbId:"Keep"},preferences:{customInstruction:"Keep"},inviteCode:"HISTORICAL-CODE",legacy:{keep:true}};
+  if(cloud) await cloud.store.put("USER#invited","PROFILE","user",original);
+  else await db.local.write(state=>{state.users.invited=original;state.emailIndex[original.email]=original.id;});
+  assert.equal(membershipTier(await db.getUser(original.id)),"plus");
+  await Promise.all([db.setUserMembership(original.id,"standard","creator","plus"),db.updateUser(original.id,{name:"Concurrent name"})]);
+  const saved=await db.getUser(original.id);assert.equal(membershipTier(saved),"standard");assert.equal(saved.name,"Concurrent name");
+  for(const key of ["role","passwordHash","passwordVersion","googleSub","profile","preferences","inviteCode","legacy"]) assert.deepEqual(saved[key],original[key]);
+  assert.equal(saved.membershipUpdatedBy,"creator");assert.equal(saved.membershipSource,"admin");
+  if(mode==="local"){db.local.state=null;assert.equal(membershipTier(await db.getUser(original.id)),"standard");}
+  const repeat=await db.setUserMembership(original.id,"standard","another-admin","plus");assert.equal(repeat.changed,false);assert.equal(repeat.user.membershipUpdatedBy,"creator");
+  await assert.rejects(db.setUserMembership(original.id,"plus","creator","plus"),{statusCode:409});
+  await assert.rejects(db.setUserMembership(original.id,"invalid","creator","standard"),{statusCode:400});
+  const raised=await db.setUserMembership(original.id,"plus","creator","standard");assert.equal(raised.user.membershipTier,"plus");
+  await db.setUserMembership(original.id,"standard","creator","plus");
+  const invite=await db.createInvite({id:"new-valid",code:"NEW-VALID",active:true,uses:0});
+  const redeemed=await db.redeemMembershipInvite(original.id,invite);assert.equal(redeemed.user.membershipTier,"plus");assert.equal(redeemed.user.membershipSource,"invitation");
+  await db.setUserMembership(original.id,"standard","creator","plus");
+  if(mode==="local"){
+    const before=await fs.readFile(db.local.file,"utf8");db.local.save=async()=>{throw new Error("disk full");};
+    await assert.rejects(db.setUserMembership(original.id,"plus","creator","standard"),/disk full/);
+    assert.equal(membershipTier(await db.getUser(original.id)),"standard");assert.equal(await fs.readFile(db.local.file,"utf8"),before);
   }
 });

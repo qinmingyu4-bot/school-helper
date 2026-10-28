@@ -2877,6 +2877,7 @@
     const sidebarUsesPageScroll = previousSidebar
       && previousSidebar.scrollHeight <= previousSidebar.clientHeight;
     const previousPageScroll = { x: window.scrollX, y: window.scrollY };
+    const previousSchedule = root.querySelector(".schedule-layout");
     for (const id of ["emailOriginal", "emailGoal", "emailTone", "emailOutput"]) {
       if ($(id)) emailDraft[id] = $(id).value;
     }
@@ -2912,6 +2913,9 @@
         : `<main class="auth-shell"><section class="auth-card"><h1>StudyBridge</h1><p class="notice">${message}</p><button onclick="location.reload()">刷新</button></section></main>`;
     }
     if (state.page === "schedule") updateSchedulePreviewCount();
+    if (state.page === "schedule" && previousSchedule && root.querySelector(".schedule-layout")) {
+      window.scrollTo(previousPageScroll.x, previousPageScroll.y);
+    }
     if (state.busy) root.insertAdjacentHTML("beforeend", `<div class="busy">Loading...</div>`);
     for (const id of ["emailOriginal", "emailGoal", "emailTone", "emailOutput"]) {
       if ($(id) && emailDraft[id] !== undefined) $(id).value = emailDraft[id];

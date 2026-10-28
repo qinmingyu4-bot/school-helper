@@ -2,6 +2,8 @@
 
 ## 2026-10-28
 
+- Keep the full-agenda area at least one viewport tall with natural-height cards and trailing blank space for short/empty filters. Restore the schedule page's scroll position across redraws so switching from a long list to a single item does not push the filter controls down the screen.
+
 - Release `1.1.119`: publish both owner-approved schedule features from `7cd4b00`: course-wide management across months and individual event editing for title, date, start/end time, location and notes. Keep the latest 1.1.118 membership, Google entry, admin controls and branding. Refresh release/cache versions and retain accounts, sessions, courses, materials, chats, schedules and preferences. Use the existing verified private backup, unchanged-data checks and automatic code rollback. Previous production code: `75919e2` (1.1.118).
 - Release validation: 310 passing combined regression tests, 199-file source/assets/version checks and deployment-script syntax checks. Keep the production dependency audit and verified private backup gates; verify the two live controls and compare the existing 73-entry schedule count without saving changes.
 

@@ -16,7 +16,10 @@
 正式回调为 `https://studybridge.ink/api/auth/google/callback`，Google Cloud
 中创建 Web application 客户端，并在 Google Auth Platform 配置 StudyBridge、
 支持邮箱、External 受众及授权域名 `studybridge.ink`。只请求 `openid email
-profile`，用于登录身份验证。测试期间需按 Google 控制台设置测试账号及发布状态。
+profile`，用于登录身份验证。当前控制台受众为 External / Testing；根据
+[Google 官方说明](https://support.google.com/cloud/answer/15549945?hl=en)，
+仅请求这些基本身份范围的登录不受 Testing 的测试用户名单和七天授权过期限制。
+以后增加其他范围时，需重新检查测试名单、发布及验证要求。
 
 `GOOGLE_CLIENT_ID` 和 `GOOGLE_CLIENT_SECRET` 仅保存在 GitHub Actions 加密
 配置及生产服务器私有配置中，不能写入代码、日志或工作流产物。部署完成后，
@@ -31,6 +34,12 @@ Google 登录使用浏览器绑定的十分钟 HttpOnly/Secure/SameSite cookie�
 邮箱账号继续使用原账号及资料；已绑定不同 Google ID 的账号拒绝覆盖绑定。
 原邮箱密码登录继续保留，新用户仍需在注册页面按现有规则填写邀请码。
 已有用户应选择与 StudyBridge 注册邮箱相同的 Google 账号，不会自动合并不同邮箱。
+
+2026-10-28 已完成正式网站真实 Google 登录：授权后返回 `/app`，进入原有
+SB ID `1` 的账号，原课程仍可见，刷新后保持登录。Google 配置接口启用、
+PKCE S256、Secure/HttpOnly 浏览器 cookie 和无效回调拒绝检查均通过；
+HTTPS 及 www 跳转继续正常。发布 `1165f3c` 的 251 项自动测试及 AWS 部署
+均通过；后续首页版本 `1.1.108` 保留该配置与登录保护。
 
 ## 正式域名 studybridge.ink
 

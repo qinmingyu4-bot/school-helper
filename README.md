@@ -188,7 +188,10 @@ navigation on mobile. **退出登录** remains inside Settings. Categories are:
   choices plus custom instructions. Uses the same serialized saver as the Study
   Area sidebar, with automatic save, synchronized controls and failure/retry status.
 - **外观与显示:** keep the blue/green default or choose 烟紫灰, 石墨灰, 雾蓝灰,
-  灰玫瑰, 青瓷灰 or 冷银灰 for daytime. The independent **黑夜模式** switch applies
+  灰玫瑰, 青瓷灰, 冷银灰 or **黑白灰简约** for daytime. The new monochrome option
+  matches the homepage's white content panels, light-gray background, charcoal
+  controls and thin frames, keeping the seven original palettes. Calendar/status
+  meanings and authored document/slide/cell colors are retained. The independent **黑夜模式** switch applies
   暮色深灰 (charcoal surfaces and champagne accents); switching it off restores
   the selected daytime palette. Both choices preview immediately and save to the
   account. The five main destinations share outline icons and a rounded selected

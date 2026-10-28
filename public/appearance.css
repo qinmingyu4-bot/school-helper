@@ -5,6 +5,7 @@
 :root[data-sb-theme="dusty-rose"] { --sb-accent: #806b6f; --sb-tint: #f6f2f3; }
 :root[data-sb-theme="celadon"] { --sb-accent: #5a7473; --sb-tint: #f0f5f4; }
 :root[data-sb-theme="silver"] { --sb-accent: #69747c; --sb-tint: #f2f4f5; }
+:root[data-sb-theme="monochrome"] { --sb-accent: #202020; --sb-tint: #ededed; }
 :root[data-sb-theme] {
   --ink: #2d3034; --muted: #747980; --line: #e5e6e8; --soft: #fafafa; --panel: #fff;
   --green: var(--sb-accent); --teal: var(--sb-accent); --blue: var(--sb-accent);
@@ -176,3 +177,64 @@
   .settings-row small { font-size: 10px; }
 }
 @media (pointer: coarse) { .settings-dialog button { min-height: 44px; } }
+
+/* Neutral daytime chrome; leave semantic status/calendar colors and authored content intact. */
+:root[data-sb-theme="monochrome"]:not([data-sb-mode="dark"]) {
+  --ink: #202020;
+  --muted: #686868;
+  --line: #d2d2d2;
+  --soft: #f5f5f5;
+  --panel: #ffffff;
+  --shadow: 0 10px 28px #20202008;
+}
+:root[data-sb-theme="monochrome"]:not([data-sb-mode="dark"]) :is(body, .workspace, .study-workspace .chat-area) {
+  background: #f4f4f4;
+}
+:root[data-sb-theme="monochrome"]:not([data-sb-mode="dark"]) :is(.sidebar, .page-header, .side-section, .card, .profile-card, .composer, .quick-prompts, .settings-dialog, .settings-block, .community-post, .community-composer-card, .community-feed-status, .community-channel-picker, .community-notifications) {
+  background: #ffffff;
+  border-color: var(--line);
+}
+:root[data-sb-theme="monochrome"]:not([data-sb-mode="dark"]) .card {
+  box-shadow: var(--shadow);
+}
+:root[data-sb-theme="monochrome"]:not([data-sb-mode="dark"]) :is(.primary, .send, .settings-primary) {
+  background: #202020;
+  border-color: #202020;
+  color: #ffffff;
+}
+:root[data-sb-theme="monochrome"]:not([data-sb-mode="dark"]) :is(.primary, .send, .settings-primary):hover {
+  background: #3b3b3b;
+  border-color: #3b3b3b;
+}
+:root[data-sb-theme="monochrome"]:not([data-sb-mode="dark"]) :is(.settings-sidebar, .settings-nav button:hover, .community-reply, .community-like, .community-compose-footer, .profile-editor input) {
+  background: #f7f7f7;
+}
+:root[data-sb-theme="monochrome"]:not([data-sb-mode="dark"]) .settings-dialog::backdrop {
+  background: #20202066;
+}
+:root[data-sb-theme="monochrome"]:not([data-sb-mode="dark"]) :is(.community-tabs, .community-tabs button.active, .community-picker-row > button, .community-compose-footer, .community-post footer, .community-composer-card input, .community-composer-card textarea, .classmates-workspace .chat-placeholder, .creative-result, .creative-icon, .creative-upload, .creative-download, .creative-history-heading, .creative-history-item, .creative-preview, .creative-empty) {
+  border-color: var(--line);
+}
+:root[data-sb-theme="monochrome"]:not([data-sb-mode="dark"]) :is(.community-tabs button.active, .segmented .active) {
+  box-shadow: none;
+}
+:root[data-sb-theme="monochrome"]:not([data-sb-mode="dark"]) :is(.community-composer-card input, .community-composer-card textarea)::placeholder {
+  color: #858585;
+}
+:root[data-sb-theme="monochrome"]:not([data-sb-mode="dark"]) .profile-editor input:focus-visible {
+  box-shadow: 0 0 0 3px #20202014;
+}
+:root[data-sb-theme="monochrome"]:not([data-sb-mode="dark"]) .profile-uploads input::file-selector-button {
+  background: #ededed;
+  color: #202020;
+}
+:root[data-sb-theme="monochrome"]:not([data-sb-mode="dark"]) :is(.office-doc-scroll, .office-slide-work, .office-thumbnails) {
+  background: #ededed;
+}
+:root[data-sb-theme="monochrome"]:not([data-sb-mode="dark"]) :is(.office-ai p, .office-ai-shortcuts > span, .office-inspector p, .office-thumbnails small, .office-formula-bar b) {
+  color: var(--muted);
+}
+:root[data-sb-theme="monochrome"]:not([data-sb-mode="dark"]) .office-grid th {
+  background: #ededed;
+  color: #686868;
+}

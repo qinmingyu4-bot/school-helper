@@ -2,6 +2,9 @@
 
 ## 2026-10-28
 
+- Add **黑白灰简约** as an eighth optional Settings → 外观与显示 palette (`monochrome`), matching the homepage's white/light-gray/charcoal surfaces and thin frames. Retain all original palettes, current selections, account-scoped saving and independent dark mode; retain semantic calendar/status colors and authored Office content. Prepared on a task branch without deployment.
+- Validate 256 passing tests and 181-file source/assets/version checks, including new-palette HTTP acceptance, persistence through restart, account isolation and dark/light restoration. Local browser checks cover eight choices, saved selection after reload, night-mode restoration, retained unsent drafts, a 390 px option list without overflow, other main destinations and neutral editor surrounds with unchanged white document paper.
+
 - Release `1.1.109`: match login and registration to the approved homepage with white/light-gray surfaces, charcoal buttons, thin frames, the shared bridge wordmark and a homepage link. Scope all new styling to authentication so saved learning-space themes remain unchanged. Retain existing field IDs, action handlers, invitation/email-code registration, password help, Google sign-in and authenticated redirects. Refresh release/cache versions; deploy with the existing verified private backup and data/configuration preservation checks. Previous production code: `5662fef` (1.1.108).
 - Validate 256 passing tests and 181-file source/assets/version checks, plus isolated browser checks for incorrect-password feedback, successful login/logout, one-use invitation registration, post-registration profile routing, enabled Google controls and a 390 px registration layout without overflow. Confirm authentication styles disappear on entry to the learning space.
 

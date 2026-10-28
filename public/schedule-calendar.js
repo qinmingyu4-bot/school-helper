@@ -1,6 +1,7 @@
 (function (scope) {
   "use strict";
   const importer = typeof module === "object" && module.exports ? require("./schedule-import") : scope.StudyBridgeScheduleImport;
+  const management = typeof module === "object" && module.exports ? require("./schedule-management") : scope.StudyBridgeScheduleManagement;
   const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
   const types = { DDL: ["作业 / 截止", "deadline"], LEC: ["Lecture", "lecture"], TUT: ["Tutorial", "tutorial"], EVENT: ["个人安排", "personal"] };
   const type = (value) => types[importer.kind(value)] || types.EVENT;
@@ -94,13 +95,17 @@
     return `<div class="planner-item ${item.completedAt ? "is-completed" : ""}">
       <div class="planner-item-time"><time datetime="${escape(item.startsAt)}">${escape(timeLabel(item, model.timeZone))}</time>${badge(item)}</div>
       <div class="planner-item-content"><b>${escape(item.title)}</b>${item.course || item.location ? `<small>${escape([item.course, item.location].filter(Boolean).join(" · "))}</small>` : ""}${item.notes ? `<details class="planner-notes"><summary>查看备注</summary><p>${escape(item.notes)}</p></details>` : ""}</div>
-      <div class="planner-item-actions">${item.completedAt ? `<span class="planner-completed-label">✓ ${item.automatic ? "已上完" : "已完成"}</span>` : `<small class="${overdue ? "planner-overdue" : ""}" ${item.start < model.now || ongoing ? "" : `data-countdown="${instant}"`}>${escape(status)}</small>${item.classMeeting ? "" : `<button data-action="complete-schedule" data-course="${escape(item.courseId)}" data-doc="${escape(item.docId)}" aria-label="完成 ${escape(item.title)}">完成</button>`}`}</div>
+      <div class="planner-item-actions">${item.completedAt ? `<span class="planner-completed-label">✓ ${item.automatic ? "已上完" : "已完成"}</span>` : `<small class="${overdue ? "planner-overdue" : ""}" ${item.start < model.now || ongoing ? "" : `data-countdown="${instant}"`}>${escape(status)}</small>${item.classMeeting ? "" : `<button data-action="complete-schedule" data-course="${escape(item.courseId)}" data-doc="${escape(item.docId)}" aria-label="完成 ${escape(item.title)}">完成</button>`}`}<div class="planner-manage-actions"><button data-action="edit-schedule" data-doc="${escape(item.docId)}" data-course="${escape(item.courseId)}" aria-label="编辑 ${escape(item.title)}">编辑</button><button data-action="delete-schedule" data-doc="${escape(item.docId)}" data-course="${escape(item.courseId)}" aria-label="删除 ${escape(item.title)}">删除</button></div></div>
     </div>`;
   }
   function nextHtml(model, countdown) {
     const item = model.next;
     const instant = item ? new Date(item.start).toISOString() : "";
     return `<div class="planner-next-heading"><span class="schedule-kicker">UP NEXT</span><h2>下一项安排</h2></div><div class="planner-next-content">${item ? `${badge(item)}<b>${escape(item.title)}</b><small>${escape(dateLabel(item.startDay))} · ${escape(timeLabel(item, model.timeZone))}${item.location ? ` · ${escape(item.location)}` : ""}</small>` : `<b>暂无即将开始的安排</b><small>选择日期，添加课程、作业或自己的计划。</small>`}</div>${item ? `<strong data-countdown="${instant}">${escape(countdown(instant))}</strong><button data-action="schedule-day" data-date="${escape(item.startDay)}">查看当天</button>` : ""}${model.ongoing.length ? `<p class="planner-ongoing">正在进行：${escape(model.ongoing.map((entry) => entry.title).join("、"))}</p>` : ""}`;
+  }
+  function courseManagementHtml(items) {
+    const groups = management.groups(items);
+    return `<details class="card planner-course-manager"><summary><span><b>按课程管理日程</b><small>整门课程一键编辑或删除，无需逐天处理</small></span><span aria-hidden="true">⌄</span></summary><div class="planner-course-list">${groups.length ? groups.map((group) => `<div class="planner-course-row"><div><b>${escape(group.name)}</b><small>${group.items.length} 条安排 · ${management.select(group.items).length} 条尚未开始</small></div><div class="planner-manage-actions"><button data-action="edit-schedule-course" data-key="${escape(group.key)}" aria-label="批量编辑 ${escape(group.name)}">批量编辑</button><button data-action="delete-schedule-course" data-key="${escape(group.key)}" aria-label="删除课程日程 ${escape(group.name)}">删除课程日程</button></div></div>`).join("") : `<p class="muted">安排填写课程后，可在这里按课程管理。未关联课程的安排可在列表中单独编辑或删除。</p>`}</div></details>`;
   }
   function renderParts(model, { agendaView = "upcoming", agendaTypes: selectedTypes = [], countdown = () => "" } = {}) {
     selectedTypes = normalizeTypes(selectedTypes);
@@ -145,7 +150,7 @@
     const parts = renderParts(model, options);
     return parts.calendar + parts.agenda;
   }
-  const api = { shiftMonth, buildModel, dateLabel, render, renderParts, nextHtml, agendaType, filterAgenda, toggleType };
+  const api = { shiftMonth, buildModel, dateLabel, render, renderParts, nextHtml, courseManagementHtml, agendaType, filterAgenda, toggleType };
   if (typeof module === "object" && module.exports) module.exports = api;
   else scope.StudyBridgeScheduleCalendar = api;
 })(typeof window !== "undefined" ? window : globalThis);

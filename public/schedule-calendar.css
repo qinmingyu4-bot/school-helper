@@ -120,3 +120,36 @@
 .planner-type-filters button[aria-pressed="true"] { color: var(--green); border-color: var(--green); background: var(--green-soft, #eaf5ef); }
 .planner-type-filters button span { font-size: 10px; }
 .planner-filter-hint { color: var(--muted); font-size: 11px; line-height: 1.6; margin: 9px 0 0; }
+.planner-manage-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.planner-course-manager > summary { display: flex; justify-content: space-between; gap: 12px; cursor: pointer; list-style: none; }
+.planner-course-manager > summary::-webkit-details-marker { display: none; }
+.planner-course-manager summary small, .planner-course-row small { display: block; color: var(--muted); font-size: 12px; margin-top: 6px; line-height: 1.6; }
+.planner-course-list { margin-top: 16px; }
+.planner-course-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; border-top: 1px solid var(--line); }
+.planner-course-row > div { min-width: 0; overflow-wrap: anywhere; }
+.planner-course-row button { font-size: 12px; }
+.schedule-manage-dialog { width: min(680px, calc(100% - 24px)); max-height: calc(100dvh - 32px); padding: 24px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--ink); overflow: auto; }
+.schedule-manage-dialog::backdrop { background: #071b3a80; }
+.schedule-manage-dialog h2 { margin: 0; font-size: 21px; }
+.schedule-manage-dialog p { font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
+.schedule-manage-name { font-weight: 600; }
+.schedule-manage-controls { border: 0; padding: 0; margin: 20px 0; min-width: 0; }
+.schedule-manage-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.schedule-manage-dialog label { font-size: 13px; color: var(--ink); min-width: 0; }
+.schedule-manage-field { display: grid; gap: 7px; }
+.schedule-manage-field > label { display: flex; align-items: center; gap: 8px; }
+.schedule-manage-field input[type="checkbox"] { width: 16px; height: 16px; margin: 0; flex-shrink: 0; }
+.schedule-manage-dialog textarea { min-height: 90px; }
+.schedule-manage-dialog [hidden] { display: none !important; }
+.schedule-manage-dialog input, .schedule-manage-dialog select, .schedule-manage-dialog textarea { background: var(--panel); color: var(--ink); min-width: 0; max-width: 100%; }
+.schedule-manage-preview { border: 1px solid var(--line); border-radius: 8px; padding: 0 14px; }
+.schedule-manage-preview ul { padding-left: 18px; font-size: 12px; line-height: 1.9; color: var(--muted); overflow-wrap: anywhere; }
+.schedule-manage-warning, .schedule-manage-dialog [data-manage-status] { color: var(--danger); }
+.schedule-manage-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.schedule-manage-delete { background: var(--danger); color: #fff; border-color: var(--danger); }
+.schedule-manage-dialog :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+@media (max-width: 560px) {
+  .schedule-manage-grid { grid-template-columns: minmax(0, 1fr); }
+  .schedule-manage-dialog { padding: 20px 16px; }
+  .planner-course-row .planner-manage-actions { width: 100%; }
+}

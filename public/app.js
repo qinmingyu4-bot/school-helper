@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.118";
+  const VERSION = "1.1.119";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -10,6 +10,8 @@
   const studyModes = window.StudyBridgeStudyModes;
   const scheduleImport = window.StudyBridgeScheduleImport;
   const scheduleCalendarView = window.StudyBridgeScheduleCalendar;
+  const scheduleManagement = window.StudyBridgeScheduleManagement;
+  const scheduleManagementUi = window.StudyBridgeScheduleManagementUi.create();
   const scheduleDraftDisclosure = new WeakMap();
   const userActivity = window.StudyBridgeUserActivity;
   const learningStyle = window.StudyBridgeLearningStyle;
@@ -495,7 +497,7 @@
     const active = state.page === page ? "active" : "";
     return `
       <button class="nav-card ${active}" data-page="${page}" ${active ? 'aria-current="page"' : ""}>
-        <span aria-hidden="true"><svg><use href="/classmates-icons.svg?v=1.1.118#nav-${esc(page)}"></use></svg></span>
+        <span aria-hidden="true"><svg><use href="/classmates-icons.svg?v=1.1.119#nav-${esc(page)}"></use></svg></span>
         <b>${esc(title)}</b>
         <small>${esc(page === "schedule" && nextDue() ? `${nextDue().title} · 还有 ${dueText(nextDue().startsAt)}` : sub)}</small>
       </button>
@@ -1217,6 +1219,7 @@
       ${pageHeader("SCHEDULE", "日程", "一个月历，收好你的课程、作业与生活安排。")}
       <section class="schedule-layout">
         <div id="scheduleCalendarView" class="planner-view">${parts.calendar}</div>
+        ${scheduleCalendarView.courseManagementHtml(state.scheduleItems)}
         <details class="card schedule-manual" id="scheduleManual" ${state.scheduleManualOpen || state.scheduleDraftOrigin === "quick" && state.scheduleDrafts.length ? "open" : ""}>
           <summary><span><b>＋ 新增安排</b><small>课程、作业截止、个人计划，都放在这里</small></span><span class="schedule-disclosure" aria-hidden="true">⌄</span></summary>
           ${scheduleQuickHtml(model)}
@@ -2722,6 +2725,23 @@
         setScheduleImportStatus("已取消，未添加待确认项目。原文已保留，可修改后重新整理。");
         render(); return;
       }
+      if (["edit-schedule", "delete-schedule", "edit-schedule-course", "delete-schedule-course"].includes(action)) {
+        const userId = state.user.id;
+        const group = action.endsWith("-course") ? scheduleManagement.groups(state.scheduleItems).find((entry) => entry.key === button.dataset.key) : null;
+        const item = group ? null : state.scheduleItems.find((entry) => entry.docId === button.dataset.doc && entry.courseId === button.dataset.course);
+        if (!group && !item) throw new Error("找不到这个安排，请刷新日程后重试。");
+        scheduleManagementUi.open({ items: state.scheduleItems, item, group, operation: action.startsWith("edit") ? "edit" : "delete", api,
+          isCurrent: () => state.user?.id === userId,
+          onBatch: ({ operation, batch, items }) => {
+            const selected = new Set(batch.map((entry) => `${entry.courseId}/${entry.docId}`));
+            state.scheduleItems = state.scheduleItems.filter((entry) => !selected.has(`${entry.courseId}/${entry.docId}`));
+            if (operation === "edit") state.scheduleItems.push(...items);
+            if (state.page === "schedule") render();
+          },
+          onDone: (message) => { setToast(message); if (state.page === "schedule") render(); }
+        });
+        return;
+      }
       if (action === "complete-schedule") {
         const item = state.scheduleItems.find((entry) => entry.docId === button.dataset.doc && entry.courseId === button.dataset.course);
         if (!item) throw new Error("找不到这个提醒。");
@@ -2843,6 +2863,7 @@
   }
 
   function render() {
+    scheduleManagementUi.closeIfStale();
     const renameInput = $("conversationRename");
     if (renameInput && state.renamingConversation?.courseId === renameInput.dataset.course && state.renamingConversation.id === renameInput.dataset.conversation) state.renamingConversation.title = renameInput.value;
     appearanceController.sync(state.user);

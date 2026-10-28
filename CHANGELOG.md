@@ -2,6 +2,10 @@
 
 ## 2026-10-28
 
+- Release `1.1.101`: publish the viewed-month navigation label and relocated return-to-today action. Refresh frontend/cache versions; preserve saved schedules and account data. Code rollback target: `ccad539` (`1.1.100`).
+
+- Show the viewed month between the calendar navigation arrows and update it when changing months or years. Move the return-to-today action beside today's date below the header.
+
 - Release `1.1.100`: publish Sunday-first calendar columns and matching date-grid alignment. Refresh frontend/cache versions; preserve all saved course/event dates and account data. Code rollback target: `3e8d44e` (`1.1.99`).
 
 - Start the monthly calendar week on Sunday, followed by Monday through Saturday. Shift the date grid with the headings so saved meetings, adjacent-month dates, leap days and today/selection markers retain their correct dates.

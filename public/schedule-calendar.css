@@ -12,8 +12,10 @@
 .planner-month-header h2 { margin-top: 5px; font-size: 25px; }
 .planner-month-nav { display: flex; align-items: center; gap: 5px; }
 .planner-month-nav button { padding: 7px 12px; min-height: 36px; font-size: 13px; }
+.planner-viewed-month { display: inline-flex; align-items: center; justify-content: center; min-width: 64px; min-height: 36px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; font-weight: 600; white-space: nowrap; }
 .planner-month-nav button:first-child, .planner-month-nav button:last-child { font-size: 23px; line-height: 20px; }
 .planner-month-meta { margin: 16px 0; font-size: 12px; color: var(--muted); }
+.planner-month-meta > button { font-size: 12px; }
 .planner-month-meta label { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: 12px; }
 .planner-month-meta input { width: 145px; padding: 6px 8px; margin: 0; font-size: 12px; }
 .planner-weekdays, .planner-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }

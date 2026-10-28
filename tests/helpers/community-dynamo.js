@@ -14,11 +14,12 @@ function memoryDynamo() {
     if (target === "PutItem") { rows.set(id(body.Item), clone(body.Item)); return {}; }
     if (target === "TransactWriteItems") {
       for (const item of body.TransactItems) {
-        const record = item.Put || item.ConditionCheck, current = rows.get(id(record.Item || record.Key));
+        const record = item.Put || item.ConditionCheck || item.Delete, current = rows.get(id(record.Item || record.Key));
         if (record.ConditionExpression === "attribute_not_exists(pk)" && current) throw cancelled();
         if (record.ConditionExpression === "#data = :expected" && current?.data.S !== record.ExpressionAttributeValues[":expected"].S) throw cancelled();
       }
       for (const item of body.TransactItems) if (item.Put) rows.set(id(item.Put.Item), clone(item.Put.Item));
+      for (const item of body.TransactItems) if (item.Delete) rows.delete(id(item.Delete.Key));
       return {};
     }
     if (target === "Query" || target === "Scan") {

@@ -2705,6 +2705,13 @@ if (directMessageMatch && method === "POST") {
     return sendJson(res, 200, { courses, items: scheduleBatch.storedItems(courses, documents, user.id) });
   }
 
+  if (url.pathname === "/api/schedule/manage" && method === "POST") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const body = await readJson(req, 128 * 1024);
+    return sendJson(res, 200, await db.manageScheduleItems(user.id, body));
+  }
+
   if (url.pathname === "/api/schedule/import" && method === "POST") {
     const user = await requireUser(req, res);
     if (!user) return;

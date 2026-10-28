@@ -2,6 +2,10 @@
 
 ## 2026-10-28
 
+- Add **日程 → 按课程管理日程** with one-action bulk editing/deletion across all months. Review affected counts and examples, choose not-yet-started or all course entries, and restrict by Lecture, Tutorial, assignments/exams or personal plans. Add individual edit/delete actions with scope selection; preserve course materials and chats. Time edits retain occurrence dates and school-local daylight-saving conversion, with selective room/link/notes edits and single-entry title/date edits.
+- Validate all selected edits before saving; process larger course selections in batches with atomic local/DynamoDB writes, user/schedule ownership checks, conditional conflict protection and retryable outstanding batches. Prepare on a task branch without deployment.
+- Validation: 294 passing tests and 196-file source/assets/version checks. Browser verification covers 82-occurrence editing, retrying only the remaining two after a failed second batch, scope/type counts, cancellation, cross-month full-course deletion, retained material/other courses, persistent individual title/date editing and a 390 px dialog without horizontal overflow.
+
 - Release `1.1.117`: publish the owner-approved monochrome book-and-bridge logo by default and the blue-purple/mint alternative in **设置 → 个性化 → 品牌 Logo** from `5a0f0a7`. Refresh release/cache versions and retain existing accounts, courses, chats, schedules, authored files, login configuration, palettes and dark-mode settings without migration. Use the existing verified private backup, unchanged-data checks and automatic code rollback workflow. Previous production code: `f351b25` (`1.1.116`).
 - Release validation: 287 passing tests, 191-file syntax/assets/version checks and deployment-script syntax checks; require the production dependency-audit gate before installation. Record the existing online account's five courses, appearance and learning preferences for read-only post-deployment comparison.
 

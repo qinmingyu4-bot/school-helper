@@ -375,11 +375,26 @@ async function serveStatic(req, res) {
   const url = new URL(req.url, "http://localhost");
   let requested;
   try {
-    requested = decodeURIComponent(url.pathname === "/" ? "/index.html" : url.pathname);
+    requested = decodeURIComponent(url.pathname);
   } catch {
     return sendError(res, 400, "Invalid URL encoding.");
   }
   if (requested.includes("\0")) return sendError(res, 400, "Invalid path.");
+  // Keep old application bookmarks working while the bare domain introduces the product.
+  const pageRedirect = (destination) => sendRedirect(res, `${destination}${url.search}`, { "cache-control": "no-store" });
+  if (requested === "/" && (url.searchParams.has("authError") || url.searchParams.has("googleAuth"))) {
+    return pageRedirect(url.searchParams.has("authError") ? "/login" : "/app");
+  }
+  if (requested === "/index.html" || requested === "/" && url.searchParams.has("page")) return pageRedirect("/app");
+  if (requested === "/app/" || requested === "/login/") return pageRedirect(requested.slice(0, -1));
+  if (requested === "/app" || requested === "/login") {
+    const auth = await currentUser(req);
+    if (requested === "/app" && !auth) return pageRedirect("/login");
+    if (requested === "/login" && auth) return pageRedirect("/app");
+    requested = "/index.html";
+  } else if (requested === "/") {
+    requested = "/landing.html";
+  }
   const filePath = path.normalize(path.join(publicDir, requested));
   const relativePath = path.relative(publicDir, filePath);
   if (relativePath === ".." || relativePath.startsWith(`..${path.sep}`) || path.isAbsolute(relativePath)) {
@@ -1824,7 +1839,7 @@ function verifyOAuthState(state) {
 }
 
 function authRedirect(req, params = {}) {
-  const target = new URL("/", appBaseUrl(req));
+  const target = new URL(params.googleAuth === "ok" ? "/app" : "/login", appBaseUrl(req));
   for (const [key, value] of Object.entries(params)) {
     if (value) target.searchParams.set(key, value);
   }

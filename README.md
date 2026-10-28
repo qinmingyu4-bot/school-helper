@@ -4,6 +4,7 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, in
 
 ## Features
 
+- Public product introduction at `/`, a dedicated `/login` entry and authenticated learning space at `/app`. Homepage entry buttons open `/app`; guests are redirected to `/login`, while signed-in visitors enter directly. The homepage stays public in either state.
 - Login and registration with salted `scrypt` password hashes
 - Invitation-only registration
 - Creator/admin account controlled by `ADMIN_EMAILS`
@@ -22,6 +23,25 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, in
 - Local JSON database for development or small private deployments
 - Optional DynamoDB storage for AWS production
 - Full-window classmate chats with live messages, persistent unread counts, latest-message sorting, and clickable peer avatars and public profiles
+
+## Website entry paths
+
+The bare domain serves `public/landing.html` with its own responsive styles and
+no application scripts or account requests. All **进入 StudyBridge / 开始使用**
+links point to `/app`, where the server checks the existing session cookie.
+`/login` serves the existing authentication UI and sends an already authenticated
+visitor to `/app`. Login and registration continue in the learning space;
+logout returns to `/login`, and the login screen links back to the public homepage.
+
+Existing `/?page=...` and `/index.html` bookmarks redirect to `/app`, retaining
+their query parameters. An unauthenticated deep link keeps its `page` through
+password login. Learning navigation continues to use `/app?page=...` and retains existing
+saved-page behavior. Google sign-in returns to `/app` on success and `/login`
+with an escaped visible error on failure; legacy root OAuth links also redirect.
+Session-dependent page redirects use `Cache-Control: no-store`.
+
+Preview this change with an isolated local database. Push review work to a task
+branch: pushing to `main` triggers the AWS deployment workflow.
 
 ## Manual Office editors
 

@@ -1162,11 +1162,12 @@
     state.scheduleMonth = model.month;
     state.scheduleSelectedDate = model.selectedDate;
     const draft = state.scheduleManualDraft;
+    const parts = scheduleCalendarView.renderParts(model, { agendaView: state.scheduleAgendaView, agendaTypes: state.scheduleAgendaTypes, countdown: dueText });
     state.scheduleClockSignature = scheduleClockSignature(model);
     return `
       ${pageHeader("SCHEDULE", "日程", "一个月历，收好你的课程、作业与生活安排。")}
       <section class="schedule-layout">
-        <div id="scheduleCalendarView" class="planner-view">${scheduleCalendarView.render(model, { agendaView: state.scheduleAgendaView, agendaTypes: state.scheduleAgendaTypes, countdown: dueText })}</div>
+        <div id="scheduleCalendarView" class="planner-view">${parts.calendar}</div>
         <details class="card schedule-manual" id="scheduleManual" ${state.scheduleManualOpen || state.scheduleDraftOrigin === "quick" && state.scheduleDrafts.length ? "open" : ""}>
           <summary><span><b>＋ 新增安排</b><small>课程、作业截止、个人计划，都放在这里</small></span><span class="schedule-disclosure" aria-hidden="true">⌄</span></summary>
           ${scheduleQuickHtml(model)}
@@ -1206,6 +1207,7 @@
           </div>
         ${state.scheduleDraftOrigin === "file" ? scheduleReviewHtml() : ""}
         </details>
+        <div id="scheduleAgendaView" class="planner-view">${parts.agenda}</div>
         <p class="schedule-timezone">月历和新增安排使用当前时区：${esc(model.timeZone)} · 导入课程按学校时区换算<br>Lecture / Tutorial 按结束时间自动完成；未填写结束时间时，按课表记录的开始时间处理。</p>
       </section>
     `;
@@ -2997,7 +2999,9 @@
       const signature = scheduleClockSignature(model);
       if (signature !== state.scheduleClockSignature) {
         state.scheduleClockSignature = signature;
-        $("scheduleCalendarView").innerHTML = scheduleCalendarView.render(model, { agendaView: state.scheduleAgendaView, agendaTypes: state.scheduleAgendaTypes, countdown: dueText });
+        const parts = scheduleCalendarView.renderParts(model, { agendaView: state.scheduleAgendaView, agendaTypes: state.scheduleAgendaTypes, countdown: dueText });
+        $("scheduleCalendarView").innerHTML = parts.calendar;
+        if ($("scheduleAgendaView")) $("scheduleAgendaView").innerHTML = parts.agenda;
       }
     }
     root.querySelectorAll("[data-countdown]").forEach((element) => {

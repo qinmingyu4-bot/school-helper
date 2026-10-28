@@ -1,6 +1,6 @@
 # StudyBridge Cloud
 
-StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, invitation-only registration, a creator console, per-student cloud data, and a backend AI API so the OpenAI key never appears in browser code.
+StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, open registration with optional Plus invitations, a creator console, per-student cloud data, and a backend AI API so the OpenAI key never appears in browser code.
 
 ## Features
 
@@ -179,7 +179,7 @@ Production defaults to verification required when the requirement flag is absent
 an explicit `false` retains the previous registration mode during rollout.
 
 Existing password logins and manual password-reset requests remain available.
-Google registration uses Google's verified email plus the existing invitation gate.
+Google first entry accepts Google's verified email and the same optional Plus invitation; both login and registration automatically create an ordinary account when needed.
 The delivered-code password-reset API shares expiration, resend and attempt limits.
 
 Before release: configure and verify a sender, set the requirement flag to `true`,
@@ -599,13 +599,61 @@ behavior is deliberately outside this integrity change, as requested by the owne
 
 ## Important Environment Variables
 
+Registration is open for email and Google accounts. Leave the invite blank for
+**普通用户** (`membershipTier: "standard"`); a valid supplied invitation creates
+**Plus 用户** (`"plus"`). Invalid, disabled or spent codes are rejected; users may
+clear the field to register normally. Legacy users without an explicit tier and with saved `inviteCode` or
+`inviteId` automatically resolve to Plus, even if their invitation was deleted.
+An explicitly stored ordinary/Plus tier takes precedence, so administrator
+downgrades are not undone by historical invitation evidence.
+This compatibility rule does not rewrite credentials or other historical data.
+New account tiers are persisted by the server; client-supplied tiers are ignored.
+Settings, the sidebar and the admin user list show the tier. Membership is separate
+from student/admin roles, and no feature or entitlement difference is enforced yet.
+The obsolete `REQUIRE_INVITE_CODE` environment value is ignored, including existing
+production `true` values. Email verification remains required when configured;
+Google registration still verifies the Google identity. Existing-account Google sign-in reuses the same account. Both Google login and
+registration create an ordinary account on first entry; no invitation is needed.
+An optional signup invitation can still create Plus immediately. Concurrent first
+Google logins recover the already-created verified-email account instead of making
+a duplicate. Existing sign-in does not consume a supplied invitation or change its
+tier; existing users redeem their code explicitly in Settings.
+
+After signing in, open **设置 → 账号与资料 → 账号类型 → 补填邀请码** to become
+Plus. `GET /api/me/membership` supplies a private, noncached, session-bound CSRF
+token. `POST /api/me/membership/redeem` requires that token, JSON and the current
+account ID. The account upgrade and one-use code claim commit together in a local
+transaction or DynamoDB conditional transaction. Repeated requests and already-Plus
+accounts never consume additional codes. Redemption changes membership/invitation
+provenance only: password, Google binding, SB ID, administrator role, sessions and
+learning data stay with the same account. This does not grant administrator rights,
+including when redeeming an invitation whose signup role is Co-admin. The form
+shows immediate success or retryable validation errors, clears on success/close,
+and never stores invitations in browser storage or preference exports.
+
+In **开发者端 → 用户**, show ordinary/Plus badges and counts, with a per-user
+**设为 Plus / 设为普通用户** button. `PATCH /api/admin/users/:id/membership`
+requires an administrator session, the admin-overview CSRF token, current actor ID,
+a valid target tier and expected current tier. Atomic local/DynamoDB updates retain
+credentials, Google bindings, roles, SB IDs, invitation history and learning data;
+stale decisions return a conflict instead of overwriting a newer classification.
+Record the last membership change source/time/actor privately. Administrators can
+change their own membership without changing their administrator permission.
+A downgraded user may still redeem a new valid code; historical codes remain spent.
+
+User-side badges and open Settings update when membership is read or the existing
+foreground activity heartbeat returns a changed tier (at most once per minute while
+active). Do not rebuild the learning page or clear drafts for this update. Background
+responses from an earlier account or membership request cannot overwrite a newer
+local tier. Admin-list polling updates visible classifications and counts as well.
+
+
 Each invitation permits one successful registration. Previously used codes cannot
 be reused, even if their old usage limit was higher or they are re-enabled.
 
 ```text
 SESSION_SECRET=replace-with-a-long-random-secret
 ADMIN_EMAILS=your-real-email@example.com
-REQUIRE_INVITE_CODE=true
 OWNER_INVITE_CODE=your-private-creator-code
 OPENAI_API_KEY=your-openai-api-key
 OPENAI_SIMPLE_MODEL=gpt-6-luna

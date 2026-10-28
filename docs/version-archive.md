@@ -10,6 +10,32 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.119 - 2026-10-28
+
+Purpose:
+- Publish the owner-approved course-wide schedule management and individual event editing from `7cd4b00`, including names, dates, times, locations and notes. Preserve the latest ordinary/Plus memberships, administrator controls, Google entry and branding from 1.1.118.
+- Refresh release/cache versions without migrating or rewriting saved accounts, courses, material, chats, schedules or preferences. The new actions change schedule entries only when explicitly confirmed by the user.
+
+Validation:
+- 310 combined regression tests and 199-file source/assets/version checks passed, along with deployment-script syntax validation. Retain the production dependency audit gate.
+- Use verified private pre-install backups, unchanged configuration/data checks and automatic code rollback. Verify both new entry points on the live calendar, cancel the review dialogs and confirm existing schedule counts without changing user entries.
+
+Rollback target:
+- `75919e2` (1.1.118). Restore application code only; retain current user data and private backups.
+
+### 1.1.118 - 2026-10-28
+
+Purpose:
+- Publish owner-approved PR #7 (`b21cc31`): ordinary/Plus memberships, direct Google first entry, optional signup invitations and Settings redemption, user badges and administrator classification controls.
+- Keep current branding/personalization, administrator roles, credentials, sessions, SB IDs and all saved learning data. Membership remains a classification with identical features.
+
+Validation:
+- The combined feature set passed 303 automated tests and 194-file syntax/assets/version checks, including Google entry, invitation/admin races, stale decisions, historical classification and data preservation.
+- Require the production dependency audit, verified private backup and unchanged configuration/data checks before installation. Verify actual Google login, invitation redemption and admin tier changes separately after release while comparing pre-existing accounts/data.
+
+Rollback target:
+- `95a2aa9` (1.1.117). Restore application code only; retain current user data and private backups.
+
 ### 1.1.117 - 2026-10-28
 
 Purpose:

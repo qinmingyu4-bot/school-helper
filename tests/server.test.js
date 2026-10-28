@@ -89,7 +89,7 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     assert.equal((await request("/%ZZ")).status, 400);
     assert.equal((await request("/..%2fpublic-private%2fsecret.txt")).status, 403);
     assert.equal((await request("/..%2f.env")).status, 403);
-    assert.equal((await request("/api/auth/register", { method: "POST", body: registration("Blocked", "blocked@example.test", "") })).status, 403);
+    assert.equal((await request("/api/auth/register", { method: "POST", body: registration("Standard", "standard@example.test", "") })).status, 201);
   });
 
   const admin = await request("/api/auth/register", { method: "POST", body: registration("Admin", "admin@example.test", "health-owner-invite") });

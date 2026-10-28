@@ -163,7 +163,7 @@ test("SB IDs are assigned before persistence and lookup is case-sensitive in bot
   const dynamo = new StudyBridgeDatabase();
   dynamo.dynamo = {
     scanType: async () => records,
-    put: async (pk, sk, type, value) => { if (type === "user") records.push(value); return value; }
+    transactPut: async (items) => { for (const item of items) if (item.type === "user") records.push(item.data); }
   };
   for (const store of [reloaded, dynamo]) {
     for (const sbId of ["1", "Alpha", "alpha"]) assert.equal((await store.findUserBySbId(sbId)).id, sbId);

@@ -10,6 +10,19 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.109 - 2026-10-28
+
+Purpose:
+- Match login and registration to the approved homepage's neutral white/light-gray/charcoal style, using a shared wordmark, thin frames and a homepage link.
+- Keep the original login/register/Google actions, field IDs, invitation and email-code handling, password help and redirects. Authentication styles do not change saved account themes or learning-space appearance.
+
+Validation:
+- Passed 256 regression tests and 181-file source/assets/version checks. Isolated desktop/mobile checks cover login, logout, incorrect-password feedback, one-use invitation registration, profile routing and an enabled Google entry, without horizontal overflow.
+- Require the existing production dependency audit and verified private backup before installation, then verify live assets, guest entry, retained account/session/course data and Google configuration.
+
+Rollback target:
+- `5662fef` (1.1.108). Restore application code only; retain production accounts, data and backups.
+
 ### 1.1.108 - 2026-10-28
 
 Purpose:

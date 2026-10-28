@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.108";
+  const VERSION = "1.1.109";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -359,16 +359,24 @@
   function authHtml(mode = "login") {
     const register = mode === "register";
     return `
-      <main class="auth-shell">
-        <section class="auth-card">
-          <a class="link-button" href="/">← 返回 StudyBridge 首页</a>
-          <div class="brand-row">
-            <div class="brand-mark">SB</div>
-            <div><span>STUDYBRIDGE CLOUD</span><strong>StudyBridge</strong></div>
+      <main class="auth-shell auth-entry">
+        <header class="auth-header">
+          <a class="auth-brand" href="/" aria-label="StudyBridge 首页">
+            <svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><rect width="40" height="40" rx="8" fill="currentColor"/><path d="M10 27V15m20 12V15M10 20c6 0 6-8 10-8s4 8 10 8M10 24h20M16 18v6m8-6v6" stroke="#f5f5f5" stroke-width="2" stroke-linecap="round"/></svg>
+            <span>StudyBridge.</span>
+          </a>
+          <a class="auth-home-link" href="/">返回首页 <span aria-hidden="true">↗</span></a>
+        </header>
+        <div class="auth-content">
+        <section class="auth-card" aria-labelledby="authTitle">
+          <div class="auth-intro">
+            <p class="auth-eyebrow">YOUR STUDY, CONNECTED</p>
+            <h1 id="authTitle">${register ? "创建你的学习空间" : "欢迎回到 StudyBridge"}</h1>
+            <p>${register ? "使用邀请码注册，连接学习的每一步。" : "登录账号，继续你的学习节奏。"}</p>
           </div>
-          <div class="segmented">
-            <button data-action="auth-tab" data-tab="login" class="${register ? "" : "active"}">登录</button>
-            <button data-action="auth-tab" data-tab="register" class="${register ? "active" : ""}">注册</button>
+          <div class="segmented" role="group" aria-label="选择登录或注册">
+            <button data-action="auth-tab" data-tab="login" aria-pressed="${!register}" class="${register ? "" : "active"}">登录</button>
+            <button data-action="auth-tab" data-tab="register" aria-pressed="${register}" class="${register ? "active" : ""}">注册</button>
           </div>
           ${register ? `<label>姓名<input id="authName" placeholder="你的名字"></label>` : ""}
           <label>Email<input id="authEmail" type="email" autocomplete="email" placeholder="you@example.com"></label>
@@ -381,12 +389,14 @@
               <button data-action="send-email-code">发送验证码</button>
             </div>
           ` : ""}
-          <div class="or-line"><span>or</span></div>
-          <button class="ghost wide" data-action="google-login" ${state.googleEnabled ? "" : "disabled"}>Google 登录${state.googleEnabled ? "" : "待配置"}</button>
           <button class="primary wide" data-action="${register ? "register" : "login"}">${register ? "创建账号" : "登录"}</button>
+          <div class="or-line"><span>或</span></div>
+          <button class="ghost wide auth-google" data-action="google-login" ${state.googleEnabled ? "" : "disabled"}>Google 登录${state.googleEnabled ? "" : "待配置"}</button>
           ${register ? "" : `<button class="link-button" data-action="forgot-password">忘记密码？</button>`}
-          ${state.toast ? `<p class="notice">${esc(state.toast)}</p>` : ""}
+          ${state.toast ? `<p class="notice" role="status" aria-live="polite">${esc(state.toast)}</p>` : ""}
         </section>
+        <p class="auth-footnote">课程、资料与对话，都在你的学习空间。</p>
+        </div>
       </main>
     `;
   }
@@ -433,7 +443,7 @@
     const active = state.page === page ? "active" : "";
     return `
       <button class="nav-card ${active}" data-page="${page}" ${active ? 'aria-current="page"' : ""}>
-        <span aria-hidden="true"><svg><use href="/classmates-icons.svg?v=1.1.108#nav-${esc(page)}"></use></svg></span>
+        <span aria-hidden="true"><svg><use href="/classmates-icons.svg?v=1.1.109#nav-${esc(page)}"></use></svg></span>
         <b>${esc(title)}</b>
         <small>${esc(page === "schedule" && nextDue() ? `${nextDue().title} · 还有 ${dueText(nextDue().startsAt)}` : sub)}</small>
       </button>

@@ -2,6 +2,9 @@
 
 ## 2026-10-28
 
+- Release `1.1.109`: match login and registration to the approved homepage with white/light-gray surfaces, charcoal buttons, thin frames, the shared bridge wordmark and a homepage link. Scope all new styling to authentication so saved learning-space themes remain unchanged. Retain existing field IDs, action handlers, invitation/email-code registration, password help, Google sign-in and authenticated redirects. Refresh release/cache versions; deploy with the existing verified private backup and data/configuration preservation checks. Previous production code: `5662fef` (1.1.108).
+- Validate 256 passing tests and 181-file source/assets/version checks, plus isolated browser checks for incorrect-password feedback, successful login/logout, one-use invitation registration, post-registration profile routing, enabled Google controls and a 390 px registration layout without overflow. Confirm authentication styles disappear on entry to the learning space.
+
 - Release `1.1.108`: publish the owner-approved neutral StudyBridge homepage, dedicated `/login` and authenticated `/app` entry, retaining legacy bookmarks and the already-deployed browser-bound/PKCE Google sign-in. Refresh package/frontend/cache versions. Use the existing verified private pre-install backup and rollback workflow; retain production accounts, session/configuration, courses, schedules, community, chats and authored files without migration. Previous production code: `1165f3c` (1.1.107 with Google sign-in).
 - Combined release validation: 256 passing automated tests and 181-file syntax/assets/version checks, including retained password login, Google identity/account/course preservation, browser-cookie validation and homepage redirects. Keep the existing production dependency-audit gate and private verified-backup prerequisite.
 

@@ -2,6 +2,9 @@
 
 ## 2026-10-28
 
+- Release `1.1.117`: publish the owner-approved monochrome book-and-bridge logo by default and the blue-purple/mint alternative in **设置 → 个性化 → 品牌 Logo** from `5a0f0a7`. Refresh release/cache versions and retain existing accounts, courses, chats, schedules, authored files, login configuration, palettes and dark-mode settings without migration. Use the existing verified private backup, unchanged-data checks and automatic code rollback workflow. Previous production code: `f351b25` (`1.1.116`).
+- Release validation: 287 passing tests, 191-file syntax/assets/version checks and deployment-script syntax checks; require the production dependency-audit gate before installation. Record the existing online account's five courses, appearance and learning preferences for read-only post-deployment comparison.
+
 - Keep both approved book-and-bridge identities: use the monochrome logo by default on the homepage, login, app sidebar and browser tab, and add an indigo/mint option under **设置 → 个性化 → 品牌 Logo** with visual previews and account-scoped saving. Retain existing palettes and dark-mode choices independently, reset the logo on logout, include it in preference exports and preserve both original design proofs alongside scalable SVG assets. Prepared on a task branch for review without deployment.
 - Validate 287 passing tests and 191-file syntax/assets/version checks against the latest registration-verification release. Browser checks cover the homepage/login/app identity, immediate logo switching, refresh and new-login restoration, palette/dark-mode independence, failed-save retry, logout/account isolation and a 390 px layout without horizontal overflow.
 

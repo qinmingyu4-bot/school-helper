@@ -1,18 +1,20 @@
 # Google OAuth production verification
 
-Status: the owner approved policy publication, domain verification and a future switch to production. Google verification has not been submitted or approved.
-The Google publishing status and OAuth scopes have not yet changed.
+Status: production configuration and brand verification are complete; Gmail restricted-scope review is NOT submitted or approved.
+The owner approved policy publication/operation, DNS ownership verification and the production switch. The remaining immediate submission blocker is the required real OAuth demonstration video.
 The existing project is `reference-bee-441922-b2` (Google Auth Platform / My First Project).
 
 ## Observed prerequisites (2026-10-28, America/Toronto)
 
 - Branding: StudyBridge, support/developer contact `qinmingyu4@gmail.com`, home `https://studybridge.ink/`, authorized domain `studybridge.ink`.
-- Privacy policy and terms fields are empty. Privacy policy is required; a terms URL is optional and should not be populated with an unrelated page.
-- Audience: External / Testing, one registered test user; Publish app is disabled until Branding is complete.
-- Data Access declares `https://www.googleapis.com/auth/gmail.readonly` as a restricted scope. Google login separately requests existing `openid email profile`; preserve that login flow and include the actually requested basic identity scopes in the verification inventory.
-- Verification Center currently says verification is not required because the project is in Testing; this is not an approval.
+- Branding now contains the live public privacy URL `https://studybridge.ink/privacy.html`. The optional terms field remains empty; no unrelated page was supplied.
+- Audience: External / In production, confirmed in Google Cloud after the owner-approved change. The unverified-scope user cap remains applicable pending scope approval.
+- Data Access declares restricted `https://www.googleapis.com/auth/gmail.readonly` plus the existing basic Google sign-in scopes `openid`, `userinfo.email` and `userinfo.profile`. No new runtime permission was added. Email productivity and a 981-character, actual-data-flow scope justification were saved.
+- Google Branding completed verification and was published: the live status says “Your branding has been verified and is being shown to users.” Gmail data access is separately unverified.
 - Search Console confirmed ownership of `studybridge.ink` for the owner's existing Google account after the owner-approved, separate DNS TXT record was added. Keep that verification record; existing application/mail DNS records were preserved.
-- Public `/privacy.html`, homepage mailbox description and privacy/contact links, and Settings privacy entry are ready for the owner-approved AWS release. Source remains compatible with the latest 1.2.1 main release.
+- Public `/privacy.html`, homepage mailbox description and privacy/contact links, and Settings privacy entry were deployed to AWS as release 1.2.1 at `3558c69581be8a499b202024733f076523f9174b` (PR #14). Deployment run `40813367680` succeeded, verified a private server backup, and passed all checks. All 24 before/after course, schedule, preference and mailbox-configuration fingerprints matched.
+- The refreshed `/auth/verification/submit` page lists only “Missing ... demo video.” The scope justification and intended use are present; Confirm is disabled. The required video must be a real reviewer-accessible YouTube recording of all assigned OAuth clients and actual consent/use. No video URL or assessment evidence has been invented.
+- The owner selected their existing personal Gmail and explicitly authorized real read-only binding (including the seven-day backfill and AI transfer) plus one synthetic self-addressed message. Real Google consent completed and Settings showed Gmail connected. The synthetic self-message carries SENT as well as INBOX and is intentionally skipped by the current provider filter; an inbound example from the verified StudyBridge domain was prepared for separate approval. Record only synthetic message contents; do not upload the video, expose unrelated inbox contents, purchase an assessment or accept an assessor contract without the required authorization.
 
 ## Actual data flow for review
 
@@ -42,14 +44,14 @@ Record the real app and Google consent flow using a designated test mailbox cont
 6. Disconnect in Settings; show disconnected status and extracted cards removed. Explain confirmed schedules remain. Show where Google-side revocation and deletion contact are available.
 7. Upload an actual recording to an owner-approved reviewer-accessible location and provide its exact URL. Do not invent a video URL or claim a recording exists before it is created.
 
-## Remaining release and review gates
+## Remaining review gates (completed production prerequisites above)
 
-- Review/publish the policy and new homepage disclosure to AWS. Confirm public URLs return the actual policy and homepage without login, including mobile layout.
+- Completed: policy publication, actual public homepage-policy navigation, Settings disclosure, source/assets validation, 344 automated tests and production fingerprint comparison.
 - Confirm operator contact and Limited Use practices (no sale, advertising, generalized-model training; restricted human access and deletion handling); do not publish unverified operational assertions.
-- Verify `studybridge.ink` ownership for the project's owner in Google Search Console using the displayed DNS record. Do not change MX, SPF, DKIM, DMARC or application DNS records.
-- Save the actual public privacy URL in Branding; preserve existing client IDs, secrets, callbacks, existing basic Google login, test users and encrypted mailbox configuration.
-- Switch Audience from Testing to In production only after owner confirmation of the concrete change: this expands OAuth eligibility beyond the test list, with Google consent still required and the unverified-user cap still applicable. Switching status alone does not remove the unverified warning. Existing test-issued refresh tokens may still require one fresh authorization; do not promise that all existing tokens are retroactively extended.
-- Submit brand verification and requested scope review through Verification Center with accurate scope justification and real demonstration video. If the final form includes binding policy attestations or terms, obtain action-time owner confirmation of the exact declaration before submitting.
+- Completed: Search Console DNS ownership verification. Preserve its TXT record and all existing application/mail DNS records.
+- Completed: saved live privacy URL, verified and published branding; preserved client IDs, secrets, callbacks, existing Google login and encrypted mailbox configuration.
+- Completed: Audience switched from Testing to In production with owner confirmation. Google consent and the unverified-scope cap still apply. Production status alone does not remove the Gmail unverified warning. Existing test-issued refresh tokens may still need one fresh grant; no retroactive token extension is claimed.
+- Brand verification is complete. Record and supply the real demonstration video, then submit the restricted-scope review through Verification Center. If the final form includes binding policy attestations or terms, obtain action-time owner confirmation of the exact declaration before submitting.
 - The current server-side Gmail restricted-data architecture requires an independent Google-recognized CASA security assessment and recurring reverification. Google determines the review/assessment requirements. Do not buy an assessment, accept an assessor contract, invent security test evidence, or claim certification without owner authorization and actual completion.
 - Track the actual Google review outcome and remediate requests. Only Google approval can establish that the warning is removed for the reviewed scopes. Production removes the special Testing seven-day refresh-token lifetime for new applicable grants; revocation, password/security events, token limits and provider policies can still invalidate access.
 

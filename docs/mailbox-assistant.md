@@ -167,3 +167,7 @@ confirmation, account isolation and unlink races. `tests/mailbox-http.test.js`
 exercises both complete OAuth flows with a local-only transport fixture, CSRF,
 ownership, waiting for confirmation, incomplete-time correction, duplicate retry,
 unlink deletion and retention of confirmed calendar entries.
+
+## Google production review
+
+See [Google OAuth production verification](google-oauth-verification.md) for the observed project state, truthful data-flow/scope justification, demonstration script and outstanding ownership/assessment/review gates. Public disclosure assets prepared here do not mean Google has approved the app.

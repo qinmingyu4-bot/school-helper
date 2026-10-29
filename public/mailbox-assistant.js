@@ -7,11 +7,11 @@
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
   const providerName = (provider) => provider === "gmail" ? "Gmail" : "Outlook";
   function create({ api, getUser, onChange, notice }) {
-    let userId = "", data = null, error = "", generation = 0, busy = false, banner = "", view = "reply";
+    let userId = "", data = null, error = "", generation = 0, busy = false, banner = "", view = "learning";
     const edits = new Map();
     function account() {
       const id = getUser()?.id || "";
-      if (id !== userId) { userId = id; data = null; error = ""; banner = ""; view = "reply"; edits.clear(); ++generation; busy = false; }
+      if (id !== userId) { userId = id; data = null; error = ""; banner = ""; view = "learning"; edits.clear(); ++generation; busy = false; }
       return id;
     }
     async function load({ before = "", isCurrent = () => true } = {}) {
@@ -49,15 +49,15 @@
       const connections = data?.connections || [], connected = connections.filter((row) => row.connected), pending = (data?.drafts || []).filter((row) => row.status === "pending");
       const accounts = connections.length ? connections : ["gmail", "outlook"].map((provider) => ({ provider }));
       return `<section class="mailbox-assistant" aria-label="邮箱助手工作区">
-        <div class="mailbox-account-strip" role="region" aria-label="邮箱绑定状态"><span class="mailbox-account-label">邮箱状态</span><ul class="mailbox-accounts">${accounts.map((row) => `<li class="mailbox-account" data-mailbox-provider="${row.provider}"><span class="mailbox-account-icon" aria-hidden="true">${row.provider === "gmail" ? "G" : "O"}</span><strong>${providerName(row.provider)}</strong><span class="mailbox-account-value" title="${esc(row.connected ? row.email : "")}">${esc(row.connected ? row.email : !data ? "读取中…" : "未绑定")}</span>${row.connected ? `<span class="mailbox-account-state${row.reconnectRequired ? " needs-attention" : ""}">${row.reconnectRequired ? "需重新授权" : "已绑定"}</span>` : ""}</li>`).join("")}</ul></div>
+        <button type="button" class="mailbox-account-strip" data-action="mailbox-settings" aria-label="邮箱绑定状态，前往邮箱授权设置" aria-describedby="mailbox-account-summary" title="在设置中管理邮箱授权"><span class="mailbox-account-label">邮箱状态</span><span class="mailbox-accounts" id="mailbox-account-summary" role="list">${accounts.map((row) => `<span class="mailbox-account" role="listitem" data-mailbox-provider="${row.provider}"><span class="mailbox-account-icon" aria-hidden="true">${row.provider === "gmail" ? "G" : "O"}</span><strong>${providerName(row.provider)}</strong><span class="mailbox-account-value" title="${esc(row.connected ? row.email : "")}">${esc(row.connected ? row.email : !data ? "读取中…" : "未绑定")}</span>${row.connected ? `<span class="mailbox-account-state${row.reconnectRequired ? " needs-attention" : ""}">${row.reconnectRequired ? "需重新授权" : "已绑定"}</span>` : ""}</span>`).join("")}</span><span class="mailbox-account-open" aria-hidden="true">›</span></button>
         ${banner ? `<p class="mailbox-feedback" role="status">${esc(banner)}</p>` : ""}${error ? `<p class="mailbox-warning" role="alert">${esc(error)}</p>` : ""}
-        <nav class="mailbox-sections" aria-label="邮箱助手功能"><button type="button" id="mailbox-reply-button" data-action="mailbox-view" data-view="reply" aria-pressed="${view === "reply"}" aria-controls="mailbox-reply-panel">邮件解读与回复</button><button type="button" id="mailbox-learning-button" data-action="mailbox-view" data-view="learning" aria-pressed="${view === "learning"}" aria-controls="mailbox-learning-panel">学习通知${pending.length ? `<span class="mailbox-count">${pending.length}</span>` : ""}</button></nav>
-        <section id="mailbox-reply-panel" class="mailbox-reply" aria-labelledby="mailbox-reply-button" ${view !== "reply" ? "hidden" : ""}>${replyHtml}</section>
+        <nav class="mailbox-sections" aria-label="邮箱助手功能"><button type="button" id="mailbox-learning-button" data-action="mailbox-view" data-view="learning" aria-pressed="${view === "learning"}" aria-controls="mailbox-learning-panel">学习通知${pending.length ? `<span class="mailbox-count">${pending.length}</span>` : ""}</button><button type="button" id="mailbox-reply-button" data-action="mailbox-view" data-view="reply" aria-pressed="${view === "reply"}" aria-controls="mailbox-reply-panel">邮件解读与回复</button></nav>
         <section id="mailbox-learning-panel" aria-labelledby="mailbox-learning-button" ${view !== "learning" ? "hidden" : ""}>
           <header class="mailbox-learning-heading"><div><h2>学习通知</h2><p>${pending.length ? `${pending.length} 封邮件待确认，核对后可加入日程。` : "从学习邮件中整理需要关注的安排。"}</p></div><div class="mailbox-actions">${connected.length ? `<button type="button" data-action="mailbox-sync" ${busy || connected.every((row) => row.syncing || row.reconnectRequired) ? "disabled" : ""}>${connected.some((row) => row.syncing) ? "正在同步…" : "同步邮件"}</button>` : ""}<button type="button" data-action="mailbox-refresh" ${busy ? "disabled" : ""}>刷新通知</button></div></header>
           ${connections.filter((row) => row.connected && row.error).map((row) => `<p class="mailbox-warning" role="status">${providerName(row.provider)}：${esc(row.error)}</p>`).join("")}
           <div class="mailbox-messages">${(data?.drafts || []).map(card).join("")}${data && !data.drafts.length ? `<article class="card mailbox-empty"><span class="mailbox-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span><h3>${connected.length ? "暂无学习通知" : "还没有学习通知"}</h3><p>${connected.length ? "识别到教授通知或重要安排后，会显示在这里供你确认。" : "在设置中绑定邮箱后，学习相关通知会显示在这里。"}</p></article>` : ""}</div>
-          ${!data && !error ? '<p class="muted" role="status">正在读取学习通知…</p>' : ""}${data?.nextBefore ? '<button type="button" data-action="mailbox-more">读取更早邮件</button>' : ""}</section></section>`;
+          ${!data && !error ? '<p class="muted" role="status">正在读取学习通知…</p>' : ""}${data?.nextBefore ? '<button type="button" data-action="mailbox-more">读取更早邮件</button>' : ""}</section>
+        <section id="mailbox-reply-panel" class="mailbox-reply" aria-labelledby="mailbox-reply-button" ${view !== "reply" ? "hidden" : ""}>${replyHtml}</section></section>`;
     }
     function input(event) {
       const el = event.target, key = el.dataset?.mailboxField;

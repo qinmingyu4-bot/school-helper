@@ -25,21 +25,25 @@ test("late mailbox loads cannot cross accounts or restore an abandoned destinati
   assert.doesNotMatch(view.html(), /mail@example.test|Learning notice/);
 });
 
-test("reply is the default visible workspace and connection state has no authorization controls", async () => {
+test("learning notices lead the workspace and the account status opens mailbox settings", async () => {
   const view = create({ api: async () => value(), getUser: () => ({ id: "alice" }), onChange() {}, notice() {} });
   await view.load();
   const html = view.html('<textarea id="emailOriginal"></textarea><div id="toolOutput">Reply draft</div>');
   assert.match(html, /id="mailbox-reply-panel"[^>]*>.*id="emailOriginal"/s);
-  assert.doesNotMatch(html.match(/<section id="mailbox-reply-panel"[^>]*>/)[0], /hidden/);
-  assert.match(html, /id="mailbox-learning-panel"[^>]*hidden/);
-  const status = html.slice(html.indexOf('<div class="mailbox-account-strip"'), html.indexOf('<nav class="mailbox-sections"'));
+  assert.match(html.match(/<section id="mailbox-reply-panel"[^>]*>/)[0], /hidden/);
+  assert.doesNotMatch(html.match(/<section id="mailbox-learning-panel"[^>]*>/)[0], /hidden/);
+  assert.ok(html.indexOf('id="mailbox-learning-button"') < html.indexOf('id="mailbox-reply-button"'));
+  const status = html.slice(html.indexOf('<button type="button" class="mailbox-account-strip"'), html.indexOf('<nav class="mailbox-sections"'));
   assert.match(status, /Gmail/); assert.match(status, /mail@example.test/); assert.match(status, /已绑定/);
-  assert.doesNotMatch(status, /<button|data-action|前往设置|管理邮箱授权/);
+  assert.match(status, /data-action="mailbox-settings"/);
+  assert.match(status, /aria-label="邮箱绑定状态，前往邮箱授权设置"/);
+  assert.doesNotMatch(status, /data-mailbox-connect|data-mailbox-unlink/);
   assert.doesNotMatch(html, /<details|mailbox-footnote|mailbox-manual/);
   const unbound = create({ api: async () => ({ connections: [{ provider: "gmail", configured: false, connected: false }, { provider: "outlook", configured: true, connected: false }], drafts: [] }), getUser: () => ({ id: "alice" }), onChange() {}, notice() {} });
   await unbound.load();
   assert.equal((unbound.html().match(/未绑定/g) || []).length, 2);
-  assert.doesNotMatch(unbound.html(), /data-action="mailbox-settings"|授权接入准备中/);
+  assert.match(unbound.html(), /data-action="mailbox-settings"/);
+  assert.doesNotMatch(unbound.html(), /授权接入准备中/);
 });
 
 test("view changes preserve notice edits and successful authorization selects learning notices", async () => {
@@ -56,7 +60,7 @@ test("view changes preserve notice edits and successful authorization selects le
   assert.doesNotMatch(view.html().match(/<section id="mailbox-learning-panel"[^>]*>/)[0], /hidden/);
   assert.equal(redraws, 2);
   user = { id: "bob" };
-  assert.doesNotMatch(view.html().match(/<section id="mailbox-reply-panel"[^>]*>/)[0], /hidden/);
+  assert.doesNotMatch(view.html().match(/<section id="mailbox-learning-panel"[^>]*>/)[0], /hidden/);
   assert.doesNotMatch(view.html(), /mail@example.test/);
 });
 

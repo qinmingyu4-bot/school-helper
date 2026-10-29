@@ -3,13 +3,15 @@
 Mailbox Assistant (邮箱助手) is the sixth student destination, after Tools. It is
 removed from the Tools tabs. Legacy `page=email` links open the new destination;
 an account that previously selected Tools → Email is redirected there once.
-Version 1.2.0 opens **邮件解读与回复** by default, with the received email and reply
-intent beside a permanently visible draft panel on desktop (stacked on phones).
-**学习通知** is a separate view for reviewing extracted notices and confirming
-calendar additions. Switching views preserves typed mail, intent, selected tone,
+The workspace lists **学习通知** first and opens it by default for reviewing
+extracted notices and confirming calendar additions. **邮件解读与回复** follows,
+with the received email and reply intent beside a permanently visible draft panel
+on desktop (stacked on phones). Switching views preserves typed mail, intent,
+selected tone,
 generated replies and edits to notice items. A successful OAuth return opens the
-learning notices view. A compact read-only strip shows Gmail/Outlook connection
-state and connected addresses; all binding/rebinding/unlinking stays in Settings.
+learning notices view. A compact status strip shows Gmail/Outlook connection
+state and connected addresses. Clicking anywhere in the strip, or activating it
+with Enter/Space, opens Settings → 邮箱授权; binding/rebinding/unlinking happens there.
 Notification refresh and synchronization controls belong to the learning view.
 
 Settings → 邮箱授权 manages one Gmail and one Outlook / Microsoft 365 mailbox per
@@ -62,6 +64,30 @@ repeated runs keep the same key. It does not
 authorize a user's inbox: each user still binds through Settings and provider
 consent. Provider registration/consent and an actual mailbox sync require separate
 live validation; passing server configuration checks alone does not prove them.
+
+### Production test configuration (2026-10-28)
+
+Both Gmail and Outlook are configured on the `1.2.0` production deployment, and
+Settings exposes both binding controls. Gmail remains in Google testing mode with
+the owner's test user registered. Outlook uses a Web application supporting both
+organizational and personal Microsoft accounts, with only delegated `Mail.Read`,
+`User.Read` and `offline_access` configured. Each mailbox still requires the user's
+own consent in Settings and at the provider; no inbox was linked by configuration
+activation. School tenant policy can require administrator approval.
+
+The initial Outlook application credential expires on **2027-04-26**. Renew it
+before expiry: create a replacement in the same app, update the private
+`OUTLOOK_CLIENT_SECRET` repository secret, and rerun the activation workflow with
+`outlook` selected. Retain the app's client ID, callback and mailbox encryption key.
+Validate a real mailbox sync before retiring the old credential. Never put either
+credential value into documentation, source control, screenshots or workflow inputs.
+
+Live activation checks cover private configuration backups, the exact callbacks,
+read-only scopes, PKCE/encrypted browser state, service health, existing Google
+login and both Settings controls. All 23 pre-existing course/document/conversation,
+schedule, profile and preference fingerprints matched after activation. Actual
+provider consent, token exchange and mailbox synchronization await the user's
+first real binding test.
 
 For Gmail, enable Gmail API, add the mailbox callback to the Web OAuth client
 in addition to the login callback, and configure the consent screen/test users.

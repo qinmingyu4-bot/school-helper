@@ -2,7 +2,9 @@
 
 ## 2026-10-29
 
-- Continue Google scope-review preparation with an owner-authorized real Gmail binding and separately approved synthetic messages. Verify a clearly marked fictional course notice produces the correct source-linked review fields and fictional-data warning. Prepare an 87-second actual-UI walkthrough with account/sidebar privacy cropping for owner review; retain the video and captures outside Git. Scope review remains unsubmitted pending an approved YouTube demonstration URL; Google will initiate the separate security-assessment stage after the earlier verification requirements. One synthetic calendar entry created during the confirmation demonstration is isolated for owner-approved cleanup.
+- Complete the owner-approved YouTube Unlisted upload of the reviewed Gmail demonstration, verify playback/visibility, save its real URL in Google Cloud, and submit scope verification after explicit confirmation of the final requirements/CASA declarations. Google confirms data access is under review and Trust and Safety received the form; approval and independent assessment remain pending. Delete exactly the one owner-approved synthetic schedule item and verify its absence. Keep the video, unlisted link, captures and cleanup evidence outside Git. Documentation-only status update; no AWS deployment.
+
+- Continue Google scope-review preparation with an owner-authorized real Gmail binding and separately approved synthetic messages. Verify a clearly marked fictional course notice produces the correct source-linked review fields and fictional-data warning. Prepare a 95-second actual-UI walkthrough (correcting an earlier duration description) with account/sidebar privacy cropping for owner review; retain the video and captures outside Git. At this preparation stage, scope review was unsubmitted pending an approved YouTube demonstration URL; Google will initiate the separate security-assessment stage after the earlier verification requirements. One synthetic calendar entry created during the confirmation demonstration was isolated for owner-approved cleanup (completed in the continuation above).
 
 ## 2026-10-28
 

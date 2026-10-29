@@ -4,6 +4,8 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, op
 
 ## Features
 
+- Six student destinations: Community, Classmates, Schedule, Study, Tools and **邮箱助手**. Bind Gmail or Outlook under **设置 → 邮箱授权**; learning emails appear in the assistant as editable drafts and enter the planner only after confirmation. Manual email interpretation/reply drafting remains available. Private OAuth setup and first-release limits: [Mailbox assistant](docs/mailbox-assistant.md).
+
 - Public product introduction at `/`, a dedicated `/login` entry and authenticated learning space at `/app`. Homepage entry buttons open `/app`; guests are redirected to `/login`, while signed-in visitors enter directly. The homepage stays public in either state.
 - Login and registration with salted `scrypt` password hashes
 - Invitation-only registration
@@ -252,6 +254,10 @@ navigation on mobile. **退出登录** remains inside Settings. Categories are:
   Google remains linked. Forgotten passwords retain the creator-assisted recovery
   flow. Password fields clear on close/category change and are never auto-saved,
   exported, cached in browser storage, or returned by the API.
+- **邮箱授权:** connect/reconnect or unlink one Gmail and one Outlook/Microsoft 365
+  mailbox, with explicit read-only inbox/AI consent. Authorization feedback and
+  extracted learning notices appear in the separate **邮箱助手** destination.
+  Schedule additions require review and confirmation; see the mailbox setup guide.
 - **学习与 AI:** change independent English-term, English-answer and Chinese-explanation
   choices plus custom instructions. Uses the same serialized saver as the Study
   Area sidebar, with automatic save, synchronized controls and failure/retry status.
@@ -266,7 +272,7 @@ navigation on mobile. **退出登录** remains inside Settings. Categories are:
   meanings and authored document/slide/cell colors are retained. The independent **黑夜模式** switch applies
   暮色深灰 (charcoal surfaces and champagne accents); switching it off restores
   the selected daytime palette. All choices preview immediately and save to the
-  account. The five main destinations share outline icons and a rounded selected
+  account. The six main destinations share outline icons and a rounded selected
   row with a filled icon, while retaining their existing order and layout.
 - **课程与提醒:** open course/document management and the timetable; distinguish
   available in-app reminders from email/system push, which is not yet available.

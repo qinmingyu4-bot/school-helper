@@ -15,13 +15,14 @@ function harness(defer = []) {
   const context = vm.createContext({
     state, URLSearchParams,
     setPage(page) {
-      if (page === "email") { page = "tools"; state.tool = "email"; }
-      state.page = state.mode === "admin" ? "admin" : ["study", "schedule", "tools", "profile", "community", "classmates"].includes(page) ? page : "study";
+      if (page === "tools" && state.tool === "email") { page = "email"; state.tool = "docs"; }
+      state.page = state.mode === "admin" ? "admin" : ["study", "schedule", "tools", "email", "profile", "community", "classmates"].includes(page) ? page : "study";
     },
     render() { renders.push(state.page); formDraft = ""; },
     setToast: (message) => notices.push(message), syncClassmatesLive: () => {},
     communityQuery: () => "channel=all", communityValue: () => "",
     officeTools: { supports: () => true }, creativeTools: { load: async () => {} }, creativeContext: () => ({}),
+    mailboxView: { load: async () => { requests.push({ path: "/api/mailbox" }); } },
     localStorage: { getItem: () => null }, isGeneralChat: () => state.activeCourseId === "general",
     chatSpaces: { general: { id: "general" } }, courseChats: { visibleCourses: (courses) => courses },
     loadStudyMode: () => {}, activeStudyReply: () => null, mergeStudyReply: (messages) => messages,
@@ -107,9 +108,12 @@ test("normalized saved routes load the page that is actually shown", async () =>
   assert.ok(h.requests.some((request) => request.path === "/api/courses"));
   const email = harness();
   await email.context.loadPage("email");
-  assert.equal(email.state.page, "tools");
-  assert.equal(email.state.tool, "email");
-  assert.equal(email.requests.length, 0);
+  assert.equal(email.state.page, "email");
+  assert.equal(email.requests[0].path, "/api/mailbox");
+  const legacy = harness(); legacy.state.tool = "email";
+  await legacy.context.loadPage("tools");
+  assert.equal(legacy.state.page, "email");
+  assert.equal(legacy.state.tool, "docs");
 });
 
 test("late conversation and document loads cannot repopulate abandoned study state", async () => {

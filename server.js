@@ -22,6 +22,8 @@ const {
 const { validEmail, emailPolicy, createEmailVerification } = require("./lib/email-verification");
 const { startGoogleOAuth, verifyGoogleOAuth, clearGoogleOAuthCookie } = require("./lib/google-oauth");
 const { StudyBridgeDatabase } = require("./lib/database");
+const mailboxProviders = require("./lib/mailbox-providers");
+const { createMailboxService } = require("./lib/mailbox-service");
 const { membershipTier } = require("./lib/membership");
 const studyModes = require("./public/study-modes");
 const learningStyle = require("./public/learning-style");
@@ -125,6 +127,10 @@ const complexAiModel =
 const webSearchEnabled = process.env.OPENAI_WEB_SEARCH !== "false";
 const googleClientId = String(process.env.GOOGLE_CLIENT_ID || "").trim();
 const googleClientSecret = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();
+const mailbox = createMailboxService({ db, analyze: (messages) => {
+  if (!process.env.OPENAI_API_KEY) throw new Error("邮件识别尚未配置。");
+  return callAiWithChatCompletions(messages, complexAiModel, null, { signal: AbortSignal.timeout(60000), store: false });
+} });
 let cachedAiHealth = null;
 let lastAiRequest = null;
 const classmateStreams = new Map();
@@ -1289,7 +1295,7 @@ async function callAiWithResponses(messages, model, toolType = "web_search", str
   return extractResponsesText(payload) || "AI \u6ca1\u6709\u8fd4\u56de\u5185\u5bb9\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5\u3002";
 }
 
-async function callAiWithChatCompletions(messages, model, stream = null, { signal } = {}) {
+async function callAiWithChatCompletions(messages, model, stream = null, { signal, store } = {}) {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -1299,6 +1305,7 @@ async function callAiWithChatCompletions(messages, model, stream = null, { signa
     ...(stream ? { signal: stream.signal } : signal ? { signal } : {}),
     body: JSON.stringify({
       model,
+      ...(store === false ? { store: false } : {}),
       ...(stream ? { stream: true } : {}),
       messages: messages.map((item) => ({
         role: item.role,
@@ -2152,6 +2159,64 @@ async function routeApi(req, res) {
     const user = await requireUser(req, res);
     if (!user) return;
     return sendJson(res, 200, { user: publicUser(user) });
+  }
+
+  if (url.pathname.startsWith("/api/mailbox")) {
+    const auth = await currentUser(req);
+    if (!auth) return sendError(res, 401, "请先登录 StudyBridge，再管理邮箱授权。");
+    const csrfToken = hashToken(`mailbox:${auth.tokenHash}`);
+    const respond = (data, status = 200) => sendJson(res, status, data, { "cache-control": "private, no-store" });
+    if (url.pathname === "/api/mailbox" && method === "GET") {
+      const before = String(url.searchParams.get("before") || "");
+      if (before.length > 200) return sendError(res, 400, "邮件分页位置无效。");
+      return respond({ ...await mailbox.status(auth.user.id, before), csrfToken });
+    }
+    const connection = url.pathname.match(/^\/api\/mailbox\/(gmail|outlook)\/(start|callback|disconnect|sync)$/);
+    if (connection?.[2] === "callback" && method === "GET") {
+      const provider = connection[1];
+      let result = "failed";
+      try {
+        const state = mailboxProviders.verifyOAuth(provider, auth, url.searchParams.get("state"), parseCookies(req.headers.cookie));
+        if (url.searchParams.has("error")) result = "denied";
+        else {
+          const code = url.searchParams.get("code");
+          if (!code || code.length > 10000) throw new Error("Missing authorization code");
+          const transport = mailboxProviders.createProviders();
+          const tokens = await transport.exchange(provider, code, state.verifier);
+          await mailbox.connect(auth.user.id, provider, tokens, state.timeZone, state.mailboxGeneration);
+          result = "connected";
+        }
+      } catch { /* Provider details and credentials never appear in redirects/logs. */ }
+      return sendRedirect(res, `/app?page=email&mailbox=${result}`, { "set-cookie": mailboxProviders.oauthCookie(provider, ""), "cache-control": "no-store", "referrer-policy": "no-referrer" });
+    }
+    if (method === "POST") {
+      const supplied = String(req.headers["x-csrf-token"] || "");
+      if (!/^application\/json(?:;|$)/i.test(req.headers["content-type"] || "") || !/^[a-f0-9]{64}$/.test(supplied)
+        || !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(csrfToken))) return sendError(res, 403, "请重新打开邮箱助手或设置后再试。");
+      const body = await readJson(req);
+      if (!body || typeof body !== "object" || Array.isArray(body)) return sendError(res, 400, "邮箱操作格式无效。");
+      if (body.userId !== auth.user.id) return sendError(res, 409, "登录账号已改变，请重新打开邮箱助手。");
+      if (connection) {
+        const [, provider, action] = connection;
+        if (action === "start") {
+          if (body.consent !== true) return sendError(res, 400, "请先同意读取收件箱并使用 AI 识别学习事项。");
+          const current = await db.getMailbox(auth.user.id, provider);
+          const oauth = mailboxProviders.startOAuth(provider, { ...auth, mailboxGeneration: current?.generation || null }, body.timeZone || "UTC");
+          res.setHeader("set-cookie", oauth.cookie);
+          return respond({ url: oauth.url });
+        }
+        if (action === "disconnect") { await mailbox.disconnect(auth.user.id, provider); return respond({ ok: true }); }
+        if (action === "sync") { return respond({ connection: await mailbox.requestSync(auth.user.id, provider) }, 202); }
+      }
+      const draft = url.pathname.match(/^\/api\/mailbox\/drafts\/([^/]+)\/resolve$/);
+      if (draft) {
+        let id;
+        try { id = decodeURIComponent(draft[1]); } catch { return sendError(res, 400, "邮件事项无效。"); }
+        if (id.length > 200) return sendError(res, 400, "邮件事项无效。");
+        return respond(await mailbox.resolve(auth.user.id, id, body));
+      }
+    }
+    return sendError(res, 404, "邮箱操作不存在。");
   }
 
   if (url.pathname === "/api/me/membership" && method === "GET") {
@@ -3070,4 +3135,5 @@ const server = http.createServer(async (req, res) => {
 server.listen(port, () => {
   console.log(`StudyBridge cloud app running on http://localhost:${server.address().port}`);
   scheduleLocalDatabaseBackups();
+  mailbox.start();
 });

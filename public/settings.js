@@ -8,6 +8,7 @@
   const sections = Object.freeze([
     { id: "account", name: "账号与资料", hint: "个人信息与登录", icon: "◎", group: "你的账号" },
     { id: "security", name: "账号安全", hint: "设置或修改网站密码", icon: "◇", group: "你的账号" },
+    { id: "mailbox", name: "邮箱授权", hint: "绑定 Gmail 与 Outlook", icon: "✉", group: "你的账号" },
     { id: "learning", name: "学习与 AI", hint: "回答语言与学习方式", icon: "✦", group: "偏好设置" },
     { id: "appearance", name: "个性化", hint: "Logo、界面色调与显示", icon: "◐", group: "偏好设置" },
     { id: "reminders", name: "课程与提醒", hint: "课程资料与截止日期", icon: "◷", group: "学习空间" },
@@ -23,7 +24,7 @@
   }
 
   function createView({ document: doc = document, themes, logos, version, getUser, getContext, getAppearance, flushAppearance,
-    learning, saveProfile, loadMembership, redeemMembershipInvite, loadSecurity, savePassword, requestPasswordReset, navigate, logout }) {
+    learning, saveProfile, loadMembership, redeemMembershipInvite, loadSecurity, savePassword, requestPasswordReset, loadMailboxes, changeMailbox, navigate, logout }) {
     const dialog = doc.createElement("dialog");
     dialog.className = "settings-dialog";
     dialog.setAttribute("aria-labelledby", "settings-title");
@@ -50,6 +51,11 @@
             <form class="settings-password-form"><input name="username" type="email" autocomplete="username" readonly hidden><fieldset class="settings-password-fields" disabled><label class="settings-current-password" hidden>当前密码<input name="currentPassword" type="password" autocomplete="current-password" maxlength="1024"></label><label>新密码<input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required aria-describedby="settings-password-help"></label><label>确认新密码<input name="passwordConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label><p id="settings-password-help" class="settings-caption">使用 8–128 个字符。这是 StudyBridge 的网站密码，与 Google 密码分开管理。</p><p class="settings-caption">保存后当前设备保持登录，其他设备需重新登录。账号资料、课程和 Google 登录保持不变。</p><div class="settings-form-actions"><span class="settings-password-save-status" role="status" aria-live="polite"></span><button type="submit" class="settings-primary">设置密码</button></div></fieldset></form>
           </div><div class="settings-block"><h4>忘记网站密码？</h4><p class="settings-caption">已有密码但忘记时，可以提交重置申请，联系创作者获取临时密码。</p><button type="button" class="settings-password-reset">申请重置</button><p class="settings-password-status settings-caption" role="status"></p></div>
         </section>
+        <section id="settings-panel-mailbox" class="settings-panel" aria-labelledby="settings-mailbox-heading" hidden>${heading("mailbox", "选择绑定邮箱，让学习通知在「邮箱助手」中等待你确认。")}
+          <div class="settings-block"><h4>连接邮箱</h4><p class="settings-caption">每种服务可绑定一个邮箱。使用 Google 登录不会自动获得读取邮件的权限。</p><div class="settings-mailbox-list"></div><p class="settings-mailbox-status settings-caption" role="status" aria-live="polite"></p><button type="button" class="settings-mailbox-retry">刷新邮箱状态</button></div>
+          <div class="settings-block"><h4>授权与数据用途</h4><p class="settings-caption">绑定后，StudyBridge 会在后台定期读取收件箱邮件，并把邮件文本交给 AI 服务识别学习通知、作业和活动。首次检查最近 7 天；暂不读取附件。保留学习邮件摘要、时间及原文依据，供你核对。</p><label class="settings-mailbox-consent"><input type="checkbox"><span>我同意读取所绑定邮箱的收件箱，并使用 AI 识别学习相关内容。</span></label><p class="settings-caption">只申请读取权限。添加日程前需要你确认。解绑会停止后续访问并清除邮箱连接和提取记录，已确认的日程保留；你也可在 Google 或 Microsoft 账号中撤销应用授权。</p></div>
+          <div class="settings-block"><h4>查看识别结果</h4><div class="settings-row"><div><strong>邮箱助手</strong><small>查看学习邮件、补全时间，并确认添加到日程。</small></div><button type="button" data-settings-route="email">打开邮箱助手 ↗</button></div></div>
+        </section>
         <section id="settings-panel-learning" class="settings-panel" aria-labelledby="settings-learning-heading" hidden>${heading("learning", "告诉学习搭子，你希望怎样理解和回答问题。")}
           <div class="settings-block"><h4>回答与讲解</h4><p class="settings-caption">仅用于课程学习、作业、考试和学术写作。日常问题按提问语言自然回答，必要的英文缩写照常保留。</p><label class="settings-toggle-row"><span><strong>保留 English terms</strong><small>中文讲解中保留有用的英文术语。</small></span><input type="checkbox" data-settings-pref="englishTerms" role="switch"></label><label class="settings-toggle-row"><span><strong>英文作答 / 英文草稿</strong><small>最终答案或草稿使用英文。</small></span><input type="checkbox" data-settings-pref="englishAnswers" role="switch"></label><label class="settings-toggle-row"><span><strong>中文拆解 reasoning</strong><small>用中文讲解概念、步骤与解题理由。</small></span><input type="checkbox" data-settings-pref="chineseExplanations" role="switch"></label></div>
           <div class="settings-block"><h4>自定义学习要求</h4><label class="settings-instruction-label">补充你的偏好<textarea data-settings-instruction maxlength="500" placeholder="例如：先给提示，再一步步讲；解释时多举生活中的例子。"></textarea></label><p class="settings-caption">本次提问中的明确要求优先，其次是自定义要求，再参考上面的开关。</p></div><div class="settings-save-row"><span class="settings-learning-status" role="status" aria-live="polite"></span><button type="button" class="settings-learning-retry" hidden>重试保存</button></div>
@@ -74,6 +80,20 @@
     let membership = null, membershipGeneration = 0, invitePending = false;
     const currentUserId = String(getUser().id);
     const active = () => !disposed && String(getUser()?.id || "") === currentUserId;
+    let mailboxData = null, mailboxGeneration = 0, mailboxPending = false;
+    function renderMailboxes() {
+      if (!active()) return;
+      dialog.querySelector(".settings-mailbox-list").innerHTML = (mailboxData?.connections || []).map((row) => `<div class="settings-row"><div><strong>${row.provider === "gmail" ? "Gmail" : "Outlook / Microsoft 365"}</strong><small>${esc(row.connected ? row.email : row.configured ? "尚未绑定" : "授权接入尚未开放，请联系管理员完成配置。")}</small>${row.connected ? `<small>识别时区：${esc(row.timeZone)}</small>` : ""}</div><button type="button" data-mailbox-connect="${row.provider}" ${!row.configured || mailboxPending ? "disabled" : ""}>${row.connected ? "重新绑定" : "绑定邮箱"}</button>${row.connected ? `<button type="button" data-mailbox-unlink="${row.provider}" ${mailboxPending ? "disabled" : ""}>解除绑定</button>` : ""}${row.error ? `<p class="settings-caption settings-mailbox-note">${esc(row.error)}</p>` : ""}</div>`).join("");
+    }
+    async function readMailboxes() {
+      const request = ++mailboxGeneration;
+      setStatus(".settings-mailbox-status", "正在读取邮箱状态…");
+      try {
+        const value = await loadMailboxes();
+        if (!active() || request !== mailboxGeneration) return;
+        mailboxData = value; renderMailboxes(); setStatus(".settings-mailbox-status", "授权后，请到邮箱助手查看自动识别的结果。");
+      } catch (error) { if (active() && request === mailboxGeneration) setStatus(".settings-mailbox-status", error.message || "读取失败，请重试。", true); }
+    }
     const form = dialog.querySelector(".settings-profile-form");
     const setStatus = (selector, text, error = false) => { if (!active()) return; const el = dialog.querySelector(selector); el.textContent = text; el.classList.toggle("is-error", error); };
     function refreshUser() {
@@ -239,9 +259,28 @@
       refreshUser(); refreshLearning();
       if (button.dataset.settingsSection === "security" && !passwordPending) void readSecurity();
       if (button.dataset.settingsSection === "account" && !invitePending) void readMembership();
+      if (button.dataset.settingsSection === "mailbox" && !mailboxPending) void readMailboxes();
     }));
     dialog.querySelectorAll("[data-settings-open]").forEach((button) => button.addEventListener("click", () => dialog.querySelector(`[data-settings-section="${button.dataset.settingsOpen}"]`).click()));
     dialog.querySelector(".settings-back").addEventListener("click", () => { clearPasswords(); delete dialog.dataset.detail; dialog.querySelector('[aria-current="page"]').focus(); });
+    dialog.querySelector(".settings-mailbox-retry").addEventListener("click", () => { if (!mailboxPending) void readMailboxes(); });
+    dialog.querySelector(".settings-mailbox-list").addEventListener("click", async (event) => {
+      const button = event.target.closest("[data-mailbox-connect], [data-mailbox-unlink]");
+      if (!button || mailboxPending || !mailboxData || !active()) return;
+      const unlink = Boolean(button.dataset.mailboxUnlink), provider = button.dataset.mailboxUnlink || button.dataset.mailboxConnect;
+      const consent = dialog.querySelector(".settings-mailbox-consent input").checked;
+      if (!unlink && !consent) { setStatus(".settings-mailbox-status", "请先勾选下方的邮箱读取与 AI 识别授权说明。", true); dialog.querySelector(".settings-mailbox-consent input").focus(); return; }
+      if (unlink && !doc.defaultView.confirm("解除绑定并清除该邮箱的提取记录？已确认的日程会保留。")) return;
+      mailboxPending = true; renderMailboxes(); setStatus(".settings-mailbox-status", unlink ? "正在解除绑定…" : "正在前往邮箱授权…");
+      try {
+        const result = await changeMailbox(provider, unlink ? "disconnect" : "start", { csrfToken: mailboxData.csrfToken, userId: currentUserId, consent,
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC" });
+        if (!active()) return;
+        if (unlink) { await readMailboxes(); setStatus(".settings-mailbox-status", "已解除绑定，提取记录已清除。已确认的日程保留。"); }
+        else { doc.defaultView.location.assign(result.url); }
+      } catch (error) { setStatus(".settings-mailbox-status", error.message || "邮箱授权失败，请重试。", true); }
+      finally { mailboxPending = false; renderMailboxes(); }
+    });
     dialog.querySelectorAll("[data-settings-route]").forEach((button) => button.addEventListener("click", async () => {
       await saveLearning(); if (!active()) return;
       dialog.close(); await navigate(button.dataset.settingsRoute);

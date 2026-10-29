@@ -2,6 +2,8 @@
 
 ## 2026-10-28
 
+- Release `1.2.1`: deploy the owner-approved schedule fixes from `7b1389e`: retained ambiguous clocks and noon/midnight choices, automatic review positioning, responsive waiting/cancellation, and bounded date/time controls on desktop/mobile Safari. Refresh package/frontend cache versions, retain the latest mailbox layout and all existing accounts, schedules, courses, conversations, settings and private authorization configuration. Use the existing verified private-backup, data/configuration checks and automatic code rollback workflow. Previous production code: `00438d9` (`1.2.0`).
+
 - Preserve ambiguous clocks such as “12点” in text/voice schedule drafts and offer noon / that-date midnight choices without guessing or changing the date. Focus and scroll to extracted results on desktop/mobile. Replace waiting-time full-page rendering with a spinner, elapsed status, cancellation and bounded requests that retain input on failure; route short descriptions to the configured simple model. Constrain review labels and native date/time/end-time controls within their cards, including mobile Safari. Prepared on a task branch without AWS deployment.
 - Validate 344 automated tests and 213-file source/assets/version checks. Isolated Chrome and WebKit browser checks cover 320/390/430/1280 px layouts, review visibility, noon/midnight/manual time selection, persistence, steady waiting UI, cancellation and failed-request retry without overflow or page errors.
 

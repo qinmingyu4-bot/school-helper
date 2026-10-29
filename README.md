@@ -61,6 +61,12 @@ independent dark mode through the existing Settings controls.
 
 ## Mobile navigation
 
+Mobile Study replies retain 14 px body text with 1.65 line spacing, wider text
+columns and smaller paragraph/list gaps. Speaker labels remain accessible without
+occupying a side column. Empty deadline placeholders do not consume phone reading
+space; actual upcoming schedules remain visible. Desktop reply typography and
+scrollable formula/table rendering are unchanged.
+
 At widths up to 700 px, the student app uses a main menu and separate full-screen
 pages for Community, Classmates, Schedule, Study and Tools. Opening an entry slides
 the page in from the right. **主菜单** in the upper left returns to the menu;

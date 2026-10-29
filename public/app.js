@@ -684,7 +684,7 @@
 
   function upcomingBanner() {
     const due = nextDue();
-    if (!due) return `<section class="deadline-banner"><div><span>暂无 upcoming deadline</span><b>添加作业、考试或课程提醒后，这里会显示最近时间。</b></div></section>`;
+    if (!due) return `<section class="deadline-banner deadline-empty"><div><span>暂无 upcoming deadline</span><b>添加作业、考试或课程提醒后，这里会显示最近时间。</b></div></section>`;
     return `
       <section class="deadline-banner" data-page="schedule">
         <div><span>最近要做</span><b>${esc(due.title)}</b><p>${esc(due.course || "")} | ${esc(formatDate(due.startsAt))} | ${esc(due.location || "")}</p></div>

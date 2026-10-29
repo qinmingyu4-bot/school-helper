@@ -3,13 +3,15 @@
 Mailbox Assistant (邮箱助手) is the sixth student destination, after Tools. It is
 removed from the Tools tabs. Legacy `page=email` links open the new destination;
 an account that previously selected Tools → Email is redirected there once.
-Version 1.2.0 opens **邮件解读与回复** by default, with the received email and reply
-intent beside a permanently visible draft panel on desktop (stacked on phones).
-**学习通知** is a separate view for reviewing extracted notices and confirming
-calendar additions. Switching views preserves typed mail, intent, selected tone,
+The workspace lists **学习通知** first and opens it by default for reviewing
+extracted notices and confirming calendar additions. **邮件解读与回复** follows,
+with the received email and reply intent beside a permanently visible draft panel
+on desktop (stacked on phones). Switching views preserves typed mail, intent,
+selected tone,
 generated replies and edits to notice items. A successful OAuth return opens the
-learning notices view. A compact read-only strip shows Gmail/Outlook connection
-state and connected addresses; all binding/rebinding/unlinking stays in Settings.
+learning notices view. A compact status strip shows Gmail/Outlook connection
+state and connected addresses. Clicking anywhere in the strip, or activating it
+with Enter/Space, opens Settings → 邮箱授权; binding/rebinding/unlinking happens there.
 Notification refresh and synchronization controls belong to the learning view.
 
 Settings → 邮箱授权 manages one Gmail and one Outlook / Microsoft 365 mailbox per

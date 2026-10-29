@@ -493,9 +493,17 @@ The Add Arrangement panel accepts ordinary-language text or voice. Describe one
 or several plans, then choose AI 整理安排 and confirm the resulting editable drafts.
 Relative dates use the actual current date in the browser's IANA time zone;
 omitted dates use the visibly selected calendar date. Missing/ambiguous times
-stay blank, explicit end times are retained, and open-ended recurrence asks for
-an end date instead of guessing. Existing duplicate checks run before review
-and again before saving. Manual entry remains available in a collapsible form.
+stay unconfirmed, explicit end times are retained, and open-ended recurrence asks
+for an end date instead of guessing. Ambiguous clocks retain the recognized wording
+(e.g. “12点”) and offer explicit noon/that-date midnight choices; students can also
+enter a time manually. Confirming a choice retains the extracted date. After text
+extraction, the review heading receives focus and scrolls into view on desktop and
+mobile. While waiting, only the status updates, with a spinner, elapsed time and
+cancellation; errors/cancellation/timeout preserve the input. Short text (up to 900
+characters) uses the configured simple AI model; longer text retains the complex
+model. Requests time out after 60 seconds on the server and 65 seconds in the
+browser, and disconnecting cancels the upstream request. Existing duplicate checks
+run before review and again before saving. Manual entry remains available in a collapsible form.
 
 Direct recording uses MediaRecorder, stops at two minutes/8 MiB, and releases the
 microphone on stop, cancellation, navigation, hiding or leaving the page. It needs

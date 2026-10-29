@@ -94,6 +94,17 @@ test("timetable images/PDFs retain layout, use school calendars and return recur
   assert.equal(isolated.data.items.length, 4);
   assert.equal(isolated.data.courses[0].name, "MAT101H1");
   assert.notEqual(isolated.data.courses[0].id, subject.id);
+  for (const daypart of ["", "中午", "凌晨"]) {
+    const birthday = await request("/api/schedule/parse-text", { text: `11月2号${daypart}12点是我的朋友Liz的生日`, selectedDate: "2026-10-28", timeZone: "America/Toronto" }, cookie);
+    assert.equal(birthday.status, 200);
+    const item = birthday.data.items[0];
+    if (!daypart) {
+      assert.equal(item.startsAt, "");
+      assert.equal(item.date, "2026-11-02");
+      assert.equal(item.timeAmbiguity.text, "12点");
+      assert.deepEqual(item.timeAmbiguity.options, ["12:00", "00:00"]);
+    } else assert.equal(item.startsAt, `2026-11-02T${daypart === "中午" ? "12:00" : "00:00"}`);
+  }
   const natural = { text: "明天下午三点到四点在图书馆复习，晚上八点交 STA437 作业", selectedDate: "2026-12-01", timeZone: "America/Toronto" };
   assert.equal((await request("/api/schedule/parse-text", natural)).status, 401);
   const plans = await request("/api/schedule/parse-text", natural, cookie);
@@ -101,6 +112,9 @@ test("timetable images/PDFs retain layout, use school calendars and return recur
   assert.deepEqual(plans.data.items.map((item) => item.kind), ["EVENT", "DDL"]);
   assert.match(plans.data.items[0].endsAt, /T16:00$/);
   assert.equal(plans.data.items[0].timeZone, "America/Toronto");
+  const longPlans = await request("/api/schedule/parse-text", { ...natural, text: natural.text + "，带好复习资料".repeat(150) }, cookie);
+  assert.equal(longPlans.status, 200, JSON.stringify(longPlans.data));
+  assert.equal(longPlans.data.items.length, 2);
   const missing = await request("/api/schedule/parse-text", { ...natural, text: "明天复习，没说时间" }, cookie);
   assert.equal(missing.data.items[0].startsAt, "");
   assert.ok(missing.data.items[0].warning);

@@ -2,6 +2,9 @@
 
 ## 2026-10-28
 
+- Preserve ambiguous clocks such as “12点” in text/voice schedule drafts and offer noon / that-date midnight choices without guessing or changing the date. Focus and scroll to extracted results on desktop/mobile. Replace waiting-time full-page rendering with a spinner, elapsed status, cancellation and bounded requests that retain input on failure; route short descriptions to the configured simple model. Constrain review labels and native date/time/end-time controls within their cards, including mobile Safari. Prepared on a task branch without AWS deployment.
+- Validate 344 automated tests and 213-file source/assets/version checks. Isolated Chrome and WebKit browser checks cover 320/390/430/1280 px layouts, review visibility, noon/midnight/manual time selection, persistence, steady waiting UI, cancellation and failed-request retry without overflow or page errors.
+
 - Put **学习通知** before **邮件解读与回复** in Email Assistant and open notices by default. Make the full Gmail/Outlook status strip a keyboard-accessible shortcut to **设置 → 邮箱授权**, with hover/focus feedback. Preserve reply drafts, notice edits and provider authorization configuration; refresh only the mailbox asset cache keys and retain version `1.2.0`.
 - Validate 339 automated tests and 212-file source/assets/version checks. Isolated browser checks cover desktop/390 px phone layouts, light/dark modes, bound/unbound mailbox states, click/Enter/Space shortcuts to the authorization settings, and retained reply text and notice edits. Prepare on a task branch for review.
 

@@ -2850,12 +2850,16 @@ if (directMessageMatch && method === "POST") {
     try { context = scheduleInput.inputContext(body); }
     catch (error) { return sendError(res, 400, error.message); }
     if (!process.env.OPENAI_API_KEY) return sendError(res, 503, "AI 服务尚未配置，仍可手动填写安排。");
+    const controller = new AbortController();
+    const disconnect = () => { if (!res.writableEnded) controller.abort(); };
+    res.on("close", disconnect);
     try {
-      const content = await callAiWithChatCompletions(scheduleInput.inputMessages(context), complexAiModel, null, { signal: AbortSignal.timeout(60000) });
-      const parsed = scheduleInput.parseInput(content, context.timeZone);
+      const content = await callAiWithChatCompletions(scheduleInput.inputMessages(context), context.text.length > 900 ? complexAiModel : simpleAiModel, null, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(60000)]), store: false });
+      const parsed = scheduleInput.parseInput(content, context.timeZone, context.text);
       const review = scheduleImport.reviewDuplicates(parsed.items, await listUserScheduleItems(user.id, { includeCompleted: true }), { timeZone: context.timeZone });
       return sendJson(res, 200, { ...review, clarification: parsed.clarification, timeZone: context.timeZone });
-    } catch { return sendError(res, 502, "AI 整理未成功，原文已保留。请重试或手动填写；尚未添加任何安排。"); }
+    } catch { if (!controller.signal.aborted) return sendError(res, 502, "AI 整理未成功，原文已保留。请重试或手动填写；尚未添加任何安排。"); }
+    finally { res.off("close", disconnect); }
   }
 
   if (url.pathname === "/api/schedule/transcribe" && method === "POST") {

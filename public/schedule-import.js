@@ -16,7 +16,7 @@
   }
   function withDatePart(item, field, value) {
     const parts = { ...draftDateTime(item), [field]: value };
-    return { ...item, ...parts, startsAt: validDate(parts.date) && validClock(parts.time) ? `${parts.date}T${parts.time}` : "" };
+    return { ...item, ...parts, ...(item.timeAmbiguity ? { warning: validClock(parts.time) ? "" : `已识别“${item.timeAmbiguity.text}”，请选择具体时段后确认。` } : {}), startsAt: validDate(parts.date) && validClock(parts.time) ? `${parts.date}T${parts.time}` : "" };
   }
   function draftIssues(item) {
     const issues = [];
@@ -29,7 +29,7 @@
     } else {
       const parts = draftDateTime(item);
       if (!parts.date) add("date", "日期", "请补充有效日期。");
-      if (!parts.time) add("time", "时间", "请补充具体时间；材料未注明时，请先核实。");
+      if (!parts.time) add("time", "时间", item.timeAmbiguity ? `已识别“${item.timeAmbiguity.text}”，请选择时段，或手动填写时间。` : "请补充具体时间；材料未注明时，请先核实。");
       if (item.endsAt && (!validTime(item.endsAt) || validTime(item.startsAt) && item.endsAt <= item.startsAt)) add("endsAt", "结束时间", "请填写晚于开始时间的有效结束日期与时间。");
     }
     return issues;

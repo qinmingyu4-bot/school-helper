@@ -71,10 +71,14 @@ globalThis.fetch = async (url, options) => {
   if (body.messages?.[0]?.content.startsWith("Turn the student's everyday language")) {
     const prompt = body.messages[0].content;
     const text = body.messages[1].content;
+    const expectedModel = text.length > 900
+      ? process.env.OPENAI_COMPLEX_MODEL || process.env.STUDYBRIDGE_COMPLEX_MODEL || "gpt-6.1-sol"
+      : process.env.OPENAI_SIMPLE_MODEL || process.env.STUDYBRIDGE_SIMPLE_MODEL || process.env.OPENAI_MODEL || "gpt-6-luna";
+    if (body.model !== expectedModel || body.store !== false) throw new Error("Schedule text must use the configured size-appropriate model without provider storage.");
     const today = prompt.match(/today (\d{4}-\d{2}-\d{2})/)[1];
     const selectedDate = prompt.match(/calendar day (\d{4}-\d{2}-\d{2})/)[1];
     const date = text.includes("明天") ? new Date(Date.parse(today) + 86400000).toISOString().slice(0, 10) : selectedDate;
-    content = text.includes("FORMAT_BAD") ? "invalid" : text.includes("每周") ? JSON.stringify({ items: [], clarification: "请补充重复安排的结束日期。" }) : JSON.stringify({ items: [
+    content = text.includes("Liz") ? JSON.stringify({ items: [{ kind: "EVENT", title: "Liz的生日", date: "2026-11-02", evidence: text, startsAt: text.includes("中午") ? "2026-11-02T12:00" : text.includes("凌晨") ? "2026-11-02T00:00" : "", ambiguousTime: text.includes("中午") || text.includes("凌晨") ? "" : "12点" }] }) : text.includes("FORMAT_BAD") ? "invalid" : text.includes("每周") ? JSON.stringify({ items: [], clarification: "请补充重复安排的结束日期。" }) : JSON.stringify({ items: [
       { kind: "EVENT", title: "图书馆复习", startsAt: text.includes("没说时间") ? "" : `${date}T15:00`, endsAt: text.includes("没说时间") ? "" : `${date}T16:00`, location: "图书馆", notes: "带上 Lecture 3 笔记", evidence: text },
       ...(text.includes("作业") ? [{ kind: "DDL", title: "STA437 作业", course: "STA437", startsAt: `${date}T20:00`, evidence: "晚上八点交作业" }] : [])
     ] });

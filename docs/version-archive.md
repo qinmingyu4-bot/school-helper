@@ -10,6 +10,19 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.2.1 - 2026-10-28
+
+Purpose:
+- Publish owner-approved schedule fixes from `7b1389e`: retain ambiguous clocks with explicit time choices, reveal extracted reviews, improve waiting/cancellation, and contain native date/time controls on desktop/mobile Safari.
+- Refresh frontend cache versions; retain the current mailbox layout, accounts, sessions, learning data, saved schedules and private provider configuration without migration.
+
+Validation:
+- 344 automated tests and 213-file source/assets/version checks; Chrome/WebKit at 320/390/430/1280 px, with complete selection/save/cancel/error-retry flows.
+- Require the production dependency audit and existing verified private-backup, unchanged data/configuration and automatic rollback gates. Compare the existing account's 74 schedule entries before and after release without saving test events.
+
+Rollback target:
+- `00438d9` (1.2.0). Restore application code only; retain current user data and private backups.
+
 ### 1.1.122 - 2026-10-28
 
 Purpose:

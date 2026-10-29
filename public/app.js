@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.2.0";
+  const VERSION = "1.2.1";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -198,6 +198,7 @@
   };
 
   let scheduleVoiceRequest = null;
+  let scheduleQuickRequest = null;
   const scheduleVoiceRecorder = window.StudyBridgeScheduleVoice.createRecorder({
     onState: ({ phase, message }) => { state.scheduleVoicePhase = phase; state.scheduleVoiceMessage = message; updateScheduleVoiceUi(); },
     onAudio: (blob) => transcribeScheduleVoice(new File([blob], `recording.${blob.type.includes("mp4") ? "m4a" : "webm"}`, { type: blob.type }))
@@ -1296,18 +1297,19 @@
   function scheduleQuickHtml(model) {
     const blocked = state.scheduleImportBusy || Boolean(state.scheduleDrafts.length);
     const voiceBusy = state.scheduleVoicePhase !== "idle" || state.scheduleVoicePending;
-    return `<section class="schedule-quick" aria-label="白话或语音新增安排">
+    return `<section class="schedule-quick" aria-label="白话或语音新增安排" aria-busy="${Boolean(state.scheduleImportBusy && state.scheduleDraftOrigin === "quick")}">
       <label for="scheduleQuickText">说说你的安排</label><p>可以一次描述多件事。未提日期时使用所选的 ${esc(model.selectedDate)}；“明天、下周”按今天计算。</p>
       <textarea id="scheduleQuickText" maxlength="6000" placeholder="比如：明天下午三点到四点在图书馆讨论作业；周五晚上八点交 STA437 作业。" ${blocked ? "disabled" : ""}>${esc(state.scheduleQuickText)}</textarea>
       <div class="schedule-quick-actions"><button class="${state.scheduleVoicePhase === "recording" ? "is-recording" : ""}" data-action="schedule-voice" ${state.scheduleVoicePhase === "stopping" || state.scheduleVoicePending || state.scheduleVoicePhase === "idle" && (blocked || !scheduleVoiceRecorder.supported) ? "disabled" : ""}>${state.scheduleVoicePhase === "recording" ? "结束录音" : state.scheduleVoicePhase === "requesting" ? "取消录音" : "语音输入"}</button>
         <label class="schedule-audio-picker ${blocked || voiceBusy ? "is-disabled" : ""}">导入语音<input id="scheduleAudioFile" type="file" aria-label="导入语音文件" accept=".mp3,.mp4,.m4a,.wav,.webm,.mpeg,.mpga" ${blocked || voiceBusy ? "disabled" : ""}></label>
         <button data-action="schedule-voice-retry" ${state.scheduleVoiceFile && !voiceBusy ? "" : "hidden"} ${blocked ? "disabled" : ""}>重试转写</button>
         <button class="primary" data-action="parse-schedule-text" ${blocked || voiceBusy ? "disabled" : ""}>${state.scheduleImportBusy && state.scheduleDraftOrigin === "quick" ? "正在整理…" : "AI 整理安排"}</button>
+        <button data-action="cancel-schedule-parse" ${scheduleQuickRequest ? "" : "hidden"}>取消整理</button>
       </div>
       <p class="schedule-voice-hint">${scheduleVoiceRecorder.supported ? "结束录音后会转成文字，可修改后再整理。录音最多 2 分钟，语音文件最多 8 MB。" : "直接录音需要安全连接和浏览器支持；可导入语音文件，或点手机键盘的麦克风输入。"}</p>
       ${state.scheduleDrafts.length && state.scheduleDraftOrigin === "file" ? `<p>请先确认或取消课程文件的待加入项目，再整理新的安排。</p>` : ""}
       <p id="scheduleVoiceStatus" role="status" aria-live="polite" ${state.scheduleVoiceMessage ? "" : "hidden"}>${esc(state.scheduleVoiceMessage)}</p>
-      ${state.scheduleQuickStatus ? `<p class="schedule-import-status" role="status">${esc(state.scheduleQuickStatus)}</p>` : ""}
+      <p id="scheduleQuickStatus" class="schedule-import-status" role="status" aria-live="polite" ${state.scheduleQuickStatus ? "" : "hidden"}>${esc(state.scheduleQuickStatus)}</p>
     </section>`;
   }
 
@@ -1366,22 +1368,70 @@
     else state.scheduleImportStatus = message;
   }
 
+  function updateScheduleQuickUi() {
+    const section = root.querySelector(".schedule-quick");
+    if (!section) return;
+    const busy = state.scheduleImportBusy && state.scheduleDraftOrigin === "quick";
+    section.setAttribute("aria-busy", String(busy));
+    const status = $("scheduleQuickStatus");
+    status.hidden = !state.scheduleQuickStatus;
+    status.textContent = state.scheduleQuickStatus;
+    $("scheduleQuickText").disabled = state.scheduleImportBusy || Boolean(state.scheduleDrafts.length);
+    const button = section.querySelector('[data-action="parse-schedule-text"]');
+    button.textContent = busy ? "正在整理…" : "AI 整理安排";
+    section.querySelector('[data-action="cancel-schedule-parse"]').hidden = !scheduleQuickRequest;
+    updateScheduleVoiceUi();
+  }
+
+  function revealScheduleReview() {
+    requestAnimationFrame(() => {
+      if (state.page !== "schedule") return;
+      const heading = root.querySelector(".schedule-review > h2");
+      if (!heading) return;
+      heading.focus({ preventScroll: true });
+      heading.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    });
+  }
+
   async function parseScheduleQuick() {
     if (state.scheduleImportBusy || state.scheduleVoicePending || state.scheduleVoicePhase !== "idle" || state.scheduleDrafts.length) return;
     const text = state.scheduleQuickText.trim();
     if (!text) throw new Error("先写下或说出你的安排，例如“明天下午三点去图书馆”。");
     const userId = state.user.id;
+    const controller = new AbortController();
+    scheduleQuickRequest = controller;
+    const started = Date.now();
     state.scheduleDraftOrigin = "quick"; state.scheduleImportBusy = true;
-    state.scheduleQuickStatus = "正在整理日期、时间和安排内容…"; render();
+    state.scheduleQuickStatus = "正在整理日期、时间和安排内容…"; updateScheduleQuickUi();
+    const progress = window.setInterval(() => {
+      if (state.user?.id !== userId) { controller.abort(); return; }
+      const seconds = Math.floor((Date.now() - started) / 1000);
+      state.scheduleQuickStatus = `${seconds >= 12 ? "AI 仍在整理，请稍候；也可取消后重试。" : "正在整理日期、时间和安排内容…"}（已等待 ${seconds} 秒）`;
+      const status = $("scheduleQuickStatus");
+      if (status) status.textContent = state.scheduleQuickStatus;
+    }, 1000);
+    const timeout = window.setTimeout(() => controller.abort("timeout"), 65000);
+    let reveal = false;
     try {
-      const result = await api("/api/schedule/parse-text", { method: "POST", body: { text, selectedDate: state.scheduleSelectedDate, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone } });
-      if (state.user?.id !== userId) return;
+      const result = await api("/api/schedule/parse-text", { method: "POST", signal: controller.signal, body: { text, selectedDate: state.scheduleSelectedDate, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone } });
+      if (state.user?.id !== userId || controller.signal.aborted) return;
       state.scheduleReviewError = "";
       state.scheduleDrafts = result.items; state.scheduleSource = "白话 / 语音输入";
       state.scheduleCalendar = null; state.scheduleFromDate = "";
       state.scheduleQuickStatus = result.items.length ? `整理出 ${result.items.length} 条安排，请核对后确认加入。${result.duplicateCount ? `${result.duplicateCount} 条重复安排已标记，默认不勾选。` : ""}${result.clarification || ""}` : result.clarification || (result.duplicateCount ? "这些安排已存在，已跳过重复项目。" : "还没有找到明确安排，请补充日期、时间或事情内容。");
-    } catch (error) { state.scheduleQuickStatus = error.message; }
-    finally { state.scheduleImportBusy = false; if (state.page === "schedule") render(); }
+      reveal = Boolean(result.items.length);
+    } catch (error) {
+      if (state.user?.id === userId) state.scheduleQuickStatus = controller.signal.aborted
+        ? controller.signal.reason === "timeout" ? "整理超时，原文已保留，可重试或手动填写。" : "已取消整理，原文已保留。"
+        : error.message;
+    } finally {
+      window.clearInterval(progress); window.clearTimeout(timeout);
+      if (scheduleQuickRequest === controller) scheduleQuickRequest = null;
+      if (state.user?.id === userId) {
+        state.scheduleImportBusy = false;
+        if (state.page === "schedule") { render(); if (reveal) revealScheduleReview(); }
+      }
+    }
   }
 
   function scheduleClockSignature(model) {
@@ -1390,7 +1440,7 @@
 
   function scheduleReviewHtml() {
     if (!state.scheduleDrafts.length) return "";
-    return `<article class="card schedule-review"><h2>核对提取结果（${state.scheduleDrafts.length} 条）</h2>
+    return `<article class="card schedule-review"><h2 tabindex="-1">核对提取结果（${state.scheduleDrafts.length} 条）</h2>
       <p>${esc(state.scheduleSource)} · 尚未加入日程。勾选要加入的项目，点开卡片可编辑并查看完整备注与原文。${state.scheduleDraftOrigin === "file" && state.scheduleImportedCourses.length ? "已识别的课程已自动加入「对话与课程」，取消预览不会删除课程。" : ""}${state.scheduleDrafts.some((item) => item.weekly) ? "每周课程确认一次即可生成本学期剩余安排。" : ""}</p>
       ${state.scheduleDrafts.some((item) => item.weekly) ? scheduleCalendarHtml() : ""}
       <fieldset ${state.scheduleImportBusy ? "disabled" : ""}>
@@ -1404,7 +1454,7 @@
     const parts = scheduleImport.draftDateTime(item);
     return {
       title: item.title.trim() || "未命名项目", kind: item.kind === "EVENT" ? "个人安排" : item.kind,
-      time: item.weekly ? `每周${item.weekly.weekdays.map((weekday) => ["日", "一", "二", "三", "四", "五", "六"][weekday]).join("、") || "（待补星期）"} ${item.weekly.startTime || "时间待补充"}${item.weekly.endTime ? `–${item.weekly.endTime}` : ""}` : valid ? `${item.startsAt.replace("T", " ")}${item.endsAt ? ` → ${item.endsAt.replace("T", " ")}` : ""}` : parts.date ? `${parts.date} · 时间待补充` : parts.time ? `日期待补充 · ${parts.time}` : "日期 / 时间待补充",
+      time: item.weekly ? `每周${item.weekly.weekdays.map((weekday) => ["日", "一", "二", "三", "四", "五", "六"][weekday]).join("、") || "（待补星期）"} ${item.weekly.startTime || "时间待补充"}${item.weekly.endTime ? `–${item.weekly.endTime}` : ""}` : valid ? `${item.startsAt.replace("T", " ")}${item.endsAt ? ` → ${item.endsAt.replace("T", " ")}` : ""}` : parts.date ? `${parts.date} · ${item.timeAmbiguity ? `“${item.timeAmbiguity.text}”待确认时段` : "时间待补充"}` : parts.time ? `日期待补充 · ${parts.time}` : "日期 / 时间待补充",
       context: [item.course, item.location].filter(Boolean).join(" · "), notes: item.notes.trim(),
       warning: item.warning || (!item.title.trim() || !valid ? "请补全标题或时间后再加入。" : ""), needsInput: !item.title.trim() || !valid || Boolean(item.endsAt && (!scheduleImport.validTime(item.endsAt) || item.endsAt <= item.startsAt))
     };
@@ -1426,14 +1476,15 @@
           <span class="schedule-review-warning" data-review-warning ${summary.warning ? "" : "hidden"}>需核对：${esc(summary.warning)}</span>
         </summary>
         <div class="schedule-draft-fields">
+        ${item.timeAmbiguity ? `<div class="schedule-time-choices" role="group" aria-label="确认原文时间" data-review-time-choices><p>已识别“${esc(item.timeAmbiguity.text)}”，请选择时段（均为上述日期）：</p>${item.timeAmbiguity.options.map((time) => `<button type="button" data-action="choose-schedule-time" data-time="${esc(time)}" aria-pressed="${parts.time === time}">${time.startsWith("00:") ? "当天凌晨" : time.startsWith("12:") ? "中午" : Number(time.slice(0, 2)) < 12 ? "上午" : Number(time.slice(0, 2)) < 18 ? "下午" : "晚上"} ${esc(time)}</button>`).join("")}</div>` : ""}
         <div class="inline-fields"><label>类型<select data-draft-field="kind">${(item.weekly ? ["LEC", "TUT"] : ["EVENT", "DDL", "LEC", "TUT"]).map((kind) => `<option value="${kind}" ${item.kind === kind ? "selected" : ""}>${kind === "EVENT" ? "个人安排" : kind}</option>`).join("")}</select></label>
-        ${item.weekly ? `<label>每周上课时间<input type="time" data-weekly-field="startTime" value="${esc(item.weekly.startTime)}"></label><label>结束时间<input type="time" data-weekly-field="endTime" value="${esc(item.weekly.endTime)}"></label>` : `<label>日期<input type="date" data-draft-field="date" value="${esc(parts.date)}"></label><label><span data-review-time-label>时间${!parts.time ? "（待补充）" : ""}</span><input type="time" data-draft-field="time" value="${esc(parts.time)}"></label><label>结束日期与时间（选填）<input type="datetime-local" data-draft-field="endsAt" value="${esc(item.endsAt || "")}"></label>`}</div>
+        ${item.weekly ? `<label>每周上课时间<input type="time" data-weekly-field="startTime" value="${esc(item.weekly.startTime)}"></label><label>结束时间<input type="time" data-weekly-field="endTime" value="${esc(item.weekly.endTime)}"></label>` : `<label>日期<input type="date" data-draft-field="date" value="${esc(parts.date)}"></label><label><span data-review-time-label>时间${!parts.time ? item.timeAmbiguity ? "（待确认时段）" : "（待补充）" : ""}</span><input type="time" data-draft-field="time" value="${esc(parts.time)}"></label><label>结束日期与时间（选填）<input type="datetime-local" data-draft-field="endsAt" value="${esc(item.endsAt || "")}"></label>`}</div>
         ${item.weekly ? `<div class="schedule-weekdays" aria-label="每周上课日">${["日", "一", "二", "三", "四", "五", "六"].map((day, weekday) => `<label><input type="checkbox" data-weekday="${weekday}" ${item.weekly.weekdays.includes(weekday) ? "checked" : ""}>周${day}</label>`).join("")}</div><p class="muted">每周重复；只在授课日安排，跳过官网停课日期。</p>` : ""}
         <label>标题<input data-draft-field="title" value="${esc(item.title)}" maxlength="160"></label>
         <div class="inline-fields"><label>课程<input data-draft-field="course" value="${esc(item.course)}"></label><label>地点 / 链接<input data-draft-field="location" value="${esc(item.location)}"></label></div>
         <label>备注<textarea data-draft-field="notes">${esc(item.notes)}</textarea></label>
         ${item.evidence ? `<p class="muted">原文：${esc(item.evidence)}</p>` : ""}
-        ${item.warning ? `<p class="schedule-warning">需核对：${esc(item.warning)}</p>` : ""}
+        <p class="schedule-warning" data-review-detail-warning ${item.warning ? "" : "hidden"}>${item.warning ? `需核对：${esc(item.warning)}` : ""}</p>
         </div>
       </details>
     </section>`;
@@ -1449,6 +1500,9 @@
       element.textContent = `${key === "note" && value ? "备注：" : key === "warning" && value ? "需核对：" : ""}${value || ""}`;
       element.hidden = !value;
     }
+    const detailWarning = section.querySelector("[data-review-detail-warning]");
+    if (detailWarning) { detailWarning.textContent = summary.warning ? `需核对：${summary.warning}` : ""; detailWarning.hidden = !summary.warning; }
+    section.querySelectorAll('[data-action="choose-schedule-time"]').forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.time === scheduleImport.draftDateTime(item).time)));
     applyScheduleDraftValidation(section, item);
     updateScheduleReviewValidationNotice();
     const duplicate = section.querySelector("[data-review-duplicate]");
@@ -1459,7 +1513,7 @@
   function applyScheduleDraftValidation(section, item) {
     const issues = item.selected ? scheduleImport.draftIssues(item) : [];
     const timeLabel = section.querySelector("[data-review-time-label]");
-    if (timeLabel) timeLabel.textContent = scheduleImport.draftDateTime(item).time ? "时间" : "时间（待补充）";
+    if (timeLabel) timeLabel.textContent = scheduleImport.draftDateTime(item).time ? "时间" : item.timeAmbiguity ? "时间（待确认时段）" : "时间（待补充）";
     section.classList.toggle("has-input-issues", issues.length > 0);
     const badge = section.querySelector("[data-review-required]");
     if (badge) { badge.textContent = issues.length ? `需补充 / 修改：${issues.map((issue) => issue.label).join("、")}` : ""; badge.hidden = !issues.length; }
@@ -2284,6 +2338,7 @@
       if (action === "logout") {
         mailboxView.reset();
         for (const key of Object.keys(emailDraft)) delete emailDraft[key];
+        scheduleQuickRequest?.abort();
         cancelScheduleVoice(); state.scheduleVoiceFile = null;
         appearanceController.reset();
         for (const url of uploadPreviewUrls.values()) URL.revokeObjectURL(url);
@@ -2751,6 +2806,18 @@
         return;
       }
       if (action === "schedule-voice-retry") { await transcribeScheduleVoice(state.scheduleVoiceFile); return; }
+      if (action === "cancel-schedule-parse") { scheduleQuickRequest?.abort(); return; }
+      if (action === "choose-schedule-time") {
+        if (state.scheduleImportBusy) return;
+        const section = button.closest("[data-draft]");
+        const item = state.scheduleDrafts[Number(section?.dataset.draft)];
+        if (!item?.timeAmbiguity?.options.includes(button.dataset.time)) return;
+        Object.assign(item, scheduleImport.withDatePart(item, "time", button.dataset.time));
+        state.scheduleReviewError = "";
+        section.querySelector('[data-draft-field="time"]').value = button.dataset.time;
+        refreshScheduleDraftSummary(section, item);
+        return;
+      }
       if (action === "parse-schedule-text") { await parseScheduleQuick(); return; }
       if (action === "extract-schedule") { await extractScheduleFile(); return; }
       if (action === "focus-schedule-issue") { focusScheduleDraftIssue(); return; }

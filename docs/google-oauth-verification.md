@@ -1,7 +1,7 @@
 # Google OAuth production verification
 
-Status: preparation only; Google verification has not been submitted or approved.
-No Google publishing status, DNS record or OAuth scope has been changed by this preparation.
+Status: the owner approved policy publication, domain verification and a future switch to production. Google verification has not been submitted or approved.
+The Google publishing status and OAuth scopes have not yet changed.
 The existing project is `reference-bee-441922-b2` (Google Auth Platform / My First Project).
 
 ## Observed prerequisites (2026-10-28, America/Toronto)
@@ -11,8 +11,8 @@ The existing project is `reference-bee-441922-b2` (Google Auth Platform / My Fir
 - Audience: External / Testing, one registered test user; Publish app is disabled until Branding is complete.
 - Data Access declares `https://www.googleapis.com/auth/gmail.readonly` as a restricted scope. Google login separately requests existing `openid email profile`; preserve that login flow and include the actually requested basic identity scopes in the verification inventory.
 - Verification Center currently says verification is not required because the project is in Testing; this is not an approval.
-- The owner's current Google account has not verified the Search Console domain property `studybridge.ink`; DNS ownership verification remains pending.
-- Public `/privacy.html`, homepage mailbox description and privacy/contact links, and Settings privacy entry are prepared in this branch; not yet published.
+- Search Console confirmed ownership of `studybridge.ink` for the owner's existing Google account after the owner-approved, separate DNS TXT record was added. Keep that verification record; existing application/mail DNS records were preserved.
+- Public `/privacy.html`, homepage mailbox description and privacy/contact links, and Settings privacy entry are ready for the owner-approved AWS release. Source remains compatible with the latest 1.2.1 main release.
 
 ## Actual data flow for review
 
@@ -28,7 +28,7 @@ The existing project is `reference-bee-441922-b2` (Google Auth Platform / My Fir
 
 StudyBridge is a student productivity application. Students optionally connect their own Gmail Inbox to identify coursework deadlines, professor/TA notices, exams and student events, review source-linked summaries, and explicitly confirm proposed entries into their StudyBridge schedule. Background Inbox polling needs message subjects, sender information, receipt times and message body text. The narrower Gmail basic/metadata access does not provide the body text needed to extract dates, instructions and evidence. `gmail.readonly` is the narrowest Gmail scope supporting this implemented background feature; no send/modify/delete or Google Calendar scope is needed. Mail is processed with OpenAI API only to deliver the disclosed user-facing feature, not to train generalized models, advertise, sell data, or determine creditworthiness. Disconnect stops synchronization and deletes the active connection/extracted records; confirmed schedules are retained under the student's control. An existing Google sign-in flow uses only basic identity scopes separately.
 
-Before submitting this draft, the owner must confirm its operational accuracy, including that API data-sharing/training opt-ins are disabled and service-provider terms support the Google Limited Use commitments. This document does not attest that a security assessment has passed.
+The owner explicitly confirmed publication and operation under the stated Limited Use, human-access and deletion commitments. Before submitting scope verification, confirm that API data-sharing/training opt-ins are disabled and service-provider terms support these commitments. This document does not attest that a security assessment has passed.
 
 ## Demonstration recording script
 

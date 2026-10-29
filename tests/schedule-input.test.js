@@ -1,9 +1,45 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { inputContext, inputMessages, parseInput } = require("../lib/schedule-input");
+const { inputContext, inputMessages, parseInput, ambiguousClock } = require("../lib/schedule-input");
 const { audioUpload, transcribeAudio } = require("../lib/schedule-transcription");
 const { createRecorder } = require("../public/schedule-voice");
 const importer = require("../public/schedule-import");
+
+test("ambiguous birthday clocks retain their source and offer noon/midnight on the stated date", () => {
+  for (const clock of ["12点", "十二点", "12:30", "十二点半"]) {
+    const source = `11月2号${clock}是我的朋友Liz的生日`;
+    const [draft] = parseInput(JSON.stringify({ items: [{ kind: "EVENT", title: "Liz的生日", date: "2026-11-02", evidence: source }] }), "America/Toronto").items;
+    assert.equal(draft.startsAt, "");
+    assert.equal(draft.date, "2026-11-02");
+    assert.equal(draft.timeAmbiguity.text, clock);
+    assert.deepEqual(draft.timeAmbiguity.options, clock.includes("30") || clock.includes("半") ? ["12:30", "00:30"] : ["12:00", "00:00"]);
+    assert.match(importer.draftIssues(draft)[0].message, /请选择时段/);
+    for (const time of draft.timeAmbiguity.options) {
+      const chosen = importer.withDatePart(draft, "time", time);
+      assert.equal(chosen.startsAt, `2026-11-02T${time}`);
+      assert.equal(chosen.warning, "");
+      assert.deepEqual(importer.draftIssues(chosen), []);
+      assert.match(importer.withDatePart(chosen, "time", "").warning, /请选择/);
+    }
+  }
+});
+
+test("clear dayparts stay intact and ambiguous recovery cannot borrow another plan's clock", () => {
+  for (const source of ["中午12点生日", "凌晨12点生日", "下午三点", "12 pm birthday", "13点读书", "23点读书", "三点到四点", "十三点", "22:30", "十二点十五分", "12点一刻"]) assert.equal(ambiguousClock(source), null, source);
+  assert.deepEqual(ambiguousClock("三点读书").options, ["03:00", "15:00"]);
+  const rows = [{ kind: "EVENT", title: "生日", date: "2026-11-02" }];
+  const single = parseInput(JSON.stringify({ items: rows }), "UTC", "11月2号12点生日");
+  assert.equal(single.items[0].timeAmbiguity.text, "12点");
+  const multiple = parseInput(JSON.stringify({ items: [...rows, { ...rows[0], title: "读书" }] }), "UTC", "11月2号12点生日，晚上八点读书");
+  assert.ok(multiple.items.every((item) => !item.timeAmbiguity));
+  for (const [source, time] of [["中午12点生日", "12:00"], ["凌晨12点生日", "00:00"]]) {
+    const result = parseInput(JSON.stringify({ items: [{ ...rows[0], startsAt: `2026-11-02T${time}`, evidence: source }] }), "UTC");
+    assert.equal(result.items[0].startsAt, `2026-11-02T${time}`);
+    assert.equal(result.items[0].timeAmbiguity, undefined);
+  }
+  const guessed = parseInput(JSON.stringify({ items: [{ ...rows[0], startsAt: "2026-11-02T12:00", evidence: "11月2号12点生日" }] }), "UTC");
+  assert.equal(guessed.items[0].startsAt, "");
+});
 
 test("ordinary-language context distinguishes the real local today from the selected calendar day", () => {
   const context = inputContext({ text: "明天下午三点读书", selectedDate: "2026-12-01", timeZone: "America/Toronto" }, new Date("2026-10-27T01:00Z"));

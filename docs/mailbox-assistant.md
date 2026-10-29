@@ -40,8 +40,28 @@ Generate the encryption key once using `node -e
 "console.log(require('node:crypto').randomBytes(32).toString('base64'))"` in a private
 terminal and store it securely. Changing or losing this key requires relinking
 existing mailboxes. Keep it with the existing private environment across releases;
-the deployment workflow does not generate or replace it. Database backups contain
+the normal deployment workflow does not generate or replace it. Database backups contain
 encrypted credentials and extracted learning content and must stay private.
+
+The manually dispatched **Configure real mailbox authorization** GitHub Actions
+workflow activates `gmail`, `outlook`, or `both` on the currently deployed `main`
+revision, using the existing Lightsail SSH secrets. Finish provider-console setup
+first, then run this workflow after the matching normal deployment succeeds.
+Gmail reuses the existing private Google credentials unless a complete
+`GMAIL_CLIENT_ID` / `GMAIL_CLIENT_SECRET` secret pair is supplied. Outlook uses the
+encrypted repository secrets `OUTLOOK_CLIENT_ID` / `OUTLOOK_CLIENT_SECRET` (or a
+complete existing server configuration). Never put credentials in workflow inputs.
+
+`aws/configure-mailboxes.py` accepts only selected provider credentials over SSH
+stdin, creates a 32-byte encryption key only when absent, and refuses an invalid
+or conflicting existing key. It saves a private configuration backup before an
+atomic update, validates health, storage mode, OAuth callbacks, read-only scopes,
+PKCE, encrypted browser state and existing Google login, and restores the previous
+configuration if activation fails. Activation enables the scheduled worker;
+repeated runs keep the same key. It does not
+authorize a user's inbox: each user still binds through Settings and provider
+consent. Provider registration/consent and an actual mailbox sync require separate
+live validation; passing server configuration checks alone does not prove them.
 
 For Gmail, enable Gmail API, add the mailbox callback to the Web OAuth client
 in addition to the login callback, and configure the consent screen/test users.

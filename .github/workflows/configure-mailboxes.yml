@@ -1,0 +1,64 @@
+name: Configure real mailbox authorization
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: Provider to activate after its console registration is ready
+        required: true
+        default: gmail
+        type: choice
+        options:
+          - gmail
+          - outlook
+          - both
+
+permissions:
+  contents: read
+
+concurrency:
+  group: studybridge-production
+  cancel-in-progress: false
+
+jobs:
+  configure:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure selected provider on Lightsail
+        env:
+          LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}
+          LIGHTSAIL_USER: ${{ secrets.LIGHTSAIL_USER }}
+          LIGHTSAIL_SSH_KEY_B64: ${{ secrets.LIGHTSAIL_SSH_KEY_B64 }}
+          MAILBOX_PROVIDER: ${{ inputs.provider }}
+          GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
+          GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
+          OUTLOOK_CLIENT_ID: ${{ secrets.OUTLOOK_CLIENT_ID }}
+          OUTLOOK_CLIENT_SECRET: ${{ secrets.OUTLOOK_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p ~/.ssh
+          if [ -z "${LIGHTSAIL_SSH_KEY_B64:-}" ]; then
+            echo "Missing deployment SSH credential."
+            exit 1
+          fi
+          printf '%s' "$LIGHTSAIL_SSH_KEY_B64" | tr -d '[:space:]' | base64 -d | tr -d '\r' > ~/.ssh/studybridge_mailbox_key
+          printf '\n' >> ~/.ssh/studybridge_mailbox_key
+          trap 'rm -f ~/.ssh/studybridge_mailbox_key' EXIT
+          ssh-keygen -y -f ~/.ssh/studybridge_mailbox_key > /dev/null
+          ssh-keyscan -H "$LIGHTSAIL_HOST" >> ~/.ssh/known_hosts
+          python3 - <<'PY' | ssh -i ~/.ssh/studybridge_mailbox_key "$LIGHTSAIL_USER@$LIGHTSAIL_HOST" "cd ~/school-helper && python3 aws/configure-mailboxes.py '$GITHUB_SHA'"
+          import json, os, sys
+          selected = os.environ['MAILBOX_PROVIDER']
+          if selected not in ('gmail', 'outlook', 'both'):
+              raise SystemExit('Invalid provider selection')
+          providers = ['gmail', 'outlook'] if selected == 'both' else [selected]
+          payload = {'providers': providers}
+          for provider in providers:
+              for suffix in ('CLIENT_ID', 'CLIENT_SECRET'):
+                  key = provider.upper() + '_' + suffix
+                  if os.environ.get(key):
+                      payload[key] = os.environ[key]
+          json.dump(payload, sys.stdout)
+          PY

@@ -1,0 +1,100 @@
+.mobile-page-bar, .mobile-study-bar, .mobile-chat-menu { display: none; }
+
+@media (max-width: 700px) {
+  /* Student navigation only. Desktop and the creator console keep their layout. */
+  .app-shell:not(.admin-shell) {
+    position: relative;
+    display: block;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .app-shell:not(.admin-shell) > .sidebar,
+  .app-shell:not(.admin-shell) > .workspace {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    transition: transform 240ms ease-out, visibility 240ms;
+  }
+  .app-shell:not(.admin-shell) > .sidebar {
+    display: block;
+    padding: max(18px, env(safe-area-inset-top)) 12px max(24px, env(safe-area-inset-bottom));
+    border-right: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    transform: translateX(0);
+  }
+  .app-shell:not(.admin-shell) > .workspace {
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--soft);
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    transform: translateX(100%);
+    visibility: hidden;
+  }
+  .app-shell:not(.admin-shell):not([data-mobile-panel="open"]) > .sidebar > .side-section { display: none; }
+  .app-shell:not(.admin-shell)[data-mobile-view="page"] > .sidebar {
+    transform: translateX(-22%);
+    visibility: hidden;
+  }
+  .app-shell:not(.admin-shell)[data-mobile-view="page"] > .workspace {
+    transform: translateX(0);
+    visibility: visible;
+  }
+  .app-shell:not(.admin-shell) .mobile-page-bar,
+  .app-shell:not(.admin-shell)[data-mobile-panel="open"] .mobile-study-bar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-shrink: 0;
+    min-height: calc(56px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) 12px 0;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel);
+    color: var(--ink);
+  }
+  .mobile-page-bar > strong { font-size: 16px; white-space: nowrap; }
+  .app-shell:not(.admin-shell) .mobile-page-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+  .mobile-page-bar > :first-child { justify-self: start; }
+  .mobile-page-bar > :last-child { justify-self: end; }
+  .mobile-page-bar button, .mobile-study-bar button {
+    min-height: 44px;
+    padding: 8px;
+    border: 0;
+    background: transparent;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .app-shell:not(.admin-shell) > .workspace > .page-header { padding-inline: 16px; }
+  .app-shell:not(.admin-shell) > .workspace > .page-header > button[data-page="study"] { display: none; }
+  .app-shell:not(.admin-shell) > .study-workspace,
+  .app-shell:not(.admin-shell) > .classmate-chat-workspace { overflow: hidden; }
+  .app-shell:not(.admin-shell) > .study-workspace .deadline-banner { margin-inline: 16px; }
+  .app-shell:not(.admin-shell) > .study-workspace .composer {
+    padding-inline: 16px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+  .app-shell:not(.admin-shell)[data-mobile-panel="open"] > .sidebar {
+    z-index: 20;
+    transform: translateX(0);
+    visibility: visible;
+    padding-top: 0;
+    background: var(--panel);
+  }
+  .app-shell:not(.admin-shell)[data-mobile-panel="open"] > .sidebar > :not(.side-section):not(.mobile-study-bar) { display: none; }
+  .app-shell:not(.admin-shell)[data-mobile-panel="open"] .mobile-study-bar { margin-inline: -12px; }
+  .app-shell:not(.admin-shell) .side-head span { overflow-wrap: anywhere; }
+  .app-shell:not(.admin-shell) :is(input:not([type="checkbox"]):not([type="file"]), textarea, select):not(.office-grid input) { font-size: 16px; }
+  @media (prefers-reduced-motion: reduce) {
+    .app-shell:not(.admin-shell) > .sidebar, .app-shell:not(.admin-shell) > .workspace { transition: none; }
+  }
+}

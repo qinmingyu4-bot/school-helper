@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.121";
+  const VERSION = "1.1.122";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -34,6 +34,8 @@
   const communityReplies = window.StudyBridgeCommunityReplies.createController({ api, getUser: () => state.user, onChange: updateCommunityThread });
 
   const root = document.getElementById("root");
+  const studyComposer = window.StudyBridgeComposer.create({ root });
+  const mobileNavigation = window.StudyBridgeMobileNavigation.create({ navigate: (page) => loadPage(page), resizeComposer: () => studyComposer.resize() });
   const brandMarkHtml = () => `<span class="sb-brand-symbol" aria-hidden="true"><img class="sb-logo-monochrome" src="/brand/book-bridge-monochrome.svg" width="128" height="72" alt=""><img class="sb-logo-color" src="/brand/book-bridge-color.svg" width="128" height="72" alt=""></span>`;
   const appearanceController = window.StudyBridgeAppearance.createController({
     load: async () => (await api("/api/me/appearance")).appearance,
@@ -291,7 +293,7 @@
     if (page !== "classmates") stopClassmatesLive();
     if (page !== "tools") creativeTools.stop();
     localStorage.setItem("studybridge.page", page);
-    history.replaceState(null, "", `/app?page=${encodeURIComponent(page)}&v=${VERSION}`);
+    history.replaceState(mobileNavigation.historyState(), "", `/app?page=${encodeURIComponent(page)}&v=${VERSION}`);
   }
 
   function formatDate(value) {
@@ -454,7 +456,7 @@
     updateEmailCooldown();
   }
 
-  function sidebarHtml() {
+  function sidebarHtml(mobileOnly = false) {
     const p = profile();
     const navOrder = ["community", "classmates", "schedule", "study", "tools"];
     const userNav = navOrder.map((page) => navButton(page)).join("");
@@ -465,7 +467,8 @@
         </div>`
       : "";
     return `
-      <aside class="sidebar" data-sidebar-context="${esc(`${state.user.id}:${state.mode}:${state.page}`)}">
+      <aside class="sidebar${mobileOnly ? " mobile-chat-menu" : ""}" data-sidebar-context="${esc(`${state.user.id}:${state.mode}:${state.page}`)}">
+        <header class="mobile-study-bar"><button type="button" data-mobile-action="close-panel">‹ 返回学习</button><strong>课程与资料</strong></header>
         <header class="side-head">
           <div class="brand-mark">${brandMarkHtml()}</div>
           <div><strong>StudyBridge</strong><span>${esc(state.user.name)} | ${esc(state.user.email)}</span></div>
@@ -615,8 +618,9 @@
     const admin = state.mode === "admin";
     return `
       <div class="app-shell${fullChat ? " classmate-chat-shell" : ""}${admin ? " admin-shell" : ""}">
-        ${fullChat ? "" : sidebarHtml()}
+        ${sidebarHtml(fullChat)}
         <main class="workspace${state.mode !== "admin" && state.page === "study" ? " study-workspace" : ""}${state.mode !== "admin" && state.page === "classmates" ? " classmates-workspace" : ""}${fullChat ? " classmate-chat-workspace" : ""}${admin ? " admin-workspace" : ""}" id="workspace" data-course-id="${esc(state.activeCourseId)}" data-conversation-id="${esc(state.activeConversationId)}">
+          <header class="mobile-page-bar"><button type="button" data-mobile-action="menu" aria-label="返回主菜单">‹ 主菜单</button><strong>${esc(pageLabels[state.page]?.[1] || "StudyBridge")}</strong>${state.page === "study" ? '<button type="button" data-mobile-action="study-panel" aria-expanded="false">课程与资料</button>' : "<span></span>"}</header>
           ${content}
         </main>
       </div>
@@ -680,7 +684,7 @@
 
   function upcomingBanner() {
     const due = nextDue();
-    if (!due) return `<section class="deadline-banner"><div><span>暂无 upcoming deadline</span><b>添加作业、考试或课程提醒后，这里会显示最近时间。</b></div></section>`;
+    if (!due) return `<section class="deadline-banner deadline-empty"><div><span>暂无 upcoming deadline</span><b>添加作业、考试或课程提醒后，这里会显示最近时间。</b></div></section>`;
     return `
       <section class="deadline-banner" data-page="schedule">
         <div><span>最近要做</span><b>${esc(due.title)}</b><p>${esc(due.course || "")} | ${esc(formatDate(due.startsAt))} | ${esc(due.location || "")}</p></div>
@@ -699,29 +703,30 @@
   }
 
   function quickPromptsHtml() {
-    if (isGeneralChat()) return chatSpaces.prompts.map(([label, prompt]) => `<button data-action="quick-prompt" data-prompt="${esc(prompt)}" title="${esc(prompt)}">${esc(label)}</button>`).join("");
     const selected = studyModes.getMode(state.studyMode) || studyModes.getMode(studyModes.defaultMode);
-    return (state.studyMode === "cheatsheet" ? '<button data-action="cheatsheet-pdf" title="制作可打印的 PDF">制作 PDF</button>' : "") + [...selected.prompts, ...studyModes.globalPrompts]
-      .map(([label, prompt]) => `<button data-action="quick-prompt" data-prompt="${esc(prompt)}" title="${esc(prompt)}">${esc(label)}</button>`).join("");
+    const prompts = isGeneralChat() ? chatSpaces.prompts : [...selected.prompts, ...studyModes.globalPrompts];
+    const buttons = prompts.map(([label, prompt]) => `<button type="button" data-action="quick-prompt" data-prompt="${esc(prompt)}" title="${esc(prompt)}">${esc(label)}</button>`);
+    if (!isGeneralChat() && state.studyMode === "cheatsheet") buttons.unshift('<button type="button" data-action="cheatsheet-pdf" title="制作可打印的 PDF">制作 PDF</button>');
+    return buttons.slice(0, 3).join("") + (buttons.length > 3 ? `<details class="quick-prompts-more"><summary>更多<svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></summary><div class="quick-prompts-menu">${buttons.slice(3).join("")}</div></details>` : "");
   }
 
   function sendButtonContent(pending) {
-    return pending ? '<span class="reply-spinner send-spinner" aria-hidden="true"></span><span>停止</span>' : "发送";
+    return `<svg aria-hidden="true" viewBox="0 0 24 24">${pending ? '<rect x="5" y="5" width="14" height="14" rx="2"/>' : '<path d="M12 19V5m-7 7 7-7 7 7"/>'}</svg>`;
   }
 
   function composerHtml() {
     return `
-      <footer class="composer" data-chat-dropzone="true">
+      <footer class="composer composer-light" data-chat-dropzone="true">
         <div class="study-toolbar${isGeneralChat() ? " general-toolbar" : ""}">
-          ${isGeneralChat() ? "" : `<select id="studyMode" aria-label="学习模式" title="学习模式">
+          ${isGeneralChat() ? "" : `<label class="study-mode-control"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 7v14M3 3h3a6 6 0 0 1 6 3 6 6 0 0 1 6-3h3v16h-3a6 6 0 0 0-6 2 6 6 0 0 0-6-2H3z"/></svg><select id="studyMode" aria-label="学习模式" title="学习模式">
             ${Object.entries(studyModes.modes).map(([id, mode]) => `<option value="${id}" ${state.studyMode === id ? "selected" : ""}>${esc(mode.label)}</option>`).join("")}
-          </select>`}
+          </select></label>`}
           <div class="quick-prompts" aria-label="${isGeneralChat() ? "自由问答快捷问题" : "学习快捷指令"}">${quickPromptsHtml()}</div>
         </div>
         <div class="compose-row">
-          <button class="attach" data-action="pick-chat-file" aria-label="上传附件" title="上传附件；也可拖放文件，或在输入框按 Ctrl+V 粘贴截图">+</button>
+          <button type="button" class="attach" data-action="pick-chat-file" aria-label="上传附件" title="上传附件；也可拖放文件，或在输入框按 Ctrl+V 粘贴截图"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.19 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
           <input id="chatFile" class="hidden" type="file" multiple accept="${SUPPORTED_UPLOAD_ACCEPT},*/*">
-          <textarea id="chatInput" rows="1" placeholder="输入问题，可 Ctrl+V 粘贴截图..." aria-label="问题"></textarea>
+          <textarea id="chatInput" rows="1" placeholder="输入问题…" aria-label="问题"></textarea>
           <button class="send" data-action="${activeStudyReply() ? "stop-chat" : "send-chat"}" ${state.busy ? "disabled" : ""} ${activeStudyReply() ? 'title="正在生成，点击停止" aria-label="停止生成"' : 'aria-label="发送"'}>${sendButtonContent(Boolean(activeStudyReply()))}</button>
         </div>
         ${selectedUploadFilesHtml()}
@@ -927,6 +932,7 @@
         state.uploadFiles.unshift(...files);
         render();
         if ($("chatInput") && !$("chatInput").value) $("chatInput").value = text;
+        studyComposer.resize();
       }
       if (!reply.controller.signal.aborted && studyReplyKey() === reply.key) {
         setToast(error.message);
@@ -1809,6 +1815,7 @@
       localStorage.setItem(`studybridge.conversation.${state.user.id}.${courseId}`, state.activeConversationId);
     } catch { /* Storage may be disabled. */ }
     await loadPage("study");
+    mobileNavigation.closeStudyPanel();
   }
 
   async function loadStudy(isCurrent = () => true) {
@@ -2399,6 +2406,7 @@
         const input = $("chatInput");
         if (input) {
           input.value = button.dataset.prompt || "";
+          studyComposer.resize();
           input.focus();
           input.setSelectionRange(input.value.length, input.value.length);
         }
@@ -2882,6 +2890,7 @@
     creativeTools.capture();
     const previousAdminWorkspace = root.querySelector(".admin-workspace");
     const previousAdminScroll = previousAdminWorkspace?.scrollTop || 0;
+    const previousMobilePageScroll = root.querySelector(".workspace")?.scrollTop || 0;
     const previousSidebar = root.querySelector(".sidebar");
     const previousSidebarContext = previousSidebar?.dataset.sidebarContext;
     const previousSidebarScroll = previousSidebar?.scrollTop || 0;
@@ -2935,11 +2944,13 @@
     creativeTools.restoreFocus();
     void officeTools.mount(creativeContext());
     if (state.toast && state.user) root.insertAdjacentHTML("beforeend", `<div class="toast">${esc(state.toast)}</div>`);
+    mobileNavigation.sync(root, { userId: state.user?.id, mode: state.mode, page: state.page });
     const sidebar = root.querySelector(".sidebar");
     if (sidebar && sidebar.dataset.sidebarContext === previousSidebarContext) {
       // Mobile sidebars scroll with the page instead of their own container.
       sidebar.scrollTop = previousSidebarScroll;
       if (sidebarUsesPageScroll) window.scrollTo(previousPageScroll.x, previousPageScroll.y);
+      if (mobileNavigation.snapshot().active) root.querySelector(".workspace").scrollTop = previousMobilePageScroll;
     }
     const adminWorkspace = root.querySelector(".admin-workspace");
     if (previousAdminWorkspace && adminWorkspace && sidebar?.dataset.sidebarContext === previousSidebarContext) {
@@ -2955,6 +2966,7 @@
         || previousMessages !== chat.querySelector(".messages")?.innerHTML;
       chat.scrollTop = showLatest ? chat.scrollHeight : previousScrollTop;
       keepLatestAfterFontLoad(chat);
+      studyComposer.resize();
     }
     const dm = root.querySelector(".dm-list");
     if (dm) {
@@ -3001,6 +3013,7 @@
     const pageTarget = event.target.closest("[data-page]");
     if (pageTarget) {
       event.preventDefault();
+      if (mobileNavigation.enter(pageTarget.dataset.page)) return;
       await loadPage(pageTarget.dataset.page);
       return;
     }

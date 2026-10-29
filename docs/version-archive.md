@@ -10,6 +10,20 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.1.122 - 2026-10-28
+
+Purpose:
+- Publish the owner-approved phone main menu with full-screen feature pages and back navigation, the compact Study composer on desktop/mobile, and wider, denser phone replies while retaining readable text.
+- Preserve all 1.1.121 functionality, accounts, sessions, credentials, memberships, learning data, authored projects and saved appearance. No data migration or preference reset.
+
+Validation:
+- Run the complete regression suite, source/assets/version checks, deployment-script syntax checks and production dependency audit.
+- Retain the verified private pre-install backup, unchanged configuration/local-data verification and automatic code rollback workflow. Compare the existing signed-in account's four visible courses, 73 agenda entries and saved appearance after deployment.
+- Prior browser checks cover 32 desktop/mobile light/dark palette combinations, 320/390/430 px navigation, drafts, all seven modes, attachments, send/stop, formulas, tables and unchanged desktop reply typography.
+
+Rollback target:
+- `7697805` (1.1.121). Restore application code only; retain current user data and private backups.
+
 ### 1.1.120 - 2026-10-28
 
 Purpose:

@@ -2,11 +2,41 @@
 
 This file records stable StudyBridge versions so a broken update can be rolled back safely.
 
-## Policy
+## Version numbering policy
 
-- Every production update should bump `package.json` version.
-- Every production update should add one entry below with the version, date, purpose, and important GitHub commit IDs.
-- If a release breaks the live app, restore the files from the previous stable commit or re-run the previous deployment.
+Future production releases use `MAJOR.MINOR.PATCH` according to the owner's
+2026-10-28 instruction. The current `1.1.122` and all earlier release numbers
+remain unchanged; historical PATCH values were also used as release counters.
+
+| Change scope | Increment | Example from 1.1.122 |
+| --- | --- | --- |
+| Bug fixes and small optimizations, including small layout or performance improvements | PATCH (last number) | `1.1.123` |
+| Important new functionality | MINOR (middle number), reset PATCH to zero | `1.2.0` |
+| Major product redesign or major architectural change | MAJOR (first number), reset MINOR and PATCH to zero | `2.0.0` |
+
+Choose the highest applicable level when a release combines several types of
+changes. Version numbers describe release scope, not the total number of
+releases or commits. Drafts, unreleased work and documentation-only updates do
+not require a product version bump or deployment.
+
+## Release checklist
+
+- Compare the complete release scope with the previous production version and
+  choose PATCH, MINOR or MAJOR using the table above. Record the classification
+  and reason in `CHANGELOG.md` and the stable-version entry below.
+- Before each production update, synchronize `package.json`, both root versions
+  in `package-lock.json`, the frontend version in `public/app.js`, and affected
+  frontend asset cache keys in `public/index.html`. Preserve historical archive
+  entries and unrelated cache identifiers.
+- Run the existing source/assets/version checks, relevant regression tests and
+  deployment checks. Check the chosen version against the previous production
+  version explicitly; matching version strings alone does not validate scope.
+- Record the version, date, purpose, validation, important GitHub commit IDs and
+  previous stable rollback target in the stable-version entry below.
+- If a release breaks the live app, restore the files from the previous stable
+  commit or re-run the previous deployment while retaining current user data.
+- Follow the existing deployment authorization and private backup requirements;
+  a version bump does not itself authorize deployment.
 
 ## Stable Versions
 

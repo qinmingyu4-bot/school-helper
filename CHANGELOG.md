@@ -2,6 +2,8 @@
 
 ## 2026-10-28
 
+- Standardize future production versions as `MAJOR.MINOR.PATCH`: fixes and small optimizations increment PATCH, important features increment MINOR and reset PATCH, and major redesigns or architectural changes increment MAJOR and reset both trailing numbers. Use the highest level for a combined release. Preserve the current `1.1.122` and historical numbers. Record the policy in project instructions and the release checklist; this documentation-only update changes no application code, product version or production data.
+
 - Release `1.1.122`: publish the owner-approved mobile main-menu/full-screen navigation, **轻量横排** Study input on desktop/mobile and denser phone reply layout from `220bea1`. Retain the 1.1.121 navigation icons and all existing accounts, sessions, memberships, courses, materials, conversations, schedules, authored files, palettes, dark mode and authentication settings. Refresh package/frontend/cache versions without a data migration. Use the existing verified private backup, unchanged configuration/data checks and automatic code rollback. Previous production code: `7697805` (`1.1.121`).
 - Release validation: 319 passing automated tests, 203-file source/assets/version checks and deployment-script syntax validation. Retain the production dependency audit and private verified-backup gates. Record four courses, 73 agenda entries, account classification and saved appearance for read-only post-deployment comparison; retain prior 32-theme-combination, mobile navigation, attachment, draft and reply-density browser checks.
 

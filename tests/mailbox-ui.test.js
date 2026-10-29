@@ -24,3 +24,59 @@ test("late mailbox loads cannot cross accounts or restore an abandoned destinati
   const another = view.load({ isCurrent: () => current }); current = false; resolve(value()); await another;
   assert.doesNotMatch(view.html(), /mail@example.test|Learning notice/);
 });
+
+test("reply is the default visible workspace and connection state has no authorization controls", async () => {
+  const view = create({ api: async () => value(), getUser: () => ({ id: "alice" }), onChange() {}, notice() {} });
+  await view.load();
+  const html = view.html('<textarea id="emailOriginal"></textarea><div id="toolOutput">Reply draft</div>');
+  assert.match(html, /id="mailbox-reply-panel"[^>]*>.*id="emailOriginal"/s);
+  assert.doesNotMatch(html.match(/<section id="mailbox-reply-panel"[^>]*>/)[0], /hidden/);
+  assert.match(html, /id="mailbox-learning-panel"[^>]*hidden/);
+  const status = html.slice(html.indexOf('<div class="mailbox-account-strip"'), html.indexOf('<nav class="mailbox-sections"'));
+  assert.match(status, /Gmail/); assert.match(status, /mail@example.test/); assert.match(status, /已绑定/);
+  assert.doesNotMatch(status, /<button|data-action|前往设置|管理邮箱授权/);
+  assert.doesNotMatch(html, /<details|mailbox-footnote|mailbox-manual/);
+  const unbound = create({ api: async () => ({ connections: [{ provider: "gmail", configured: false, connected: false }, { provider: "outlook", configured: true, connected: false }], drafts: [] }), getUser: () => ({ id: "alice" }), onChange() {}, notice() {} });
+  await unbound.load();
+  assert.equal((unbound.html().match(/未绑定/g) || []).length, 2);
+  assert.doesNotMatch(unbound.html(), /data-action="mailbox-settings"|授权接入准备中/);
+});
+
+test("view changes preserve notice edits and successful authorization selects learning notices", async () => {
+  let user = { id: "alice" }, redraws = 0;
+  const view = create({ api: async () => value(), getUser: () => user, onChange() { redraws++; }, notice() {} });
+  await view.load();
+  await view.action({ dataset: { action: "mailbox-view", view: "learning" } });
+  assert.doesNotMatch(view.html().match(/<section id="mailbox-learning-panel"[^>]*>/)[0], /hidden/);
+  const el = { dataset: { mailboxField: "time" }, value: "16:30", closest: (selector) => selector === "[data-mailbox-draft]" ? { dataset: { mailboxDraft: draft.id } } : selector === "[data-mailbox-index]" ? { dataset: { mailboxIndex: "0" } } : null };
+  view.input({ target: el });
+  await view.action({ dataset: { action: "mailbox-view", view: "reply" } });
+  view.setBanner("Connected", { showInbox: true });
+  assert.match(view.html(), /type="time" value="16:30"/);
+  assert.doesNotMatch(view.html().match(/<section id="mailbox-learning-panel"[^>]*>/)[0], /hidden/);
+  assert.equal(redraws, 2);
+  user = { id: "bob" };
+  assert.doesNotMatch(view.html().match(/<section id="mailbox-reply-panel"[^>]*>/)[0], /hidden/);
+  assert.doesNotMatch(view.html(), /mail@example.test/);
+});
+
+test("learning-view sync targets only linked mailboxes and reports partial failures without losing notices", async () => {
+  const calls = [], payload = { ...value(), connections: [
+    { provider: "gmail", connected: true }, { provider: "outlook", connected: true }, { provider: "ignored", connected: false }
+  ] };
+  const view = create({ getUser: () => ({ id: "alice" }), onChange() {}, notice() {}, api: async (route, options) => {
+    calls.push({ route, options });
+    if (!options) return payload;
+    if (route.includes("outlook")) throw new Error("Provider temporarily unavailable");
+    return {};
+  } });
+  await view.load();
+  const button = { dataset: { action: "mailbox-sync" }, disabled: false };
+  await view.action(button);
+  const writes = calls.filter((call) => call.options);
+  assert.deepEqual(writes.map((call) => call.route).sort(), ["/api/mailbox/gmail/sync", "/api/mailbox/outlook/sync"]);
+  assert.ok(writes.every((call) => call.options.body.userId === "alice" && call.options.headers["x-csrf-token"] === "csrf"));
+  assert.equal(button.disabled, false);
+  assert.match(view.html(), /部分邮箱已开始同步/);
+  assert.match(view.html(), /Learning notice/);
+});

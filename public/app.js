@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.123";
+  const VERSION = "1.2.0";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -1218,20 +1218,18 @@
   }
 
   function emailPage() {
-    return `
-      ${pageHeader("EMAIL ASSISTANT", "邮箱助手", "从学习邮件发现重要安排，确认后添加到日程。")}
-      ${mailboxView.html()}
-      <details class="mailbox-manual" ${emailDraft.manualOpen ? "open" : ""}><summary>手动粘贴邮件 · 解读与回复草稿</summary><section class="two-col">
-        <article class="card">
-          <h2>收到的邮件</h2>
-          <textarea id="emailOriginal" placeholder="把老师、TA、学校办公室或同学发来的邮件粘贴在这里"></textarea>
+    const reply = `<div class="mailbox-reply-layout">
+        <article class="card mailbox-compose-card">
+          <header class="mailbox-panel-heading"><h2>收到的邮件</h2><p>粘贴来信，告诉我你想怎样回复。</p></header>
+          <label for="emailOriginal">邮件原文</label><textarea id="emailOriginal" rows="7" placeholder="把老师、TA、学校办公室或同学发来的邮件粘贴在这里"></textarea>
           <label>你想怎么回复<textarea id="emailGoal" placeholder="例如：我想礼貌申请延期 / 确认 meeting time / 解释我会晚交"></textarea></label>
-          <div class="inline-fields"><select id="emailTone"><option>专业、自然</option><option>更礼貌正式</option><option>简短直接</option></select><select id="emailOutput"><option>中文解读 + 英文回复</option><option>只要英文回复</option></select></div>
-          <button class="primary" data-action="draft-email">生成回复</button>
+          <div class="mailbox-reply-options"><label>回复语气<select id="emailTone"><option>专业、自然</option><option>更礼貌正式</option><option>简短直接</option></select></label><label>输出内容<select id="emailOutput"><option>中文解读 + 英文回复</option><option>只要英文回复</option></select></label></div>
+          ${emailDraft.error ? `<p class="mailbox-card-error" role="alert">${esc(emailDraft.error)}</p>` : ""}
+          <div class="mailbox-compose-actions"><button type="button" class="primary" data-action="draft-email" ${emailDraft.generating ? "disabled" : ""}>${emailDraft.generating ? "正在生成…" : "解读并生成回复"}</button><span>生成草稿后，可复制并修改。</span></div>
         </article>
-        <article class="card"><div class="section-title"><div><span>DRAFT</span><h2>建议回复</h2></div><button data-action="copy-output">复制</button></div><div id="toolOutput" class="output-box">生成后会显示：邮件重点、需要注意的地方，以及一版可以修改后发送的英文回复。</div></article>
-      </section></details>
-    `;
+        <article class="card mailbox-result-card"><header class="mailbox-result-heading"><div><h2>建议回复</h2><p>看懂邮件重点，整理合适的英文回复。</p></div><button type="button" data-action="copy-output" ${!emailDraft.output || emailDraft.generating ? "disabled" : ""}>复制回复</button></header><div id="toolOutput" class="output-box mailbox-reply-output" aria-live="polite" aria-busy="${Boolean(emailDraft.generating)}">${emailDraft.generating ? '<div class="mailbox-reply-empty"><span class="mailbox-writing-indicator" aria-hidden="true"></span><h3>正在整理邮件和回复…</h3><p>请稍候，你的来信与回复要求会保留。</p></div>' : emailDraft.output || '<div class="mailbox-reply-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M9 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/><path d="m16 3 5 5-9 9H7v-5z"/></svg><h3>你的回复草稿会显示在这里</h3><p>填写来信与回复意图，即可开始。</p></div>'}</div></article>
+      </div>`;
+    return `${pageHeader("EMAIL ASSISTANT", "邮箱助手", "读懂来信，写好回复，跟进重要安排。")}${mailboxView.html(reply)}`;
   }
 
   function schedulePage() {
@@ -2278,7 +2276,11 @@
         document.querySelector('.settings-dialog [data-settings-section="mailbox"]')?.click();
         return;
       }
-      if (action.startsWith("mailbox-")) { await mailboxView.action(button); return; }
+      if (action.startsWith("mailbox-")) {
+        await mailboxView.action(button);
+        if (action === "mailbox-view" && ["reply", "learning"].includes(button.dataset.view)) document.getElementById(`mailbox-${button.dataset.view}-button`)?.focus({ preventScroll: true });
+        return;
+      }
       if (action === "logout") {
         mailboxView.reset();
         for (const key of Object.keys(emailDraft)) delete emailDraft[key];
@@ -2658,12 +2660,18 @@
         return;
       }
       if (action === "draft-email") {
+        if (emailDraft.generating) return;
+        if (!$("emailOriginal")?.value.trim()) { emailDraft.error = "请先粘贴收到的邮件内容。"; render(); $("emailOriginal")?.focus(); return; }
         const prompt = `请帮我处理这封邮件。\n邮件原文：${$("emailOriginal")?.value || ""}\n我想怎么回复：${$("emailGoal")?.value || ""}\n语气：${$("emailTone")?.value || ""}\n输出：${$("emailOutput")?.value || ""}`;
-        const output = $("toolOutput");
-        output.textContent = "正在生成...";
-        const data = await api(`/api/courses/${chatSpaces.general.id}/chat`, { method: "POST", body: { conversationId: "default", message: prompt, mode: "email" } });
-        emailDraft.output = formatText((data.messages || []).at(-1)?.content || "");
-        if ($("emailOriginal")) $("toolOutput").innerHTML = emailDraft.output;
+        const actor = state.user.id, request = {};
+        emailDraft.request = request; emailDraft.generating = true; emailDraft.error = "";
+        render();
+        const current = () => state.user?.id === actor && emailDraft.request === request;
+        try {
+          const data = await api(`/api/courses/${chatSpaces.general.id}/chat`, { method: "POST", body: { conversationId: "default", message: prompt, mode: "email" } });
+          if (current()) emailDraft.output = formatText((data.messages || []).at(-1)?.content || "");
+        } catch (error) { if (current()) emailDraft.error = error.message; }
+        finally { if (current()) { emailDraft.generating = false; delete emailDraft.request; if (state.page === "email") render(); } }
         return;
       }
       if (action === "schedule-month" || action === "schedule-today" || action === "schedule-day" || action === "schedule-agenda" || action === "schedule-type") {
@@ -2892,7 +2900,6 @@
   }
 
   function render() {
-    if (root.querySelector(".mailbox-manual")) emailDraft.manualOpen = root.querySelector(".mailbox-manual").open;
     scheduleManagementUi.closeIfStale();
     const renameInput = $("conversationRename");
     if (renameInput && state.renamingConversation?.courseId === renameInput.dataset.course && state.renamingConversation.id === renameInput.dataset.conversation) state.renamingConversation.title = renameInput.value;
@@ -2912,7 +2919,6 @@
     for (const id of ["emailOriginal", "emailGoal", "emailTone", "emailOutput"]) {
       if ($(id)) emailDraft[id] = $(id).value;
     }
-    if ($("emailOriginal")) emailDraft.output = $("toolOutput")?.innerHTML || "";
     const previousDm = root.querySelector(".dm-list");
     const previousDmId = previousDm?.parentElement.dataset.chatId;
     const previousDmMessages = previousDm?.innerHTML;
@@ -2951,7 +2957,6 @@
     for (const id of ["emailOriginal", "emailGoal", "emailTone", "emailOutput"]) {
       if ($(id) && emailDraft[id] !== undefined) $(id).value = emailDraft[id];
     }
-    if ($("emailOriginal") && emailDraft.output) $("toolOutput").innerHTML = emailDraft.output;
     creativeTools.restoreFocus();
     void officeTools.mount(creativeContext());
     if (state.toast && state.user) root.insertAdjacentHTML("beforeend", `<div class="toast">${esc(state.toast)}</div>`);
@@ -3010,7 +3015,7 @@
       state.mode = isAdmin() && localStorage.getItem("studybridge.mode") === "admin" ? "admin" : "student";
       const urlPage = new URL(location.href).searchParams.get("page");
       const mailboxResult = new URL(location.href).searchParams.get("mailbox");
-      if (mailboxResult) mailboxView.setBanner(({ connected: "邮箱已绑定，正在后台识别最近 7 天的收件箱邮件。结果会显示在这里，确认后才添加到日程。", denied: "此次邮箱授权未完成。你可以在设置中重新绑定，或继续手动粘贴邮件。", failed: "邮箱绑定未成功。请在设置中重试；学校邮箱也可能需要管理员允许授权。" })[mailboxResult] || "请在设置中查看邮箱连接状态。");
+      if (mailboxResult) mailboxView.setBanner(({ connected: "邮箱已绑定，正在整理学习通知。", denied: "此次邮箱授权未完成，你仍可以粘贴邮件生成回复。", failed: "邮箱绑定未成功，请在设置中重试。" })[mailboxResult] || "请在设置中查看邮箱连接状态。", { showInbox: mailboxResult === "connected" });
       const savedPage = localStorage.getItem("studybridge.page");
       const page = urlPage || savedPage || "study";
       await loadPage(page);
@@ -3050,7 +3055,7 @@
   document.addEventListener("input", (event) => mailboxView.input(event));
   document.addEventListener("change", (event) => mailboxView.input(event));
   setInterval(() => {
-    if (!state.user || state.page !== "email" || state.busy || document.hidden || document.querySelector(".settings-dialog[open]") || document.activeElement?.closest(".mailbox-review, .mailbox-manual")) return;
+    if (!state.user || state.page !== "email" || state.busy || emailDraft.generating || document.hidden || document.querySelector(".settings-dialog[open]") || document.activeElement?.closest(".mailbox-review, .mailbox-reply")) return;
     void mailboxView.poll().catch(() => {});
   }, 15000);
 

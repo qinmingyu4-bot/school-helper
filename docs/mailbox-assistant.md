@@ -1,9 +1,16 @@
-# Mailbox assistant, first release
+# Mailbox assistant
 
 Mailbox Assistant (邮箱助手) is the sixth student destination, after Tools. It is
 removed from the Tools tabs. Legacy `page=email` links open the new destination;
 an account that previously selected Tools → Email is redirected there once.
-Manual paste, interpretation and reply drafting remain in an expandable section.
+Version 1.2.0 opens **邮件解读与回复** by default, with the received email and reply
+intent beside a permanently visible draft panel on desktop (stacked on phones).
+**学习通知** is a separate view for reviewing extracted notices and confirming
+calendar additions. Switching views preserves typed mail, intent, selected tone,
+generated replies and edits to notice items. A successful OAuth return opens the
+learning notices view. A compact read-only strip shows Gmail/Outlook connection
+state and connected addresses; all binding/rebinding/unlinking stays in Settings.
+Notification refresh and synchronization controls belong to the learning view.
 
 Settings → 邮箱授权 manages one Gmail and one Outlook / Microsoft 365 mailbox per
 StudyBridge account. The mailbox can differ from the login email. Each connection

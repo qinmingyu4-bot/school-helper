@@ -4,7 +4,7 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, op
 
 ## Features
 
-- Six student destinations: Community, Classmates, Schedule, Study, Tools and **邮箱助手**. Bind Gmail or Outlook under **设置 → 邮箱授权**; learning emails appear in the assistant as editable drafts and enter the planner only after confirmation. Manual email interpretation/reply drafting remains available. Private OAuth setup and first-release limits: [Mailbox assistant](docs/mailbox-assistant.md).
+- Six student destinations: Community, Classmates, Schedule, Study, Tools and **邮箱助手**. Bind Gmail or Outlook under **设置 → 邮箱授权**; the assistant's compact header shows connection state and linked addresses. **邮件解读与回复** opens directly with visible input/draft panels; **学习通知** separately reviews extracted items before calendar confirmation. View switching retains inputs, replies and review edits. Private OAuth setup and first-release limits: [Mailbox assistant](docs/mailbox-assistant.md).
 
 - Public product introduction at `/`, a dedicated `/login` entry and authenticated learning space at `/app`. Homepage entry buttons open `/app`; guests are redirected to `/login`, while signed-in visitors enter directly. The homepage stays public in either state.
 - Login and registration with salted `scrypt` password hashes

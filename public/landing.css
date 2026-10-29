@@ -1076,6 +1076,7 @@ a:focus-visible,summary:focus-visible {
 
 .site-footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 28px;
   padding-block: 37px 42px;
@@ -1090,6 +1091,11 @@ a:focus-visible,summary:focus-visible {
   font-size: 10px;
   color: #808080;
   margin: 0;
+}
+
+.site-footer>a:not(.brand) {
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .site-footer>a:last-child {

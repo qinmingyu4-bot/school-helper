@@ -2,6 +2,8 @@
 
 ## 2026-10-28
 
+- Prepare Google production-verification prerequisites: bilingual public privacy policy disclosing optional read-only Gmail/Outlook access, server-side AI classification (including messages classified as unrelated), processing providers, retention/backups and deletion controls; add homepage mailbox description/privacy/contact links and a Settings disclosure link. Document observed Google project gaps, scope justification, real-consent demonstration script and required independent assessment. Verification remains pending; no Google publishing status, DNS, OAuth permission or AWS release is changed by this preparation.
+
 - Put **学习通知** before **邮件解读与回复** in Email Assistant and open notices by default. Make the full Gmail/Outlook status strip a keyboard-accessible shortcut to **设置 → 邮箱授权**, with hover/focus feedback. Preserve reply drafts, notice edits and provider authorization configuration; refresh only the mailbox asset cache keys and retain version `1.2.0`.
 - Validate 339 automated tests and 212-file source/assets/version checks. Isolated browser checks cover desktop/390 px phone layouts, light/dark modes, bound/unbound mailbox states, click/Enter/Space shortcuts to the authorization settings, and retained reply text and notice edits. Prepare on a task branch for review.
 

@@ -39,7 +39,7 @@ test("More remains usable inside, closes after an action/outside click and resto
   assert.equal(h.menu.open, false); assert.equal(h.focused(), true); assert.equal(prevented, true);
 });
 
-test("compact shortcuts retain every mode/general question and Cheatsheet PDF without changing prompts", () => {
+test("compact shortcuts retain every mode/general question with Cheatsheet creation confined to Tools", () => {
   const source = fs.readFileSync(require.resolve("../public/app.js"), "utf8");
   const functionSource = source.slice(source.indexOf("  function quickPromptsHtml()"), source.indexOf("  function sendButtonContent("));
   for (const mode of [...Object.keys(modes.modes), "general"]) {
@@ -50,6 +50,6 @@ test("compact shortcuts retain every mode/general question and Cheatsheet PDF wi
     for (const [label, prompt] of prompts) { assert.ok(html.includes(label)); assert.ok(html.includes(prompt.replaceAll('"', "&quot;"))); }
     assert.equal((html.match(/data-action="quick-prompt"/g) || []).length, prompts.length);
     assert.ok(html.includes('class="quick-prompts-more"'));
-    if (mode === "cheatsheet") assert.ok(html.includes('data-action="cheatsheet-pdf"'));
+    assert.ok(!html.includes('data-action="cheatsheet-pdf"'));
   }
 });

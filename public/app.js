@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.1.122";
+  const VERSION = "1.1.123";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -19,7 +19,7 @@
   let learningStyleTimer = 0;
   let lastInteractionAt = Date.now();
   let activityReport = { userId: "", time: 0, pending: false };
-  const STUDENT_PAGES = ["community", "classmates", "schedule", "study", "tools", "profile"];
+  const STUDENT_PAGES = ["community", "classmates", "schedule", "study", "tools", "email", "profile"];
   const ADMIN_PAGES = ["admin"];
   const SCHEDULE_COURSE = "Schedule & Deadlines";
   const SCHEDULE_PREFIX = "[SCHEDULE_ITEM]";
@@ -83,6 +83,13 @@
         return operation;
       },
       loadSecurity: async () => (await api("/api/me/security")).security,
+      loadMailboxes: () => api("/api/mailbox"),
+      changeMailbox: async (provider, action, values) => {
+        const { csrfToken, ...body } = values;
+        const result = await api(`/api/mailbox/${provider}/${action}`, { method: "POST", headers: { "x-csrf-token": csrfToken }, body });
+        if (action === "disconnect" && state.user?.id === body.userId) mailboxView.disconnected(provider);
+        return result;
+      },
       savePassword: async (values, csrfToken) => (await api("/api/me/password", { method: "POST",
         headers: { "x-csrf-token": csrfToken }, body: values })).security,
       requestPasswordReset: () => api("/api/auth/request-manual-reset", { method: "POST", body: { email: state.user.email } }),
@@ -94,10 +101,12 @@
   let membershipGeneration = 0;
   const adminMembershipPending = new Set();
   const emailDraft = {};
+  const mailboxView = window.StudyBridgeMailbox.create({ api, getUser: () => state.user,
+    onChange: () => { if (state.user && state.page === "email") render(); }, notice: setToast });
   const studyReplies = new Map();
   const studyDrafts = new Map();
   const uploadPreviewUrls = new Map();
-  const pdfReturnDrafts = new Map();
+  const cheatsheetCourses = new Map();
   let nextStudyReplyId = 0;
   const replyPhases = {
     reading: "读取附件中", preparing: "整合课程资料中", thinking: "思考中",
@@ -220,7 +229,8 @@
     classmates: ["友", "同学", "SB ID 申请和聊天"],
     schedule: ["时", "日程", "Deadline 和课程提醒"],
     study: ["学", "学习", "课程资料、AI 对话和复习计划"],
-    tools: ["工", "工具", "Docs、Sheets、Slides、邮件助手"],
+    tools: ["工", "工具", "Docs、Sheets、Slides 和创作"],
+    email: ["邮", "邮箱助手", "学习邮件、通知与日程确认"],
     profile: ["人", "个人资料", "头像、学校、专业和 SB ID"],
     admin: ["管", "开发者端", "邀请码、用户和系统状态"]
   };
@@ -277,11 +287,7 @@
 
   function setPage(page) {
     if (page !== "schedule") cancelScheduleVoice();
-    if (state.mode !== "admin" && page === "email") {
-      page = "tools";
-      state.tool = "email";
-      localStorage.setItem("studybridge.tool", "email");
-    }
+    if (state.mode !== "admin" && page === "tools" && state.tool === "email") { page = "email"; state.tool = "docs"; localStorage.setItem("studybridge.tool", "docs"); }
     if (state.mode === "admin") page = "admin";
     if (state.mode !== "admin" && !STUDENT_PAGES.includes(page)) page = "study";
     state.page = page;
@@ -458,7 +464,7 @@
 
   function sidebarHtml(mobileOnly = false) {
     const p = profile();
-    const navOrder = ["community", "classmates", "schedule", "study", "tools"];
+    const navOrder = ["community", "classmates", "schedule", "study", "tools", "email"];
     const userNav = navOrder.map((page) => navButton(page)).join("");
     const devSwitch = isAdmin()
       ? `<div class="mode-switch">
@@ -503,7 +509,8 @@
     classmates: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/><circle cx="9" cy="7" r="4"/>',
     schedule: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h2M14 14h2"/>',
     study: '<path d="M12 7v14M3 3h3a6 6 0 0 1 6 3 6 6 0 0 1 6-3h3v16h-3a6 6 0 0 0-6 2 6 6 0 0 0-6-2H3z"/>',
-    tools: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 17.5h7M17.5 14v7"/>'
+    tools: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 17.5h7M17.5 14v7"/>',
+    email: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>'
   });
 
   function navButton(page) {
@@ -645,6 +652,7 @@
       classmates: classmatesPage,
       schedule: schedulePage,
       tools: toolsPage,
+      email: emailPage,
       profile: profilePage
     };
     return shellHtml((pages[state.page] || studyPage)());
@@ -706,7 +714,6 @@
     const selected = studyModes.getMode(state.studyMode) || studyModes.getMode(studyModes.defaultMode);
     const prompts = isGeneralChat() ? chatSpaces.prompts : [...selected.prompts, ...studyModes.globalPrompts];
     const buttons = prompts.map(([label, prompt]) => `<button type="button" data-action="quick-prompt" data-prompt="${esc(prompt)}" title="${esc(prompt)}">${esc(label)}</button>`);
-    if (!isGeneralChat() && state.studyMode === "cheatsheet") buttons.unshift('<button type="button" data-action="cheatsheet-pdf" title="制作可打印的 PDF">制作 PDF</button>');
     return buttons.slice(0, 3).join("") + (buttons.length > 3 ? `<details class="quick-prompts-more"><summary>更多<svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></summary><div class="quick-prompts-menu">${buttons.slice(3).join("")}</div></details>` : "");
   }
 
@@ -1212,7 +1219,9 @@
 
   function emailPage() {
     return `
-      <section class="two-col">
+      ${pageHeader("EMAIL ASSISTANT", "邮箱助手", "从学习邮件发现重要安排，确认后添加到日程。")}
+      ${mailboxView.html()}
+      <details class="mailbox-manual" ${emailDraft.manualOpen ? "open" : ""}><summary>手动粘贴邮件 · 解读与回复草稿</summary><section class="two-col">
         <article class="card">
           <h2>收到的邮件</h2>
           <textarea id="emailOriginal" placeholder="把老师、TA、学校办公室或同学发来的邮件粘贴在这里"></textarea>
@@ -1221,7 +1230,7 @@
           <button class="primary" data-action="draft-email">生成回复</button>
         </article>
         <article class="card"><div class="section-title"><div><span>DRAFT</span><h2>建议回复</h2></div><button data-action="copy-output">复制</button></div><div id="toolOutput" class="output-box">生成后会显示：邮件重点、需要注意的地方，以及一版可以修改后发送的英文回复。</div></article>
-      </section>
+      </section></details>
     `;
   }
 
@@ -1674,12 +1683,12 @@
 
   function toolsPage() {
     return `
-      ${pageHeader("STUDY TOOLS", "工具", state.tool === "email" ? "粘贴邮件内容，StudyBridge 会帮你看懂并起草回复。" : "文档、表格、演示和图片")}
+      ${pageHeader("STUDY TOOLS", "工具", "文档、表格、演示和图片")}
       <section class="tools-tabs" aria-label="工具选择">
-        ${["docs", "sheets", "slides", "images", "cheatsheet", "email", "video"].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" aria-pressed="${(state.tool || "docs") === tool}" data-action="tool-mode" data-tool="${tool}" ${tool === "video" && !creativeTools.videoEnabled() ? 'disabled title="视频生成暂未开放"' : ""}>${({ docs: "SB Docs", sheets: "SB Sheets", slides: "SB Slides", images: "图片", cheatsheet: "Cheatsheet PDF", email: "邮件助手", video: creativeTools.videoEnabled() ? "视频" : "视频 · 未开放" })[tool]}</button>`).join("")}
+        ${["docs", "sheets", "slides", "images", "cheatsheet", "video"].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" aria-pressed="${(state.tool || "docs") === tool}" data-action="tool-mode" data-tool="${tool}" ${tool === "video" && !creativeTools.videoEnabled() ? 'disabled title="视频生成暂未开放"' : ""}>${({ docs: "SB Docs", sheets: "SB Sheets", slides: "SB Slides", images: "图片", cheatsheet: "Cheatsheet PDF", video: creativeTools.videoEnabled() ? "视频" : "视频 · 未开放" })[tool]}</button>`).join("")}
       </section>
       ${officeTools.supports(state.tool || "docs") ? `<nav class="office-view-switch" aria-label="工作方式"><button data-action="office-view-edit" aria-pressed="${state.toolView !== "generate"}">自主编辑</button><button data-action="office-view-generate" aria-pressed="${state.toolView === "generate"}">AI 文件生成</button></nav>` : ""}
-      ${state.tool === "email" ? emailPage() : officeTools.supports(state.tool || "docs") && state.toolView !== "generate" ? officeTools.html(state.tool || "docs") : creativeTools.html(creativeContext())}
+      ${officeTools.supports(state.tool || "docs") && state.toolView !== "generate" ? officeTools.html(state.tool || "docs") : creativeTools.html(creativeContext())}
     `;
   }
 
@@ -1687,8 +1696,15 @@
     const userId = state.user?.id, tool = state.tool || "docs";
     let savedCourse = "";
     try { savedCourse = localStorage.getItem(`studybridge.cheatsheetCourse.${userId}`) || ""; } catch { /* Storage may be disabled. */ }
-    const courseId = state.courses.some((course) => course.id === state.activeCourseId) ? state.activeCourseId : state.courses.some((course) => course.id === savedCourse) ? savedCourse : state.courses[0]?.id || "";
+    const preferredCourse = cheatsheetCourses.get(userId) || savedCourse;
+    const courseId = [preferredCourse, state.activeCourseId, state.courses[0]?.id].find((id) => state.courses.some((course) => course.id === id)) || "";
     return { userId, tool, courseId, courses: state.courses, api, readFiles, esc, render,
+      selectCourse: (id) => {
+        if (state.user?.id !== userId || !state.courses.some((course) => course.id === id)) return;
+        cheatsheetCourses.set(userId, id);
+        try { localStorage.setItem(`studybridge.cheatsheetCourse.${userId}`, id); } catch { /* Retain the selection for this session. */ }
+        render();
+      },
       beforeGenerate: async () => { if (tool === "cheatsheet") { clearTimeout(learningStyleTimer); await getLearningStyleEditor().saver.flush(); } },
       visible: () => state.user?.id === userId && state.mode !== "admin" && state.page === "tools" && state.tool !== "email" && (!officeTools.supports(state.tool || "docs") || state.toolView === "generate") };
   }
@@ -1939,6 +1955,7 @@
         }
       }
       if (page === "schedule") await loadScheduleItems(true, false, isCurrent);
+      if (page === "email") await mailboxView.load({ isCurrent });
       if (page === "tools" && state.tool !== "email") {
         const data = await api("/api/courses");
         if (!isCurrent()) return;
@@ -2176,19 +2193,6 @@
     try {
       if (action === "view-chat-image") { showChatImage(button.dataset.imageUrl, button.dataset.imageName); return; }
       if (action.startsWith("creative-")) { await creativeTools.handle(button, creativeContext()); return; }
-      if (action === "cheatsheet-pdf") {
-        if (isGeneralChat() || !state.activeCourseId) throw new Error("请先选择课程。");
-        clearTimeout(learningStyleTimer);
-        await captureLearningStyle().saver.flush();
-        const prompt = $("chatInput")?.value || "";
-        pdfReturnDrafts.set(studyReplyKey(), prompt);
-        creativeTools.prepareCheatsheet({ ...creativeContext(), courseId: state.activeCourseId }, prompt.trim(), state.uploadFiles);
-        state.tool = "cheatsheet";
-        localStorage.setItem(`studybridge.cheatsheetCourse.${state.user.id}`, state.activeCourseId);
-        localStorage.setItem("studybridge.tool", state.tool);
-        await loadPage("tools");
-        return;
-      }
       if (action === "auth-tab") {
         state.toast = "";
         root.innerHTML = authHtml(button.dataset.tab);
@@ -2269,7 +2273,15 @@
         appearanceController.open();
         return;
       }
+      if (action === "mailbox-settings") {
+        appearanceController.open();
+        document.querySelector('.settings-dialog [data-settings-section="mailbox"]')?.click();
+        return;
+      }
+      if (action.startsWith("mailbox-")) { await mailboxView.action(button); return; }
       if (action === "logout") {
+        mailboxView.reset();
+        for (const key of Object.keys(emailDraft)) delete emailDraft[key];
         cancelScheduleVoice(); state.scheduleVoiceFile = null;
         appearanceController.reset();
         for (const url of uploadPreviewUrls.values()) URL.revokeObjectURL(url);
@@ -2348,7 +2360,7 @@
         studyReplies.get(key)?.controller.abort();
         try {
           await api(`/api/courses/${courseId}/conversations/${conversationId}`, { method: "DELETE" });
-          studyReplies.delete(key); studyDrafts.delete(key); pdfReturnDrafts.delete(key);
+          studyReplies.delete(key); studyDrafts.delete(key);
           state.renamingConversation = null;
           const chats = await refreshCourseConversations(courseId);
           try { localStorage.removeItem(`studybridge.studyMode.${state.user.id}.${courseId}${conversationId === "default" ? "" : `.${conversationId}`}`); localStorage.removeItem(`studybridge.conversation.${state.user.id}.${courseId}`); } catch { /* Storage may be disabled. */ }
@@ -2649,9 +2661,7 @@
         const prompt = `请帮我处理这封邮件。\n邮件原文：${$("emailOriginal")?.value || ""}\n我想怎么回复：${$("emailGoal")?.value || ""}\n语气：${$("emailTone")?.value || ""}\n输出：${$("emailOutput")?.value || ""}`;
         const output = $("toolOutput");
         output.textContent = "正在生成...";
-        const course = state.activeCourseId || (state.courses[0]?.id);
-        if (!course) throw new Error("请先在「学习」中新增一门课程，用来保存 AI 对话。");
-        const data = await api(`/api/courses/${course}/chat`, { method: "POST", body: { conversationId: state.activeConversationId, message: prompt, mode: "email" } });
+        const data = await api(`/api/courses/${chatSpaces.general.id}/chat`, { method: "POST", body: { conversationId: "default", message: prompt, mode: "email" } });
         emailDraft.output = formatText((data.messages || []).at(-1)?.content || "");
         if ($("emailOriginal")) $("toolOutput").innerHTML = emailDraft.output;
         return;
@@ -2882,6 +2892,7 @@
   }
 
   function render() {
+    if (root.querySelector(".mailbox-manual")) emailDraft.manualOpen = root.querySelector(".mailbox-manual").open;
     scheduleManagementUi.closeIfStale();
     const renameInput = $("conversationRename");
     if (renameInput && state.renamingConversation?.courseId === renameInput.dataset.course && state.renamingConversation.id === renameInput.dataset.conversation) state.renamingConversation.title = renameInput.value;
@@ -2958,10 +2969,7 @@
     }
     const chat = root.querySelector(".study-workspace .chat-area");
     if (chat) {
-      if (pdfReturnDrafts.has(studyReplyKey())) {
-        $("chatInput").value = pdfReturnDrafts.get(studyReplyKey());
-        pdfReturnDrafts.delete(studyReplyKey());
-      } else $("chatInput").value = studyDrafts.get(studyReplyKey())?.text || "";
+      $("chatInput").value = studyDrafts.get(studyReplyKey())?.text || "";
       const showLatest = !previousChat || previousChatKey !== studyReplyKey()
         || previousMessages !== chat.querySelector(".messages")?.innerHTML;
       chat.scrollTop = showLatest ? chat.scrollHeight : previousScrollTop;
@@ -3001,6 +3009,8 @@
       state.tool = ["docs", "sheets", "slides", "images", "cheatsheet", "email"].includes(savedTool) ? savedTool : "docs";
       state.mode = isAdmin() && localStorage.getItem("studybridge.mode") === "admin" ? "admin" : "student";
       const urlPage = new URL(location.href).searchParams.get("page");
+      const mailboxResult = new URL(location.href).searchParams.get("mailbox");
+      if (mailboxResult) mailboxView.setBanner(({ connected: "邮箱已绑定，正在后台识别最近 7 天的收件箱邮件。结果会显示在这里，确认后才添加到日程。", denied: "此次邮箱授权未完成。你可以在设置中重新绑定，或继续手动粘贴邮件。", failed: "邮箱绑定未成功。请在设置中重试；学校邮箱也可能需要管理员允许授权。" })[mailboxResult] || "请在设置中查看邮箱连接状态。");
       const savedPage = localStorage.getItem("studybridge.page");
       const page = urlPage || savedPage || "study";
       await loadPage(page);
@@ -3036,6 +3046,13 @@
       await handleAction(actionTarget);
     }
   });
+
+  document.addEventListener("input", (event) => mailboxView.input(event));
+  document.addEventListener("change", (event) => mailboxView.input(event));
+  setInterval(() => {
+    if (!state.user || state.page !== "email" || state.busy || document.hidden || document.querySelector(".settings-dialog[open]") || document.activeElement?.closest(".mailbox-review, .mailbox-manual")) return;
+    void mailboxView.poll().catch(() => {});
+  }, 15000);
 
   document.addEventListener("input", (event) => {
     if (event.target.id === "authEmail") {

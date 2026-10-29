@@ -1,0 +1,44 @@
+.mailbox-assistant { display: grid; gap: 18px; margin-bottom: 24px; }
+.mailbox-overview h2 { margin: 4px 0 0; }
+.mailbox-connections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }
+.mailbox-connection { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 12px; padding: 15px; }
+.mailbox-connection small { display: block; overflow-wrap: anywhere; color: var(--muted); margin-top: 5px; }
+.mailbox-connection p { grid-column: 1 / -1; margin: 0; }
+.mailbox-sync-time, .mailbox-footnote, .mailbox-source { font-size: 12px; color: var(--muted); line-height: 1.7; }
+.mailbox-footnote { margin-bottom: 0; }
+.mailbox-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.mailbox-messages { display: grid; gap: 16px; }
+.mailbox-message { min-width: 0; overflow-wrap: anywhere; }
+.mailbox-message h3 { margin: 12px 0 5px; font-size: 17px; }
+.mailbox-provider, .mailbox-badge { font-size: 12px; color: var(--muted); }
+.mailbox-badge { padding: 4px 9px; border: 1px solid var(--line); border-radius: 20px; }
+.mailbox-summary { white-space: pre-wrap; line-height: 1.8; }
+.mailbox-source-link { color: var(--accent); font-size: 13px; }
+.mailbox-review { margin-top: 20px; }
+.mailbox-review fieldset { border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px 16px; margin: 14px 0; min-width: 0; }
+.mailbox-review legend { padding: 0 6px; }
+.mailbox-check, .settings-mailbox-consent { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.7; }
+.mailbox-check input, .settings-mailbox-consent input { width: 17px; height: 17px; min-height: 17px; margin: 3px 0 0; flex: 0 0 auto; }
+.mailbox-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.mailbox-fields label { font-size: 12px; display: grid; gap: 6px; min-width: 0; }
+.mailbox-fields input, .mailbox-fields select { width: 100%; min-width: 0; }
+.mailbox-review-help, .mailbox-evidence { font-size: 12px; color: var(--muted); line-height: 1.8; }
+.mailbox-evidence { margin: 16px 0 0; padding: 6px 12px; border-left: 2px solid var(--line); white-space: pre-wrap; }
+.mailbox-warning, .mailbox-card-error { color: var(--ink); font-size: 13px; line-height: 1.8; }
+.mailbox-warning { border-left: 3px solid #b48332; padding-left: 10px; }
+.mailbox-card-error:empty { display: none; }
+.mailbox-card-error { border-left: 3px solid #ba4545; padding-left: 10px; }
+.mailbox-feedback { background: var(--accent-soft, var(--bg)); padding: 12px; border-radius: 8px; line-height: 1.7; }
+.mailbox-empty { text-align: center; padding: 28px; }
+.mailbox-manual { margin-top: 12px; }
+.mailbox-manual > summary { cursor: pointer; padding: 15px 0; font-size: 15px; }
+.settings-mailbox-list .settings-row { flex-wrap: wrap; }
+.settings-mailbox-list .settings-row > div { flex: 1 1 150px; }
+.settings-mailbox-note { flex-basis: 100%; }
+@media (max-width: 700px) {
+  .mailbox-connections { grid-template-columns: 1fr; }
+  .mailbox-fields { grid-template-columns: 1fr; }
+  .mailbox-overview > .section-title { align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+  .mailbox-review fieldset { padding: 10px; }
+  .mailbox-actions > button { flex: 1 1 auto; }
+}

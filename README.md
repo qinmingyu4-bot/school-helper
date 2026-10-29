@@ -4,6 +4,8 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, op
 
 ## Features
 
+- Six student destinations: Community, Classmates, Schedule, Study, Tools and **邮箱助手**. Bind Gmail or Outlook under **设置 → 邮箱授权**; learning emails appear in the assistant as editable drafts and enter the planner only after confirmation. Manual email interpretation/reply drafting remains available. Private OAuth setup and first-release limits: [Mailbox assistant](docs/mailbox-assistant.md).
+
 - Public product introduction at `/`, a dedicated `/login` entry and authenticated learning space at `/app`. Homepage entry buttons open `/app`; guests are redirected to `/login`, while signed-in visitors enter directly. The homepage stays public in either state.
 - Login and registration with salted `scrypt` password hashes
 - Invitation-only registration
@@ -19,7 +21,7 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, op
 - Incremental Study Area replies with animated activity states and a stop-generation control
 - Self-hosted Inter Variable and Noto Sans SC interface fonts, with bundled licenses and source notes in `public/fonts/SOURCES.md`
 - Shared book-and-bridge logo on the homepage, login and app, defaulting to monochrome. **设置 → 个性化 → 品牌 Logo** offers the approved indigo/mint alternative with immediate preview and account-scoped saving, independent of interface palette and dark mode. Both original design proofs and scalable assets are documented in `docs/branding/README.md`.
-- Seven Study Area modes with mode-specific question shortcuts and AI workflows: preview, guided learning, review, assignment help, mock exams, cheatsheets, and exam cramming
+- Six Study Area modes with mode-specific question shortcuts and AI workflows: preview, guided learning, review, assignment help, mock exams, and exam cramming
 - Manual SB Docs, SB Slides and SB Sheets editors with private cloud projects, browser draft recovery, Office import/export, and AI suggestions applied only after the student chooses
 - Local JSON database for development or small private deployments
 - Optional DynamoDB storage for AWS production
@@ -252,6 +254,10 @@ navigation on mobile. **退出登录** remains inside Settings. Categories are:
   Google remains linked. Forgotten passwords retain the creator-assisted recovery
   flow. Password fields clear on close/category change and are never auto-saved,
   exported, cached in browser storage, or returned by the API.
+- **邮箱授权:** connect/reconnect or unlink one Gmail and one Outlook/Microsoft 365
+  mailbox, with explicit read-only inbox/AI consent. Authorization feedback and
+  extracted learning notices appear in the separate **邮箱助手** destination.
+  Schedule additions require review and confirmation; see the mailbox setup guide.
 - **学习与 AI:** change independent English-term, English-answer and Chinese-explanation
   choices plus custom instructions. Uses the same serialized saver as the Study
   Area sidebar, with automatic save, synchronized controls and failure/retry status.
@@ -266,7 +272,7 @@ navigation on mobile. **退出登录** remains inside Settings. Categories are:
   meanings and authored document/slide/cell colors are retained. The independent **黑夜模式** switch applies
   暮色深灰 (charcoal surfaces and champagne accents); switching it off restores
   the selected daytime palette. All choices preview immediately and save to the
-  account. The five main destinations share outline icons and a rounded selected
+  account. The six main destinations share outline icons and a rounded selected
   row with a filled icon, while retaining their existing order and layout.
 - **课程与提醒:** open course/document management and the timetable; distinguish
   available in-app reminders from email/system push, which is not yet available.
@@ -346,7 +352,7 @@ still take priority. Current or retained problem images paired with a solve/help
 request select the complex model; ordinary photo descriptions and everyday
 questions remain eligible for Luna.
 
-All seven modes search the complete extracted text of every material in the
+All six modes search the complete extracted text of every material in the
 current course and every chat attachment saved in that course. Small collections
 are supplied in full; larger collections use question- and recent-conversation-
 matched passages within a 60,000-character material budget. Broad reviews also
@@ -465,7 +471,10 @@ Video infrastructure is present but closed by default at both UI/API levels.
 See [Creative Tools](docs/creative-tools.md) for model configuration, quality
 limits, billing/concurrency controls, authenticated file storage and backup needs.
 
-The course Cheatsheet PDF workspace also follows saved Learning Style and reuses
+Open **Tools → Cheatsheet PDF** and choose a course to use its uploaded materials.
+The selection is remembered per account; drafts, print settings and results stay
+separate per course. Cheatsheet creation is available in Tools; Study Area retains
+six learning modes. The workspace follows saved Learning Style and reuses
 historical course-chat images as real image inputs. Use “继续修改” on a completed
 PDF to revise it with current preferences, current course sources, retained image
 references, prior requirements and the latest PDF. Workspace source uploads remain

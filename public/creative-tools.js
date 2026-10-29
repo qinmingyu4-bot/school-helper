@@ -21,7 +21,7 @@
     const draft = use(context);
     for (const [id, key] of [["creativePrompt", "prompt"], ["creativeFormat", "format"], ["creativeCourse", "courseId"], ["creativeSize", "size"], ["creativeQuality", "quality"]]) {
       const element = document.getElementById(id);
-      if (element) draft[key] = element.value;
+      if (element && !(context.tool === "cheatsheet" && key === "courseId")) draft[key] = element.value;
     }
     for (const key of Object.keys(printSettings.defaults)) {
       const element = document.getElementById(`print-${key}`);
@@ -62,12 +62,14 @@
     const selected = matching.find((job) => job.id === selectedId) || matching[0];
     const pending = jobs.find(active);
     const parent = jobs.find((job) => job.id === draft.parentId);
+    const missingCourse = cheat && !ctx.courses.some((course) => course.id === draft.courseId);
     const blocked = video && !capabilities.video;
     const previews = selected?.status === "ready" ? selected.files?.filter((file) => file.extension === "png") || [] : [];
     return `<section class="creative-workspace">
       <div class="creative-input">
         <div class="creative-heading"><h2>${cheat ? "Cheatsheet PDF" : image ? "图片" : video ? "视频" : ctx.tool === "sheets" ? "Excel 表格" : ctx.tool === "slides" ? "PowerPoint 演示" : "文档"}</h2>${cheat ? `<p class="creative-course-label">${esc(ctx.courses.find((course) => course.id === ctx.courseId)?.name || "未选择课程")}</p>` : ""}</div>
-        ${cheat ? '<p class="muted">使用已保存的 Learning Style、本课程资料和历史图片。生成后可点“继续修改”，无需重复上传。</p>' : ""}
+        ${cheat ? '<p class="muted">选择课程后，AI 会结合该课程已上传的资料和历史图片，并使用已保存的 Learning Style。生成后可点“继续修改”。</p>' : ""}
+        ${cheat ? `<div class="creative-settings"><label for="creativeCourse">选择课程<select id="creativeCourse" aria-describedby="creativeCourseHelp"><option value="" disabled ${missingCourse ? "selected" : ""}>${ctx.courses.length ? "请选择课程" : "暂无课程"}</option>${ctx.courses.map((course) => `<option value="${esc(course.id)}" ${draft.courseId === course.id ? "selected" : ""}>${esc(course.name)}</option>`).join("")}</select></label></div><p id="creativeCourseHelp" class="muted">${missingCourse ? "请先在学习区添加课程，再选择课程制作。" : "自动读取所选课程的资料；草稿、打印设置和作品记录按课程分别保留。"}</p>` : ""}
         ${parent ? `<div class="creative-revision"><span>修改上一版 · ${esc(parent.format.toUpperCase())}</span><button class="creative-icon" data-action="creative-new" title="取消修改，创建新作品" aria-label="创建新作品">${icon("back")}</button></div>` : ""}
         <label for="creativePrompt">${parent ? "修改要求" : "生成要求"}</label>
         <textarea id="creativePrompt" maxlength="6000" rows="7" placeholder="${image ? "描述画面、风格和需要保留的细节" : video ? "描述场景、镜头与动作" : "填写主题、用途、语言、篇幅和格式要求"}">${esc(draft.prompt)}</textarea>
@@ -76,7 +78,7 @@
         </div>`}
         <label class="creative-upload">${icon("attach")}<span>${image ? "参考图片" : "参考文件"}</span><input id="creativeFiles" type="file" multiple accept="${image ? ".png,.jpg,.jpeg,.webp" : ".pdf,.docx,.xlsx,.pptx,.txt,.md,.csv,.png,.jpg,.jpeg,.webp"}" ${blocked ? "disabled" : ""}></label>
         ${draft.files.length ? `<div class="creative-sources">${draft.files.map((file) => `<span>${esc(file.name)}</span>`).join("")}<button class="creative-icon" data-action="creative-clear-files" title="移除参考文件" aria-label="移除参考文件">${icon("trash")}</button></div>` : ""}
-        <div class="creative-submit"><button class="primary" data-action="creative-generate" ${blocked || pending || submitting ? "disabled" : ""}>${icon("send")}${submitting ? "提交中" : blocked ? "暂未开放" : parent ? "生成修改版" : "生成"}</button>${pending ? `<button class="creative-icon" data-action="creative-cancel" data-id="${pending.id}" title="取消生成" aria-label="取消生成">${icon("stop")}</button><span role="status"><span class="reply-spinner" aria-hidden="true"></span>${labels[pending.status]}</span>` : ""}</div>
+        <div class="creative-submit"><button class="primary" data-action="creative-generate" ${blocked || missingCourse || pending || submitting ? "disabled" : ""}>${icon("send")}${submitting ? "提交中" : blocked ? "暂未开放" : parent ? "生成修改版" : "生成"}</button>${pending ? `<button class="creative-icon" data-action="creative-cancel" data-id="${pending.id}" title="取消生成" aria-label="取消生成">${icon("stop")}</button><span role="status"><span class="reply-spinner" aria-hidden="true"></span>${labels[pending.status]}</span>` : ""}</div>
         ${error ? `<p class="creative-error" role="alert">${esc(error)}</p>` : ""}
         <div class="creative-history-heading"><h3>作品记录</h3><button class="creative-icon" data-action="creative-refresh" title="刷新记录" aria-label="刷新记录">${icon("refresh")}</button></div>
         <div class="creative-history">${matching.length ? matching.map((job) => `<button class="creative-history-item ${selected?.id === job.id ? "selected" : ""}" data-action="creative-select" data-id="${job.id}"><span>${esc(job.request || job.prompt)}</span><small>${job.format.toUpperCase()} · ${labels[job.status] || "准备中"}</small></button>`).join("") : `<p class="muted">暂无作品</p>`}</div>
@@ -94,6 +96,7 @@
     try {
       if (action === "creative-generate") {
         if (submitting) return;
+        if (ctx.tool === "cheatsheet" && !ctx.courses.some((course) => course.id === draft.courseId)) throw new Error("请先选择课程。");
         submitting = true; refresh(ctx);
         try {
           const submitted = { ...draft, files: [...draft.files], print: { ...draft.print } };
@@ -123,7 +126,14 @@
     schedule();
   }
   document.addEventListener("change", (event) => {
-    if (event.target.id !== "creativeFiles" || !context) return;
+    if (!context) return;
+    if (event.target.id === "creativeCourse" && context.tool === "cheatsheet") {
+      capture();
+      error = "";
+      context.selectCourse(event.target.value);
+      return;
+    }
+    if (event.target.id !== "creativeFiles") return;
     capture(); use(context).files = Array.from(event.target.files || []); context.render();
   });
   document.addEventListener("visibilitychange", () => { if (!document.hidden) schedule(); });
@@ -140,13 +150,5 @@
       <label class="cheatsheet-monochrome"><input id="print-monochrome" type="checkbox" ${settings.monochrome ? "checked" : ""}>黑白版</label>
     </div>`;
   }
-  function prepareCheatsheet(ctx, prompt, files = []) {
-    capture();
-    const draft = use({ ...ctx, tool: "cheatsheet" });
-    draft.courseId = ctx.courseId; draft.format = "pdf";
-    if (prompt) draft.prompt = prompt;
-    else if (!draft.prompt) draft.prompt = "根据当前课程资料和刚才的 cheatsheet 对话制作打印版，保留我要求的内容和限制。";
-    if (files.length) draft.files = [...files];
-  }
-  window.StudyBridgeCreativeTools = { html, load, handle, capture, restoreFocus, prepareCheatsheet, stop: () => clearTimeout(timer), videoEnabled: () => capabilities.video };
+  window.StudyBridgeCreativeTools = { html, load, handle, capture, restoreFocus, stop: () => clearTimeout(timer), videoEnabled: () => capabilities.video };
 })();

@@ -677,7 +677,6 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
       assert.ok(payload.messages[0].content.includes("Keep explanations concise"));
       assert.ok(payload.messages[1].content.includes(question));
       assert.ok(payload.messages[1].content.includes("Mode-specific course evidence"));
-      if (mode === "cheatsheet") assert.ok(payload.messages[0].content.includes("Cheatsheet mode requirements"));
     }
     const email = await request(`/api/courses/${id}/chat`, { method: "POST", cookie, body: { message: "Draft a short email", mode: "email" } });
     assert.ok(!JSON.parse(email.data.messages[1].content).messages[0].content.includes("Selected study mode:"));
@@ -686,7 +685,7 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     const web = await request(`/api/courses/${id}/chat`, { method: "POST", cookie, body: { message: "Review the course", mode: "review" } });
     assert.ok(JSON.parse(web.data.messages[1].content).input[0].content.includes(modes.buildInstruction("review")));
     const history = (await request(`/api/courses/${id}/messages`, { cookie })).data.messages;
-    assert.equal(history.length, 18);
+    assert.equal(history.length, Object.keys(modes.modes).length * 2 + 4);
     for (const mode of Object.keys(modes.modes)) {
       assert.ok(history.some((item) => item.role === "user" && item.mode === mode));
       assert.ok(history.some((item) => item.role === "assistant" && item.mode === mode));
@@ -746,7 +745,7 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     assert.deepEqual((await request("/api/courses", { cookie })).data, before);
   });
 
-  await t.test("all seven modes use late course content and durable chat attachments after restart", async () => {
+  await t.test("all six modes use late course content and durable chat attachments after restart", async () => {
     await stop();
     await start({ fakeAi: true });
     const login = await request("/api/auth/login", { method: "POST", body: { email: "alice@example.test", password: "HealthCheck-Password-123!" } });

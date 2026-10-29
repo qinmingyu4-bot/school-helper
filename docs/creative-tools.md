@@ -14,13 +14,16 @@ explicitly approved launch, account access verification, and pricing review.
 
 ## Cheatsheet Printing
 
-In Study Area, select a course and Cheatsheet mode, discuss the desired content,
-then choose Make PDF. The workspace copies the current request and unsent sources,
-and includes owned course materials and the latest 16 course messages as reference.
-Requests/settings/history are separate per course. Revisions retain earlier files.
+Open **Tools → Cheatsheet PDF**, choose a course from **选择课程**, and enter the
+content and print requirements. The account remembers the chosen course independently
+of the Study Area course. AI uses the selected owned course’s uploaded materials,
+chat attachments and latest 16 messages as reference. Requests, print settings,
+workspace uploads and history stay separate per course when switching. Without any
+courses, add one in Study Area before generating. Revisions retain their original
+course and earlier files. Study Area no longer offers a Cheatsheet creation mode.
 
 PDF generation and every revision apply the current saved Learning Style. The
-client waits for pending preference saves before opening/submitting the PDF
+client waits for pending preference saves before submitting the PDF
 workspace, and each request snapshots the authenticated account's preferences.
 English answers with Chinese explanations produces complementary English sheet
 content and concise Chinese teaching notes within the print limits. A latest

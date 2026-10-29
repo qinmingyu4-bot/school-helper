@@ -38,8 +38,8 @@ test("mobile app starts at its main menu even after the existing router writes a
   assert.equal(h.workspace.inert, true); assert.equal(h.sidebar.inert, false);
 });
 
-test("all five destinations enter a page and return through history without navigating or rebuilding the page", () => {
-  for (const page of ["community", "classmates", "schedule", "study", "tools"]) {
+test("all six destinations enter a page and return through history without navigating or rebuilding the page", () => {
+  for (const page of ["community", "classmates", "schedule", "study", "tools", "email"]) {
     const h = harness(); h.sync(); h.sidebar.scrollTop = 140;
     assert.equal(h.controller.enter(page), page === "study"); h.sync({ page });
     assert.equal(h.shell.dataset.mobileView, "page");

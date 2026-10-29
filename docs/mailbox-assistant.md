@@ -63,6 +63,30 @@ authorize a user's inbox: each user still binds through Settings and provider
 consent. Provider registration/consent and an actual mailbox sync require separate
 live validation; passing server configuration checks alone does not prove them.
 
+### Production test configuration (2026-10-28)
+
+Both Gmail and Outlook are configured on the `1.2.0` production deployment, and
+Settings exposes both binding controls. Gmail remains in Google testing mode with
+the owner's test user registered. Outlook uses a Web application supporting both
+organizational and personal Microsoft accounts, with only delegated `Mail.Read`,
+`User.Read` and `offline_access` configured. Each mailbox still requires the user's
+own consent in Settings and at the provider; no inbox was linked by configuration
+activation. School tenant policy can require administrator approval.
+
+The initial Outlook application credential expires on **2027-04-26**. Renew it
+before expiry: create a replacement in the same app, update the private
+`OUTLOOK_CLIENT_SECRET` repository secret, and rerun the activation workflow with
+`outlook` selected. Retain the app's client ID, callback and mailbox encryption key.
+Validate a real mailbox sync before retiring the old credential. Never put either
+credential value into documentation, source control, screenshots or workflow inputs.
+
+Live activation checks cover private configuration backups, the exact callbacks,
+read-only scopes, PKCE/encrypted browser state, service health, existing Google
+login and both Settings controls. All 23 pre-existing course/document/conversation,
+schedule, profile and preference fingerprints matched after activation. Actual
+provider consent, token exchange and mailbox synchronization await the user's
+first real binding test.
+
 For Gmail, enable Gmail API, add the mailbox callback to the Web OAuth client
 in addition to the login callback, and configure the consent screen/test users.
 The mailbox flow requests only `gmail.readonly`, with offline access. For public

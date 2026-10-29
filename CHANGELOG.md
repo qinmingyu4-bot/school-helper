@@ -2,6 +2,8 @@
 
 ## 2026-10-28
 
+- Activate real Gmail and Outlook configuration for `1.2.0` online testing. Enable Gmail API and its separate callback/read-only scope, and register an Outlook Web app supporting organizational and personal accounts with delegated `Mail.Read`, `User.Read` and `offline_access`. Keep provider secrets in encrypted GitHub Secrets and private server configuration; retain the existing mailbox encryption key. Validate the live callbacks, encrypted OAuth state, scopes, health and existing Google login, confirm both binding controls are available in Settings, and compare 23 existing learning-data fingerprints without changes. Individual inbox consent and real mail synchronization remain user-initiated tests. The initial Outlook application credential expires on `2027-04-26` and must be renewed before then.
+
 - Prepare real mailbox activation through a manually dispatched, revision-guarded GitHub workflow and private server configurator. Reuse existing Google credentials, accept optional provider credentials only through encrypted secrets/SSH stdin, retain a stable mailbox encryption key, back up private configuration, validate read-only OAuth and existing login, and roll back failed activation. Keep provider-console setup and each user's inbox consent explicit; retain version `1.2.0` for this configuration work.
 - Validate 339 automated tests, 212-file source/assets/version checks, and private-configurator syntax. Real provider activation remains separate from fixture tests and requires provider-console configuration plus the user's own inbox consent.
 

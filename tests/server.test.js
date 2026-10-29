@@ -601,6 +601,29 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     assert.equal(afterRead[1].unreadCount, 1);
   });
 
+  await t.test("classmate request API deduplicates concurrent writes and enforces receiver-only decisions", async () => {
+    const one = await request("/api/auth/register", { method: "POST", body: registration("Request One", "request-one@example.test", "") });
+    const two = await request("/api/auth/register", { method: "POST", body: registration("Request Two", "request-two@example.test", "") });
+    assert.equal(one.status, 201); assert.equal(two.status, 201);
+    assert.equal((await request("/api/classmates", { method: "POST", body: { sbId: two.data.user.profile.sbId } })).status, 401);
+    assert.equal((await request("/api/classmates", { method: "POST", cookie: one.cookie, body: { sbId: one.data.user.profile.sbId } })).status, 400);
+    const sent = await Promise.all(Array.from({ length: 6 }, () => request("/api/classmates", { method: "POST", cookie: one.cookie, body: { sbId: two.data.user.profile.sbId } })));
+    assert.equal(sent.filter((item) => item.status === 201).length, 1);
+    assert.equal(new Set(sent.map((item) => item.data.request.id)).size, 1);
+    const route = `/api/classmate-requests/${sent[0].data.request.id}`;
+    assert.equal((await request(route, { method: "PATCH", cookie: admin.cookie, body: { action: "accept" } })).status, 404);
+    assert.equal((await request(route, { method: "PATCH", cookie: one.cookie, body: { action: "accept" } })).status, 403);
+    const accepted = await Promise.all(Array.from({ length: 6 }, () => request(route, { method: "PATCH", cookie: two.cookie, body: { action: "accept" } })));
+    assert.ok(accepted.every((item) => item.status === 200));
+    assert.equal(new Set(accepted.map((item) => item.data.classmate.id)).size, 1);
+    assert.equal((await request(route, { method: "PATCH", cookie: two.cookie, body: { action: "ignore" } })).status, 409);
+    for (const cookie of [one.cookie, two.cookie]) {
+      const listed = await request("/api/classmates", { cookie });
+      assert.equal(listed.data.classmates.length, 1);
+      assert.equal(listed.data.requests.incoming.length + listed.data.requests.outgoing.length, 0);
+    }
+  });
+
   await t.test("AI fallback and persistence across restart", async () => {
     const chat = await request(`/api/courses/${courseId}/chat`, { method: "POST", cookie: alice.cookie, body: { message: "Explain calculus" } });
     assert.equal(chat.status, 201);

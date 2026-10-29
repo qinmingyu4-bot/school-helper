@@ -126,6 +126,7 @@
   let classmateProfileChatScroll = 0;
   let classmateProfileChatAtBottom = true;
   const classmateReadPending = new Set();
+  const classmateMutations = new Set();
   const communityMutations = new Set();
   const state = {
     version: VERSION,
@@ -2070,13 +2071,17 @@
     classmatesSyncing = true;
     classmatesSyncQueued = false;
     const generation = classmatesGeneration;
+    const userId = state.user.id;
     const chatId = state.activeClassmateId;
     const chatOpen = state.classmateChatOpen;
+    const isCurrent = () => state.user?.id === userId && generation === classmatesGeneration && state.page === "classmates"
+      && !state.busy && chatId === state.activeClassmateId && chatOpen === state.classmateChatOpen;
     try {
       const classmates = await api("/api/classmates");
+      if (!isCurrent()) return;
       const selected = classmates.classmates.find((mate) => mate.id === chatId);
       const dm = chatOpen && selected ? await api(`/api/classmates/${selected.id}/messages`) : { messages: [], readMessageIds: [] };
-      if (generation !== classmatesGeneration || state.page !== "classmates" || state.busy || chatId !== state.activeClassmateId || chatOpen !== state.classmateChatOpen) return;
+      if (!isCurrent()) return;
       state.classmates = classmates;
       state.activeClassmateId = selected?.id || "";
       if (!selected) state.classmateChatOpen = false;
@@ -2085,7 +2090,7 @@
       updateClassmatesLiveView();
       requestAnimationFrame(acknowledgeClassmateRead);
     } catch (error) {
-      if (generation === classmatesGeneration && error.status === 401) stopClassmatesLive();
+      if (isCurrent() && error.status === 401) stopClassmatesLive();
     } finally {
       classmatesSyncing = false;
       if (classmatesSyncQueued) {
@@ -2126,6 +2131,7 @@
       if (selector === ".request-box") next.open = current.open;
       current.replaceWith(next);
     }
+    updateClassmateMutationButtons();
     if (!panel) return;
     const list = panel.querySelector(".dm-list");
     const nextList = template.content.querySelector(".dm-list");
@@ -2139,12 +2145,14 @@
   async function acknowledgeClassmateRead() {
     if (document.hidden || state.page !== "classmates" || !state.classmateChatOpen || state.classmateProfileOpen || state.busy) return;
     const chatId = state.activeClassmateId;
+    const userId = state.user?.id;
     if (root.querySelector(".chat-panel")?.dataset.chatId !== chatId) return;
     const messageIds = state.directMessageReadIds.filter((id) => !classmateReadPending.has(id)).slice(0, 10000);
     if (!messageIds.length) return;
     messageIds.forEach((id) => classmateReadPending.add(id));
     try {
       const result = await api(`/api/classmates/${chatId}/read`, { method: "POST", body: { messageIds } });
+      if (state.user?.id !== userId) return;
       const mate = state.classmates?.classmates.find((item) => item.id === chatId);
       if (mate) mate.unreadCount = result.unreadCount;
       if (state.activeClassmateId === chatId) {
@@ -2156,6 +2164,35 @@
       // Retry acknowledgement on the next automatic sync after a connection failure.
     } finally {
       messageIds.forEach((id) => classmateReadPending.delete(id));
+    }
+  }
+
+  function classmateMutationKey(button) {
+    const action = button.dataset.action;
+    const target = action === "send-dm" ? state.activeClassmateId : button.dataset.id || "";
+    return JSON.stringify([state.user?.id, action.startsWith("friend-") ? "friend-response" : action, target]);
+  }
+
+  function updateClassmateMutationButtons() {
+    root.querySelectorAll('[data-action="add-classmate"], [data-action="friend-accept"], [data-action="friend-ignore"], [data-action="send-dm"]').forEach((button) => {
+      button.disabled = classmateMutations.has(classmateMutationKey(button)) || (button.dataset.action === "send-dm" && !state.activeClassmateId);
+    });
+  }
+
+  async function runClassmateMutation(button, work) {
+    const key = classmateMutationKey(button);
+    if (classmateMutations.has(key)) return;
+    const userId = state.user?.id, generation = pageLoadGeneration;
+    const isCurrent = () => state.user?.id === userId && state.page === "classmates" && pageLoadGeneration === generation;
+    classmateMutations.add(key);
+    updateClassmateMutationButtons();
+    try {
+      await work(isCurrent, userId);
+    } catch (error) {
+      if (isCurrent()) { setToast(error.message); render(); }
+    } finally {
+      classmateMutations.delete(key);
+      updateClassmateMutationButtons();
     }
   }
 
@@ -2639,14 +2676,23 @@
         return;
       }
       if (action === "add-classmate") {
-        const data = await api("/api/classmates", { method: "POST", body: { sbId: $("classmateSbId")?.value || "" } });
-        setToast(data.status === "connected" ? "已经成为同学，可以聊天了。" : "好友申请已发送，等待对方通过。");
-        await loadPage("classmates");
+        const sbId = $("classmateSbId")?.value || "";
+        await runClassmateMutation(button, async (isCurrent, userId) => {
+          const data = await api("/api/classmates", { method: "POST", body: { sbId } });
+          if (state.user?.id !== userId) return;
+          if ($("classmateSbId")?.value === sbId) $("classmateSbId").value = "";
+          if (classmateListDraft === sbId) classmateListDraft = "";
+          if (!isCurrent()) return;
+          setToast(data.status === "connected" ? "已经成为同学，可以聊天了。" : "好友申请已发送，等待对方通过。");
+          await loadPage("classmates");
+        });
         return;
       }
       if (action === "friend-accept" || action === "friend-ignore") {
-        await api(`/api/classmate-requests/${button.dataset.id}`, { method: "PATCH", body: { action: action === "friend-accept" ? "accept" : "ignore" } });
-        await loadPage("classmates");
+        await runClassmateMutation(button, async (isCurrent) => {
+          await api(`/api/classmate-requests/${button.dataset.id}`, { method: "PATCH", body: { action: action === "friend-accept" ? "accept" : "ignore" } });
+          if (isCurrent()) await loadPage("classmates");
+        });
         return;
       }
       if (action === "select-classmate") {
@@ -2697,21 +2743,22 @@
         if (!state.activeClassmateId) throw new Error("请先选择一位同学。");
         const chatId = state.activeClassmateId;
         const input = $("dmInput");
-        const content = input?.value.trim() || "";
+        const draft = input?.value || "";
+        const content = draft.trim();
         if (!content || button.disabled) return;
-        button.disabled = true;
-        try {
+        await runClassmateMutation(button, async (isCurrent, userId) => {
           await api(`/api/classmates/${chatId}/messages`, { method: "POST", body: { content } });
-        } finally {
-          button.disabled = false;
-        }
-        input.value = "";
-        state.directMessageDrafts[chatId] = "";
-        if (!state.classmateChatOpen || state.activeClassmateId !== chatId) return;
-        await loadPage("classmates");
-        const list = root.querySelector(".dm-list");
-        if (list) list.scrollTop = list.scrollHeight;
-        $("dmInput")?.focus({ preventScroll: true });
+          if (state.user?.id !== userId) return;
+          const currentInput = root.querySelector(".chat-panel")?.dataset.chatId === chatId ? $("dmInput") : null;
+          if (currentInput?.value === draft) currentInput.value = "";
+          if (state.directMessageDrafts[chatId] === draft) state.directMessageDrafts[chatId] = "";
+          if (!isCurrent() || !state.classmateChatOpen || state.activeClassmateId !== chatId) return;
+          await loadPage("classmates");
+          if (state.user?.id !== userId || state.page !== "classmates" || !state.classmateChatOpen || state.activeClassmateId !== chatId) return;
+          const list = root.querySelector(".dm-list");
+          if (list) list.scrollTop = list.scrollHeight;
+          $("dmInput")?.focus({ preventScroll: true });
+        });
         return;
       }
       if (action === "draft-email") {
@@ -2987,6 +3034,8 @@
       if ($(id)) emailDraft[id] = $(id).value;
     }
     const previousDm = root.querySelector(".dm-list");
+    if ($("classmateSbId")) classmateListDraft = $("classmateSbId").value;
+    if (root.querySelector(".request-box")) classmateRequestsOpen = root.querySelector(".request-box").open;
     const previousDmId = previousDm?.parentElement.dataset.chatId;
     const previousDmMessages = previousDm?.innerHTML;
     const previousDmScroll = previousDm?.scrollTop || 0;
@@ -3056,6 +3105,7 @@
       if (sameChat) $("dmInput").value = previousDmDraft;
     }
     startClassmatesLive();
+    updateClassmateMutationButtons();
     requestAnimationFrame(acknowledgeClassmateRead);
   }
 

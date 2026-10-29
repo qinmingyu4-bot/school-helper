@@ -25,7 +25,7 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, op
 - Manual SB Docs, SB Slides and SB Sheets editors with private cloud projects, browser draft recovery, Office import/export, and AI suggestions applied only after the student chooses
 - Local JSON database for development or small private deployments
 - Optional DynamoDB storage for AWS production
-- Full-window classmate chats with live messages, persistent unread counts, latest-message sorting, and clickable peer avatars and public profiles
+- Full-window classmate chats with live messages/requests, persistent unread counts, latest-message sorting, and clickable peer avatars and public profiles. Concurrent requests/acceptance share one chat; failed saves retain pending requests, and refreshes or delayed responses preserve new drafts and the current destination.
 
 ## Website entry paths
 

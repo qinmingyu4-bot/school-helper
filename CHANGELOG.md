@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29
+
+- Audit Classmates and fix delayed request/message responses forcing users back after navigation, duplicate submissions after redraws, and successful delivery clearing a newly typed message. Preserve the SB ID draft and request-list expansion across refreshes; isolate live updates and read acknowledgements by account.
+- Make friend requests and acceptance atomic in local storage and DynamoDB, coordinating concurrent requests across server instances. Reuse the original request/chat IDs, prevent duplicate chats and conflicting accept/ignore decisions, retain pending requests on save failure, and immediately notify both users when requests change. Prepared on a task branch without AWS deployment.
+- Validate 363 automated tests and 216-file source/assets/version checks. Isolated browser checks cover live requests/acceptance, two-account messaging and unread/read state, retained drafts during delivery and page changes, profile return, delayed navigation responses and 320/390/1280 px layouts without overflow or page errors. Use fixture accounts and temporary local storage only.
+
 ## 2026-10-28
 
 - Release `1.2.1`: deploy the owner-approved schedule fixes from `7b1389e`: retained ambiguous clocks and noon/midnight choices, automatic review positioning, responsive waiting/cancellation, and bounded date/time controls on desktop/mobile Safari. Refresh package/frontend cache versions, retain the latest mailbox layout and all existing accounts, schedules, courses, conversations, settings and private authorization configuration. Use the existing verified private-backup, data/configuration checks and automatic code rollback workflow. Previous production code: `00438d9` (`1.2.0`).

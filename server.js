@@ -2709,28 +2709,13 @@ if (url.pathname === "/api/classmates" && method === "POST") {
   const peer = sbId ? await db.findUserBySbId(sbId) : await db.findUserByEmail(email);
   if (!peer) return sendError(res, 404, sbId ? "No StudyBridge account was found for that SB ID." : "No StudyBridge account was found for that email.");
   if (peer.id === user.id) return sendError(res, 400, "You cannot add yourself.");
-  const existing = await db.findClassmateByUsers(user.id, peer.id);
-  if (existing) {
-    return sendJson(res, 200, { status: "connected", classmate: await publicClassmate(existing, user.id) });
-  }
-
-  const incomingRequest = await db.findClassmateRequestByUsers(peer.id, user.id);
-  if (incomingRequest) {
-    const accepted = await db.updateClassmateRequest(incomingRequest.id, {
-      status: "accepted",
-      respondedAt: new Date().toISOString()
-    });
-    const connection = await db.createClassmate({ id: createId("mate"), userIds: [user.id, peer.id], requestId: incomingRequest.id });
-    return sendJson(res, 201, { status: "connected", request: accepted, classmate: await publicClassmate(connection, user.id) });
-  }
-
-  const existingRequest = await db.findClassmateRequestByUsers(user.id, peer.id);
-  const request = existingRequest || await db.createClassmateRequest({
-    id: createId("mateReq"),
-    fromUserId: user.id,
-    toUserId: peer.id
+  const result = await db.requestClassmate(user.id, peer.id);
+  notifyClassmates([user.id, peer.id], result.connection?.id || "");
+  if (result.connection) return sendJson(res, result.request ? 201 : 200, {
+    status: "connected", request: result.request, classmate: await publicClassmate(result.connection, user.id)
   });
-  return sendJson(res, existingRequest ? 200 : 201, {
+  const { request } = result;
+  return sendJson(res, result.created ? 201 : 200, {
     status: "pending",
     request: {
       id: request.id,
@@ -2747,23 +2732,10 @@ if (classmateRequestMatch && method === "PATCH") {
   const body = await readJson(req);
   const action = String(body.action || "").toLowerCase();
   if (action !== "accept" && action !== "ignore") return sendError(res, 400, "Please choose accept or ignore.");
-  const request = await db.getClassmateRequest(user.id, classmateRequestMatch[1]);
-  if (!request || (request.status || "pending") !== "pending") return sendError(res, 404, "Friend request not found.");
-  if (request.toUserId !== user.id) return sendError(res, 403, "Only the receiver can respond to this request.");
-
-  if (action === "ignore") {
-    const ignored = await db.updateClassmateRequest(request.id, { status: "ignored", respondedAt: new Date().toISOString() });
-    return sendJson(res, 200, { status: "ignored", request: ignored });
-  }
-
-  const existingConnection = await db.findClassmateByUsers(request.fromUserId, request.toUserId);
-  const connection = existingConnection || await db.createClassmate({
-    id: createId("mate"),
-    userIds: [request.fromUserId, request.toUserId],
-    requestId: request.id
-  });
-  const accepted = await db.updateClassmateRequest(request.id, { status: "accepted", respondedAt: new Date().toISOString() });
-  return sendJson(res, 200, { status: "connected", request: accepted, classmate: await publicClassmate(connection, user.id) });
+  const result = await db.respondClassmateRequest(user.id, classmateRequestMatch[1], action);
+  notifyClassmates([result.request.fromUserId, result.request.toUserId], result.connection?.id || "");
+  return sendJson(res, 200, { status: result.status, request: result.request,
+    ...(result.connection ? { classmate: await publicClassmate(result.connection, user.id) } : {}) });
 }
 
 const directMessageMatch = url.pathname.match(/^\/api\/classmates\/([^/]+)\/messages$/);

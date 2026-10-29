@@ -178,7 +178,7 @@
     return `
       <section class="study-page"><header class="study-head"><div><span>ACADEMIC COACH</span><h1>${esc(c?.name || "请选择课程")}</h1><p>对话已经保存到云端。</p></div><select><option>预习</option><option>复习</option></select></header>
       <div class="chat-area"><div class="messages">${c ? msgs.map((m) => `<div class="msg ${m.role === "user" ? "mine" : "ai"}"><span>${m.role === "user" ? "你" : "AI"}</span><div class="bubble">${esc(m.content).replace(/\n/g, "<br>")}</div></div>`).join("") : `<div class="empty-state">还没有选择课程。请先在左侧新增或选择课程。</div>`}</div></div>
-      <form id="chatForm" class="chat-compose"><div class="quick-row">${["预习下一节", "课前关键词", "上课问题", "10 分钟预习", "课程介绍", "Deadline 汇总", "制作 Cheatsheet"].map((x) => `<button type="button" data-quick="${x}">${x}</button>`).join("")}</div><div class="compose-row"><button type="button" data-act="attach">+</button><input id="chatInput" ${c ? "" : "disabled"} placeholder="问：帮我根据这门课资料做一个 final 复习计划"><button class="primary-btn" ${c ? "" : "disabled"}>发送</button></div></form></section>`;
+      <form id="chatForm" class="chat-compose"><div class="quick-row">${["预习下一节", "课前关键词", "上课问题", "10 分钟预习", "课程介绍", "Deadline 汇总"].map((x) => `<button type="button" data-quick="${x}">${x}</button>`).join("")}</div><div class="compose-row"><button type="button" data-act="attach">+</button><input id="chatInput" ${c ? "" : "disabled"} placeholder="问：帮我根据这门课资料做一个 final 复习计划"><button class="primary-btn" ${c ? "" : "disabled"}>发送</button></div></form></section>`;
   }
 
   function communityPage() {

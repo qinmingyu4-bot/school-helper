@@ -97,7 +97,7 @@
   const studyReplies = new Map();
   const studyDrafts = new Map();
   const uploadPreviewUrls = new Map();
-  const pdfReturnDrafts = new Map();
+  const cheatsheetCourses = new Map();
   let nextStudyReplyId = 0;
   const replyPhases = {
     reading: "读取附件中", preparing: "整合课程资料中", thinking: "思考中",
@@ -706,7 +706,6 @@
     const selected = studyModes.getMode(state.studyMode) || studyModes.getMode(studyModes.defaultMode);
     const prompts = isGeneralChat() ? chatSpaces.prompts : [...selected.prompts, ...studyModes.globalPrompts];
     const buttons = prompts.map(([label, prompt]) => `<button type="button" data-action="quick-prompt" data-prompt="${esc(prompt)}" title="${esc(prompt)}">${esc(label)}</button>`);
-    if (!isGeneralChat() && state.studyMode === "cheatsheet") buttons.unshift('<button type="button" data-action="cheatsheet-pdf" title="制作可打印的 PDF">制作 PDF</button>');
     return buttons.slice(0, 3).join("") + (buttons.length > 3 ? `<details class="quick-prompts-more"><summary>更多<svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></summary><div class="quick-prompts-menu">${buttons.slice(3).join("")}</div></details>` : "");
   }
 
@@ -1687,8 +1686,15 @@
     const userId = state.user?.id, tool = state.tool || "docs";
     let savedCourse = "";
     try { savedCourse = localStorage.getItem(`studybridge.cheatsheetCourse.${userId}`) || ""; } catch { /* Storage may be disabled. */ }
-    const courseId = state.courses.some((course) => course.id === state.activeCourseId) ? state.activeCourseId : state.courses.some((course) => course.id === savedCourse) ? savedCourse : state.courses[0]?.id || "";
+    const preferredCourse = cheatsheetCourses.get(userId) || savedCourse;
+    const courseId = [preferredCourse, state.activeCourseId, state.courses[0]?.id].find((id) => state.courses.some((course) => course.id === id)) || "";
     return { userId, tool, courseId, courses: state.courses, api, readFiles, esc, render,
+      selectCourse: (id) => {
+        if (state.user?.id !== userId || !state.courses.some((course) => course.id === id)) return;
+        cheatsheetCourses.set(userId, id);
+        try { localStorage.setItem(`studybridge.cheatsheetCourse.${userId}`, id); } catch { /* Retain the selection for this session. */ }
+        render();
+      },
       beforeGenerate: async () => { if (tool === "cheatsheet") { clearTimeout(learningStyleTimer); await getLearningStyleEditor().saver.flush(); } },
       visible: () => state.user?.id === userId && state.mode !== "admin" && state.page === "tools" && state.tool !== "email" && (!officeTools.supports(state.tool || "docs") || state.toolView === "generate") };
   }
@@ -2176,19 +2182,6 @@
     try {
       if (action === "view-chat-image") { showChatImage(button.dataset.imageUrl, button.dataset.imageName); return; }
       if (action.startsWith("creative-")) { await creativeTools.handle(button, creativeContext()); return; }
-      if (action === "cheatsheet-pdf") {
-        if (isGeneralChat() || !state.activeCourseId) throw new Error("请先选择课程。");
-        clearTimeout(learningStyleTimer);
-        await captureLearningStyle().saver.flush();
-        const prompt = $("chatInput")?.value || "";
-        pdfReturnDrafts.set(studyReplyKey(), prompt);
-        creativeTools.prepareCheatsheet({ ...creativeContext(), courseId: state.activeCourseId }, prompt.trim(), state.uploadFiles);
-        state.tool = "cheatsheet";
-        localStorage.setItem(`studybridge.cheatsheetCourse.${state.user.id}`, state.activeCourseId);
-        localStorage.setItem("studybridge.tool", state.tool);
-        await loadPage("tools");
-        return;
-      }
       if (action === "auth-tab") {
         state.toast = "";
         root.innerHTML = authHtml(button.dataset.tab);
@@ -2348,7 +2341,7 @@
         studyReplies.get(key)?.controller.abort();
         try {
           await api(`/api/courses/${courseId}/conversations/${conversationId}`, { method: "DELETE" });
-          studyReplies.delete(key); studyDrafts.delete(key); pdfReturnDrafts.delete(key);
+          studyReplies.delete(key); studyDrafts.delete(key);
           state.renamingConversation = null;
           const chats = await refreshCourseConversations(courseId);
           try { localStorage.removeItem(`studybridge.studyMode.${state.user.id}.${courseId}${conversationId === "default" ? "" : `.${conversationId}`}`); localStorage.removeItem(`studybridge.conversation.${state.user.id}.${courseId}`); } catch { /* Storage may be disabled. */ }
@@ -2958,10 +2951,7 @@
     }
     const chat = root.querySelector(".study-workspace .chat-area");
     if (chat) {
-      if (pdfReturnDrafts.has(studyReplyKey())) {
-        $("chatInput").value = pdfReturnDrafts.get(studyReplyKey());
-        pdfReturnDrafts.delete(studyReplyKey());
-      } else $("chatInput").value = studyDrafts.get(studyReplyKey())?.text || "";
+      $("chatInput").value = studyDrafts.get(studyReplyKey())?.text || "";
       const showLatest = !previousChat || previousChatKey !== studyReplyKey()
         || previousMessages !== chat.querySelector(".messages")?.innerHTML;
       chat.scrollTop = showLatest ? chat.scrollHeight : previousScrollTop;

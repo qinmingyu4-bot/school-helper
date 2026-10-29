@@ -33,3 +33,20 @@ test("historical images validate bytes and source merging deduplicates identical
   assert.match(history, /LATE_REQUIREMENT/);
   assert.ok(revisionContext({ format: "pdf", revisionContext: "x".repeat(40000), request: "LATEST" }).length < 36500);
 });
+
+test("selected course retrieves its own uploads and conversation without other course evidence", async () => {
+  const sources = { math: "DERIVATIVE_NOTES", econ: "SUPPLY_DEMAND_NOTES" };
+  const db = {
+    getCourse: async (user, id) => user === "alice" && sources[id] ? { name: id } : null,
+    listDocuments: async (_, id) => [{ title: `${id}.txt`, text: sources[id] }],
+    listChatAttachments: async (_, id) => [{ kind: "text", name: `${id}-chat.txt`, text: `${id}_UPLOAD` }],
+    listMessages: async (_, id) => [{ role: "user", content: `${id}_GUIDANCE` }]
+  };
+  for (const id of Object.keys(sources)) {
+    const result = await courseContext(db, "alice", id, "Make a cheatsheet", {});
+    assert.ok(result.text.includes(sources[id]));
+    assert.ok(result.text.includes(`${id}_UPLOAD`));
+    assert.ok(result.text.includes(`${id}_GUIDANCE`));
+    assert.ok(!result.text.includes(sources[id === "math" ? "econ" : "math"]));
+  }
+});

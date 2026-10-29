@@ -56,16 +56,6 @@
         ["批改标准", "请给每道题配一个简短英文评分标准和中文解释。"]
       ]
     },
-    cheatsheet: {
-      label: "Cheatsheet 制作",
-      instruction: "Produce a compact, fast-lookup reference sheet rather than a prose summary. Prioritize formulas with symbol definitions and usage conditions, decision rules, problem-solving steps, and common traps. Honor the exam's page, side, and allowed-content restrictions; distinguish essential content from optional content when space is limited.",
-      prompts: [
-        ["一页版", "请帮我做一页 cheatsheet：公式/概念/步骤/易错点/题型套路都要压缩得适合考前看。"],
-        ["公式步骤", "请把能放进 cheatsheet 的公式、步骤和使用条件整理出来。"],
-        ["题型触发词", "请整理看到哪些题目关键词就该用哪个概念、公式或方法。"],
-        ["压缩改写", "请把现有内容压缩成更短、更适合写在 cheatsheet 上的版本。"]
-      ]
-    },
     cram: {
       label: "考前急救",
       instruction: "Triage preparation under time pressure. Work within the student's time budget, prioritizing high-yield material supported by the course sources, minimum prerequisite knowledge, recognizable problem patterns, and the first step for each pattern. Cover fewer high-priority concepts when time is short, while preserving the essential rule, reason and calculation steps within each worked example. For mistakes, identify the first incorrect step and how to avoid it. Do not claim to know what will appear on the actual exam.",

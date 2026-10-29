@@ -2,6 +2,9 @@
 
 ## 2026-10-28
 
+- Consolidate Cheatsheet creation in **Tools → Cheatsheet PDF** and remove the Study Area mode/PDF shortcut. Add an account-remembered course selector; use the selected course’s uploaded materials and historical images, keep drafts/print settings/uploads/results separate per course, and require a valid owned course before generation. Existing revisions retain their original course. Prepared on a task branch without AWS deployment.
+- Validate 323 passing regression tests and 203-file source/assets/version checks on the latest 1.1.122 mobile/compact-chat base. Browser checks verify legacy-mode fallback, required course selection, course-specific drafts/settings/uploads/history/revisions, selected-course evidence in generated AI requests, remembered selection and a 390 px layout using isolated fixture accounts.
+
 - Release `1.1.122`: publish the owner-approved mobile main-menu/full-screen navigation, **轻量横排** Study input on desktop/mobile and denser phone reply layout from `220bea1`. Retain the 1.1.121 navigation icons and all existing accounts, sessions, memberships, courses, materials, conversations, schedules, authored files, palettes, dark mode and authentication settings. Refresh package/frontend/cache versions without a data migration. Use the existing verified private backup, unchanged configuration/data checks and automatic code rollback. Previous production code: `7697805` (`1.1.121`).
 - Release validation: 319 passing automated tests, 203-file source/assets/version checks and deployment-script syntax validation. Retain the production dependency audit and private verified-backup gates. Record four courses, 73 agenda entries, account classification and saved appearance for read-only post-deployment comparison; retain prior 32-theme-combination, mobile navigation, attachment, draft and reply-density browser checks.
 

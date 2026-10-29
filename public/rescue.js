@@ -265,7 +265,7 @@
         </div>
         <form class="chat-compose" id="chatForm">
           <div class="quick-row">
-            ${["预习下一节", "课前关键词", "上课问题", "10 分钟预习", "课程介绍", "Deadline 汇总", "制作 Cheatsheet"].map((text) => `<button type="button" data-quick="${text}">${text}</button>`).join("")}
+            ${["预习下一节", "课前关键词", "上课问题", "10 分钟预习", "课程介绍", "Deadline 汇总"].map((text) => `<button type="button" data-quick="${text}">${text}</button>`).join("")}
           </div>
           <div class="compose-row">
             <input id="chatInput" placeholder="问：帮我根据这门课资料做一个 final 复习计划" ${course ? "" : "disabled"} />

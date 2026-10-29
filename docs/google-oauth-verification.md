@@ -1,7 +1,7 @@
 # Google OAuth production verification
 
 Status: production configuration and brand verification are complete; Gmail restricted-scope review is NOT submitted or approved.
-The owner approved policy publication/operation, DNS ownership verification and the production switch. The remaining immediate submission blocker is the required real OAuth demonstration video.
+The owner approved policy publication/operation, DNS ownership verification and the production switch. The remaining immediate submission blocker is the reviewer-accessible YouTube demonstration URL. A local review draft is ready; upload has not been authorized or completed.
 The existing project is `reference-bee-441922-b2` (Google Auth Platform / My First Project).
 
 ## Observed prerequisites (2026-10-28, America/Toronto)
@@ -14,7 +14,9 @@ The existing project is `reference-bee-441922-b2` (Google Auth Platform / My Fir
 - Search Console confirmed ownership of `studybridge.ink` for the owner's existing Google account after the owner-approved, separate DNS TXT record was added. Keep that verification record; existing application/mail DNS records were preserved.
 - Public `/privacy.html`, homepage mailbox description and privacy/contact links, and Settings privacy entry were deployed to AWS as release 1.2.1 at `3558c69581be8a499b202024733f076523f9174b` (PR #14). Deployment run `40813367680` succeeded, verified a private server backup, and passed all checks. All 24 before/after course, schedule, preference and mailbox-configuration fingerprints matched.
 - The refreshed `/auth/verification/submit` page lists only “Missing ... demo video.” The scope justification and intended use are present; Confirm is disabled. The required video must be a real reviewer-accessible YouTube recording of all assigned OAuth clients and actual consent/use. No video URL or assessment evidence has been invented.
-- The owner selected their existing personal Gmail and explicitly authorized real read-only binding (including the seven-day backfill and AI transfer) plus one synthetic self-addressed message. Real Google consent completed and Settings showed Gmail connected. The synthetic self-message carries SENT as well as INBOX and is intentionally skipped by the current provider filter; an inbound example from the verified StudyBridge domain was prepared for separate approval. Record only synthetic message contents; do not upload the video, expose unrelated inbox contents, purchase an assessment or accept an assessor contract without the required authorization.
+- The owner selected their existing personal Gmail and explicitly authorized real read-only binding (including seven-day backfill and AI transfer), one self-addressed test message, then two separately approved inbound examples from the verified StudyBridge sender. Real Google consent completed and Settings showed Gmail connected. The self-message carries SENT and INBOX and is skipped by the current provider filter. The first inbound example did not become a notice; the later clearly marked fictional course notice was correctly extracted with a fictional-data warning, November 2, 2026 14:00–15:00 in America/Toronto, and a source link.
+- Continuation on 2026-10-29 (America/Toronto): prepare an 87-second walkthrough assembled from 11 actual production UI captures, with English captions. Crop mailbox/profile sidebars and show only approved account identifiers, public policy, actual Google consent and the synthetic message/result. Private video/captures are excluded from Git. Owner review/upload consent is pending; no YouTube URL exists yet and Google scope review remains unsubmitted.
+- Exercising the confirmation control created one synthetic calendar entry; the unintended test write was disclosed to the owner. A deletion dialog is prepared for exactly that one fictional item, with cleanup awaiting the owner's explicit confirmation. Do not delete it or broaden the selection without that confirmation. No unrelated calendar items were changed.
 
 ## Actual data flow for review
 
@@ -38,7 +40,7 @@ Record the real app and Google consent flow using a designated test mailbox cont
 
 1. Show the production homepage with StudyBridge name, mailbox feature and public privacy-policy link. Open the policy and show Google data use, AI transfer, retention/deletion and Limited Use disclosure.
 2. Sign into a designated StudyBridge test account. Show Google login is separate from mailbox binding.
-3. Open Settings → 邮箱授权. Show consent disclosure; choose Gmail, then show the real Google consent screen, app name and full requested Gmail read-only permission. Account owner personally completes the sensitive authorization step.
+3. Open Settings → 邮箱授权. Show consent disclosure; choose Gmail, then show the real Google consent screen, app name and full requested Gmail read-only permission. The account owner reviews and explicitly authorizes the actual sensitive grant.
 4. Return to Settings and show the linked synthetic mailbox. Open 邮箱助手 → 学习通知. Show a synthetic professor email becoming a source-linked review card.
 5. Correct a proposed date/time, confirm one event and show it appears in the StudyBridge schedule only after confirmation. Show manual reply drafting without claiming mail is sent through Gmail.
 6. Disconnect in Settings; show disconnected status and extracted cards removed. Explain confirmed schedules remain. Show where Google-side revocation and deletion contact are available.
@@ -51,14 +53,15 @@ Record the real app and Google consent flow using a designated test mailbox cont
 - Completed: Search Console DNS ownership verification. Preserve its TXT record and all existing application/mail DNS records.
 - Completed: saved live privacy URL, verified and published branding; preserved client IDs, secrets, callbacks, existing Google login and encrypted mailbox configuration.
 - Completed: Audience switched from Testing to In production with owner confirmation. Google consent and the unverified-scope cap still apply. Production status alone does not remove the Gmail unverified warning. Existing test-issued refresh tokens may still need one fresh grant; no retroactive token extension is claimed.
-- Brand verification is complete. Record and supply the real demonstration video, then submit the restricted-scope review through Verification Center. If the final form includes binding policy attestations or terms, obtain action-time owner confirmation of the exact declaration before submitting.
-- The current server-side Gmail restricted-data architecture requires an independent Google-recognized CASA security assessment and recurring reverification. Google determines the review/assessment requirements. Do not buy an assessment, accept an assessor contract, invent security test evidence, or claim certification without owner authorization and actual completion.
+- Brand verification is complete. Review the locally prepared walkthrough, obtain explicit consent to upload the specified account identifiers and synthetic content as an unlisted YouTube video, then supply the real URL and submit the restricted-scope review through Verification Center. If the final form includes binding policy attestations or terms, obtain action-time owner confirmation of the exact declaration before submitting.
+- The current server-side Gmail restricted-data architecture requires an independent Google-recognized CASA security assessment and recurring reverification. Google determines the assessment requirements and says its Trust and Safety team contacts the developer when it is time to initiate this final review step; do not prematurely purchase an assessment. Do not buy an assessment, accept an assessor contract, invent security test evidence, or claim certification without owner authorization and actual completion.
 - Track the actual Google review outcome and remediate requests. Only Google approval can establish that the warning is removed for the reviewed scopes. Production removes the special Testing seven-day refresh-token lifetime for new applicable grants; revocation, password/security events, token limits and provider policies can still invalidate access.
 
 ## Official references
 
 - [Restricted scope verification / security assessment](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification)
 - [Verification requirements](https://support.google.com/cloud/answer/13464321)
+- [Security assessment timing](https://support.google.com/cloud/answer/13465431)
 - [Manage App Audience](https://support.google.com/cloud/answer/15549945)
 - [OAuth token expiration](https://developers.google.com/identity/protocols/oauth2/#expiration)
 - [Gmail API scopes](https://developers.google.com/workspace/gmail/api/auth/scopes)

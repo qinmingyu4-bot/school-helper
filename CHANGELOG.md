@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-29
+
+- Continue Google scope-review preparation with an owner-authorized real Gmail binding and separately approved synthetic messages. Verify a clearly marked fictional course notice produces the correct source-linked review fields and fictional-data warning. Prepare an 87-second actual-UI walkthrough with account/sidebar privacy cropping for owner review; retain the video and captures outside Git. Scope review remains unsubmitted pending an approved YouTube demonstration URL; Google will initiate the separate security-assessment stage after the earlier verification requirements. One synthetic calendar entry created during the confirmation demonstration is isolated for owner-approved cleanup.
+
 ## 2026-10-28
 
 - Complete owner-approved Google production prerequisites: publish the bilingual privacy policy and public/Settings disclosure links to AWS 1.2.1 at `3558c69` (PR #14), verify Search Console domain ownership through an added TXT record, save the live policy URL, and verify/publish Google branding. Switch the OAuth audience to In production and save existing basic sign-in scope declarations, Email productivity classification and actual read-only/AI-use justification. Preserve current runtime permissions, login and private configuration. Validate 344 tests, 213-file source checks, successful deployment/private backup and 24 unchanged production content/configuration fingerprints. Gmail restricted-scope approval remains pending: Google's final form currently blocks submission solely for the missing real demonstration video; independent security assessment remains a separate required gate. Do not claim that the unverified warning has been removed.

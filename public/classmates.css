@@ -1,4 +1,8 @@
 .classmates-workspace { container-type: inline-size; }
+.nav-card b { display: flex; align-items: center; gap: 8px; }
+.classmate-unread-dot { display: inline-block; flex: 0 0 9px; width: 9px; height: 9px; border-radius: 50%; background: #e34b4b; }
+.classmate-unread-dot[hidden] { display: none !important; }
+.mobile-page-bar [data-mobile-action="menu"] .classmate-unread-dot { margin-left: 6px; vertical-align: middle; }
 .classmates-workspace .page-header p:empty { display: none; }
 .classmates-workspace .classmates-layout {
   grid-template-columns: minmax(0, 1fr);

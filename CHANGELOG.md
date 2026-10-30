@@ -2,6 +2,10 @@
 
 ## 2026-10-30
 
+- Add a persistent unread red dot beside **同学 / Classmates** across all student pages, plus a matching phone **Main menu** cue. Keep it visible until all incoming conversations are read, synchronize other-device reads, and avoid marking a hidden mounted chat read behind the phone menu. Preserve the existing per-conversation unread badges and all drafts/focus without rebuilding the Study page.
+- Keep one account-bound live event connection across navigation and reconcile missed events with a private unread-only endpoint every 15 seconds while visible. Isolate accounts/admin mode/logout, discard superseded responses and retain the last known indicator during transient failures. Prepared on a task branch without AWS deployment.
+- Validate 411 automated tests and 235-file source/assets/version checks on the latest 1.2.5 base. Isolated Chrome/WebKit checks cover cross-page messages, retained Study DOM/drafts/focus, multiple unread chats, other-device reads, hidden phone conversations, English accessible labels and 320/390/1280 px light/dark layouts without overflow or page errors.
+
 - Release `1.2.5`: publish owner-approved bilingual course retrieval and inline uploaded-source citations from `d30ba9e`. Retain the latest mobile homepage fix, update package/frontend cache versions and preserve historical accounts, courses, uploads, chats and configuration without migration. Use the existing private verified-backup and automatic code rollback deployment. Previous production code: `f2bfe7d` (`1.2.4`).
 
 - Add default inline course-source annotations beside source-backed claims and worked steps, with filename/title and verified PDF page or slide positions where available. Preserve PDF physical-page offsets through storage/retrieval, follow PowerPoint presentation/notes order, and give legacy sources explicit extracted-text line/character locators or short locating quotes. Disambiguate duplicate names, clear stale PDF locations when source text is replaced, and distinguish AI derivations from quoted source content. Prepared with bilingual retrieval on a task branch without AWS deployment.

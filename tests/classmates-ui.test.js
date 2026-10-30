@@ -125,6 +125,7 @@ test("late read acknowledgements cannot alter a newly signed-in account's unread
     directMessageReadIds: ["message"], classmates: { classmates: [{ id: "chat", unreadCount: 5 }] } };
   let complete; const updates = [];
   const context = vm.createContext({ ui: require("../public/i18n"), state, document: { hidden: false },
+    mobileNavigation: { snapshot: () => ({ active: false }) },
     root: { querySelector: () => ({ dataset: { chatId: "chat" } }) },
     api: () => new Promise((resolve) => { complete = resolve; }), updateClassmatesLiveView: () => updates.push("render") });
   vm.runInContext(`const classmateReadPending = new Set(); ${acknowledge}`, context);
@@ -133,4 +134,16 @@ test("late read acknowledgements cannot alter a newly signed-in account's unread
   assert.equal(state.classmates.classmates[0].unreadCount, 5);
   assert.deepEqual(state.directMessageReadIds, ["message"]);
   assert.deepEqual(updates, []);
+});
+
+test("the phone main menu never marks its hidden mounted conversation as read", async () => {
+  const acknowledge = source.slice(source.indexOf("  async function acknowledgeClassmateRead("), source.indexOf("  function classmateMutationKey("));
+  for (const mobile of [{ active: true, view: "menu" }, { active: true, view: "page", panel: true }]) {
+    const requests = [];
+    const state = { user: { id: "alice" }, page: "classmates", activeClassmateId: "chat", classmateChatOpen: true, directMessageReadIds: ["message"] };
+    const context = vm.createContext({ state, document: { hidden: false }, mobileNavigation: { snapshot: () => mobile }, api: (path) => requests.push(path) });
+    vm.runInContext(`const classmateReadPending = new Set(); ${acknowledge}`, context);
+    await context.acknowledgeClassmateRead();
+    assert.deepEqual(requests, []);
+  }
 });

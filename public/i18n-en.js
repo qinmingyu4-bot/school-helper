@@ -19,6 +19,8 @@
 社区|Community
 全部、学校和专业频道|All, school and major channels
 同学|Classmates
+有未读消息|Unread messages
+返回主菜单，有同学未读消息|Back to main menu, unread classmate messages
 SB ID 申请和聊天|Connect and chat using SB ID
 日程|Schedule
 Deadline 和课程提醒|Deadlines and course reminders

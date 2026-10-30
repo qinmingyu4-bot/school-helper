@@ -2667,6 +2667,12 @@ async function routeApi(req, res) {
     return openClassmateStream(req, res, auth);
   }
 
+  if (url.pathname === "/api/classmates/unread" && method === "GET") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    return sendJson(res, 200, { hasUnread: await db.hasUnreadDirectMessages(user.id) }, { "cache-control": "private, no-store" });
+  }
+
   if (url.pathname === "/api/classmates" && method === "GET") {
   const user = await requireUser(req, res);
   if (!user) return;

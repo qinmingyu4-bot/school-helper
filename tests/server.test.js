@@ -582,6 +582,11 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     const unreadFor = async (cookie) => (await request("/api/classmates", { cookie })).data.classmates.find((mate) => mate.id === accepted.data.classmate.id).unreadCount;
     assert.equal(await unreadFor(alice.cookie), 1);
     assert.equal(await unreadFor(bob.cookie), 1);
+    assert.equal((await request("/api/classmates/unread")).status, 401);
+    const unreadSummary = await request("/api/classmates/unread", { cookie: bob.cookie });
+    assert.deepEqual(unreadSummary.data, { hasUnread: true });
+    const privateSummary = await fetch(base + "/api/classmates/unread", { headers: { cookie: bob.cookie } });
+    assert.match(privateSummary.headers.get("cache-control"), /private.*no-store/);
     const snapshot = (await request(route, { cookie: bob.cookie })).data;
     assert.equal(await unreadFor(bob.cookie), 1);
     const readRoute = `/api/classmates/${accepted.data.classmate.id}/read`;
@@ -603,6 +608,8 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     const cleared = await request(readRoute, { method: "POST", cookie: bob.cookie, body: { messageIds: fullSnapshot.readMessageIds } });
     assert.equal(cleared.data.unreadCount, 0);
     assert.equal(await unreadFor(bob.cookie), 0);
+    assert.deepEqual((await request("/api/classmates/unread", { cookie: bob.cookie })).data, { hasUnread: false });
+    assert.deepEqual((await request("/api/classmates/unread", { cookie: alice.cookie })).data, { hasUnread: true });
   });
 
   await t.test("latest messages move classmates above empty chats without clearing unread", async () => {

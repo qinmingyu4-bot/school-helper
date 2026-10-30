@@ -118,11 +118,15 @@
   };
   const studyReplyKey = (userId = state.user?.id, courseId = state.activeCourseId, conversationId = state.activeConversationId) => courseChats.key(userId, courseId, conversationId || courseChats.DEFAULT_ID);
   const activeStudyReply = () => studyReplies.get(studyReplyKey());
-  let classmatesEvents = null;
   let classmatesPoll = null;
   let classmatesSyncing = false;
   let classmatesSyncQueued = false;
   let classmatesGeneration = 0;
+  const classmateNotifications = window.StudyBridgeClassmateNotifications.create({
+    getUserId: () => state.user?.id, enabled: () => state.mode !== "admin", hidden: () => document.hidden,
+    request: () => api("/api/classmates/unread"), onChange: updateClassmateUnreadDots,
+    onEvent: () => void syncClassmatesLive()
+  });
   let pageLoadGeneration = 0;
   let classmateListScroll = 0;
   let classmateListDraft = "";
@@ -530,10 +534,24 @@
     return `
       <button class="nav-card ${active}" data-page="${page}" ${active ? 'aria-current="page"' : ""}>
         <span aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false">${navIconPaths[page]}</svg></span>
-        <b>${esc(ui.text(title))}</b>
+        <b>${esc(ui.text(title))}${page === "classmates" ? classmateUnreadDot() : ""}</b>
         <small>${esc(page === "schedule" && nextDue() ? ui.message`${nextDue().title} · 还有 ${dueText(nextDue().startsAt)}` : ui.text(sub))}</small>
       </button>
     `;
+  }
+
+  function classmateUnreadDot() {
+    return `<i class="classmate-unread-dot" data-classmates-unread role="img" aria-label="${esc(ui.text("有未读消息"))}" ${classmateNotifications.hasUnread() ? "" : "hidden"}></i>`;
+  }
+
+  function updateClassmateUnreadDots() {
+    root.querySelectorAll("[data-classmates-unread]").forEach((dot) => {
+      dot.hidden = !classmateNotifications.hasUnread();
+      dot.setAttribute("aria-label", ui.text("有未读消息"));
+    });
+    root.querySelectorAll('[data-mobile-action="menu"]').forEach((button) => {
+      button.setAttribute("aria-label", ui.text(classmateNotifications.hasUnread() ? "返回主菜单，有同学未读消息" : "返回主菜单"));
+    });
   }
 
   function studySidebarHtml() {
@@ -638,7 +656,7 @@
       <div class="app-shell${fullChat ? " classmate-chat-shell" : ""}${admin ? " admin-shell" : ""}">
         ${sidebarHtml(fullChat)}
         <main class="workspace${state.mode !== "admin" && state.page === "study" ? " study-workspace" : ""}${state.mode !== "admin" && state.page === "classmates" ? " classmates-workspace" : ""}${fullChat ? " classmate-chat-workspace" : ""}${admin ? " admin-workspace" : ""}" id="workspace" data-course-id="${esc(state.activeCourseId)}" data-conversation-id="${esc(state.activeConversationId)}">
-          <header class="mobile-page-bar"><button type="button" data-mobile-action="menu" aria-label="返回主菜单">‹ 主菜单</button><strong>${esc(ui.text(pageLabels[state.page]?.[1] || "StudyBridge"))}</strong>${state.page === "study" ? ui.markup('<button type="button" data-mobile-action="study-panel" aria-expanded="false">课程与资料</button>') : "<span></span>"}</header>
+          <header class="mobile-page-bar"><button type="button" data-mobile-action="menu" aria-label="${esc(ui.text(classmateNotifications.hasUnread() ? "返回主菜单，有同学未读消息" : "返回主菜单"))}">${esc(ui.text("‹ 主菜单"))}${classmateUnreadDot()}</button><strong>${esc(ui.text(pageLabels[state.page]?.[1] || "StudyBridge"))}</strong>${state.page === "study" ? ui.markup('<button type="button" data-mobile-action="study-panel" aria-expanded="false">课程与资料</button>') : "<span></span>"}</header>
           ${content}
         </main>
       </div>
@@ -2092,8 +2110,6 @@
   }
 
   function stopClassmatesLive() {
-    classmatesEvents?.close();
-    classmatesEvents = null;
     clearInterval(classmatesPoll);
     classmatesPoll = null;
     classmatesSyncQueued = false;
@@ -2101,16 +2117,12 @@
   }
 
   function startClassmatesLive() {
+    classmateNotifications.sync();
     if (!state.user || state.mode === "admin" || state.page !== "classmates") {
       stopClassmatesLive();
       return;
     }
     if (classmatesPoll) return;
-    if (typeof EventSource !== "undefined") {
-      classmatesEvents = new EventSource("/api/classmates/events");
-      classmatesEvents.addEventListener("open", () => void syncClassmatesLive());
-      classmatesEvents.addEventListener("classmates", () => void syncClassmatesLive());
-    }
     // Reconcile missed events, including updates handled by another server instance.
     classmatesPoll = setInterval(() => void syncClassmatesLive(), 5000);
   }
@@ -2197,6 +2209,8 @@
 
   async function acknowledgeClassmateRead() {
     if (document.hidden || state.page !== "classmates" || !state.classmateChatOpen || state.classmateProfileOpen || state.busy) return;
+    const mobile = mobileNavigation.snapshot();
+    if (mobile.active && (mobile.view !== "page" || mobile.panel)) return;
     const chatId = state.activeClassmateId;
     const userId = state.user?.id;
     if (root.querySelector(".chat-panel")?.dataset.chatId !== chatId) return;
@@ -2213,6 +2227,7 @@
         state.directMessageReadIds = state.directMessageReadIds.filter((id) => !read.has(id));
       }
       if (state.page === "classmates") updateClassmatesLiveView();
+      void classmateNotifications.refresh();
     } catch {
       // Retry acknowledgement on the next automatic sync after a connection failure.
     } finally {
@@ -2435,6 +2450,7 @@
         return;
       }
       if (action === "logout") {
+        classmateNotifications.stop();
         dmAttachments.reset();
         mailboxView.reset();
         for (const key of Object.keys(emailDraft)) delete emailDraft[key];
@@ -3191,6 +3207,7 @@
       if (sameChat) $("dmInput").value = previousDmDraft;
     }
     startClassmatesLive();
+    updateClassmateUnreadDots();
     updateClassmateMutationButtons();
     requestAnimationFrame(acknowledgeClassmateRead);
   }
@@ -3231,7 +3248,10 @@
     const pageTarget = event.target.closest("[data-page]");
     if (pageTarget) {
       event.preventDefault();
-      if (mobileNavigation.enter(pageTarget.dataset.page)) return;
+      if (mobileNavigation.enter(pageTarget.dataset.page)) {
+        if (state.page === "classmates") requestAnimationFrame(acknowledgeClassmateRead);
+        return;
+      }
       await loadPage(pageTarget.dataset.page);
       return;
     }
@@ -3495,13 +3515,14 @@
 
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) {
+      void classmateNotifications.refresh();
       lastInteractionAt = Date.now();
       void reportUserActivity();
       void syncClassmatesLive();
     }
   });
-  window.addEventListener("online", () => void syncClassmatesLive());
-  window.addEventListener("pagehide", () => { stopClassmatesLive(); cancelScheduleVoice(); });
+  window.addEventListener("online", () => { void classmateNotifications.refresh(); void syncClassmatesLive(); });
+  window.addEventListener("pagehide", () => { classmateNotifications.stop(); stopClassmatesLive(); cancelScheduleVoice(); });
   document.addEventListener("visibilitychange", () => { if (document.hidden) cancelScheduleVoice(); });
   window.addEventListener("pageshow", startClassmatesLive);
 

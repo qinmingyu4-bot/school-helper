@@ -23,7 +23,7 @@ function harness({ origin = "quick", count = 1, failAt = 0, duplicates = false }
   };
   const notices = [], renders = [];
   let calls = 0, cancelled = 0;
-  const context = vm.createContext({ state, Intl, Set,
+  const context = vm.createContext({ ui: require("../public/i18n"), state, Intl, Set,
     requestAnimationFrame: (fn) => fn(), setTimeout: (fn) => fn(),
     updateSchedulePreviewCount() {}, updateScheduleReviewValidationNotice() {}, focusScheduleDraftIssue() {},
     updateScheduleSaveProgress() {}, loadScheduleItems: async () => {},

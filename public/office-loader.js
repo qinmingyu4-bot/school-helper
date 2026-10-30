@@ -1,16 +1,18 @@
 (function () {
   "use strict";
+  const ui = window.StudyBridgeI18n;
+
   let promise = null,
     module = null,
     generation = 0;
   const supports = (kind) => ["docs", "slides", "sheets"].includes(kind);
   const html = (kind) =>
-    `<section class="office-shell" id="officeHost" data-kind="${kind}"><p class="office-loading" role="status">正在加载编辑器…</p></section>`;
+    ui.html`<section class="office-shell" id="officeHost" data-kind="${kind}"><p class="office-loading" role="status">正在加载编辑器…</p></section>`;
   function load() {
     if (!promise)
       promise = new Promise((resolve, reject) => {
         const script = document.createElement("script");
-        script.src = "/vendor/office-editor.min.js?v=1.1.84";
+        script.src = "/vendor/office-editor.min.js?v=1.2.4-i18n";
         script.onload = () => {
           module = window.StudyBridgeOfficeEditor;
           resolve(module);
@@ -18,7 +20,7 @@
         script.onerror = () => {
           script.remove();
           promise = null;
-          reject(new Error("编辑器加载失败，请刷新重试。"));
+          reject(new Error(ui.text("编辑器加载失败，请刷新重试。")));
         };
         document.head.appendChild(script);
       });

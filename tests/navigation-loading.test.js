@@ -12,7 +12,7 @@ function harness(defer = []) {
     conversationCourseId: "general", courseConversations: {}, expandedCourses: {}, scheduleItems: [],
     communityChannel: "all", communityChoices: {}, activeClassmateId: "", classmateChatOpen: false };
   let formDraft = "";
-  const context = vm.createContext({
+  const context = vm.createContext({ ui: require("../public/i18n"),
     state, URLSearchParams,
     setPage(page) {
       if (page === "tools" && state.tool === "email") { page = "email"; state.tool = "docs"; }

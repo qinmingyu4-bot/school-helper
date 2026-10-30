@@ -1,3 +1,4 @@
+const ui = window.StudyBridgeI18n;
 import { Editor, Extension } from "@tiptap/core";
 import { Fragment } from "@tiptap/pm/model";
 import { closeHistory } from "@tiptap/pm/history";
@@ -145,12 +146,12 @@ class Workspace {
         const latest = this.projects.find((p) => p.id === recovery.id);
         if (latest && latest.version !== recovery.version) {
           this.current.conflict = true;
-          this.status = "恢复了此浏览器的草稿；云端有更新，请另存副本。";
-        } else this.status = "已恢复此浏览器的未保存草稿";
+          this.status = ui.text("恢复了此浏览器的草稿；云端有更新，请另存副本。");
+        } else this.status = ui.text("已恢复此浏览器的未保存草稿");
       } else if (selected) {
         const { project } = await this.ctx.api("/api/office/" + selected.id);
         this.current = { ...project, dirty: false };
-        this.status = "已保存到云端";
+        this.status = ui.text("已保存到云端");
       } else this.newProject();
     } catch (error) {
       this.newProject();
@@ -184,7 +185,7 @@ class Workspace {
       kind: this.kind,
       name: copy
         ? this.current.name + " 副本"
-        : `未命名${{ docs: "文档", slides: "演示", sheets: "表格" }[this.kind]}`,
+        : ui.message`未命名${{ docs: ui.text("文档"), slides: ui.text("演示"), sheets: ui.text("表格") }[this.kind]}`,
       version: 0,
       model: copy ? clone(this.current.model) : Model.fresh(this.kind),
       dirty: true,
@@ -200,7 +201,7 @@ class Workspace {
     this.aiSource = null;
     this.aiError = "";
     this.aiNotice = "";
-    this.status = "尚未保存";
+    this.status = ui.text("尚未保存");
   }
   async open(id) {
     if (id === this.current?.id || this.switching) return;
@@ -210,7 +211,7 @@ class Workspace {
       this.capture();
       if (this.current?.dirty) await this.save();
       if (this.current?.dirty)
-        throw Error("当前修改尚未保存，请先保存或另存副本。");
+        throw Error(ui.text("当前修改尚未保存，请先保存或另存副本。"));
       const { project } = await this.ctx.api("/api/office/" + id);
       this.editor?.destroy();
       this.editor = null;
@@ -222,7 +223,7 @@ class Workspace {
       this.cell = "A1";
       this.elementId = "";
       this.docSelection = null;
-      this.status = "已保存到云端";
+      this.status = ui.text("已保存到云端");
       this.aiResult = null;
       this.aiSource = null;
       this.aiError = "";
@@ -239,7 +240,7 @@ class Workspace {
     this.host = host;
     if (!this.ready) {
       host.innerHTML =
-        '<div class="office-loading" role="status">正在打开编辑器…</div>';
+        ui.markup('<div class="office-loading" role="status">正在打开编辑器…</div>');
       if (!this.initializing) this.initializing = this.init();
     } else this.draw();
   }
@@ -277,7 +278,7 @@ class Workspace {
   changed() {
     this.current.dirty = true;
     this.current.edits = (this.current.edits || 0) + 1;
-    this.status = "未保存的修改";
+    this.status = ui.text("未保存的修改");
     this.schedule();
     this.updateStatus();
     if (this.kind !== "docs" && this.aiResult) this.refreshAI();
@@ -299,7 +300,7 @@ class Workspace {
       });
       this.backupError = "";
     } catch {
-      this.backupError = "浏览器草稿空间不足，请点击保存或导出。";
+      this.backupError = ui.text("浏览器草稿空间不足，请点击保存或导出。");
       this.updateStatus();
     }
   }
@@ -327,7 +328,7 @@ class Workspace {
       return;
     }
     current.saving = (async () => {
-      this.status = "正在保存到云端…";
+      this.status = ui.text("正在保存到云端…");
       this.updateStatus();
       await this.storeBackup(current);
       try {
@@ -353,7 +354,7 @@ class Workspace {
           ...this.projects.filter((p) => p.id !== project.id),
         ];
         if (this.current === current) {
-          this.status = current.dirty ? "还有修改待保存" : "已保存到云端";
+          this.status = current.dirty ? ui.text("还有修改待保存") : ui.text("已保存到云端");
           this.updateProjectPicker();
           localStorage.setItem(
             `office.last.${this.ctx.userId}.${this.kind}`,
@@ -367,7 +368,7 @@ class Workspace {
         if (error.status === 409) current.conflict = true;
         this.status =
           error.status === 409
-            ? "云端有更新，请另存副本以保留修改。"
+            ? ui.text("云端有更新，请另存副本以保留修改。")
             : "云端保存失败，草稿已保留：" + error.message;
         await this.storeBackup(current);
       } finally {
@@ -383,7 +384,7 @@ class Workspace {
     if (el) el.textContent = this.backupError || this.status || "";
     const count = this.host.querySelector("[data-doc-count]");
     if (count && this.editor)
-      count.textContent = `${this.editor.getText().length} 字符`;
+      count.textContent = ui.message`${this.editor.getText().length} 字符`;
   }
   updateProjectPicker() {
     const el = this.host?.querySelector("[data-project-picker]");
@@ -410,9 +411,9 @@ class Workspace {
     this.editor?.unmount();
     const doc = this.kind === "docs",
       slide = this.kind === "slides";
-    this.host.innerHTML = `<div class="office-topbar"><strong>${names[this.kind]}</strong><input class="office-name" data-name aria-label="作品名称" value="${esc(this.current.name)}"><label class="office-project-label">打开作品<select data-project-picker>${this.projectOptions()}</select></label><span class="office-top-actions">${button("new", "新建")}${button("import", "导入 " + formats[this.kind].toUpperCase())}${button("save", "保存")}${button("copy", "另存副本")}${button("export", "导出 " + formats[this.kind].toUpperCase())}</span></div>
+    this.host.innerHTML = ui.html`<div class="office-topbar"><strong>${names[this.kind]}</strong><input class="office-name" data-name aria-label="作品名称" value="${esc(this.current.name)}"><label class="office-project-label">打开作品<select data-project-picker>${this.projectOptions()}</select></label><span class="office-top-actions">${button("new", ui.text("新建"))}${button("import", ui.text("导入 ") + formats[this.kind].toUpperCase())}${button("save", ui.text("保存"))}${button("copy", ui.text("另存副本"))}${button("export", ui.text("导出 ") + formats[this.kind].toUpperCase())}</span></div>
    ${this.aiHTML()}
-   <div class="office-statusbar"><span data-save-status role="status"></span><span>${doc ? "<span data-doc-count></span>" : slide ? "16:9 · 可编辑文字和图片" : "支持公式与跨工作表引用"}</span></div>
+   <div class="office-statusbar"><span data-save-status role="status"></span><span>${doc ? "<span data-doc-count></span>" : slide ? ui.text("16:9 · 可编辑文字和图片") : ui.text("支持公式与跨工作表引用")}</span></div>
    ${this.current.importWarnings?.length ? `<div class="office-import-notice" role="status">${this.current.importWarnings.map(esc).join(" ")}</div>` : ""}
    <div class="office-layout"><div class="office-main">${doc ? this.docsHTML() : slide ? this.slidesHTML() : this.sheetsHTML()}</div></div><input data-office-image type="file" accept="image/png,image/jpeg,image/webp" hidden><input data-office-import type="file" accept=".${formats[this.kind]}" hidden>`;
     this.bind();
@@ -430,45 +431,45 @@ class Workspace {
   }
   docsHTML() {
     const s = this.current.model.settings;
-    return `<div class="office-toolbar" aria-label="文档排版">${button("undo", "撤销")}${button("redo", "重做")}${select("font", "字体", fonts, s.font)}${select("size", "字号", [10, 11, 12, 14, 16, 18, 20, 24, 28, 36, 48], s.size)}${button("bold", "B", 'title="粗体" aria-label="粗体"')}${button("italic", "I", 'title="斜体" aria-label="斜体"')}${button("underline", "U", 'title="下划线" aria-label="下划线"')}${select(
+    return ui.html`<div class="office-toolbar" aria-label="文档排版">${button("undo", ui.text("撤销"))}${button("redo", ui.text("重做"))}${select("font", ui.text("字体"), fonts, s.font)}${select("size", ui.text("字号"), [10, 11, 12, 14, 16, 18, 20, 24, 28, 36, 48], s.size)}${button("bold", "B", ui.text('title="粗体" aria-label="粗体"'))}${button("italic", "I", ui.text('title="斜体" aria-label="斜体"'))}${button("underline", "U", ui.text('title="下划线" aria-label="下划线"'))}${select(
       "block",
-      "段落",
+      ui.text("段落"),
       [
-        ["paragraph", "正文"],
-        ["1", "标题 1"],
-        ["2", "标题 2"],
-        ["3", "标题 3"],
+        ["paragraph", ui.text("正文")],
+        ["1", ui.text("标题 1")],
+        ["2", ui.text("标题 2")],
+        ["3", ui.text("标题 3")],
       ],
       "paragraph",
     )}${select(
       "align",
-      "对齐",
+      ui.text("对齐"),
       [
-        ["left", "左对齐"],
-        ["center", "居中"],
-        ["right", "右对齐"],
-        ["justify", "两端对齐"],
+        ["left", ui.text("左对齐")],
+        ["center", ui.text("居中")],
+        ["right", ui.text("右对齐")],
+        ["justify", ui.text("两端对齐")],
       ],
       "left",
     )}${select(
       "line",
-      "行距",
+      ui.text("行距"),
       [
-        ["1", "单倍"],
-        ["1.15", "1.15 倍"],
-        ["1.5", "1.5 倍"],
-        ["2", "Double · 双倍"],
-        ["3", "3 倍"],
+        ["1", ui.text("单倍")],
+        ["1.15", ui.text("1.15 倍")],
+        ["1.5", ui.text("1.5 倍")],
+        ["2", ui.text("Double · 双倍")],
+        ["3", ui.text("3 倍")],
       ],
       s.line,
-    )}${button("bullet", "项目符号")}${button("numbered", "编号")}<label>文字色<input data-setting="textColor" type="color" value="#172d42"></label>${button("image", "插入图片")}${button("print", "打印 / PDF")}</div>
-  <div class="office-page-settings">${select("paper", "纸张", ["A4", "Letter"], s.paper)}${select(
+    )}${button("bullet", ui.text("项目符号"))}${button("numbered", ui.text("编号"))}<label>文字色<input data-setting="textColor" type="color" value="#172d42"></label>${button("image", ui.text("插入图片"))}${button("print", ui.text("打印 / PDF"))}</div>
+  <div class="office-page-settings">${select("paper", ui.text("纸张"), ["A4", "Letter"], s.paper)}${select(
     "margin",
-    "页边距",
+    ui.text("页边距"),
     [
       ["15", "15 mm"],
       ["20", "20 mm"],
-      ["25.4", "1 英寸"],
+      ["25.4", ui.text("1 英寸")],
       ["30", "30 mm"],
     ],
     s.margin,
@@ -497,8 +498,8 @@ class Workspace {
       content: this.current.model.content,
       editorProps: {
         attributes: {
-          "aria-label": "论文正文",
-          "data-placeholder": "从这里开始写作…",
+          "aria-label": ui.text("论文正文"),
+          "data-placeholder": ui.text("从这里开始写作…"),
           spellcheck: "true",
         },
       },
@@ -564,7 +565,7 @@ class Workspace {
     }
   }
   slidesHTML() {
-    return `<div class="office-toolbar" aria-label="演示工具">${button("undo", "撤销")}${button("redo", "重做")}${button("slide-add", "＋ 新幻灯片")}${button("slide-copy", "复制本页")}${button("slide-up", "上移一页")}${button("slide-down", "下移一页")}${button("slide-delete", "删除本页")}${button("text-add", "插入文字框")}${button("image", "插入图片")}${button("present", "▶ 演示")}</div><div class="office-slides-layout"><nav class="office-thumbnails" aria-label="幻灯片列表"></nav><div class="office-slide-work"><div class="office-stage-wrap"><div class="office-stage" data-stage aria-label="幻灯片画布"></div></div><label class="office-notes">演讲备注<textarea data-notes placeholder="这一页的讲稿与备注"></textarea></label></div><aside class="office-inspector" aria-label="幻灯片属性"></aside></div>`;
+    return ui.html`<div class="office-toolbar" aria-label="演示工具">${button("undo", ui.text("撤销"))}${button("redo", ui.text("重做"))}${button("slide-add", ui.text("＋ 新幻灯片"))}${button("slide-copy", ui.text("复制本页"))}${button("slide-up", ui.text("上移一页"))}${button("slide-down", ui.text("下移一页"))}${button("slide-delete", ui.text("删除本页"))}${button("text-add", ui.text("插入文字框"))}${button("image", ui.text("插入图片"))}${button("present", ui.text("▶ 演示"))}</div><div class="office-slides-layout"><nav class="office-thumbnails" aria-label="幻灯片列表"></nav><div class="office-slide-work"><div class="office-stage-wrap"><div class="office-stage" data-stage aria-label="幻灯片画布"></div></div><label class="office-notes">演讲备注<textarea data-notes placeholder="这一页的讲稿与备注"></textarea></label></div><aside class="office-inspector" aria-label="幻灯片属性"></aside></div>`;
   }
   slide() {
     return (
@@ -583,7 +584,7 @@ class Workspace {
     stage.innerHTML = slide.elements
       .map(
         (el) =>
-          `<div class="office-slide-element ${el.id === this.elementId ? "is-selected" : ""}" data-element="${esc(el.id)}" tabindex="0" aria-label="${el.type === "image" ? "图片" : "文字框"}" style="left:${el.x}%;top:${el.y}%;width:${el.w}%;height:${el.h}%;">${el.type === "image" ? `<img src="${esc(el.src)}" alt="幻灯片图片" draggable="false">` : `<div class="office-slide-text" data-element-text="${esc(el.id)}" style="font-family:${esc(el.font)};font-size:${el.size / 9.6}cqw;color:${el.color};font-weight:${el.bold ? 700 : 400};text-align:${el.align};">${esc(el.text)}</div>`}<span class="office-resize" data-resize aria-label="拖动调整大小"></span></div>`,
+          ui.html`<div class="office-slide-element ${el.id === this.elementId ? "is-selected" : ""}" data-element="${esc(el.id)}" tabindex="0" aria-label="${el.type === "image" ? ui.text("图片") : ui.text("文字框")}" style="left:${el.x}%;top:${el.y}%;width:${el.w}%;height:${el.h}%;">${el.type === "image" ? ui.html`<img src="${esc(el.src)}" alt="幻灯片图片" draggable="false">` : `<div class="office-slide-text" data-element-text="${esc(el.id)}" style="font-family:${esc(el.font)};font-size:${el.size / 9.6}cqw;color:${el.color};font-weight:${el.bold ? 700 : 400};text-align:${el.align};">${esc(el.text)}</div>`}<span class="office-resize" data-resize aria-label="拖动调整大小"></span></div>`,
       )
       .join("");
     this.host.querySelector("[data-notes]").value = slide.notes;
@@ -595,7 +596,7 @@ class Workspace {
       nav.innerHTML = this.current.model.slides
         .map(
           (slide, i) =>
-            `<button data-slide="${i}" class="${i === this.slideIndex ? "selected" : ""}" aria-label="第 ${i + 1} 页"><small>${i + 1}</small><span class="office-thumb-canvas" style="background:${slide.background}">${slide.elements.map((el) => `<div style="position:absolute;left:${el.x}%;top:${el.y}%;width:${el.w}%;height:${el.h}%;overflow:hidden;${el.type === "text" ? `font-family:${esc(el.font)};font-size:${el.size / 9.6}cqw;color:${el.color};font-weight:${el.bold ? 700 : 400};text-align:${el.align};white-space:pre-wrap;` : ""}">${el.type === "image" ? `<img src="${esc(el.src)}" alt="" style="width:100%;height:100%;">` : esc(el.text)}</div>`).join("")}</span></button>`,
+            ui.html`<button data-slide="${i}" class="${i === this.slideIndex ? "selected" : ""}" aria-label="第 ${i + 1} 页"><small>${i + 1}</small><span class="office-thumb-canvas" style="background:${slide.background}">${slide.elements.map((el) => `<div style="position:absolute;left:${el.x}%;top:${el.y}%;width:${el.w}%;height:${el.h}%;overflow:hidden;${el.type === "text" ? `font-family:${esc(el.font)};font-size:${el.size / 9.6}cqw;color:${el.color};font-weight:${el.bold ? 700 : 400};text-align:${el.align};white-space:pre-wrap;` : ""}">${el.type === "image" ? `<img src="${esc(el.src)}" alt="" style="width:100%;height:100%;">` : esc(el.text)}</div>`).join("")}</span></button>`,
         )
         .join("");
   }
@@ -605,42 +606,42 @@ class Workspace {
     const input = (key, label, value, type = "number", limits = "") =>
       `<label>${label}<input data-setting="${key}" type="${type}" value="${esc(value)}" ${limits}></label>`;
     this.host.querySelector(".office-inspector").innerHTML =
-      `<h3>第 ${this.slideIndex + 1} 页</h3>${input("slideBackground", "背景", slide.background, "color")}${select(
+      ui.html`<h3>第 ${this.slideIndex + 1} 页</h3>${input("slideBackground", ui.text("背景"), slide.background, "color")}${select(
         "transition",
-        "转场",
+        ui.text("转场"),
         [
-          ["none", "无"],
-          ["fade", "淡入淡出"],
-          ["push", "推进"],
-          ["wipe", "擦除"],
+          ["none", ui.text("无")],
+          ["fade", ui.text("淡入淡出")],
+          ["push", ui.text("推进")],
+          ["wipe", ui.text("擦除")],
         ],
         slide.transition,
       )}${select(
         "duration",
-        "转场时长",
+        ui.text("转场时长"),
         [
-          ["0.3", "0.3 秒"],
-          ["0.6", "0.6 秒"],
-          ["1.2", "1.2 秒"],
+          ["0.3", ui.text("0.3 秒")],
+          ["0.6", ui.text("0.6 秒")],
+          ["1.2", ui.text("1.2 秒")],
         ],
         slide.duration,
-      )}${button("present", "预览转场")}${
+      )}${button("present", ui.text("预览转场"))}${
         el
-          ? `<hr><h3>${el.type === "image" ? "图片" : "文字框"}</h3>${
+          ? `<hr><h3>${el.type === "image" ? ui.text("图片") : ui.text("文字框")}</h3>${
               el.type === "text"
-                ? `${select("slideFont", "字体", fonts, el.font)}${input("slideSize", "字号", el.size, "number", 'min="8" max="96"')}${input("slideColor", "文字色", el.color, "color")}${button("slide-bold", el.bold ? "取消粗体" : "粗体")}${select(
+                ? `${select("slideFont", ui.text("字体"), fonts, el.font)}${input("slideSize", ui.text("字号"), el.size, "number", 'min="8" max="96"')}${input("slideColor", ui.text("文字色"), el.color, "color")}${button("slide-bold", el.bold ? ui.text("取消粗体") : ui.text("粗体"))}${select(
                     "slideAlign",
-                    "对齐",
+                    ui.text("对齐"),
                     [
-                      ["left", "左对齐"],
-                      ["center", "居中"],
-                      ["right", "右对齐"],
+                      ["left", ui.text("左对齐")],
+                      ["center", ui.text("居中")],
+                      ["right", ui.text("右对齐")],
                     ],
                     el.align,
                   )}`
                 : ""
-            }<div class="office-geometry">${input("x", "X %", el.x, "number", 'min="0" max="95" step="0.5"')}${input("y", "Y %", el.y, "number", 'min="0" max="95" step="0.5"')}${input("w", "宽 %", el.w, "number", 'min="3" max="100" step="0.5"')}${input("h", "高 %", el.h, "number", 'min="3" max="100" step="0.5"')}</div>${button("element-front", "置于顶层")}${button("element-delete", "删除元素")}`
-          : "<p>单击选择元素，拖动移动，右下角调整大小；双击文字框编辑。</p>"
+            }<div class="office-geometry">${input("x", "X %", el.x, "number", 'min="0" max="95" step="0.5"')}${input("y", "Y %", el.y, "number", 'min="0" max="95" step="0.5"')}${input("w", ui.text("宽 %"), el.w, "number", 'min="3" max="100" step="0.5"')}${input("h", ui.text("高 %"), el.h, "number", 'min="3" max="100" step="0.5"')}</div>${button("element-front", ui.text("置于顶层"))}${button("element-delete", ui.text("删除元素"))}`
+          : ui.markup("<p>单击选择元素，拖动移动，右下角调整大小；双击文字框编辑。</p>")
       }`;
   }
   selectElement(id) {
@@ -656,27 +657,27 @@ class Workspace {
     const sheet =
       this.current.model.sheets[this.sheetIndex] ||
       this.current.model.sheets[0];
-    return `<div class="office-toolbar" aria-label="表格工具">${button("undo", "撤销")}${button("redo", "重做")}${button("rows", "＋ 20 行")}${button("cols", "＋ 1 列")}${button("sheet-add", "新工作表")}${button("sheet-rename", "重命名")}${button("sheet-delete", "删除工作表")}${button("cell-bold", "粗体")}${select("cellSize", "字号", [10, 11, 12, 14, 16, 18, 24], 12)}<label>文字色<input data-setting="cellColor" type="color" value="#172d42"></label>${select(
+    return ui.html`<div class="office-toolbar" aria-label="表格工具">${button("undo", ui.text("撤销"))}${button("redo", ui.text("重做"))}${button("rows", ui.text("＋ 20 行"))}${button("cols", ui.text("＋ 1 列"))}${button("sheet-add", ui.text("新工作表"))}${button("sheet-rename", ui.text("重命名"))}${button("sheet-delete", ui.text("删除工作表"))}${button("cell-bold", ui.text("粗体"))}${select("cellSize", ui.text("字号"), [10, 11, 12, 14, 16, 18, 24], 12)}<label>文字色<input data-setting="cellColor" type="color" value="#172d42"></label>${select(
       "cellFormat",
-      "数字格式",
+      ui.text("数字格式"),
       [
-        ["general", "常规"],
-        ["number", "小数"],
-        ["currency", "货币"],
-        ["percent", "百分比"],
+        ["general", ui.text("常规")],
+        ["number", ui.text("小数")],
+        ["currency", ui.text("货币")],
+        ["percent", ui.text("百分比")],
       ],
       "general",
     )}<label>填充色<input data-setting="cellBackground" type="color" value="#ffffff"></label>${select(
       "function",
-      "函数示例",
+      ui.text("函数示例"),
       [
-        ["", "选择函数…"],
-        ["=SUM(A1:A10)", "SUM · 求和"],
-        ["=AVERAGE(A1:A10)", "AVERAGE · 平均值"],
-        ['=IF(A1>60,"通过","未通过")', "IF · 条件"],
-        ["=COUNT(A1:A10)", "COUNT · 计数"],
-        ["=ROUND(A1,2)", "ROUND · 舍入"],
-        ["=VLOOKUP(A1,A2:C10,2,FALSE)", "VLOOKUP · 查找"],
+        ["", ui.text("选择函数…")],
+        ["=SUM(A1:A10)", ui.text("SUM · 求和")],
+        ["=AVERAGE(A1:A10)", ui.text("AVERAGE · 平均值")],
+        [ui.text('=IF(A1>60,"通过","未通过")'), ui.text("IF · 条件")],
+        ["=COUNT(A1:A10)", ui.text("COUNT · 计数")],
+        ["=ROUND(A1,2)", ui.text("ROUND · 舍入")],
+        ["=VLOOKUP(A1,A2:C10,2,FALSE)", ui.text("VLOOKUP · 查找")],
       ],
       "",
     )}</div><div class="office-formula-bar"><span data-cell-name>${this.cell}</span><b>fx</b><input data-formula maxlength="4000" aria-label="公式栏" placeholder="输入数值、文字或以 = 开头的公式"></div><div class="office-grid-scroll"><table class="office-grid" role="grid" aria-label="电子表格"><thead><tr><th></th>${Array.from({ length: sheet.cols }, (_, c) => `<th scope="col">${Model.col(c + 1)}</th>`).join("")}</tr></thead><tbody>${Array.from({ length: sheet.rows }, (_, r) => `<tr><th scope="row">${r + 1}</th>${Array.from({ length: sheet.cols }, (_, c) => `<td><input aria-label="${Model.col(c + 1)}${r + 1}" data-cell="${Model.col(c + 1)}${r + 1}" autocomplete="off" spellcheck="false" maxlength="4000"></td>`).join("")}</tr>`).join("")}</tbody></table></div><nav class="office-sheet-tabs" aria-label="工作表">${this.current.model.sheets.map((s, i) => `<button data-sheet="${i}" aria-pressed="${i === this.sheetIndex}">${esc(s.name)}</button>`).join("")}</nav><p class="office-formula-help">Enter / Tab 移动 · 可粘贴多行多列 · 支持 SUM、AVERAGE、IF、COUNT、ROUND、VLOOKUP 等函数，以及 Sheet2!A1 引用。</p>`;
@@ -744,7 +745,7 @@ class Workspace {
     if (label) label.textContent = this.cell;
   }
   setCell(value, key = this.cell) {
-    if (String(value).length > 4000) throw Error("单元格内容最多 4000 字符。");
+    if (String(value).length > 4000) throw Error(ui.text("单元格内容最多 4000 字符。"));
     const cell = (this.sheet().cells[key] ||= {
       value: "",
       style: {
@@ -761,38 +762,38 @@ class Workspace {
   }
   aiConfig() {
     return {
-      docs: { description: "你来写作，AI 按你的要求修改已有内容。", placeholder: "例如：把这段论证写得更严谨，保留我的观点和引用", scopes: [["document", "整篇文档"], ["selection", "选中文字"]], presets: [["润色表达", "润色表达，让行文更自然流畅，保留我的观点和引用。"], ["更学术严谨", "让论证和措辞更学术严谨，保留原意，不编造事实或引用。"], ["精简重复内容", "精简重复和冗余的表达，保留核心观点、数据与引用。"], ["翻译成英文", "翻译成自然、准确的学术英文，保留观点、数据和引用。"]] },
-      slides: { description: "按你的要求，直接修改已有幻灯片的内容、样式和转场。", placeholder: "例如：精简当前页的文字，突出结论，标题改为 36 号，并使用淡入转场", scopes: [["slide", "当前幻灯片"], ["presentation", "整份演示"], ["element", "选中元素"]], presets: [["精简文字", "精简现有文字，保留核心观点和引用，让文字适合现有文字框。"], ["统一样式", "统一所选范围的字体、配色和标题层级，保留文字内容和图片，不让元素超出页面。"], ["完善讲稿", "根据现有幻灯片内容，润色并完善演讲备注，不编造数据。"], ["淡入转场", "将所选幻灯片的转场设为淡入淡出，时长 0.6 秒，其他内容保持不变。"]] },
-      sheets: { description: "按你的要求，批量修改已有单元格的数据、公式和格式。", placeholder: "例如：在 C2:C10 计算每行 A 列乘 B 列的结果，将金额设为货币格式", scopes: [["sheet", "当前工作表"], ["range", "指定单元格区域"], ["cell", "当前单元格"], ["workbook", "整个工作簿"]], presets: [["整理数据", "整理现有文字数据中的多余空格和不一致格式，保留数据含义、数字与公式，不编造数据。"], ["修正公式", "检查并修正现有公式中的明显引用或计算错误，保留正确的公式和原始数据。"], ["统一格式", "根据现有内容统一表头和数据格式，表头加粗，数值采用合适的数字格式，不修改原始数据或公式。"], ["添加合计", "在现有数据下方的空单元格添加合适的 SUM 合计公式和合计标签，不覆盖现有内容。"]] }
+      docs: { description: ui.text("你来写作，AI 按你的要求修改已有内容。"), placeholder: ui.text("例如：把这段论证写得更严谨，保留我的观点和引用"), scopes: [["document", ui.text("整篇文档")], ["selection", ui.text("选中文字")]], presets: [[ui.text("润色表达"), ui.text("润色表达，让行文更自然流畅，保留我的观点和引用。")], [ui.text("更学术严谨"), ui.text("让论证和措辞更学术严谨，保留原意，不编造事实或引用。")], [ui.text("精简重复内容"), ui.text("精简重复和冗余的表达，保留核心观点、数据与引用。")], [ui.text("翻译成英文"), ui.text("翻译成自然、准确的学术英文，保留观点、数据和引用。")]] },
+      slides: { description: ui.text("按你的要求，直接修改已有幻灯片的内容、样式和转场。"), placeholder: ui.text("例如：精简当前页的文字，突出结论，标题改为 36 号，并使用淡入转场"), scopes: [["slide", ui.text("当前幻灯片")], ["presentation", ui.text("整份演示")], ["element", ui.text("选中元素")]], presets: [[ui.text("精简文字"), ui.text("精简现有文字，保留核心观点和引用，让文字适合现有文字框。")], [ui.text("统一样式"), ui.text("统一所选范围的字体、配色和标题层级，保留文字内容和图片，不让元素超出页面。")], [ui.text("完善讲稿"), ui.text("根据现有幻灯片内容，润色并完善演讲备注，不编造数据。")], [ui.text("淡入转场"), ui.text("将所选幻灯片的转场设为淡入淡出，时长 0.6 秒，其他内容保持不变。")]] },
+      sheets: { description: ui.text("按你的要求，批量修改已有单元格的数据、公式和格式。"), placeholder: ui.text("例如：在 C2:C10 计算每行 A 列乘 B 列的结果，将金额设为货币格式"), scopes: [["sheet", ui.text("当前工作表")], ["range", ui.text("指定单元格区域")], ["cell", ui.text("当前单元格")], ["workbook", ui.text("整个工作簿")]], presets: [[ui.text("整理数据"), ui.text("整理现有文字数据中的多余空格和不一致格式，保留数据含义、数字与公式，不编造数据。")], [ui.text("修正公式"), ui.text("检查并修正现有公式中的明显引用或计算错误，保留正确的公式和原始数据。")], [ui.text("统一格式"), ui.text("根据现有内容统一表头和数据格式，表头加粗，数值采用合适的数字格式，不修改原始数据或公式。")], [ui.text("添加合计"), ui.text("在现有数据下方的空单元格添加合适的 SUM 合计公式和合计标签，不覆盖现有内容。")]] }
     }[this.kind];
   }
   staleMessage() {
-    return this.kind === "docs" ? "正文已更改，请重新预览，避免覆盖你刚写的内容。" : "内容已更改，请重新预览，避免覆盖你刚做的修改。";
+    return this.kind === "docs" ? ui.text("正文已更改，请重新预览，避免覆盖你刚写的内容。") : ui.text("内容已更改，请重新预览，避免覆盖你刚做的修改。");
   }
   aiScopeLabel() {
-    if (this.kind === "docs") return this.aiScope === "selection" ? "只修改选中文字" : "修改当前文档";
-    if (this.kind === "slides") return this.aiScope === "presentation" ? "整份演示" : `第 ${this.slideIndex + 1} 页${this.aiScope === "element" ? " · 选中元素" : ""}`;
-    return this.aiScope === "workbook" ? "整个工作簿" : `${this.sheet().name}${this.aiScope === "range" ? " · " + (this.aiRange.trim() || this.cell) : this.aiScope === "cell" ? " · " + this.cell : " · 当前工作表"}`;
+    if (this.kind === "docs") return this.aiScope === "selection" ? ui.text("只修改选中文字") : ui.text("修改当前文档");
+    if (this.kind === "slides") return this.aiScope === "presentation" ? ui.text("整份演示") : ui.message`第 ${this.slideIndex + 1} 页${this.aiScope === "element" ? ui.text(" · 选中元素") : ""}`;
+    return this.aiScope === "workbook" ? ui.text("整个工作簿") : `${this.sheet().name}${this.aiScope === "range" ? " · " + (this.aiRange.trim() || this.cell) : this.aiScope === "cell" ? " · " + this.cell : ui.text(" · 当前工作表")}`;
   }
   aiHTML() {
     const config = this.aiConfig(), stale = this.aiResult && !this.revisionCurrent();
     const edits = this.aiResult?.edits || this.aiResult?.changes || [];
-    const applyLabel = this.kind === "docs" ? this.aiSource?.scope === "selection" ? "应用到选中文字" : "应用到文档" : this.kind === "slides" ? "应用到演示" : "应用到表格";
-    return `<section class="office-ai office-ai-inline" aria-label="AI 赋能"><div class="office-ai-heading"><h3>AI 赋能</h3><p>${config.description}</p></div><div class="office-ai-compose"><label class="office-ai-request">想让 AI 怎样改进？<textarea data-ai-prompt rows="2" maxlength="4000" placeholder="${config.placeholder}">${esc(this.aiPrompt)}</textarea></label><label>修改范围<select data-ai-scope>${config.scopes.map(([value, label]) => `<option value="${value}" ${this.aiScope === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>${this.kind === "sheets" && this.aiScope === "range" ? `<label>单元格区域<input data-ai-range aria-label="AI 修改区域" maxlength="24" placeholder="例如 A1:D10" value="${esc(this.aiRange)}"></label>` : ""}${button("ai-generate", this.aiBusy ? "正在修改…" : "预览修改", this.aiBusy ? "disabled" : "")}</div><div class="office-ai-shortcuts"><span>快捷要求</span>${config.presets.map(([label], i) => button("ai-preset-" + i, label)).join("")}</div>${this.aiResult ? `<div class="office-ai-preview"><div class="office-ai-heading"><strong>${edits.length ? `修改预览 · ${edits.length} 处` : "AI 认为无需修改"}</strong><span>${esc(this.aiSource?.label || "")}</span></div><div data-ai-result aria-live="polite">${this.aiResultHTML()}</div><div class="office-ai-preview-actions">${edits.length ? button("ai-apply", applyLabel, stale || this.aiBusy ? "disabled" : "") : ""}${button("ai-discard", "放弃这次修改")}</div></div>` : ""}<p class="office-ai-warning" role="alert">${esc(this.aiError || (stale ? this.staleMessage() : ""))}</p><p class="office-ai-hint" role="status">${esc(this.aiNotice || "AI 只在你点击后参与；预览不会改动内容，应用后可撤销。")}</p></section>`;
+    const applyLabel = this.kind === "docs" ? this.aiSource?.scope === "selection" ? ui.text("应用到选中文字") : ui.text("应用到文档") : this.kind === "slides" ? ui.text("应用到演示") : ui.text("应用到表格");
+    return ui.html`<section class="office-ai office-ai-inline" aria-label="AI 赋能"><div class="office-ai-heading"><h3>AI 赋能</h3><p>${config.description}</p></div><div class="office-ai-compose"><label class="office-ai-request">想让 AI 怎样改进？<textarea data-ai-prompt rows="2" maxlength="4000" placeholder="${config.placeholder}">${esc(this.aiPrompt)}</textarea></label><label>修改范围<select data-ai-scope>${config.scopes.map(([value, label]) => `<option value="${value}" ${this.aiScope === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>${this.kind === "sheets" && this.aiScope === "range" ? ui.html`<label>单元格区域<input data-ai-range aria-label="AI 修改区域" maxlength="24" placeholder="例如 A1:D10" value="${esc(this.aiRange)}"></label>` : ""}${button("ai-generate", this.aiBusy ? ui.text("正在修改…") : ui.text("预览修改"), this.aiBusy ? "disabled" : "")}</div><div class="office-ai-shortcuts"><span>快捷要求</span>${config.presets.map(([label], i) => button("ai-preset-" + i, label)).join("")}</div>${this.aiResult ? `<div class="office-ai-preview"><div class="office-ai-heading"><strong>${edits.length ? ui.message`修改预览 · ${edits.length} 处` : ui.text("AI 认为无需修改")}</strong><span>${esc(this.aiSource?.label || "")}</span></div><div data-ai-result aria-live="polite">${this.aiResultHTML()}</div><div class="office-ai-preview-actions">${edits.length ? button("ai-apply", applyLabel, stale || this.aiBusy ? "disabled" : "") : ""}${button("ai-discard", ui.text("放弃这次修改"))}</div></div>` : ""}<p class="office-ai-warning" role="alert">${esc(this.aiError || (stale ? this.staleMessage() : ""))}</p><p class="office-ai-hint" role="status">${esc(this.aiNotice || ui.text("AI 只在你点击后参与；预览不会改动内容，应用后可撤销。"))}</p></section>`;
   }
   aiResultHTML() {
     if (this.aiResult.edits) {
       return this.aiResult.edits.map((edit) => {
         const target = this.aiSource?.targets.find((block) => block.id === edit.id);
-        return `<section class="office-ai-change"><div><small>修改前</small><pre>${esc(target?.text || "")}</pre></div><div><small>修改后</small><pre>${esc(edit.text || "（删除这段文字）")}</pre></div></section>`;
+        return ui.html`<section class="office-ai-change"><div><small>修改前</small><pre>${esc(target?.text || "")}</pre></div><div><small>修改后</small><pre>${esc(edit.text || ui.text("（删除这段文字）"))}</pre></div></section>`;
       }).join("");
     }
-    const labels = { text: "文字", font: "字体", size: "字号", color: "文字色", bold: "粗体", align: "对齐", x: "水平位置 %", y: "垂直位置 %", w: "宽度 %", h: "高度 %", notes: "演讲备注", background: "背景色", transition: "转场", duration: "转场时长（秒）", value: "内容 / 公式", format: "数字格式" };
-    const values = { none: "无", fade: "淡入淡出", push: "推进", wipe: "擦除", general: "常规", number: "小数", currency: "货币", percent: "百分比", left: "左对齐", center: "居中", right: "右对齐" };
+    const labels = { text: ui.text("文字"), font: ui.text("字体"), size: ui.text("字号"), color: ui.text("文字色"), bold: ui.text("粗体"), align: ui.text("对齐"), x: ui.text("水平位置 %"), y: ui.text("垂直位置 %"), w: ui.text("宽度 %"), h: ui.text("高度 %"), notes: ui.text("演讲备注"), background: ui.text("背景色"), transition: ui.text("转场"), duration: ui.text("转场时长（秒）"), value: ui.text("内容 / 公式"), format: ui.text("数字格式") };
+    const values = { none: ui.text("无"), fade: ui.text("淡入淡出"), push: ui.text("推进"), wipe: ui.text("擦除"), general: ui.text("常规"), number: ui.text("小数"), currency: ui.text("货币"), percent: ui.text("百分比"), left: ui.text("左对齐"), center: ui.text("居中"), right: ui.text("右对齐") };
     const describe = (set, before) => Object.entries(set).map(([key, next]) => {
       if (key === "style") return describe(next, before ? before.style || {} : undefined);
       const value = before ? before[key] : next;
-      const display = typeof value === "boolean" ? value ? "是" : "否" : value === "" || value == null ? "（空 / 默认）" : ["transition", "format", "align"].includes(key) ? values[value] || value : value;
+      const display = typeof value === "boolean" ? value ? ui.text("是") : ui.text("否") : value === "" || value == null ? ui.text("（空 / 默认）") : ["transition", "format", "align"].includes(key) ? values[value] || value : value;
       return `${labels[key]}：${display}`;
     }).join("\n");
     const calc = this.kind === "sheets" && calculator(this.aiSource.preview);
@@ -801,14 +802,14 @@ class Workspace {
       if (this.kind === "slides") {
         const slide = this.aiSource.content.slides.find((s) => s.id === change.slideId);
         before = change.elementId ? slide.elements.find((e) => e.id === change.elementId) : slide;
-        label = `第 ${Number(change.slideId.slice(1)) + 1} 页 · ${change.elementId ? (before.type === "image" ? "图片 " : "文字框 ") + (Number(change.elementId.slice(1)) + 1) : "页面与备注"}`;
+        label = ui.message`第 ${Number(change.slideId.slice(1)) + 1} 页 · ${change.elementId ? (before.type === "image" ? ui.text("图片 ") : ui.text("文字框 ")) + (Number(change.elementId.slice(1)) + 1) : ui.text("页面与备注")}`;
       } else {
         const sheet = this.aiSource.content.sheets.find((s) => s.id === change.sheetId);
         before = sheet.cells[change.cell] || { value: "", style: {} };
         label = `${sheet.name} · ${change.cell}`;
         if (change.set.value?.startsWith("=")) after += "\n计算结果：" + calc.display(sheet.name, change.cell);
       }
-      return `<section class="office-ai-change"><div><small>${esc(label)} · 修改前</small><pre>${esc(describe(change.set, before))}</pre></div><div><small>${esc(label)} · 修改后</small><pre>${esc(after)}</pre></div></section>`;
+      return ui.html`<section class="office-ai-change"><div><small>${esc(label)} · 修改前</small><pre>${esc(describe(change.set, before))}</pre></div><div><small>${esc(label)} · 修改后</small><pre>${esc(after)}</pre></div></section>`;
     }).join("");
   }
   refreshAI() {
@@ -821,7 +822,7 @@ class Workspace {
   }
   contentTargets() {
     if (this.kind === "slides") {
-      if (this.aiScope === "element" && !this.element()) throw Error("请先单击选中要修改的文字框或图片。");
+      if (this.aiScope === "element" && !this.element()) throw Error(ui.text("请先单击选中要修改的文字框或图片。"));
       return contentRevisionSource("slides", { slides: this.current.model.slides.flatMap((slide, i) => {
         if (this.aiScope !== "presentation" && i !== this.slideIndex) return [];
         return [{ id: "s" + i, editable: this.aiScope !== "element", notes: slide.notes, background: slide.background, transition: slide.transition, duration: slide.duration, elements: slide.elements.flatMap((el, n) => {
@@ -835,7 +836,7 @@ class Workspace {
       if (this.aiScope !== "workbook" && i !== this.sheetIndex) return [];
       const input = this.aiScope === "range" ? (this.aiRange.trim() || this.cell).toUpperCase().replace(/\$/g, "") : this.cell;
       const [from, to = from] = input.split(":");
-      if (this.aiScope === "range" && input.split(":").length > 2) throw Error("请使用有效的单元格区域，例如 A1:D10。");
+      if (this.aiScope === "range" && input.split(":").length > 2) throw Error(ui.text("请使用有效的单元格区域，例如 A1:D10。"));
       const range = ["range", "cell"].includes(this.aiScope) ? { from, to } : { from: "A1", to: Model.col(sheet.cols) + sheet.rows };
       rangeBounds(range, sheet.rows, sheet.cols);
       return [{ id: "s" + i, name: sheet.name, rows: sheet.rows, cols: sheet.cols, range, cells: Object.fromEntries(Object.entries(sheet.cells).filter(([key]) => inRange(key, range, sheet.rows, sheet.cols)).map(([key, cell]) => [key, { value: cell.value, style: cell.style || {} }])) }];
@@ -861,14 +862,14 @@ class Workspace {
       this.cell = first.cell;
     }
     this.aiResult = null;
-    this.aiNotice = "已应用到" + (this.kind === "slides" ? "现有幻灯片" : "现有表格") + "。可点击「撤销」恢复修改前的内容。";
+    this.aiNotice = "已应用到" + (this.kind === "slides" ? ui.text("现有幻灯片") : ui.text("现有表格")) + "。可点击「撤销」恢复修改前的内容。";
     this.changed();
     this.draw();
   }
   revisionTargets() {
     const { doc, selection } = this.editor.state;
     if (this.aiScope === "selection" && selection.empty)
-      throw Error("请先在正文中选中需要修改的文字。");
+      throw Error(ui.text("请先在正文中选中需要修改的文字。"));
     const targets = [];
     doc.descendants((node, position) => {
       if (!node.isTextblock) return;
@@ -883,7 +884,7 @@ class Workspace {
   applyRevision() {
     if (!this.aiResult?.edits?.length) return;
     if (!this.revisionCurrent()) {
-      this.aiError = "正文已更改，请重新预览，避免覆盖你刚写的内容。";
+      this.aiError = ui.text("正文已更改，请重新预览，避免覆盖你刚写的内容。");
       this.refreshAI();
       return;
     }
@@ -916,7 +917,7 @@ class Workspace {
     // Separate subsequent typing from the AI change in undo history too.
     this.editor.view.dispatch(closeHistory(this.editor.state.tr));
     this.aiResult = null;
-    this.aiNotice = "已应用到正文。可点击「撤销」恢复修改前的内容。";
+    this.aiNotice = ui.text("已应用到正文。可点击「撤销」恢复修改前的内容。");
     this.refreshAI();
   }
   async assist() {
@@ -926,7 +927,7 @@ class Workspace {
     this.aiNotice = "";
     let targets, content;
     try {
-      if (!this.aiPrompt.trim()) throw Error("请填写 AI 辅助要求。");
+      if (!this.aiPrompt.trim()) throw Error(ui.text("请填写 AI 辅助要求。"));
       if (this.kind === "docs") targets = this.revisionTargets();
       else content = this.contentTargets();
     } catch (error) {
@@ -970,7 +971,7 @@ class Workspace {
       !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
       file.size > 12 * 1024 * 1024
     )
-      throw Error("请使用 12 MB 以内的 PNG、JPEG 或 WebP 图片。");
+      throw Error(ui.text("请使用 12 MB 以内的 PNG、JPEG 或 WebP 图片。"));
     const project = this.current,
       bitmap = await createImageBitmap(file);
     const scale = Math.min(1, 1400 / bitmap.width, 1400 / bitmap.height),
@@ -992,7 +993,7 @@ class Workspace {
       this.editor.chain().focus().setImage({ src, alt: file.name }).run();
     } else {
       if (this.slide().elements.length >= 100)
-        throw Error("每页最多 100 个元素。");
+        throw Error(ui.text("每页最多 100 个元素。"));
       this.checkpoint();
       const w = 50,
         h = Math.min(75, (((w * 16) / 9) * canvas.height) / canvas.width);
@@ -1005,7 +1006,7 @@ class Workspace {
   }
   async export() {
     this.capture();
-    this.status = "正在导出…";
+    this.status = ui.text("正在导出…");
     this.updateStatus();
     try {
       const res = await fetch("/api/office/export", {
@@ -1019,7 +1020,7 @@ class Workspace {
           model: this.current.model,
         }),
       });
-      if (!res.ok) throw Error((await res.json()).error || "导出失败");
+      if (!res.ok) throw Error((await res.json()).error || ui.text("导出失败"));
       const blob = await res.blob(),
         url = URL.createObjectURL(blob),
         a = document.createElement("a");
@@ -1028,8 +1029,8 @@ class Workspace {
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
       this.status = this.current.dirty
-        ? "导出完成，修改待保存"
-        : "导出完成，已保存到云端";
+        ? ui.text("导出完成，修改待保存")
+        : ui.text("导出完成，已保存到云端");
     } catch (error) {
       this.status = error.message;
     }
@@ -1037,20 +1038,20 @@ class Workspace {
   }
   async import(file) {
     if (!file || this.switching) return;
-    if (file.size > 12 * 1024 * 1024) throw Error("导入文件最多 12 MB。");
+    if (file.size > 12 * 1024 * 1024) throw Error(ui.text("导入文件最多 12 MB。"));
     this.switching = true;
     if (this.host) this.host.inert = true;
     try {
       if (this.current.dirty) await this.save();
       if (this.current.dirty)
-        throw Error("请先保存当前作品或另存副本，再导入。");
+        throw Error(ui.text("请先保存当前作品或另存副本，再导入。"));
       const current = this.current;
-      this.status = "正在导入…";
+      this.status = ui.text("正在导入…");
       this.updateStatus();
       const data = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(Error("无法读取文件"));
+        reader.onerror = () => reject(Error(ui.text("无法读取文件")));
         reader.readAsDataURL(file);
       });
       const result = await this.ctx.api("/api/office/import", {
@@ -1063,7 +1064,7 @@ class Workspace {
         },
       });
       if (current !== this.current)
-        throw Error("已切换作品，请重新选择要导入的文件。");
+        throw Error(ui.text("已切换作品，请重新选择要导入的文件。"));
       this.newProject();
       this.current.name = result.name;
       this.current.model = result.model;
@@ -1097,11 +1098,11 @@ class Workspace {
     overlay.className = "office-presentation";
     overlay.tabIndex = -1;
     overlay.setAttribute("role", "dialog");
-    overlay.setAttribute("aria-label", "幻灯片演示");
+    overlay.setAttribute("aria-label", ui.text("幻灯片演示"));
     overlay.setAttribute("aria-modal", "true");
     const paint = () => {
       const slide = this.current.model.slides[index];
-      overlay.innerHTML = `<div class="office-presentation-controls">${button("previous", "← 上一页")}<span>${index + 1} / ${this.current.model.slides.length}</span>${button("next", "下一页 →")}${button("close", "退出演示 · Esc")}</div><div class="office-presentation-stage office-stage transition-${slide.transition}" style="background:${slide.background};--duration:${slide.duration}s">${slide.elements.map((el) => `<div style="position:absolute;left:${el.x}%;top:${el.y}%;width:${el.w}%;height:${el.h}%;overflow:hidden;${el.type === "text" ? `font-family:${esc(el.font)};font-size:${el.size / 9.6}cqw;color:${el.color};font-weight:${el.bold ? 700 : 400};text-align:${el.align};white-space:pre-wrap;` : ""}">${el.type === "image" ? `<img src="${esc(el.src)}" style="width:100%;height:100%" alt="幻灯片图片">` : esc(el.text)}</div>`).join("")}</div>`;
+      overlay.innerHTML = `<div class="office-presentation-controls">${button("previous", ui.text("← 上一页"))}<span>${index + 1} / ${this.current.model.slides.length}</span>${button("next", ui.text("下一页 →"))}${button("close", ui.text("退出演示 · Esc"))}</div><div class="office-presentation-stage office-stage transition-${slide.transition}" style="background:${slide.background};--duration:${slide.duration}s">${slide.elements.map((el) => `<div style="position:absolute;left:${el.x}%;top:${el.y}%;width:${el.w}%;height:${el.h}%;overflow:hidden;${el.type === "text" ? `font-family:${esc(el.font)};font-size:${el.size / 9.6}cqw;color:${el.color};font-weight:${el.bold ? 700 : 400};text-align:${el.align};white-space:pre-wrap;` : ""}">${el.type === "image" ? ui.html`<img src="${esc(el.src)}" style="width:100%;height:100%" alt="幻灯片图片">` : esc(el.text)}</div>`).join("")}</div>`;
     };
     const close = () => {
       overlay.remove();
@@ -1379,7 +1380,7 @@ class Workspace {
         rows.some((r) => r.length > 100) ||
         rows.flat().some((v) => v.length > 4000)
       ) {
-        this.status = "粘贴内容超过工作表限制。";
+        this.status = ui.text("粘贴内容超过工作表限制。");
         this.updateStatus();
         return;
       }
@@ -1387,7 +1388,7 @@ class Workspace {
         start.row + rows.length - 1 > 1000 ||
         start.col + Math.max(...rows.map((r) => r.length)) - 1 > 100
       ) {
-        this.status = "粘贴范围超过 1000 行或 100 列。";
+        this.status = ui.text("粘贴范围超过 1000 行或 100 列。");
         this.updateStatus();
         return;
       }
@@ -1541,7 +1542,7 @@ class Workspace {
       if (action === "new" && this.current.dirty) {
         await this.save();
         if (this.current.dirty)
-          throw Error("请先保存当前作品，或选择另存副本。");
+          throw Error(ui.text("请先保存当前作品，或选择另存副本。"));
       }
       this.newProject(action === "copy");
       this.aiResult = null;
@@ -1631,7 +1632,7 @@ class Workspace {
         slide = this.slide(),
         el = this.element();
       if (action === "slide-add" || action === "slide-copy") {
-        if (slides.length >= 100) throw Error("演示最多 100 页。");
+        if (slides.length >= 100) throw Error(ui.text("演示最多 100 页。"));
         const next =
           action === "slide-copy" ? clone(slide) : Model.blankSlide();
         next.id = Model.id();
@@ -1660,7 +1661,7 @@ class Workspace {
         this.slideIndex++;
       }
       if (action === "text-add") {
-        if (slide.elements.length >= 100) throw Error("每页最多 100 个元素。");
+        if (slide.elements.length >= 100) throw Error(ui.text("每页最多 100 个元素。"));
         const next = Model.textBox();
         slide.elements.push(next);
         this.elementId = next.id;
@@ -1684,7 +1685,7 @@ class Workspace {
     if (action === "cols") sheet.cols = Math.min(100, sheet.cols + 1);
     if (action === "sheet-add") {
       if (this.current.model.sheets.length >= 10)
-        throw Error("最多 10 个工作表。");
+        throw Error(ui.text("最多 10 个工作表。"));
       let n = 1;
       while (this.current.model.sheets.some((s) => s.name === "Sheet" + n)) n++;
       this.current.model.sheets.push({
@@ -1698,7 +1699,7 @@ class Workspace {
       this.cell = "A1";
     }
     if (action === "sheet-rename") {
-      const name = prompt("工作表名称", sheet.name)?.trim();
+      const name = prompt(ui.text("工作表名称"), sheet.name)?.trim();
       if (!name) return;
       if (
         !/^[^\\/*?:\[\]]{1,31}$/.test(name) ||
@@ -1706,7 +1707,7 @@ class Workspace {
           (s) => s !== sheet && s.name.toLowerCase() === name.toLowerCase(),
         )
       )
-        throw Error("名称无效或重复。");
+        throw Error(ui.text("名称无效或重复。"));
       const old = sheet.name;
       sheet.name = name;
       for (const s of this.current.model.sheets)
@@ -1716,8 +1717,8 @@ class Workspace {
     }
     if (action === "sheet-delete") {
       if (this.current.model.sheets.length === 1)
-        throw Error("至少保留一个工作表。");
-      if (!confirm("删除当前工作表？引用此表的公式会显示错误。")) return;
+        throw Error(ui.text("至少保留一个工作表。"));
+      if (!confirm(ui.text("删除当前工作表？引用此表的公式会显示错误。"))) return;
       this.current.model.sheets.splice(this.sheetIndex, 1);
       this.sheetIndex = 0;
       this.cell = "A1";

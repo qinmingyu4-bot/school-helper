@@ -9,7 +9,7 @@ function harness() {
   const state = { user: { id: "one" }, page: "schedule", scheduleQuickText: "11月2号12点是朋友Liz的生日", scheduleVoicePhase: "idle", scheduleDrafts: [], scheduleSelectedDate: "2026-11-02" };
   const intervals = new Map(), timeouts = new Map(), events = [];
   let resolve, reject, signal;
-  const context = vm.createContext({ state, Intl, Date, AbortController, scheduleQuickRequest: null,
+  const context = vm.createContext({ ui: require("../public/i18n"), state, Intl, Date, AbortController, scheduleQuickRequest: null,
     window: { setInterval: (fn, delay) => { intervals.set(delay, fn); return delay; }, clearInterval: (id) => intervals.delete(id), setTimeout: (fn, delay) => { timeouts.set(delay, fn); return delay; }, clearTimeout: (id) => timeouts.delete(id) },
     $: () => null, updateScheduleQuickUi: () => events.push("status"), render: () => events.push("render"), revealScheduleReview: () => events.push("reveal"),
     api: (_, options) => { signal = options.signal; return new Promise((yes, no) => { resolve = yes; reject = no; signal.addEventListener("abort", () => no(new Error("aborted"))); }); }

@@ -4,6 +4,8 @@
   else root.StudyBridgeMailbox = factory();
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
+  const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
+
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
   const providerName = (provider) => provider === "gmail" ? "Gmail" : "Outlook";
   function create({ api, getUser, onChange, notice }) {
@@ -31,32 +33,32 @@
       return `<label>${label}<input data-mailbox-field="${key}" type="${type}" value="${esc(item[key])}" ${required ? "required" : ""} ${key === "title" ? 'maxlength="160"' : ""}></label>`;
     }
     function card(draft) {
-      const status = { pending: "待确认", confirmed: "已添加到日程", dismissed: draft.items.length ? "已忽略" : "已阅" }[draft.status] || "待确认";
+      const status = { pending: ui.text("待确认"), confirmed: ui.text("已添加到日程"), dismissed: draft.items.length ? ui.text("已忽略") : ui.text("已阅") }[draft.status] || ui.text("待确认");
       const items = draftEdit(draft);
       return `<article class="card mailbox-message" data-mailbox-draft="${esc(draft.id)}"><div class="section-title"><span class="mailbox-provider">${providerName(draft.provider)}</span><span class="mailbox-badge">${status}</span></div>
-        <h3>${esc(draft.subject || "无主题")}</h3><p class="mailbox-source">${esc(draft.sender)} · ${esc(new Date(draft.receivedAt).toLocaleString())}</p><p class="mailbox-summary">${esc(draft.summary)}</p>
-        ${draft.link ? `<a class="mailbox-source-link" href="${esc(draft.link)}" target="_blank" rel="noopener noreferrer">查看原邮件 ↗</a>` : ""}
-        ${draft.status === "pending" ? `<form class="mailbox-review" data-mailbox-form="${esc(draft.id)}"><p class="mailbox-review-help">${items.length ? "核对勾选事项的日期、时间和时区；确认后才会添加到日程。" : "这封邮件有学习相关通知，没有可直接添加的日程。阅读后可在此标记已阅。"}</p>
-        ${items.map((item, index) => `<fieldset data-mailbox-index="${index}"><legend><label class="mailbox-check"><input type="checkbox" data-mailbox-field="selected" ${item.selected ? "checked" : ""}>事项 ${index + 1}</label></legend>
+        <h3>${esc(draft.subject || ui.text("无主题"))}</h3><p class="mailbox-source">${esc(draft.sender)} · ${esc(new Date(draft.receivedAt).toLocaleString())}</p><p class="mailbox-summary">${esc(draft.summary)}</p>
+        ${draft.link ? ui.html`<a class="mailbox-source-link" href="${esc(draft.link)}" target="_blank" rel="noopener noreferrer">查看原邮件 ↗</a>` : ""}
+        ${draft.status === "pending" ? `<form class="mailbox-review" data-mailbox-form="${esc(draft.id)}"><p class="mailbox-review-help">${items.length ? ui.text("核对勾选事项的日期、时间和时区；确认后才会添加到日程。") : ui.text("这封邮件有学习相关通知，没有可直接添加的日程。阅读后可在此标记已阅。")}</p>
+        ${items.map((item, index) => ui.html`<fieldset data-mailbox-index="${index}"><legend><label class="mailbox-check"><input type="checkbox" data-mailbox-field="selected" ${item.selected ? "checked" : ""}>事项 ${index + 1}</label></legend>
           ${item.warning ? `<p class="mailbox-warning">${esc(item.warning)}</p>` : ""}<div class="mailbox-fields">
-          ${field(item, "title", "标题", "text", true)}<label>类型<select data-mailbox-field="kind">${[["DDL", "作业 / 考试"], ["EVENT", "活动 / 会议"], ["LEC", "Lecture"], ["TUT", "Tutorial"]].map(([value, label]) => `<option value="${value}" ${item.kind === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
-          ${field(item, "date", "日期", "date", true)}${field(item, "time", "时间", "time", true)}${field(item, "endsAt", "结束时间（可选）", "datetime-local")}${field(item, "timeZone", "时区", "text", true)}${field(item, "course", "课程（可选）")}${field(item, "location", "地点（可选）")}</div>
+          ${field(item, "title", ui.text("标题"), "text", true)}<label>类型<select data-mailbox-field="kind">${[["DDL", ui.text("作业 / 考试")], ["EVENT", ui.text("活动 / 会议")], ["LEC", "Lecture"], ["TUT", "Tutorial"]].map(([value, label]) => `<option value="${value}" ${item.kind === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+          ${field(item, "date", ui.text("日期"), "date", true)}${field(item, "time", ui.text("时间"), "time", true)}${field(item, "endsAt", ui.text("结束时间（可选）"), "datetime-local")}${field(item, "timeZone", ui.text("时区"), "text", true)}${field(item, "course", ui.text("课程（可选）"))}${field(item, "location", ui.text("地点（可选）"))}</div>
           ${item.evidence ? `<blockquote class="mailbox-evidence">${esc(item.evidence)}</blockquote>` : ""}</fieldset>`).join("")}
-          <p class="mailbox-card-error" role="alert"></p><div class="mailbox-actions">${items.length ? `<button class="primary" type="button" data-action="mailbox-confirm" data-id="${esc(draft.id)}" ${busy ? "disabled" : ""}>确认添加到日程</button>` : ""}<button type="button" data-action="mailbox-dismiss" data-id="${esc(draft.id)}" ${busy ? "disabled" : ""}>${items.length ? "忽略这封邮件" : "标记已阅"}</button></div></form>` : ""}</article>`;
+          <p class="mailbox-card-error" role="alert"></p><div class="mailbox-actions">${items.length ? ui.html`<button class="primary" type="button" data-action="mailbox-confirm" data-id="${esc(draft.id)}" ${busy ? "disabled" : ""}>确认添加到日程</button>` : ""}<button type="button" data-action="mailbox-dismiss" data-id="${esc(draft.id)}" ${busy ? "disabled" : ""}>${items.length ? ui.text("忽略这封邮件") : ui.text("标记已阅")}</button></div></form>` : ""}</article>`;
     }
     function html(replyHtml = "") {
       account();
       const connections = data?.connections || [], connected = connections.filter((row) => row.connected), pending = (data?.drafts || []).filter((row) => row.status === "pending");
       const accounts = connections.length ? connections : ["gmail", "outlook"].map((provider) => ({ provider }));
-      return `<section class="mailbox-assistant" aria-label="邮箱助手工作区">
-        <button type="button" class="mailbox-account-strip" data-action="mailbox-settings" aria-label="邮箱绑定状态，前往邮箱授权设置" aria-describedby="mailbox-account-summary" title="在设置中管理邮箱授权"><span class="mailbox-account-label">邮箱状态</span><span class="mailbox-accounts" id="mailbox-account-summary" role="list">${accounts.map((row) => `<span class="mailbox-account" role="listitem" data-mailbox-provider="${row.provider}"><span class="mailbox-account-icon" aria-hidden="true">${row.provider === "gmail" ? "G" : "O"}</span><strong>${providerName(row.provider)}</strong><span class="mailbox-account-value" title="${esc(row.connected ? row.email : "")}">${esc(row.connected ? row.email : !data ? "读取中…" : "未绑定")}</span>${row.connected ? `<span class="mailbox-account-state${row.reconnectRequired ? " needs-attention" : ""}">${row.reconnectRequired ? "需重新授权" : "已绑定"}</span>` : ""}</span>`).join("")}</span><span class="mailbox-account-open" aria-hidden="true">›</span></button>
+      return ui.html`<section class="mailbox-assistant" aria-label="邮箱助手工作区">
+        <button type="button" class="mailbox-account-strip" data-action="mailbox-settings" aria-label="邮箱绑定状态，前往邮箱授权设置" aria-describedby="mailbox-account-summary" title="在设置中管理邮箱授权"><span class="mailbox-account-label">邮箱状态</span><span class="mailbox-accounts" id="mailbox-account-summary" role="list">${accounts.map((row) => `<span class="mailbox-account" role="listitem" data-mailbox-provider="${row.provider}"><span class="mailbox-account-icon" aria-hidden="true">${row.provider === "gmail" ? "G" : "O"}</span><strong>${providerName(row.provider)}</strong><span class="mailbox-account-value" title="${esc(row.connected ? row.email : "")}">${esc(row.connected ? row.email : !data ? ui.text("读取中…") : ui.text("未绑定"))}</span>${row.connected ? `<span class="mailbox-account-state${row.reconnectRequired ? " needs-attention" : ""}">${row.reconnectRequired ? ui.text("需重新授权") : ui.text("已绑定")}</span>` : ""}</span>`).join("")}</span><span class="mailbox-account-open" aria-hidden="true">›</span></button>
         ${banner ? `<p class="mailbox-feedback" role="status">${esc(banner)}</p>` : ""}${error ? `<p class="mailbox-warning" role="alert">${esc(error)}</p>` : ""}
         <nav class="mailbox-sections" aria-label="邮箱助手功能"><button type="button" id="mailbox-learning-button" data-action="mailbox-view" data-view="learning" aria-pressed="${view === "learning"}" aria-controls="mailbox-learning-panel">学习通知${pending.length ? `<span class="mailbox-count">${pending.length}</span>` : ""}</button><button type="button" id="mailbox-reply-button" data-action="mailbox-view" data-view="reply" aria-pressed="${view === "reply"}" aria-controls="mailbox-reply-panel">邮件解读与回复</button></nav>
         <section id="mailbox-learning-panel" aria-labelledby="mailbox-learning-button" ${view !== "learning" ? "hidden" : ""}>
-          <header class="mailbox-learning-heading"><div><h2>学习通知</h2><p>${pending.length ? `${pending.length} 封邮件待确认，核对后可加入日程。` : "从学习邮件中整理需要关注的安排。"}</p></div><div class="mailbox-actions">${connected.length ? `<button type="button" data-action="mailbox-sync" ${busy || connected.every((row) => row.syncing || row.reconnectRequired) ? "disabled" : ""}>${connected.some((row) => row.syncing) ? "正在同步…" : "同步邮件"}</button>` : ""}<button type="button" data-action="mailbox-refresh" ${busy ? "disabled" : ""}>刷新通知</button></div></header>
+          <header class="mailbox-learning-heading"><div><h2>学习通知</h2><p>${pending.length ? ui.message`${pending.length} 封邮件待确认，核对后可加入日程。` : ui.text("从学习邮件中整理需要关注的安排。")}</p></div><div class="mailbox-actions">${connected.length ? `<button type="button" data-action="mailbox-sync" ${busy || connected.every((row) => row.syncing || row.reconnectRequired) ? "disabled" : ""}>${connected.some((row) => row.syncing) ? ui.text("正在同步…") : ui.text("同步邮件")}</button>` : ""}<button type="button" data-action="mailbox-refresh" ${busy ? "disabled" : ""}>刷新通知</button></div></header>
           ${connections.filter((row) => row.connected && row.error).map((row) => `<p class="mailbox-warning" role="status">${providerName(row.provider)}：${esc(row.error)}</p>`).join("")}
-          <div class="mailbox-messages">${(data?.drafts || []).map(card).join("")}${data && !data.drafts.length ? `<article class="card mailbox-empty"><span class="mailbox-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span><h3>${connected.length ? "暂无学习通知" : "还没有学习通知"}</h3><p>${connected.length ? "识别到教授通知或重要安排后，会显示在这里供你确认。" : "在设置中绑定邮箱后，学习相关通知会显示在这里。"}</p></article>` : ""}</div>
-          ${!data && !error ? '<p class="muted" role="status">正在读取学习通知…</p>' : ""}${data?.nextBefore ? '<button type="button" data-action="mailbox-more">读取更早邮件</button>' : ""}</section>
+          <div class="mailbox-messages">${(data?.drafts || []).map(card).join("")}${data && !data.drafts.length ? `<article class="card mailbox-empty"><span class="mailbox-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span><h3>${connected.length ? ui.text("暂无学习通知") : ui.text("还没有学习通知")}</h3><p>${connected.length ? ui.text("识别到教授通知或重要安排后，会显示在这里供你确认。") : ui.text("在设置中绑定邮箱后，学习相关通知会显示在这里。")}</p></article>` : ""}</div>
+          ${!data && !error ? ui.markup('<p class="muted" role="status">正在读取学习通知…</p>') : ""}${data?.nextBefore ? ui.markup('<button type="button" data-action="mailbox-more">读取更早邮件</button>') : ""}</section>
         <section id="mailbox-reply-panel" class="mailbox-reply" aria-labelledby="mailbox-reply-button" ${view !== "reply" ? "hidden" : ""}>${replyHtml}</section></section>`;
     }
     function input(event) {
@@ -84,16 +86,16 @@
           const targets = data.connections.filter((row) => row.connected && !row.reconnectRequired && !row.syncing);
           const results = await Promise.allSettled(targets.map((row) => api(`/api/mailbox/${row.provider}/sync`, { method: "POST", headers: { "x-csrf-token": data.csrfToken }, body: { userId: id } })));
           if (!current()) return;
-          if (!targets.length) throw new Error("邮箱正在同步，或需要在设置中重新授权。");
+          if (!targets.length) throw new Error(ui.text("邮箱正在同步，或需要在设置中重新授权。"));
           const failures = results.filter((row) => row.status === "rejected");
           if (failures.length === results.length) throw failures[0].reason;
-          banner = failures.length ? "部分邮箱已开始同步，其余邮箱请稍后重试。" : "已开始同步邮箱，学习通知会自动更新。";
+          banner = failures.length ? ui.text("部分邮箱已开始同步，其余邮箱请稍后重试。") : ui.text("已开始同步邮箱，学习通知会自动更新。");
           await load();
         } else if (draft) {
           const items = draftEdit(draft).flatMap((item, index) => item.selected ? [{ index, title: item.title, kind: item.kind, course: item.course, startsAt: item.date && item.time ? `${item.date}T${item.time}` : "", endsAt: item.endsAt,
             timeZone: item.timeZone, location: item.location, notes: item.notes }] : []);
           if (action === "mailbox-confirm") {
-            if (!items.length) throw new Error("请至少选择一个事项。");
+            if (!items.length) throw new Error(ui.text("请至少选择一个事项。"));
             const form = button.closest("form");
             for (const fieldset of form.querySelectorAll("fieldset")) if (fieldset.querySelector('[data-mailbox-field="selected"]').checked) {
               for (const input of fieldset.querySelectorAll("input, select")) if (!input.reportValidity()) return;
@@ -104,7 +106,7 @@
           if (!current()) return;
           data.drafts = data.drafts.map((row) => row.id === draft.id ? result.draft : row);
           edits.delete(draft.id);
-          banner = action === "mailbox-confirm" ? `已添加 ${result.saved} 项到日程${result.duplicates ? `，跳过 ${result.duplicates} 项重复安排` : ""}。` : "已处理这封邮件。";
+          banner = action === "mailbox-confirm" ? ui.message`已添加 ${result.saved} 项到日程${result.duplicates ? ui.message`，跳过 ${result.duplicates} 项重复安排` : ""}。` : ui.text("已处理这封邮件。");
           notice(banner);
         }
       } catch (failure) {
@@ -120,7 +122,7 @@
         account(); ++generation;
         for (const draft of data?.drafts || []) if (draft.provider === provider) edits.delete(draft.id);
         if (data) data = { ...data, drafts: data.drafts.filter((draft) => draft.provider !== provider), connections: data.connections.map((row) => row.provider === provider ? { ...row, connected: false, email: "", error: "", reconnectRequired: false, syncing: false } : row) };
-        banner = "邮箱已解除绑定，提取记录已清除。已确认的日程保留。";
+        banner = ui.text("邮箱已解除绑定，提取记录已清除。已确认的日程保留。");
         onChange();
       },
       async poll() {

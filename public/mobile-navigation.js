@@ -1,5 +1,7 @@
 (function (global) {
   "use strict";
+  const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
+
   function create({ window: win = global, navigate, resizeComposer = () => {} }) {
     const media = win.matchMedia("(max-width: 700px)");
     const initialHasPage = new URL(win.location.href).searchParams.has("page");
@@ -17,7 +19,7 @@
       const enabled = active();
       if (sidebar) {
         sidebar.inert = enabled && view === "page" && !panel;
-        if (enabled && panel) sidebar.setAttribute("aria-label", "课程与资料");
+        if (enabled && panel) sidebar.setAttribute("aria-label", ui.text("课程与资料"));
         else sidebar.removeAttribute("aria-label");
       }
       if (workspace) workspace.inert = enabled && (view === "menu" || panel);

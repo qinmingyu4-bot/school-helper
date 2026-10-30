@@ -12,7 +12,7 @@ function harness({ saveFails = false, refreshFails = false, invalid = false } = 
     scheduleQuickText: "Unrelated quick draft", scheduleDrafts: [{ title: "Pending import" }] };
   const notices = [], renders = [], requests = [];
   const button = { disabled: false };
-  const context = vm.createContext({ state, Intl, SCHEDULE_PREFIX: "[SCHEDULE_ITEM]",
+  const context = vm.createContext({ ui: require("../public/i18n"), state, Intl, SCHEDULE_PREFIX: "[SCHEDULE_ITEM]",
     $: (id) => ({ value: fields[id] }), cancelScheduleVoice() {},
     scheduleImport: require("../public/schedule-import"),
     ensureScheduleCourse: async () => ({ id: "planner" }),

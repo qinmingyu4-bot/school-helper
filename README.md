@@ -4,6 +4,8 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, op
 
 ## Features
 
+- Chinese / English interface: switch on the homepage, sign-in screen, sidebar, or **Settings → Personalization**. On first use, the first supported browser language is selected (`zh-*` → Simplified Chinese, `en-*` → English), falling back to Chinese. The choice is saved as `studybridge.interface-language` in this browser, shared by the homepage and app, and synchronized across tabs. Switching preserves active form and chat drafts. Interface language is independent of AI Learning Style; user content, course names, messages and documents are kept in their original language. Missing translations fall back to Chinese. Add interface text to `public/i18n-en.js`, use `StudyBridgeI18n.text` / `message` for labels and `html` for trusted UI templates; keep user content in interpolations and escape it as before. Interface language is a browser preference, not an account-synced preference.
+
 - Six student destinations: Community, Classmates, Schedule, Study, Tools and **邮箱助手**. Bind Gmail or Outlook under **设置 → 邮箱授权**; the assistant's compact header shows connection state and linked addresses. **邮件解读与回复** opens directly with visible input/draft panels; **学习通知** separately reviews extracted items before calendar confirmation. View switching retains inputs, replies and review edits. Private OAuth setup and first-release limits: [Mailbox assistant](docs/mailbox-assistant.md).
 
 - Public product introduction at `/`, a dedicated `/login` entry and authenticated learning space at `/app`. Homepage entry buttons open `/app`; guests are redirected to `/login`, while signed-in visitors enter directly. The homepage stays public in either state.

@@ -43,7 +43,7 @@ test("compact shortcuts retain every mode/general question with Cheatsheet creat
   const source = fs.readFileSync(require.resolve("../public/app.js"), "utf8");
   const functionSource = source.slice(source.indexOf("  function quickPromptsHtml()"), source.indexOf("  function sendButtonContent("));
   for (const mode of [...Object.keys(modes.modes), "general"]) {
-    const context = vm.createContext({ state: { studyMode: mode }, isGeneralChat: () => mode === "general", studyModes: modes, chatSpaces: spaces, esc: (s) => String(s).replaceAll('"', "&quot;") });
+    const context = vm.createContext({ ui: require("../public/i18n"), state: { studyMode: mode }, isGeneralChat: () => mode === "general", studyModes: modes, chatSpaces: spaces, esc: (s) => String(s).replaceAll('"', "&quot;") });
     vm.runInContext(functionSource, context);
     const html = context.quickPromptsHtml();
     const prompts = mode === "general" ? spaces.prompts : [...modes.modes[mode].prompts, ...modes.globalPrompts];

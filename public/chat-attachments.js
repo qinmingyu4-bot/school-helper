@@ -4,6 +4,8 @@
   else root.StudyBridgeChatAttachments = factory();
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
+  const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
+
   const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
   let clipboardSequence = 0;
   function clipboardImages(data) {
@@ -17,7 +19,7 @@
       // its own identity so a second screenshot is not mistaken for the first.
       const now = Date.now();
       const name = !file.name || /^(image|blob|clipboard)(\.[a-z0-9]+)?$/i.test(file.name)
-        ? `截图-${now}-${++clipboardSequence}.${extension}` : file.name;
+        ? ui.message`截图-${now}-${++clipboardSequence}.${extension}` : file.name;
       return new File([file], name, { type: file.type, lastModified: now + ++clipboardSequence });
     });
   }
@@ -28,11 +30,11 @@
   function render(attachments = []) {
     if (!Array.isArray(attachments) || !attachments.length) return "";
     return '<div class="chat-attachments" aria-label="已上传的附件">' + attachments.map((item) => {
-      const name = escape(item.name || "附件");
+      const name = escape(item.name || ui.text("附件"));
       if (item.kind === "image" && isPreviewUrl(item.url)) {
-        return `<button type="button" class="chat-image" data-action="view-chat-image" data-image-url="${escape(item.url)}" data-image-name="${name}" aria-label="查看图片：${name}"><img src="${escape(item.url)}" alt="${name}" loading="lazy" decoding="async"><span>${name}</span></button>`;
+        return ui.html`<button type="button" class="chat-image" data-action="view-chat-image" data-image-url="${escape(item.url)}" data-image-name="${name}" aria-label="查看图片：${name}"><img src="${escape(item.url)}" alt="${name}" loading="lazy" decoding="async"><span>${name}</span></button>`;
       }
-      return `<span class="chat-file"><span aria-hidden="true">附件</span> ${name}</span>`;
+      return ui.html`<span class="chat-file"><span aria-hidden="true">附件</span> ${name}</span>`;
     }).join("") + "</div>";
   }
   return { render, isPreviewUrl, clipboardImages };

@@ -4,6 +4,8 @@
   else root.StudyBridgeAppearance = factory();
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
+  const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
+
   const themes = Object.freeze([
     { id: "default", name: "现有蓝绿", accent: "#2c8067", tint: "#edf4f9", detail: "默认色调" },
     { id: "smoke-purple", name: "白 · 烟紫灰", accent: "#716b7b", tint: "#f4f2f6", detail: "柔和、安静" },
@@ -87,10 +89,10 @@
       dialog.querySelector(".settings-themes").disabled = awaitingAppearance || current.draft.mode === "dark";
       const failed = current.status === "error" || loadError;
       const status = dialog.querySelector(".settings-save-status");
-      status.textContent = current.status === "error" ? "保存失败，当前仅预览此外观。请重试。"
-        : loading ? "正在读取你的设置…" : loadError ? "暂时无法读取已保存的外观，请重试。"
-        : current.status === "saving" ? "正在保存…" : current.status === "unsaved" ? "尚未保存"
-        : "已保存到你的账号，下次登录会继续使用。";
+      status.textContent = current.status === "error" ? ui.text("保存失败，当前仅预览此外观。请重试。")
+        : loading ? ui.text("正在读取你的设置…") : loadError ? ui.text("暂时无法读取已保存的外观，请重试。")
+        : current.status === "saving" ? ui.text("正在保存…") : current.status === "unsaved" ? ui.text("尚未保存")
+        : ui.text("已保存到你的账号，下次登录会继续使用。");
       status.classList.toggle("is-error", failed);
       dialog.querySelector(".settings-retry").hidden = !failed;
     }

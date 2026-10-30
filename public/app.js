@@ -1,7 +1,9 @@
 (function () {
   "use strict";
+  const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
-  const VERSION = "1.2.3";
+
+  const VERSION = "1.2.4";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -57,7 +59,7 @@
         const userId = state.user.id;
         settingsProfileSave = settingsProfileSave.catch(() => {}).then(async () => {
           await getLearningStyleEditor().saver.flush();
-          if (state.user?.id !== userId) throw new Error("登录状态已变更，请重新登录。");
+          if (state.user?.id !== userId) throw new Error(ui.text("登录状态已变更，请重新登录。"));
           const data = await api("/api/me/profile", { method: "PUT", body: { ...values,
             avatarUrl: profile().avatarUrl || "", backgroundUrl: profile().backgroundUrl || "" } });
           if (state.user?.id !== userId) return;
@@ -68,16 +70,16 @@
       loadMembership: async () => {
         const userId = state.user.id, generation = membershipGeneration;
         const membership = (await api("/api/me/membership")).membership;
-        if (state.user?.id !== userId || membership.userId !== userId) throw new Error("登录账号已变更，请重新打开设置。");
+        if (state.user?.id !== userId || membership.userId !== userId) throw new Error(ui.text("登录账号已变更，请重新打开设置。"));
         if (generation === membershipGeneration) applyMembership(membership.tier);
         return { ...membership, tier: state.user.membershipTier };
       },
       redeemMembershipInvite: (inviteCode, csrfToken) => {
         const userId = state.user.id;
         const operation = settingsProfileSave.catch(() => {}).then(async () => {
-          if (state.user?.id !== userId) throw new Error("登录账号已变更，请重新打开设置。");
+          if (state.user?.id !== userId) throw new Error(ui.text("登录账号已变更，请重新打开设置。"));
           const result = await api("/api/me/membership/redeem", { method: "POST", headers: { "x-csrf-token": csrfToken }, body: { userId, inviteCode } });
-          if (state.user?.id !== userId) throw new Error("登录账号已变更，请重新打开设置。");
+          if (state.user?.id !== userId) throw new Error(ui.text("登录账号已变更，请重新打开设置。"));
           applyMembership(result.user.membershipTier);
           return result;
         });
@@ -277,7 +279,7 @@
     }
     const response = await fetch(path, init);
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw Object.assign(new Error(data.error || data.message || `请求失败 (${response.status})`), { status: response.status, retryAfter: Number(response.headers.get("retry-after")) || 0 });
+    if (!response.ok) throw Object.assign(new Error(data.error || data.message || ui.message`请求失败 (${response.status})`), { status: response.status, retryAfter: Number(response.headers.get("retry-after")) || 0 });
     return data;
   }
 
@@ -298,7 +300,7 @@
     if (state.mode === "admin") page = "admin";
     if (state.mode !== "admin" && !STUDENT_PAGES.includes(page)) page = "study";
     state.page = page;
-    document.title = "学习空间 · StudyBridge";
+    document.title = ui.text("学习空间 · StudyBridge");
     if (page !== "classmates") {
       state.classmateChatOpen = false;
       state.classmateProfileOpen = false;
@@ -313,20 +315,20 @@
     if (!value) return "";
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "";
-    return date.toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    return date.toLocaleString(ui.locale(), { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
   }
 
   function dueText(value) {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "";
     const diff = date.getTime() - Date.now();
-    if (diff <= 0) return "已到期";
+    if (diff <= 0) return ui.text("已到期");
     const minutes = Math.max(1, Math.ceil(diff / 60000));
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
     const restHours = hours % 24;
-    if (days > 0) return `${days}天${restHours}小时`;
-    return hours ? `${hours}小时${minutes % 60}分钟` : `${minutes}分钟`;
+    if (days > 0) return ui.message`${days}天${restHours}小时`;
+    return hours ? ui.message`${hours}小时${minutes % 60}分钟` : ui.message`${minutes}分钟`;
   }
 
   function formatInlineText(text) {
@@ -401,43 +403,44 @@
 
   function authHtml(mode = "login") {
     const register = mode === "register";
-    return `
+    return ui.html`
       <main class="auth-shell auth-entry">
         <header class="auth-header">
           <a class="auth-brand" href="/" aria-label="StudyBridge 首页">
             ${brandMarkHtml()}
             <span>StudyBridge.</span>
           </a>
+          ${ui.selector()}
           <a class="auth-home-link" href="/">返回首页 <span aria-hidden="true">↗</span></a>
         </header>
         <div class="auth-content">
         <section class="auth-card" aria-labelledby="authTitle">
           <div class="auth-intro">
             <p class="auth-eyebrow">YOUR STUDY, CONNECTED</p>
-            <h1 id="authTitle">${register ? "创建你的学习空间" : "欢迎回到 StudyBridge"}</h1>
-            <p>${register ? "注册普通账号，填写有效邀请码可成为 Plus 用户。" : "Google 可直接进入，首次使用将自动创建普通账号。"}</p>
+            <h1 id="authTitle">${register ? ui.text("创建你的学习空间") : ui.text("欢迎回到 StudyBridge")}</h1>
+            <p>${register ? ui.text("注册普通账号，填写有效邀请码可成为 Plus 用户。") : ui.text("Google 可直接进入，首次使用将自动创建普通账号。")}</p>
           </div>
           <div class="segmented" role="group" aria-label="选择登录或注册">
             <button data-action="auth-tab" data-tab="login" aria-pressed="${!register}" class="${register ? "" : "active"}">登录</button>
             <button data-action="auth-tab" data-tab="register" aria-pressed="${register}" class="${register ? "active" : ""}">注册</button>
           </div>
-          ${register ? `<label>姓名<input id="authName" placeholder="你的名字"></label>` : ""}
+          ${register ? ui.html`<label>姓名<input id="authName" placeholder="你的名字"></label>` : ""}
           <label>Email<input id="authEmail" type="email" autocomplete="email" placeholder="you@example.com"></label>
           <label>密码<input id="authPassword" type="password" autocomplete="${register ? "new-password" : "current-password"}" placeholder="至少 8 位"></label>
-          ${register ? `
+          ${register ? ui.html`
             <label>确认密码<input id="authPasswordConfirm" type="password" autocomplete="new-password" placeholder="再输入一次密码"></label>
             <label>邀请码（选填）<input id="authInvite" placeholder="有邀请码可成为 Plus 用户" aria-describedby="authInviteHelp"></label><p id="authInviteHelp" class="auth-code-help">留空即可注册普通用户，也可登录后在设置中补填。Plus 目前仅作分类。</p>
-            ${state.authConfig?.emailVerificationRequired !== false ? `<label for="authEmailCode">邮箱验证码</label>
+            ${state.authConfig?.emailVerificationRequired !== false ? ui.html`<label for="authEmailCode">邮箱验证码</label>
             <div class="inline-fields">
               <input id="authEmailCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" aria-describedby="authCodeHelp" placeholder="输入 6 位验证码">
               <button data-action="send-email-code">发送验证码</button>
             </div>
             <p id="authCodeHelp" class="auth-code-help">确认邮箱无误后发送验证码，收取邮件并填写后才能创建账号。</p>` : ""}
           ` : ""}
-          <button class="primary wide" data-action="${register ? "register" : "login"}" ${register && !state.authConfig ? "disabled" : ""}>${register ? "创建账号" : "登录"}</button>
+          <button class="primary wide" data-action="${register ? "register" : "login"}" ${register && !state.authConfig ? "disabled" : ""}>${register ? ui.text("创建账号") : ui.text("登录")}</button>
           <div class="or-line"><span>或</span></div>
-          <button class="ghost wide auth-google" data-action="google-login" data-auth-mode="${mode}" ${state.googleEnabled ? "" : "disabled"}>使用 Google 继续${state.googleEnabled ? "" : "待配置"}</button>
-          ${register ? "" : `<button class="link-button" data-action="forgot-password">忘记密码？</button>`}
+          <button class="ghost wide auth-google" data-action="google-login" data-auth-mode="${mode}" ${state.googleEnabled ? "" : "disabled"}>使用 Google 继续${state.googleEnabled ? "" : ui.text("待配置")}</button>
+          ${register ? "" : ui.html`<button class="link-button" data-action="forgot-password">忘记密码？</button>`}
           <p class="notice auth-feedback" role="status" aria-live="polite" ${state.toast ? "" : "hidden"}>${esc(state.toast)}</p>
         </section>
         <p class="auth-footnote">课程、资料与对话，都在你的学习空间。</p>
@@ -458,7 +461,7 @@
     const email = $("authEmail")?.value.trim().toLowerCase();
     const seconds = Math.max(0, Math.ceil(((emailCooldowns.get(email) || 0) - Date.now()) / 1000));
     button.disabled = button.dataset.sending === "true" || seconds > 0;
-    button.textContent = button.dataset.sending === "true" ? "发送中…" : seconds ? `${seconds} 秒后重发` : "发送验证码";
+    button.textContent = button.dataset.sending === "true" ? ui.text("发送中…") : seconds ? ui.message`${seconds} 秒后重发` : ui.text("发送验证码");
     if (seconds > 0 && !emailCooldownTimer) emailCooldownTimer = setInterval(updateEmailCooldown, 1000);
     if (!seconds && emailCooldownTimer) { clearInterval(emailCooldownTimer); emailCooldownTimer = null; }
   }
@@ -474,12 +477,12 @@
     const navOrder = ["community", "classmates", "schedule", "study", "tools", "email"];
     const userNav = navOrder.map((page) => navButton(page)).join("");
     const devSwitch = isAdmin()
-      ? `<div class="mode-switch">
+      ? ui.html`<div class="mode-switch">
           <button class="${state.mode === "student" ? "active" : ""}" data-action="mode-student">用户端</button>
           <button class="${state.mode === "admin" ? "active" : ""}" data-action="mode-admin">开发者端</button>
         </div>`
       : "";
-    return `
+    return ui.html`
       <aside class="sidebar${mobileOnly ? " mobile-chat-menu" : ""}" data-sidebar-context="${esc(`${state.user.id}:${state.mode}:${state.page}`)}">
         <header class="mobile-study-bar"><button type="button" data-mobile-action="close-panel">‹ 返回学习</button><strong>课程与资料</strong></header>
         <header class="side-head">
@@ -494,14 +497,15 @@
             </div>
             <div class="profile-card-info">
               <h3>${esc(state.user.name)}</h3>
-              <p>${esc([p.school, p.major].filter(Boolean).join(" · ") || "完善学校和专业")}</p>
-              <span class="membership-badge" data-current-membership data-membership="${state.user.membershipTier === "plus" ? "plus" : "standard"}">${state.user.membershipTier === "plus" ? "Plus 用户" : "普通用户"}</span>
-              <strong>SB ID: ${esc(profileSbId() || "未设置")}</strong>
+              <p>${esc([p.school, p.major].filter(Boolean).join(" · ") || ui.text("完善学校和专业"))}</p>
+              <span class="membership-badge" data-current-membership data-membership="${state.user.membershipTier === "plus" ? "plus" : "standard"}">${state.user.membershipTier === "plus" ? ui.text("Plus 用户") : ui.text("普通用户")}</span>
+              <strong>SB ID: ${esc(profileSbId() || ui.text("未设置"))}</strong>
             </div>
             <span class="profile-card-arrow" aria-hidden="true">↗</span>
           </button>
           <nav class="side-nav">${userNav}</nav>
         ` : ""}
+        ${ui.selector()}
         ${devSwitch}
         ${state.mode === "admin" ? adminSideHint() : state.page === "study" ? studySidebarHtml() : ""}
       </aside>
@@ -526,25 +530,25 @@
     return `
       <button class="nav-card ${active}" data-page="${page}" ${active ? 'aria-current="page"' : ""}>
         <span aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false">${navIconPaths[page]}</svg></span>
-        <b>${esc(title)}</b>
-        <small>${esc(page === "schedule" && nextDue() ? `${nextDue().title} · 还有 ${dueText(nextDue().startsAt)}` : sub)}</small>
+        <b>${esc(ui.text(title))}</b>
+        <small>${esc(page === "schedule" && nextDue() ? ui.message`${nextDue().title} · 还有 ${dueText(nextDue().startsAt)}` : ui.text(sub))}</small>
       </button>
     `;
   }
 
   function studySidebarHtml() {
     const courses = courseChats.visibleCourses(state.courses);
-    return `
+    return ui.html`
       <section class="side-section study-course-directory" data-doc-dropzone="true">
         <div class="section-title"><b>对话与课程</b><button data-action="add-course">新增</button></div>
         <div class="course-list">
           <button class="course-item ${isGeneralChat() ? "active" : ""}" data-action="select-course" data-id="${chatSpaces.general.id}">
-            <b>${chatSpaces.general.name}</b><small>${chatSpaces.general.term}</small>
+            <b>${ui.text(chatSpaces.general.name)}</b><small>${ui.text(chatSpaces.general.term)}</small>
           </button>
-          ${courses.length ? courses.map(courseFolderHtml).join("") : `<p class="muted">还没有课程。导入课表可自动添加，也可点击新增。</p>`}
+          ${courses.length ? courses.map(courseFolderHtml).join("") : ui.html`<p class="muted">还没有课程。导入课表可自动添加，也可点击新增。</p>`}
         </div>
       </section>
-      ${isGeneralChat() ? "" : `<section class="side-section study-materials">
+      ${isGeneralChat() ? "" : ui.html`<section class="side-section study-materials">
         <div class="section-title"><b>课程资料</b><span>${state.docs.length}</span></div>
         <textarea id="docText" aria-label="课程资料内容" rows="3" placeholder="粘贴课程大纲、笔记或作业要求"></textarea>
         <div class="study-material-row">
@@ -555,7 +559,7 @@
           <input id="docFile" type="file" aria-label="选择课程资料文件" accept="${SUPPORTED_UPLOAD_ACCEPT}" multiple>
           <button class="study-side-icon" data-action="upload-doc" title="上传所选文件" aria-label="上传所选文件"><svg aria-hidden="true"><use href="/classmates-icons.svg#upload"></use></svg></button>
         </div>
-        <div class="study-material-list">${state.docs.length ? state.docs.map((doc) => `<div class="mini-row"><b>${esc(doc.title)}</b><small>${esc(doc.type || "Note")}</small></div>`).join("") : `<p class="muted">暂无课程资料</p>`}</div>
+        <div class="study-material-list">${state.docs.length ? state.docs.map((doc) => `<div class="mini-row"><b>${esc(doc.title)}</b><small>${esc(doc.type || "Note")}</small></div>`).join("") : ui.html`<p class="muted">暂无课程资料</p>`}</div>
         <p class="muted">课程资料每个文件最多 50 MB，多文件逐个上传。较大 PDF 优先使用提取文字；扫描件建议拆分或先做文字识别。</p>
         <p id="courseUploadStatus" class="muted" role="status" aria-live="polite"></p>
       </section>`}
@@ -563,9 +567,9 @@
         <div class="section-title"><b>学习偏好</b><span data-learning-style-status role="status">${learningStyleStatus()}</span></div>
         <p class="study-preference-scope">用于课程学习、作业和考试；日常问题按提问语言自然回答。</p>
         <div class="study-preference-options">
-          ${prefBox("englishTerms", "保留英文术语")}
-          ${prefBox("englishAnswers", "英文作答 / 草稿")}
-          ${prefBox("chineseExplanations", "中文解释解题思路")}
+          ${prefBox("englishTerms", ui.text("保留英文术语"))}
+          ${prefBox("englishAnswers", ui.text("英文作答 / 草稿"))}
+          ${prefBox("chineseExplanations", ui.text("中文解释解题思路"))}
         </div>
         <p hidden data-learning-style-summary>${esc(learningStyle.summary(getLearningStyleEditor().saver.snapshot().draft))}</p>
         <label class="study-instruction-label" for="customInstruction">自定义要求<span>选填</span></label>
@@ -587,7 +591,7 @@
       const userId = state.user.id;
       const saver = learningStyle.createSaver({ initial: state.user.preferences,
         save: async (preferences) => {
-          if (state.user?.id !== userId) throw new Error("登录状态已变更，请重新登录。");
+          if (state.user?.id !== userId) throw new Error(ui.text("登录状态已变更，请重新登录。"));
           const data = await api("/api/me/preferences", { method: "PUT", body: preferences });
           if (state.user?.id === userId) state.user = data.user;
           return data.user.preferences;
@@ -607,7 +611,7 @@
   }
 
   function learningStyleStatus() {
-    return { saved: "已保存", unsaved: "未保存", saving: "保存中…", error: "保存失败" }[getLearningStyleEditor().saver.snapshot().status];
+    return { saved: ui.text("已保存"), unsaved: ui.text("未保存"), saving: ui.text("保存中…"), error: ui.text("保存失败") }[getLearningStyleEditor().saver.snapshot().status];
   }
 
   function captureLearningStyle() {
@@ -624,17 +628,17 @@
   }
 
   function adminSideHint() {
-    return `<section class="side-section"><p class="muted">开发者端只保留监管、邀请码、用户、系统状态和密码重置。</p></section>`;
+    return ui.html`<section class="side-section"><p class="muted">开发者端只保留监管、邀请码、用户、系统状态和密码重置。</p></section>`;
   }
 
   function shellHtml(content) {
     const fullChat = state.mode !== "admin" && state.page === "classmates" && state.classmateChatOpen;
     const admin = state.mode === "admin";
-    return `
+    return ui.html`
       <div class="app-shell${fullChat ? " classmate-chat-shell" : ""}${admin ? " admin-shell" : ""}">
         ${sidebarHtml(fullChat)}
         <main class="workspace${state.mode !== "admin" && state.page === "study" ? " study-workspace" : ""}${state.mode !== "admin" && state.page === "classmates" ? " classmates-workspace" : ""}${fullChat ? " classmate-chat-workspace" : ""}${admin ? " admin-workspace" : ""}" id="workspace" data-course-id="${esc(state.activeCourseId)}" data-conversation-id="${esc(state.activeConversationId)}">
-          <header class="mobile-page-bar"><button type="button" data-mobile-action="menu" aria-label="返回主菜单">‹ 主菜单</button><strong>${esc(pageLabels[state.page]?.[1] || "StudyBridge")}</strong>${state.page === "study" ? '<button type="button" data-mobile-action="study-panel" aria-expanded="false">课程与资料</button>' : "<span></span>"}</header>
+          <header class="mobile-page-bar"><button type="button" data-mobile-action="menu" aria-label="返回主菜单">‹ 主菜单</button><strong>${esc(ui.text(pageLabels[state.page]?.[1] || "StudyBridge"))}</strong>${state.page === "study" ? ui.markup('<button type="button" data-mobile-action="study-panel" aria-expanded="false">课程与资料</button>') : "<span></span>"}</header>
           ${content}
         </main>
       </div>
@@ -645,7 +649,7 @@
     return `
       <header class="page-header">
         <div><h1 title="${esc(subtitle || title)}" aria-describedby="pageDescription">${esc(title)}</h1><p id="pageDescription">${esc(subtitle)}</p></div>
-        ${back && state.page !== "study" ? `<button data-page="study">返回学习</button>` : ""}
+        ${back && state.page !== "study" ? ui.html`<button data-page="study">返回学习</button>` : ""}
       </header>
     `;
   }
@@ -667,30 +671,31 @@
 
   function courseFolderHtml(course) {
     const open = Boolean(state.expandedCourses[course.id]);
-    const rows = state.courseConversations[course.id] || [{ id: "default", title: "默认对话" }];
-    return `<section class="course-folder" aria-label="${esc(course.name)} 的对话">
+    const rows = state.courseConversations[course.id] || [{ id: "default", title: ui.text("默认对话") }];
+    return ui.html`<section class="course-folder" aria-label="${esc(course.name)} 的对话">
       <div class="course-folder-heading">
-        <button data-action="toggle-course" data-id="${esc(course.id)}" aria-expanded="${open}" aria-label="${open ? "收起" : "展开"}${esc(course.name)}">${open ? "▾" : "▸"}</button>
+        <button data-action="toggle-course" data-id="${esc(course.id)}" aria-expanded="${open}" aria-label="${open ? ui.text("收起") : ui.text("展开")}${esc(course.name)}">${open ? "▾" : "▸"}</button>
         <button class="course-folder-name" data-action="select-course" data-id="${esc(course.id)}"><b>${esc(course.name)}</b>${course.term && course.term !== "Current term" ? `<small>${esc(course.term)}</small>` : ""}</button>
         <button data-action="new-conversation" data-id="${esc(course.id)}" aria-label="在 ${esc(course.name)} 下新增对话" title="新增对话">＋</button>
         <button data-action="delete-course" data-id="${esc(course.id)}" aria-label="删除课程 ${esc(course.name)}" title="删除课程">×</button>
       </div>
       ${open ? `<div class="course-chat-list">${rows.map((chat) => {
         const renaming = state.renamingConversation?.courseId === course.id && state.renamingConversation.id === chat.id;
-        return renaming ? `<div class="course-chat-rename"><input id="conversationRename" data-course="${esc(course.id)}" data-conversation="${esc(chat.id)}" aria-label="对话标题" maxlength="120" value="${esc(state.renamingConversation.title ?? chat.title)}"><div><button data-action="save-conversation-name" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}">保存标题</button><button data-action="cancel-conversation-name">取消</button></div></div>`
-          : `<div class="course-chat-row ${state.activeCourseId === course.id && state.activeConversationId === chat.id ? "active" : ""}"><button class="course-chat-title" data-action="select-conversation" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}" title="${esc(chat.title)}" ${state.activeCourseId === course.id && state.activeConversationId === chat.id ? 'aria-current="page"' : ""}>${esc(chat.title)}</button><button data-action="rename-conversation" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}" aria-label="重命名对话 ${esc(chat.title)}" title="重命名">✎</button><button data-action="delete-conversation" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}" aria-label="删除对话 ${esc(chat.title)}" title="删除对话">×</button></div>`;
+        return renaming ? ui.html`<div class="course-chat-rename"><input id="conversationRename" data-course="${esc(course.id)}" data-conversation="${esc(chat.id)}" aria-label="对话标题" maxlength="120" value="${esc(state.renamingConversation.title ?? chat.title)}"><div><button data-action="save-conversation-name" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}">保存标题</button><button data-action="cancel-conversation-name">取消</button></div></div>`
+          : ui.html`<div class="course-chat-row ${state.activeCourseId === course.id && state.activeConversationId === chat.id ? "active" : ""}"><button class="course-chat-title" data-action="select-conversation" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}" title="${esc(chat.title)}" ${state.activeCourseId === course.id && state.activeConversationId === chat.id ? 'aria-current="page"' : ""}>${esc(chat.title)}</button><button data-action="rename-conversation" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}" aria-label="重命名对话 ${esc(chat.title)}" title="重命名">✎</button><button data-action="delete-conversation" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}" aria-label="删除对话 ${esc(chat.title)}" title="删除对话">×</button></div>`;
       }).join("")}</div>` : ""}</section>`;
   }
 
   function studyPage() {
     const course = isGeneralChat() ? chatSpaces.general : state.courses.find((item) => item.id === state.activeCourseId);
     const conversation = state.courseConversations[state.activeCourseId]?.find((item) => item.id === state.activeConversationId);
+    const courseName = isGeneralChat() ? ui.text(chatSpaces.general.name) : course?.name;
     return `
-      <header class="page-header"><div class="course-chat-heading"><small>${esc(course?.name || "请选择课程")}${!isGeneralChat() ? " · 课程资料共享" : ""}</small><h1 title="${esc(conversation?.title || course?.name || "请选择课程")}">${esc(conversation?.title || course?.name || "请选择课程")}</h1></div>${!isGeneralChat() && course ? `<button data-action="new-conversation" data-id="${esc(course.id)}">＋ 新对话</button>` : ""}</header>
+      <header class="page-header"><div class="course-chat-heading"><small>${esc(courseName || ui.text("请选择课程"))}${!isGeneralChat() ? ui.text(" · 课程资料共享") : ""}</small><h1 title="${esc(conversation?.title || courseName || ui.text("请选择课程"))}">${esc(conversation?.title || courseName || ui.text("请选择课程"))}</h1></div>${!isGeneralChat() && course ? ui.html`<button data-action="new-conversation" data-id="${esc(course.id)}">＋ 新对话</button>` : ""}</header>
       ${upcomingBanner()}
       <section class="chat-area">
         <div class="messages" id="messages">
-          ${state.messages.length ? state.messages.map(messageHtml).join("") : `<div class="message ai"><b>AI</b><div>${isGeneralChat() ? "你好，有什么想问的？" : "欢迎回来。先保存课程资料，然后问我预习、复习、deadline、作业要求或模拟考试。"}</div></div>`}
+          ${state.messages.length ? state.messages.map(messageHtml).join("") : `<div class="message ai"><b>AI</b><div>${isGeneralChat() ? ui.text("你好，有什么想问的？") : ui.text("欢迎回来。先保存课程资料，然后问我预习、复习、deadline、作业要求或模拟考试。")}</div></div>`}
         </div>
       </section>
       ${composerHtml()}
@@ -699,11 +704,11 @@
 
   function upcomingBanner() {
     const due = nextDue();
-    if (!due) return `<section class="deadline-banner deadline-empty"><div><span>暂无 upcoming deadline</span><b>添加作业、考试或课程提醒后，这里会显示最近时间。</b></div></section>`;
-    return `
+    if (!due) return ui.html`<section class="deadline-banner deadline-empty"><div><span>暂无 upcoming deadline</span><b>添加作业、考试或课程提醒后，这里会显示最近时间。</b></div></section>`;
+    return ui.html`
       <section class="deadline-banner" data-page="schedule">
         <div><span>最近要做</span><b>${esc(due.title)}</b><p>${esc(due.course || "")} | ${esc(formatDate(due.startsAt))} | ${esc(due.location || "")}</p></div>
-        <strong><span data-countdown="${esc(due.startsAt)}">${esc(dueText(due.startsAt))}</span><small>${scheduleImport.kind(due.kind) === "DDL" ? "后截止" : "后开始"}</small></strong>
+        <strong><span data-countdown="${esc(due.startsAt)}">${esc(dueText(due.startsAt))}</span><small>${scheduleImport.kind(due.kind) === "DDL" ? ui.text("后截止") : ui.text("后开始")}</small></strong>
       </section>
     `;
   }
@@ -720,8 +725,8 @@
   function quickPromptsHtml() {
     const selected = studyModes.getMode(state.studyMode) || studyModes.getMode(studyModes.defaultMode);
     const prompts = isGeneralChat() ? chatSpaces.prompts : [...selected.prompts, ...studyModes.globalPrompts];
-    const buttons = prompts.map(([label, prompt]) => `<button type="button" data-action="quick-prompt" data-prompt="${esc(prompt)}" title="${esc(prompt)}">${esc(label)}</button>`);
-    return buttons.slice(0, 3).join("") + (buttons.length > 3 ? `<details class="quick-prompts-more"><summary>更多<svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></summary><div class="quick-prompts-menu">${buttons.slice(3).join("")}</div></details>` : "");
+    const buttons = prompts.map(([label, prompt]) => `<button type="button" data-action="quick-prompt" data-prompt="${esc(prompt)}" title="${esc(ui.text(label))}">${esc(ui.text(label))}</button>`);
+    return buttons.slice(0, 3).join("") + (buttons.length > 3 ? ui.html`<details class="quick-prompts-more"><summary>更多<svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></summary><div class="quick-prompts-menu">${buttons.slice(3).join("")}</div></details>` : "");
   }
 
   function sendButtonContent(pending) {
@@ -729,19 +734,19 @@
   }
 
   function composerHtml() {
-    return `
+    return ui.html`
       <footer class="composer composer-light" data-chat-dropzone="true">
         <div class="study-toolbar${isGeneralChat() ? " general-toolbar" : ""}">
-          ${isGeneralChat() ? "" : `<label class="study-mode-control"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 7v14M3 3h3a6 6 0 0 1 6 3 6 6 0 0 1 6-3h3v16h-3a6 6 0 0 0-6 2 6 6 0 0 0-6-2H3z"/></svg><select id="studyMode" aria-label="学习模式" title="学习模式">
-            ${Object.entries(studyModes.modes).map(([id, mode]) => `<option value="${id}" ${state.studyMode === id ? "selected" : ""}>${esc(mode.label)}</option>`).join("")}
+          ${isGeneralChat() ? "" : ui.html`<label class="study-mode-control"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 7v14M3 3h3a6 6 0 0 1 6 3 6 6 0 0 1 6-3h3v16h-3a6 6 0 0 0-6 2 6 6 0 0 0-6-2H3z"/></svg><select id="studyMode" aria-label="学习模式" title="学习模式">
+            ${Object.entries(studyModes.modes).map(([id, mode]) => `<option value="${id}" ${state.studyMode === id ? "selected" : ""}>${esc(ui.text(mode.label))}</option>`).join("")}
           </select></label>`}
-          <div class="quick-prompts" aria-label="${isGeneralChat() ? "自由问答快捷问题" : "学习快捷指令"}">${quickPromptsHtml()}</div>
+          <div class="quick-prompts" aria-label="${isGeneralChat() ? ui.text("自由问答快捷问题") : ui.text("学习快捷指令")}">${quickPromptsHtml()}</div>
         </div>
         <div class="compose-row">
           <button type="button" class="attach" data-action="pick-chat-file" aria-label="上传附件" title="上传附件；也可拖放文件，或在输入框按 Ctrl+V 粘贴截图"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.19 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
           <input id="chatFile" class="hidden" type="file" multiple accept="${SUPPORTED_UPLOAD_ACCEPT},*/*">
           <textarea id="chatInput" rows="1" placeholder="输入问题…" aria-label="问题"></textarea>
-          <button class="send" data-action="${activeStudyReply() ? "stop-chat" : "send-chat"}" ${state.busy ? "disabled" : ""} ${activeStudyReply() ? 'title="正在生成，点击停止" aria-label="停止生成"' : 'aria-label="发送"'}>${sendButtonContent(Boolean(activeStudyReply()))}</button>
+          <button class="send" data-action="${activeStudyReply() ? "stop-chat" : "send-chat"}" ${state.busy ? "disabled" : ""} ${activeStudyReply() ? ui.text('title="正在生成，点击停止" aria-label="停止生成"') : ui.text('aria-label="发送"')}>${sendButtonContent(Boolean(activeStudyReply()))}</button>
         </div>
         ${selectedUploadFilesHtml()}
       </footer>
@@ -757,7 +762,7 @@
     }
     return `
       <div class="upload-list">
-        ${state.uploadFiles.map((file, index) => `
+        ${state.uploadFiles.map((file, index) => ui.html`
           <span class="upload-pill">
             ${uploadImagePreview(file)}
             <b>${esc(file.name)}</b>
@@ -772,12 +777,12 @@
   function uploadImagePreview(file) {
     if (!/^image\/(png|jpeg|webp|gif|avif|bmp)$/i.test(file.type)) return "";
     if (!uploadPreviewUrls.has(file)) uploadPreviewUrls.set(file, URL.createObjectURL(file));
-    return `<img class="upload-image-preview" src="${esc(uploadPreviewUrls.get(file))}" alt="待发送图片：${esc(file.name)}">`;
+    return ui.html`<img class="upload-image-preview" src="${esc(uploadPreviewUrls.get(file))}" alt="待发送图片：${esc(file.name)}">`;
   }
 
   function messageHtml(message) {
     const mine = message.role === "user";
-    return `<div class="message ${mine ? "user" : "ai"}" ${message.clientReplyId ? `data-reply-id="${esc(message.clientReplyId)}" aria-busy="${Boolean(message.pending)}"` : ""}><b>${mine ? "你" : "AI"}</b><div>${mine ? userMessageBody(message) : replyBodyHtml(message)}</div></div>`;
+    return `<div class="message ${mine ? "user" : "ai"}" ${message.clientReplyId ? `data-reply-id="${esc(message.clientReplyId)}" aria-busy="${Boolean(message.pending)}"` : ""}><b>${mine ? ui.text("你") : "AI"}</b><div>${mine ? userMessageBody(message) : replyBodyHtml(message)}</div></div>`;
   }
 
   function userMessageBody(message) {
@@ -788,10 +793,10 @@
     if (!window.StudyBridgeChatAttachments.isPreviewUrl(url) && !directAttachments.isUrl(url)) return;
     const dialog = document.createElement("dialog");
     dialog.className = "chat-image-dialog";
-    dialog.setAttribute("aria-label", "图片预览");
-    dialog.innerHTML = `<header><strong>${esc(name || "图片")}</strong><button type="button" aria-label="关闭图片预览">关闭</button></header><img src="${esc(url)}" alt="${esc(name || "图片")}"><p role="status"></p>`;
+    dialog.setAttribute("aria-label", ui.text("图片预览"));
+    dialog.innerHTML = ui.html`<header><strong>${esc(name || ui.text("图片"))}</strong><button type="button" aria-label="关闭图片预览">关闭</button></header><img src="${esc(url)}" alt="${esc(name || ui.text("图片"))}"><p role="status"></p>`;
     dialog.querySelector("button").addEventListener("click", () => dialog.close());
-    dialog.querySelector("img").addEventListener("error", () => { dialog.querySelector("p").textContent = "图片暂时无法加载，请重新登录或稍后重试。"; });
+    dialog.querySelector("img").addEventListener("error", () => { dialog.querySelector("p").textContent = ui.text("图片暂时无法加载，请重新登录或稍后重试。"); });
     dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
     dialog.addEventListener("close", () => dialog.remove());
     document.body.append(dialog);
@@ -801,8 +806,8 @@
   function replyBodyHtml(message) {
     const content = message.content || message.pending ? `<div class="reply-content">${window.StudyBridgeMarkdown.render(message.content)}</div>` : "";
     const status = message.pending
-      ? `<div class="reply-status" role="status"><span class="reply-spinner" aria-hidden="true"></span><span>${esc(replyPhases[message.phase] || replyPhases.thinking)}</span></div>`
-      : message.interrupted ? '<div class="reply-notice" role="status">回复已中断，可重新提问。</div>' : "";
+      ? `<div class="reply-status" role="status"><span class="reply-spinner" aria-hidden="true"></span><span>${esc(ui.text(replyPhases[message.phase] || replyPhases.thinking))}</span></div>`
+      : message.interrupted ? ui.markup('<div class="reply-notice" role="status">回复已中断，可重新提问。</div>') : "";
     return content + status;
   }
 
@@ -828,10 +833,10 @@
     content.innerHTML = window.StudyBridgeMarkdown.render(reply.assistant.content);
     if (reply.assistant.content) reply.hasDisplayedText = true;
     const status = body.querySelector(".reply-status");
-    if (reply.assistant.pending && status) status.lastElementChild.textContent = replyPhases[reply.assistant.phase] || replyPhases.thinking;
+    if (reply.assistant.pending && status) status.lastElementChild.textContent = ui.text(replyPhases[reply.assistant.phase] || replyPhases.thinking);
     if (!reply.assistant.pending) {
       status?.remove();
-      if (reply.assistant.interrupted && !body.querySelector(".reply-notice")) body.insertAdjacentHTML("beforeend", '<div class="reply-notice" role="status">回复已中断，可重新提问。</div>');
+      if (reply.assistant.interrupted && !body.querySelector(".reply-notice")) body.insertAdjacentHTML("beforeend", ui.markup('<div class="reply-notice" role="status">回复已中断，可重新提问。</div>'));
     }
     if (followLatest) chat.scrollTop = chat.scrollHeight;
     const send = root.querySelector(".compose-row .send");
@@ -841,8 +846,8 @@
     // does not restart with every incoming token.
     if (send.dataset.action !== action) send.innerHTML = sendButtonContent(pending);
     send.dataset.action = action;
-    send.title = pending ? `${replyPhases[activeStudyReply()?.assistant.phase] || "正在生成"}，点击停止` : "发送";
-    send.setAttribute("aria-label", pending ? "停止生成" : "发送");
+    send.title = pending ? ui.message`${ui.text(replyPhases[activeStudyReply()?.assistant.phase] || "正在生成")}，点击停止` : ui.text("发送");
+    send.setAttribute("aria-label", pending ? ui.text("停止生成") : ui.text("发送"));
     send.disabled = state.busy;
   }
 
@@ -862,11 +867,11 @@
 
   async function sendStudyChat() {
     if (state.busy || activeStudyReply()) return;
-    if (!state.activeCourseId) throw new Error("请先选择或新增课程，然后再提问。");
+    if (!state.activeCourseId) throw new Error(ui.text("请先选择或新增课程，然后再提问。"));
     const input = $("chatInput");
     const text = input?.value || "";
     const files = [...state.uploadFiles];
-    if (!text.trim() && !files.length) throw new Error("请输入问题或上传文件。");
+    if (!text.trim() && !files.length) throw new Error(ui.text("请输入问题或上传文件。"));
     const preferenceEditor = captureLearningStyle();
     const previewUrls = [];
     const previews = files.map((file) => {
@@ -878,7 +883,7 @@
     const reply = {
       key: studyReplyKey(), userId: state.user.id, courseId: state.activeCourseId, conversationId: state.activeConversationId, mode: state.studyMode,
       controller: new AbortController(), frame: 0, started: false,
-      user: { role: "user", content: text || "请分析我上传的文件。", clientReplyId: `question-${nextStudyReplyId + 1}`, attachments: previews },
+      user: { role: "user", content: text || ui.text("请分析我上传的文件。"), clientReplyId: `question-${nextStudyReplyId + 1}`, attachments: previews },
       assistant: { role: "assistant", content: "", clientReplyId: `reply-${++nextStudyReplyId}`, pending: true, phase: files.length ? "reading" : "preparing" }
     };
     studyReplies.set(reply.key, reply);
@@ -890,7 +895,7 @@
       const attachments = await readFiles(files);
       clearTimeout(learningStyleTimer);
       try { await preferenceEditor.saver.flush(); }
-      catch { throw new Error("偏好保存失败，尚未发送问题。请点击保存偏好后重试。"); }
+      catch { throw new Error(ui.text("偏好保存失败，尚未发送问题。请点击保存偏好后重试。")); }
       reply.learningStyle = preferenceEditor.saver.snapshot().draft;
       reply.controller.signal.throwIfAborted();
       reply.assistant.phase = "preparing";
@@ -902,13 +907,13 @@
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || `请求失败 (${response.status})`);
+        throw new Error(data.error || ui.message`请求失败 (${response.status})`);
       }
       let completed = false;
       if (!(response.headers.get("content-type") || "").includes("text/event-stream")) {
         // Keep compatibility with a server that has not yet received the update.
         const data = await response.json();
-        if (data.messages?.length !== 2) throw new Error("没有收到完整回复，请重试。");
+        if (data.messages?.length !== 2) throw new Error(ui.text("没有收到完整回复，请重试。"));
         Object.assign(reply.user, data.messages[0]);
         reply.userNeedsRender = true;
         Object.assign(reply.assistant, data.messages[1]);
@@ -930,14 +935,14 @@
           if (event === "done" || event === "error") {
             if (packet.messages?.[0]) { Object.assign(reply.user, packet.messages[0]); reply.userNeedsRender = true; reply.started = true; }
             if (packet.messages?.[1]) Object.assign(reply.assistant, packet.messages[1]);
-            if (event === "error") throw new Error(packet.error || "回复已中断，请重试。");
+            if (event === "error") throw new Error(packet.error || ui.text("回复已中断，请重试。"));
             completed = true;
             return false;
           }
           scheduleStudyReply(reply);
         });
       }
-      if (!completed) throw new Error("连接已中断，请重新提问。");
+      if (!completed) throw new Error(ui.text("连接已中断，请重新提问。"));
     } catch (error) {
       if (reply.started) {
         reply.assistant.interrupted = true;
@@ -971,8 +976,8 @@
 
   function profilePage() {
     const p = profile();
-    return `
-      ${pageHeader("PERSONAL PROFILE", "个人资料", "头像、背景、学校、专业和 SB ID 都在这里管理。")}
+    return ui.html`
+      ${pageHeader("PERSONAL PROFILE", ui.text("个人资料"), ui.text("头像、背景、学校、专业和 SB ID 都在这里管理。"))}
       <section class="profile-layout">
         <div class="profile-overview">
         <article class="profile-preview card">
@@ -981,9 +986,9 @@
           </div>
           <div class="profile-identity">
             <h2>${esc(state.user.name)}</h2>
-            <p>${esc(p.school || "还没有填写学校")}</p>
-            <p class="profile-major">${esc(p.major || "还没有填写专业")}</p>
-            <span class="profile-id">SB ID <strong>${esc(profileSbId() || "未设置")}</strong></span>
+            <p>${esc(p.school || ui.text("还没有填写学校"))}</p>
+            <p class="profile-major">${esc(p.major || ui.text("还没有填写专业"))}</p>
+            <span class="profile-id">SB ID <strong>${esc(profileSbId() || ui.text("未设置"))}</strong></span>
           </div>
         </article>
         ${schoolInfoHtml(p.school)}
@@ -1020,13 +1025,13 @@
 
   function schoolInfoHtml(school) {
     const key = String(school || "").toLowerCase().trim();
-    const info = schoolFacts[key] || (school ? { name: school, rank: "信息待补充", place: "地点待补充", points: ["StudyBridge 会把学校写入 AI 学习上下文", "回答会优先贴近你的学校、课程语境和学习需求", "后续可以继续补充排名、专业和课程要求"] } : null);
+    const info = schoolFacts[key] || (school ? { name: school, rank: ui.text("信息待补充"), place: ui.text("地点待补充"), points: [ui.text("StudyBridge 会把学校写入 AI 学习上下文"), ui.text("回答会优先贴近你的学校、课程语境和学习需求"), ui.text("后续可以继续补充排名、专业和课程要求")] } : null);
     if (!info) return "";
-    return `
+    return ui.html`
       <div class="school-info">
         <h3>${esc(info.name)} 概览</h3>
         <div class="fact-grid"><span><b>类型 / 排名</b>${esc(info.rank)}</span><span><b>地点</b>${esc(info.place)}</span></div>
-        <ul>${info.points.map((point) => `<li>${esc(point)}</li>`).join("")}</ul>
+        <ul>${info.points.map((point) => `<li>${esc(ui.text(point))}</li>`).join("")}</ul>
       </div>
     `;
   }
@@ -1051,14 +1056,14 @@
   function communityThreadHtml(postId) {
     const thread = communityReplies.thread(postId);
     const disabled = thread.loading || thread.sending;
-    return `<section class="community-thread" id="community-thread-${esc(postId)}" data-community-thread="${esc(postId)}" aria-label="帖子回复" ${thread.open ? "" : "hidden"}>
-      ${thread.open ? `<div class="community-thread-heading"><h5>帖子回复</h5><button type="button" data-action="community-replies-refresh" data-id="${esc(postId)}" ${disabled ? "disabled" : ""}>刷新回复</button></div>
-      ${thread.nextBefore ? `<button type="button" data-action="community-replies-older" data-id="${esc(postId)}" ${disabled ? "disabled" : ""}>加载更早回复</button>` : ""}
-      <div class="community-reply-list">${thread.replies.map((reply) => `<article class="community-reply"><div><b>${esc(reply.authorName)}${reply.mine ? " · 我" : ""}</b><time datetime="${esc(reply.createdAt)}">${esc(formatDate(reply.createdAt))}</time></div><p>${esc(reply.content)}</p>${reply.mine || ["admin", "owner"].includes(state.user?.role) ? `<button type="button" data-action="community-reply-delete" data-id="${esc(postId)}" data-reply-id="${esc(reply.id)}" ${disabled ? "disabled" : ""}>删除回复</button>` : ""}</article>`).join("")}</div>
-      ${thread.loading ? `<p role="status" class="muted">正在加载回复…</p>` : thread.loaded && !thread.replies.length ? `<p class="muted">还没有回复，来分享你的想法吧。</p>` : ""}
+    return ui.html`<section class="community-thread" id="community-thread-${esc(postId)}" data-community-thread="${esc(postId)}" aria-label="帖子回复" ${thread.open ? "" : "hidden"}>
+      ${thread.open ? ui.html`<div class="community-thread-heading"><h5>帖子回复</h5><button type="button" data-action="community-replies-refresh" data-id="${esc(postId)}" ${disabled ? "disabled" : ""}>刷新回复</button></div>
+      ${thread.nextBefore ? ui.html`<button type="button" data-action="community-replies-older" data-id="${esc(postId)}" ${disabled ? "disabled" : ""}>加载更早回复</button>` : ""}
+      <div class="community-reply-list">${thread.replies.map((reply) => `<article class="community-reply"><div><b>${esc(reply.authorName)}${reply.mine ? ui.text(" · 我") : ""}</b><time datetime="${esc(reply.createdAt)}">${esc(formatDate(reply.createdAt))}</time></div><p>${esc(reply.content)}</p>${reply.mine || ["admin", "owner"].includes(state.user?.role) ? ui.html`<button type="button" data-action="community-reply-delete" data-id="${esc(postId)}" data-reply-id="${esc(reply.id)}" ${disabled ? "disabled" : ""}>删除回复</button>` : ""}</article>`).join("")}</div>
+      ${thread.loading ? ui.html`<p role="status" class="muted">正在加载回复…</p>` : thread.loaded && !thread.replies.length ? ui.html`<p class="muted">还没有回复，来分享你的想法吧。</p>` : ""}
       ${thread.error ? `<p class="community-reply-error" role="alert">${esc(thread.error)}</p>` : ""}
       <label for="community-reply-${esc(postId)}">参与讨论</label><textarea id="community-reply-${esc(postId)}" data-community-reply="${esc(postId)}" maxlength="1600" rows="3" placeholder="写下你的回复…" ${thread.sending ? "disabled" : ""}>${esc(thread.draft)}</textarea>
-      <div class="community-reply-actions"><label class="community-anonymous"><input type="checkbox" data-community-reply-anon="${esc(postId)}" ${thread.anonymous ? "checked" : ""} ${disabled ? "disabled" : ""}>匿名回复</label><small>${thread.anonymous ? "显示为匿名同学" : "显示账号姓名"}</small><button type="button" class="primary" data-action="community-reply-send" data-id="${esc(postId)}" ${disabled ? "disabled" : ""}>${thread.sending ? "发送中…" : "发送回复"}</button></div>` : ""}
+      <div class="community-reply-actions"><label class="community-anonymous"><input type="checkbox" data-community-reply-anon="${esc(postId)}" ${thread.anonymous ? "checked" : ""} ${disabled ? "disabled" : ""}>匿名回复</label><small>${thread.anonymous ? ui.text("显示为匿名同学") : ui.text("显示账号姓名")}</small><button type="button" class="primary" data-action="community-reply-send" data-id="${esc(postId)}" ${disabled ? "disabled" : ""}>${thread.sending ? ui.text("发送中…") : ui.text("发送回复")}</button></div>` : ""}
     </section>`;
   }
 
@@ -1072,7 +1077,7 @@
     section.outerHTML = communityThreadHtml(postId);
     const thread = communityReplies.thread(postId);
     const toggle = root.querySelector(`[data-action="community-replies-toggle"][data-id="${CSS.escape(postId)}"]`);
-    if (toggle) { toggle.setAttribute("aria-expanded", String(thread.open)); toggle.textContent = thread.open ? "收起讨论" : "回复 / 讨论"; }
+    if (toggle) { toggle.setAttribute("aria-expanded", String(thread.open)); toggle.textContent = thread.open ? ui.text("收起讨论") : ui.text("回复 / 讨论"); }
     const input = document.getElementById(`community-reply-${postId}`);
     if (restore && input && !input.disabled) { input.focus({ preventScroll: true }); input.setSelectionRange(...selection); }
   }
@@ -1086,7 +1091,7 @@
     if (state.communityFocusedPost?.id === post.id) state.communityFocusedPost = post;
     for (const notice of state.communityNotices?.notifications || []) if (notice.postId === post.id) notice.topic = post.topic;
     state.communityChoices = null;
-    setToast("帖子已更新，点赞和回复已保留。");
+    setToast(ui.text("帖子已更新，点赞和回复已保留。"));
     if (state.page === "community") {
       if (state.busy) void loadPage("community");
       else { pageLoadGeneration++; state.communityMoreLoading = false; }
@@ -1096,17 +1101,17 @@
   function communityEditHtml() {
     const draft = communityEditor.snapshot();
     if (!draft) return "";
-    return `<section class="community-edit-card" aria-labelledby="communityEditTitle">
+    return ui.html`<section class="community-edit-card" aria-labelledby="communityEditTitle">
       <h3 id="communityEditTitle">编辑帖子</h3><p class="muted">修改将同步到所有选中频道，原有点赞和回复会保留。</p>
       <fieldset ${draft.saving ? "disabled" : ""}>
         <legend>发布到（可多选）</legend>
-        ${["all", "school", "major"].map((type) => `<label class="community-edit-destination"><input type="checkbox" data-community-edit-channel="${type}" ${draft.channels.includes(type) ? "checked" : ""}>${type === "all" ? "全部社区" : type === "school" ? "学校社区" : "专业社区"}</label>
-          ${type !== "all" && draft.channels.includes(type) ? `<label for="communityEdit-${type}">${type === "school" ? "学校名称" : "专业名称"}</label><input id="communityEdit-${type}" data-community-edit-value="${type}" maxlength="90" value="${esc(draft.values[type])}" placeholder="选择的${type === "school" ? "学校" : "专业"}名称">` : ""}`).join("")}
+        ${["all", "school", "major"].map((type) => `<label class="community-edit-destination"><input type="checkbox" data-community-edit-channel="${type}" ${draft.channels.includes(type) ? "checked" : ""}>${ui.text(type === "all" ? "全部社区" : type === "school" ? "学校社区" : "专业社区")}</label>
+          ${type !== "all" && draft.channels.includes(type) ? ui.html`<label for="communityEdit-${type}">${ui.text(type === "school" ? "学校名称" : "专业名称")}</label><input id="communityEdit-${type}" data-community-edit-value="${type}" maxlength="90" value="${esc(draft.values[type])}" placeholder="${ui.text(type === "school" ? "学校名称" : "专业名称")}">` : ""}`).join("")}
         <label for="communityEditTopic">讨论主题</label><input id="communityEditTopic" data-community-edit-field="topic" maxlength="40" value="${esc(draft.topic)}">
         <label for="communityEditContent">帖子内容</label><textarea id="communityEditContent" data-community-edit-field="content" maxlength="1600" rows="5">${esc(draft.content)}</textarea>
         <label class="community-edit-destination"><input type="checkbox" data-community-edit-anonymous ${draft.anonymous ? "checked" : ""}>匿名发布（所有频道一致）</label>
-        ${draft.error ? `<p class="community-reply-error" role="alert">${esc(draft.error)}</p>` : ""}
-        <div class="community-edit-actions"><button type="button" class="primary" data-action="community-edit-save">${draft.saving ? "保存中…" : "保存修改"}</button><button type="button" data-action="community-edit-cancel">取消编辑</button></div>
+        ${draft.error ? `<p class="community-reply-error" role="alert">${esc(ui.text(draft.error))}</p>` : ""}
+        <div class="community-edit-actions"><button type="button" class="primary" data-action="community-edit-save">${ui.text(draft.saving ? "保存中…" : "保存修改")}</button><button type="button" data-action="community-edit-cancel">取消编辑</button></div>
       </fieldset></section>`;
   }
 
@@ -1114,59 +1119,59 @@
     const data = state.community;
     const posts = state.communityFocusedPost ? [state.communityFocusedPost] : data?.posts || [];
     const channel = state.communityChannel;
-    const channelName = channel === "all" ? "全部社区" : communityValue() || (channel === "school" ? "请选择学校" : "请选择专业");
+    const channelName = channel === "all" ? ui.text("全部社区") : communityValue() || (channel === "school" ? ui.text("请选择学校") : ui.text("请选择专业"));
     const canPost = !state.communityPosting && state.communityDraft.channels.length > 0;
-    const kind = channel === "school" ? "学校" : "专业";
+    const kind = channel === "school" ? ui.text("学校") : ui.text("专业");
     const choices = [...new Set([profile()[channel], communityValue(), ...(channel === "school" ? schoolOptions() : ["Finance", "Economics", "Business", "Computer Science", "Engineering", "Nursing", "Mathematics", "Statistics", "Psychology", "Biology"]), ...(state.communityChoices?.[channel === "school" ? "schools" : "majors"] || [])].filter(Boolean))];
     const conversationIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l-3 3V11.5A7.5 7.5 0 0 1 9.5 4h3a7.5 7.5 0 0 1 7.5 7.5Z"/><path d="M7 10h8M7 14h5"/></svg>`;
-    return `
-      ${pageHeader("COMMUNITY", "社区", "与同学交流想法，一起找到答案。")}
+    return ui.html`
+      ${pageHeader("COMMUNITY", ui.text("社区"), ui.text("与同学交流想法，一起找到答案。"))}
       <details class="community-notifications" ${state.communityNoticesOpen ? "open" : ""}><summary>回复通知 · ${(state.communityNotices?.notifications || []).filter((notice) => !notice.read).length} 条未读（已加载）</summary>
         <p>你的帖子收到回复时，会在这里通知你。进入社区或点击刷新可获取新回复。</p>
         <button type="button" data-action="community-notifications-refresh">刷新通知</button>
         ${state.communityNoticeError ? `<p role="alert">${esc(state.communityNoticeError)}</p>` : ""}
-        <div>${(state.communityNotices?.notifications || []).map((notice) => `<button type="button" class="community-notification ${notice.read ? "is-read" : ""}" data-action="community-notification-open" data-id="${esc(notice.id)}" data-post-id="${esc(notice.postId)}"><strong>${notice.read ? "" : "● "}${esc(notice.authorName)} 回复了「${esc(notice.topic || "讨论") }」</strong><span>${esc(notice.content)}</span><time>${esc(formatDate(notice.createdAt))}</time></button>`).join("") || `<p class="muted">还没有回复通知。</p>`}</div>
-        ${state.communityNotices?.nextBefore ? `<button type="button" data-action="community-notifications-more">加载更早通知</button>` : ""}
+        <div>${(state.communityNotices?.notifications || []).map((notice) => ui.html`<button type="button" class="community-notification ${notice.read ? "is-read" : ""}" data-action="community-notification-open" data-id="${esc(notice.id)}" data-post-id="${esc(notice.postId)}"><strong>${notice.read ? "" : "● "}${esc(notice.authorName)} 回复了「${esc(notice.topic || ui.text("讨论")) }」</strong><span>${esc(notice.content)}</span><time>${esc(formatDate(notice.createdAt))}</time></button>`).join("") || ui.html`<p class="muted">还没有回复通知。</p>`}</div>
+        ${state.communityNotices?.nextBefore ? ui.html`<button type="button" data-action="community-notifications-more">加载更早通知</button>` : ""}
       </details>
       <div class="community-layout">
         <section class="community-discussions" aria-labelledby="communityFeedTitle">
           <div class="community-intro"><span class="community-kicker">一起学习 · 一起交流</span><h2>在这里，遇见同路的同学</h2><p>聊聊选课、分享经验，或把卡住你的问题交给大家。</p></div>
           <nav class="community-tabs" aria-label="社区频道">
-            ${["all", "school", "major"].map((item) => `<button type="button" class="${channel === item ? "active" : ""}" aria-pressed="${channel === item}" data-action="community-channel" data-channel="${item}">${item === "all" ? "全部社区" : item === "school" ? "学校社区" : "专业社区"}</button>`).join("")}
+            ${["all", "school", "major"].map((item) => `<button type="button" class="${channel === item ? "active" : ""}" aria-pressed="${channel === item}" data-action="community-channel" data-channel="${item}">${item === "all" ? ui.text("全部社区") : item === "school" ? ui.text("学校社区") : ui.text("专业社区")}</button>`).join("")}
           </nav>
-          ${channel !== "all" ? `<div class="community-channel-picker"><label for="communityChannelValue">选择${kind}</label><div class="community-picker-row"><input id="communityChannelValue" list="communityChannelChoices" maxlength="90" value="${esc(communityValue())}" placeholder="选择或输入${kind}名称"><datalist id="communityChannelChoices">${choices.map((item) => `<option value="${esc(item)}"></option>`).join("")}</datalist><button type="button" data-action="community-select">查看</button></div><div class="community-picker-hint"><span>可从列表选择，也可以输入其他${kind}名称。</span>${profile()[channel] ? `<button type="button" data-action="community-default">我的${kind}</button>` : ""}</div></div>` : ""}
-          <div class="community-search"><label for="communitySearchInput">搜索当前频道</label><div class="community-picker-row"><input id="communitySearchInput" type="search" maxlength="80" value="${esc(state.communitySearchDraft)}" placeholder="搜索主题或正文"><button type="button" data-action="community-search">搜索</button>${state.communitySearch ? `<button type="button" data-action="community-search-clear">清除</button>` : ""}<button type="button" data-action="community-retry">刷新</button></div></div>
-          ${data?.indexing ? `<p class="community-feed-status" role="status">正在分批整理历史讨论，点击刷新可继续加载。</p>` : ""}
-          ${state.communityFocusedPost ? `<button type="button" data-action="community-focus-close">返回频道列表</button>` : ""}
-          <div class="community-feed-heading"><h3 id="communityFeedTitle">${state.communityFocusedPost ? "通知中的讨论" : esc(channelName)}</h3><span>已加载 ${posts.length} 条讨论</span></div>
+          ${channel !== "all" ? ui.html`<div class="community-channel-picker"><label for="communityChannelValue">选择${kind}</label><div class="community-picker-row"><input id="communityChannelValue" list="communityChannelChoices" maxlength="90" value="${esc(communityValue())}" placeholder="选择或输入${kind}名称"><datalist id="communityChannelChoices">${choices.map((item) => `<option value="${esc(item)}"></option>`).join("")}</datalist><button type="button" data-action="community-select">查看</button></div><div class="community-picker-hint"><span>可从列表选择，也可以输入其他${kind}名称。</span>${profile()[channel] ? ui.html`<button type="button" data-action="community-default">我的${kind}</button>` : ""}</div></div>` : ""}
+          <div class="community-search"><label for="communitySearchInput">搜索当前频道</label><div class="community-picker-row"><input id="communitySearchInput" type="search" maxlength="80" value="${esc(state.communitySearchDraft)}" placeholder="搜索主题或正文"><button type="button" data-action="community-search">搜索</button>${state.communitySearch ? ui.html`<button type="button" data-action="community-search-clear">清除</button>` : ""}<button type="button" data-action="community-retry">刷新</button></div></div>
+          ${data?.indexing ? ui.html`<p class="community-feed-status" role="status">正在分批整理历史讨论，点击刷新可继续加载。</p>` : ""}
+          ${state.communityFocusedPost ? ui.html`<button type="button" data-action="community-focus-close">返回频道列表</button>` : ""}
+          <div class="community-feed-heading"><h3 id="communityFeedTitle">${state.communityFocusedPost ? ui.text("通知中的讨论") : esc(channelName)}</h3><span>已加载 ${posts.length} 条讨论</span></div>
           ${communityEditHtml()}
           <div class="community-feed">
-            ${state.busy ? `<p class="community-feed-status" role="status">正在加载讨论…</p>` : state.communityError ? `<div class="community-feed-status" role="alert"><p>${esc(state.communityError)}</p><button type="button" data-action="community-retry">重新加载</button></div>` : !state.communityFocusedPost && channel !== "all" && !communityValue().trim() ? `<p class="community-feed-status">先选择或输入一个${kind}，看看大家在聊什么。</p>` : posts.length ? posts.map((post) => `
+            ${state.busy ? ui.html`<p class="community-feed-status" role="status">正在加载讨论…</p>` : state.communityError ? ui.html`<div class="community-feed-status" role="alert"><p>${esc(state.communityError)}</p><button type="button" data-action="community-retry">重新加载</button></div>` : !state.communityFocusedPost && channel !== "all" && !communityValue().trim() ? ui.html`<p class="community-feed-status">先选择或输入一个${kind}，看看大家在聊什么。</p>` : posts.length ? posts.map((post) => ui.html`
               <article class="community-post">
-                <div class="community-post-meta"><span class="community-avatar" aria-hidden="true">${esc((post.authorName || "同").slice(0, 1))}</span><div><b>${esc(post.authorName)}</b><time datetime="${esc(post.createdAt)}">${esc(formatDate(post.createdAt))}</time></div><span class="community-channel-badge">${esc(post.channels?.map((entry) => entry.label).join(" · ") || post.channelLabel || "全部社区")}</span></div>
+                <div class="community-post-meta"><span class="community-avatar" aria-hidden="true">${esc((post.authorName || ui.text("同")).slice(0, 1))}</span><div><b>${esc(post.authorName)}</b><time datetime="${esc(post.createdAt)}">${esc(formatDate(post.createdAt))}</time></div><span class="community-channel-badge">${esc(post.channels?.map((entry) => entry.label).join(" · ") || post.channelLabel || ui.text("全部社区"))}</span></div>
                 <h4>${esc(post.topic)}</h4>
                 <div class="formatted-text">${formatText(post.content)}</div>
-                ${post.editedAt ? `<small class="community-edited">已编辑 · ${esc(formatDate(post.editedAt))}</small>` : ""}
-                ${post.mine ? `<button type="button" class="community-edit-button" data-action="community-edit" data-id="${esc(post.id)}">编辑帖子</button>` : ""}
-                <footer><button type="button" class="community-like ${post.likedByMe ? "is-liked" : ""}" aria-pressed="${Boolean(post.likedByMe)}" aria-label="${post.likedByMe ? "取消赞同" : "赞同"}" data-action="community-like" data-id="${esc(post.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11H3V10h4Zm0 0 5-7c2 0 3 1 2 4l-1 3h5a2 2 0 0 1 2 2l-1 7a2 2 0 0 1-2 2H7"/></svg>赞同 <span>${post.likeCount || 0}</span></button>${post.mine || ["admin", "owner"].includes(state.user?.role) ? `<button type="button" data-action="community-delete" data-id="${esc(post.id)}">删除帖子</button>` : ""}</footer>
-                <button type="button" class="community-replies-toggle" data-action="community-replies-toggle" data-id="${esc(post.id)}" aria-expanded="${communityReplies.thread(post.id).open}" aria-controls="community-thread-${esc(post.id)}">${communityReplies.thread(post.id).open ? "收起讨论" : "回复 / 讨论"}</button>
+                ${post.editedAt ? ui.html`<small class="community-edited">已编辑 · ${esc(formatDate(post.editedAt))}</small>` : ""}
+                ${post.mine ? ui.html`<button type="button" class="community-edit-button" data-action="community-edit" data-id="${esc(post.id)}">编辑帖子</button>` : ""}
+                <footer><button type="button" class="community-like ${post.likedByMe ? "is-liked" : ""}" aria-pressed="${Boolean(post.likedByMe)}" aria-label="${post.likedByMe ? ui.text("取消赞同") : ui.text("赞同")}" data-action="community-like" data-id="${esc(post.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11H3V10h4Zm0 0 5-7c2 0 3 1 2 4l-1 3h5a2 2 0 0 1 2 2l-1 7a2 2 0 0 1-2 2H7"/></svg>赞同 <span>${post.likeCount || 0}</span></button>${post.mine || ["admin", "owner"].includes(state.user?.role) ? ui.html`<button type="button" data-action="community-delete" data-id="${esc(post.id)}">删除帖子</button>` : ""}</footer>
+                <button type="button" class="community-replies-toggle" data-action="community-replies-toggle" data-id="${esc(post.id)}" aria-expanded="${communityReplies.thread(post.id).open}" aria-controls="community-thread-${esc(post.id)}">${communityReplies.thread(post.id).open ? ui.text("收起讨论") : ui.text("回复 / 讨论")}</button>
                 ${communityThreadHtml(post.id)}
-              </article>`).join("") : `<div class="community-empty"><span class="community-empty-icon">${conversationIcon}</span><h4>${state.communitySearch ? "这一批没有匹配的讨论" : "第一条讨论，从你开始"}</h4><p>${state.communitySearch ? "可继续加载更早内容，或换一个关键词。" : "这里还没有讨论，分享一个问题或一点经验吧。"}</p><div class="community-topic-hints"><span>选课交流</span><span>作业求助</span><span>学习搭子</span></div><button type="button" data-action="community-compose">发起第一条讨论 <span aria-hidden="true">↗</span></button></div>`}
+              </article>`).join("") : ui.html`<div class="community-empty"><span class="community-empty-icon">${conversationIcon}</span><h4>${state.communitySearch ? ui.text("这一批没有匹配的讨论") : ui.text("第一条讨论，从你开始")}</h4><p>${state.communitySearch ? ui.text("可继续加载更早内容，或换一个关键词。") : ui.text("这里还没有讨论，分享一个问题或一点经验吧。")}</p><div class="community-topic-hints"><span>选课交流</span><span>作业求助</span><span>学习搭子</span></div><button type="button" data-action="community-compose">发起第一条讨论 <span aria-hidden="true">↗</span></button></div>`}
           </div>
-          ${!state.communityFocusedPost && data?.nextBefore ? `<button type="button" data-action="community-more" ${state.communityMoreLoading ? "disabled" : ""}>${state.communityMoreLoading ? "加载中…" : state.communitySearch ? "继续搜索更早讨论" : "加载更多讨论"}</button>` : ""}
+          ${!state.communityFocusedPost && data?.nextBefore ? `<button type="button" data-action="community-more" ${state.communityMoreLoading ? "disabled" : ""}>${state.communityMoreLoading ? ui.text("加载中…") : state.communitySearch ? ui.text("继续搜索更早讨论") : ui.text("加载更多讨论")}</button>` : ""}
         </section>
         <aside class="community-compose-column" aria-labelledby="communityComposeTitle">
           <section class="community-composer-card">
             <div class="community-compose-heading"><span>${conversationIcon}</span><div><h3 id="communityComposeTitle">发起讨论</h3><p>让交流从一个想法开始</p></div></div>
             <fieldset class="community-destinations"><legend>发布到（可多选）</legend>
-              ${["all", "school", "major"].map((type) => { const value = type === "all" ? "" : state.communitySelections[type] ?? profile()[type] ?? ""; return `<label><input type="checkbox" data-community-destination="${type}" ${state.communityDraft.channels.includes(type) ? "checked" : ""} ${type !== "all" && !value ? "disabled" : ""}>${esc(type === "all" ? "全部社区" : (type === "school" ? "学校：" : "专业：") + (value || "请先选择或填写"))}</label>`; }).join("")}
+              ${["all", "school", "major"].map((type) => { const value = type === "all" ? "" : state.communitySelections[type] ?? profile()[type] ?? ""; return `<label><input type="checkbox" data-community-destination="${type}" ${state.communityDraft.channels.includes(type) ? "checked" : ""} ${type !== "all" && !value ? "disabled" : ""}>${esc(type === "all" ? ui.text("全部社区") : (type === "school" ? ui.text("学校：") : ui.text("专业：")) + (value || ui.text("请先选择或填写")))}</label>`; }).join("")}
               <small>仅发布到勾选的频道；所有频道共享点赞、回复和匿名设置。</small>
             </fieldset>
             <label for="postTopic">讨论主题</label>
             <input id="postTopic" maxlength="40" value="${esc(state.communityDraft.topic)}" placeholder="例如 ECO101 / 选课建议">
             <label for="postContent">想和大家聊什么？</label>
             <textarea id="postContent" maxlength="1600" placeholder="写下你的问题，或分享一段学习经验……">${esc(state.communityDraft.content)}</textarea>
-            <div class="community-compose-footer"><label class="community-anonymous"><input id="postAnon" type="checkbox" ${state.communityDraft.anonymous ? "checked" : ""}>匿名发布</label><button type="button" class="primary" data-action="community-post" ${canPost ? "" : "disabled"}>${state.communityPosting ? "发布中…" : "发布讨论"} <span aria-hidden="true">↗</span></button></div>
+            <div class="community-compose-footer"><label class="community-anonymous"><input id="postAnon" type="checkbox" ${state.communityDraft.anonymous ? "checked" : ""}>匿名发布</label><button type="button" class="primary" data-action="community-post" ${canPost ? "" : "disabled"}>${state.communityPosting ? ui.text("发布中…") : ui.text("发布讨论")} <span aria-hidden="true">↗</span></button></div>
           </section>
           <p class="community-guidance">友善交流，尊重每一种声音。<br>分享时请留意自己和他人的隐私。</p>
         </aside>
@@ -1179,34 +1184,34 @@
     const requests = state.classmates?.requests || { incoming: [], outgoing: [] };
     const active = classmates.find((item) => item.id === state.activeClassmateId) || null;
     if (state.classmateChatOpen) return state.classmateProfileOpen ? classmateProfilePage(active?.peer) : classmateChatPage(active);
-    return `
-      ${pageHeader("CLASSMATES", "同学", "")}
+    return ui.html`
+      ${pageHeader("CLASSMATES", ui.text("同学"), "")}
       <section class="two-col classmates-layout">
         <aside class="classmates-sidebar" aria-label="同学列表">
           <h2>添加同学</h2>
-          <p class="muted">当前学校：${esc(state.classmates?.school || profile().school || "未填写")}</p>
+          <p class="muted">当前学校：${esc(state.classmates?.school || profile().school || ui.text("未填写"))}</p>
           <div class="inline-fields">
             <input id="classmateSbId" aria-label="同学的 SB ID（区分大小写）" maxlength="8" placeholder="输入 SB ID（区分大小写）" value="${esc(classmateListDraft)}">
             <button data-action="add-classmate">发送申请</button>
           </div>
           <details class="request-box" ${classmateRequestsOpen ? "open" : ""}>
             <summary>申请列表 ${(requests.incoming || []).length ? `<span class="dot"></span>` : ""}</summary>
-            ${(requests.incoming || []).length ? requests.incoming.map((req) => `
-              <div class="mini-row"><b>${esc(req.from?.name || "同学")}</b><small>SB ID: ${esc(req.from?.sbId || "")}</small><button data-action="friend-accept" data-id="${esc(req.id)}">通过</button><button data-action="friend-ignore" data-id="${esc(req.id)}">忽略</button></div>
-            `).join("") : `<p class="muted">还没有好友申请。</p>`}
-            ${(requests.outgoing || []).length ? `<h3>已发送</h3>${requests.outgoing.map((req) => `<div class="mini-row"><b>${esc(req.to?.name || "同学")}</b><small>等待对方通过</small></div>`).join("")}` : ""}
+            ${(requests.incoming || []).length ? requests.incoming.map((req) => ui.html`
+              <div class="mini-row"><b>${esc(req.from?.name || ui.text("同学"))}</b><small>SB ID: ${esc(req.from?.sbId || "")}</small><button data-action="friend-accept" data-id="${esc(req.id)}">通过</button><button data-action="friend-ignore" data-id="${esc(req.id)}">忽略</button></div>
+            `).join("") : ui.html`<p class="muted">还没有好友申请。</p>`}
+            ${(requests.outgoing || []).length ? ui.html`<h3>已发送</h3>${requests.outgoing.map((req) => ui.html`<div class="mini-row"><b>${esc(req.to?.name || ui.text("同学"))}</b><small>等待对方通过</small></div>`).join("")}` : ""}
           </details>
           <h2>同学列表</h2>
           <div class="friend-list">
           ${classmates.length ? classmates.map((mate) => `
             <button class="friend-row ${mate.id === state.activeClassmateId ? "active" : ""}" data-action="select-classmate" data-id="${esc(mate.id)}">
               <span class="classmate-avatar" aria-hidden="true">${mate.peer?.avatarUrl ? `<img src="${esc(mate.peer.avatarUrl)}" alt="">` : esc(initials(mate.peer?.name))}</span>
-              <span class="friend-info"><b>${esc(mate.peer?.name || "同学")}</b>
+              <span class="friend-info"><b>${esc(mate.peer?.name || ui.text("同学"))}</b>
               <small>SB ID: ${esc(mate.peer?.sbId || "")}</small>
-              ${mate.lastMessage ? `<span class="friend-preview">${esc(mate.lastMessage.mine ? "你：" : "")}${esc(mate.lastMessage.content || "")}</span>` : ""}</span>
-              ${mate.unreadCount > 0 ? `<span class="friend-unread" aria-label="${esc(mate.unreadCount)} 条未读消息">${mate.unreadCount > 99 ? "99+" : esc(mate.unreadCount)}</span>` : ""}
+              ${mate.lastMessage ? `<span class="friend-preview">${esc(mate.lastMessage.mine ? ui.text("你：") : "")}${esc(mate.lastMessage.content || "")}</span>` : ""}</span>
+              ${mate.unreadCount > 0 ? ui.html`<span class="friend-unread" aria-label="${esc(mate.unreadCount)} 条未读消息">${mate.unreadCount > 99 ? "99+" : esc(mate.unreadCount)}</span>` : ""}
             </button>
-          `).join("") : `<p class="muted">还没有添加同学。</p>`}
+          `).join("") : ui.html`<p class="muted">还没有添加同学。</p>`}
           </div>
         </aside>
       </section>
@@ -1214,20 +1219,20 @@
   }
 
   function classmateChatPage(active) {
-    return `
+    return ui.html`
       <section class="classmates-chat-view">
         <article class="chat-panel" data-chat-id="${esc(active?.id || "")}" aria-label="同学聊天">
           <header class="dm-header">
             <button class="dm-icon-button" data-action="back-classmates" title="返回同学列表" aria-label="返回同学列表"><svg aria-hidden="true"><use href="/classmates-icons.svg#back"></use></svg></button>
             ${active ? classmateProfileAvatar(active.peer) : ""}
-            <div class="dm-peer"><h2>${esc(active?.peer?.name || "请选择一位同学")}</h2>${active ? `<p>SB ID: ${esc(active.peer?.sbId || "")}${active.peer?.school ? ` · ${esc(active.peer.school)}` : ""}</p>` : ""}</div>
+            <div class="dm-peer"><h2>${esc(active?.peer?.name || ui.text("请选择一位同学"))}</h2>${active ? `<p>SB ID: ${esc(active.peer?.sbId || "")}${active.peer?.school ? ` · ${esc(active.peer.school)}` : ""}</p>` : ""}</div>
             <button class="dm-icon-button" data-action="refresh-classmates" title="刷新聊天" aria-label="刷新聊天"><svg aria-hidden="true"><use href="/classmates-icons.svg#refresh"></use></svg></button>
           </header>
-          <div class="dm-list" role="log" aria-label="聊天记录">${state.directMessages.length ? state.directMessages.map((msg) => `<div class="dm-row ${msg.mine ? "mine" : ""}">${!msg.mine && active ? classmateProfileAvatar(active.peer) : ""}<div class="dm ${msg.mine ? "mine" : ""}">${!msg.mine ? `<span class="dm-sender">${esc(active?.peer?.name || "同学")}</span>` : ""}<div class="dm-content">${esc(msg.content)}</div>${directAttachments.render(msg.attachments)}<small>${esc(formatDate(msg.createdAt))}</small></div></div>`).join("") : `<p class="empty">${active ? "还没有聊天记录。先打个招呼吧。" : "选择同学后，这里会显示你们的聊天。"}</p>`}</div>
+          <div class="dm-list" role="log" aria-label="聊天记录">${state.directMessages.length ? state.directMessages.map((msg) => `<div class="dm-row ${msg.mine ? "mine" : ""}">${!msg.mine && active ? classmateProfileAvatar(active.peer) : ""}<div class="dm ${msg.mine ? "mine" : ""}">${!msg.mine ? `<span class="dm-sender">${esc(active?.peer?.name || ui.text("同学"))}</span>` : ""}<div class="dm-content">${esc(msg.content)}</div>${directAttachments.render(msg.attachments)}<small>${esc(formatDate(msg.createdAt))}</small></div></div>`).join("") : `<p class="empty">${active ? ui.text("还没有聊天记录。先打个招呼吧。") : ui.text("选择同学后，这里会显示你们的聊天。")}</p>`}</div>
           <form class="dm-compose" data-dm-dropzone>
             <div class="dm-file-queue" aria-label="待发送附件">${dmAttachments.files().map((file, index) => {
               const preview = dmAttachments.preview(file);
-              return `<div class="dm-pending-file">${preview ? `<img src="${esc(preview)}" alt="待发送图片：${esc(file.name)}">` : '<span aria-hidden="true">文件</span>'}<span><b>${esc(file.name)}</b><small>${directAttachments.sizeLabel(file.size)}</small></span><button type="button" data-action="remove-dm-file" data-index="${index}" aria-label="移除附件：${esc(file.name)}">×</button></div>`;
+              return ui.html`<div class="dm-pending-file">${preview ? ui.html`<img src="${esc(preview)}" alt="待发送图片：${esc(file.name)}">` : ui.markup('<span aria-hidden="true">文件</span>')}<span><b>${esc(file.name)}</b><small>${directAttachments.sizeLabel(file.size)}</small></span><button type="button" data-action="remove-dm-file" data-index="${index}" aria-label="移除附件：${esc(file.name)}">×</button></div>`;
             }).join("")}</div>
             <div class="dm-compose-row"><input id="dmFiles" type="file" multiple hidden><button class="dm-icon-button dm-attach" type="button" data-action="attach-dm" title="添加图片或文件" aria-label="添加图片或文件" ${active ? "" : "disabled"}><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21 11-8.5 8.5a6 6 0 0 1-8.5-8.5l9-9a4 4 0 0 1 5.7 5.7l-9 9a2 2 0 0 1-2.9-2.9L15 6.5"/></svg></button><input id="dmInput" aria-label="聊天消息" autocomplete="off" maxlength="1200" placeholder="写消息，或添加图片、文件" value="${esc(state.directMessageDrafts[state.activeClassmateId] || "")}" ${active ? "" : "disabled"}><button class="send dm-icon-button" data-action="send-dm" type="submit" title="发送消息" aria-label="发送消息" ${active ? "" : "disabled"}><svg aria-hidden="true"><use href="/classmates-icons.svg#send"></use></svg></button></div>
             <p class="dm-send-status" role="status" aria-live="polite">可粘贴截图或拖入文件 · 单个 12 MB，合计 20 MB</p>
@@ -1238,27 +1243,27 @@
   }
 
   function classmateProfileAvatar(peer) {
-    const label = `查看${peer?.name || "同学"}的主页`;
+    const label = ui.message`查看${peer?.name || ui.text("同学")}的主页`;
     return `<button type="button" class="classmate-avatar peer-avatar-button" data-action="view-classmate-profile" title="${esc(label)}" aria-label="${esc(label)}">${peer?.avatarUrl ? `<img src="${esc(peer.avatarUrl)}" alt="">` : esc(initials(peer?.name))}</button>`;
   }
 
   function classmateProfilePage(peer) {
-    return `
+    return ui.html`
       <section class="classmates-chat-view peer-profile-page">
         <header class="dm-header">
           <button class="dm-icon-button" data-action="back-classmate-chat" title="返回聊天" aria-label="返回聊天"><svg aria-hidden="true"><use href="/classmates-icons.svg#back"></use></svg></button>
-          <div class="dm-peer"><h2>${esc(peer?.name || "同学")}的主页</h2></div>
+          <div class="dm-peer"><h2>${esc(peer?.name || ui.text("同学"))}的主页</h2></div>
         </header>
         <div class="peer-profile-body">
-          <div class="peer-profile-cover">${peer?.backgroundUrl ? `<img src="${esc(peer.backgroundUrl)}" alt="${esc(peer.name)}的背景图片">` : ""}</div>
+          <div class="peer-profile-cover">${peer?.backgroundUrl ? ui.html`<img src="${esc(peer.backgroundUrl)}" alt="${esc(peer.name)}的背景图片">` : ""}</div>
           <div class="peer-profile-info">
             <div class="peer-profile-summary">
-              <span class="classmate-avatar peer-profile-avatar">${peer?.avatarUrl ? `<img src="${esc(peer.avatarUrl)}" alt="${esc(peer.name)}的头像">` : esc(initials(peer?.name))}</span>
-              <div><h1>${esc(peer?.name || "同学")}</h1><p>SB ID: ${esc(peer?.sbId || "未设置")}</p></div>
+              <span class="classmate-avatar peer-profile-avatar">${peer?.avatarUrl ? ui.html`<img src="${esc(peer.avatarUrl)}" alt="${esc(peer.name)}的头像">` : esc(initials(peer?.name))}</span>
+              <div><h1>${esc(peer?.name || ui.text("同学"))}</h1><p>SB ID: ${esc(peer?.sbId || ui.text("未设置"))}</p></div>
             </div>
             <dl class="peer-profile-facts">
-              <div><dt>学校</dt><dd>${esc(peer?.school || "未填写")}</dd></div>
-              <div><dt>专业</dt><dd>${esc(peer?.major || "未填写")}</dd></div>
+              <div><dt>学校</dt><dd>${esc(peer?.school || ui.text("未填写"))}</dd></div>
+              <div><dt>专业</dt><dd>${esc(peer?.major || ui.text("未填写"))}</dd></div>
             </dl>
             <button class="primary" data-action="back-classmate-chat">发消息</button>
           </div>
@@ -1268,18 +1273,18 @@
   }
 
   function emailPage() {
-    const reply = `<div class="mailbox-reply-layout">
+    const reply = ui.html`<div class="mailbox-reply-layout">
         <article class="card mailbox-compose-card">
           <header class="mailbox-panel-heading"><h2>收到的邮件</h2><p>粘贴来信，告诉我你想怎样回复。</p></header>
           <label for="emailOriginal">邮件原文</label><textarea id="emailOriginal" rows="7" placeholder="把老师、TA、学校办公室或同学发来的邮件粘贴在这里"></textarea>
           <label>你想怎么回复<textarea id="emailGoal" placeholder="例如：我想礼貌申请延期 / 确认 meeting time / 解释我会晚交"></textarea></label>
-          <div class="mailbox-reply-options"><label>回复语气<select id="emailTone"><option>专业、自然</option><option>更礼貌正式</option><option>简短直接</option></select></label><label>输出内容<select id="emailOutput"><option>中文解读 + 英文回复</option><option>只要英文回复</option></select></label></div>
+          <div class="mailbox-reply-options"><label>回复语气<select id="emailTone"><option value="专业、自然">专业、自然</option><option value="更礼貌正式">更礼貌正式</option><option value="简短直接">简短直接</option></select></label><label>输出内容<select id="emailOutput"><option value="中文解读 + 英文回复">中文解读 + 英文回复</option><option value="只要英文回复">只要英文回复</option></select></label></div>
           ${emailDraft.error ? `<p class="mailbox-card-error" role="alert">${esc(emailDraft.error)}</p>` : ""}
-          <div class="mailbox-compose-actions"><button type="button" class="primary" data-action="draft-email" ${emailDraft.generating ? "disabled" : ""}>${emailDraft.generating ? "正在生成…" : "解读并生成回复"}</button><span>生成草稿后，可复制并修改。</span></div>
+          <div class="mailbox-compose-actions"><button type="button" class="primary" data-action="draft-email" ${emailDraft.generating ? "disabled" : ""}>${emailDraft.generating ? ui.text("正在生成…") : ui.text("解读并生成回复")}</button><span>生成草稿后，可复制并修改。</span></div>
         </article>
-        <article class="card mailbox-result-card"><header class="mailbox-result-heading"><div><h2>建议回复</h2><p>看懂邮件重点，整理合适的英文回复。</p></div><button type="button" data-action="copy-output" ${!emailDraft.output || emailDraft.generating ? "disabled" : ""}>复制回复</button></header><div id="toolOutput" class="output-box mailbox-reply-output" aria-live="polite" aria-busy="${Boolean(emailDraft.generating)}">${emailDraft.generating ? '<div class="mailbox-reply-empty"><span class="mailbox-writing-indicator" aria-hidden="true"></span><h3>正在整理邮件和回复…</h3><p>请稍候，你的来信与回复要求会保留。</p></div>' : emailDraft.output || '<div class="mailbox-reply-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M9 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/><path d="m16 3 5 5-9 9H7v-5z"/></svg><h3>你的回复草稿会显示在这里</h3><p>填写来信与回复意图，即可开始。</p></div>'}</div></article>
+        <article class="card mailbox-result-card"><header class="mailbox-result-heading"><div><h2>建议回复</h2><p>看懂邮件重点，整理合适的英文回复。</p></div><button type="button" data-action="copy-output" ${!emailDraft.output || emailDraft.generating ? "disabled" : ""}>复制回复</button></header><div id="toolOutput" class="output-box mailbox-reply-output" aria-live="polite" aria-busy="${Boolean(emailDraft.generating)}">${emailDraft.generating ? ui.markup('<div class="mailbox-reply-empty"><span class="mailbox-writing-indicator" aria-hidden="true"></span><h3>正在整理邮件和回复…</h3><p>请稍候，你的来信与回复要求会保留。</p></div>') : emailDraft.output || ui.markup('<div class="mailbox-reply-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M9 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/><path d="m16 3 5 5-9 9H7v-5z"/></svg><h3>你的回复草稿会显示在这里</h3><p>填写来信与回复意图，即可开始。</p></div>')}</div></article>
       </div>`;
-    return `${pageHeader("EMAIL ASSISTANT", "邮箱助手", "读懂来信，写好回复，跟进重要安排。")}${mailboxView.html(reply)}`;
+    return `${pageHeader("EMAIL ASSISTANT", ui.text("邮箱助手"), ui.text("读懂来信，写好回复，跟进重要安排。"))}${mailboxView.html(reply)}`;
   }
 
   function schedulePage() {
@@ -1289,8 +1294,8 @@
     const draft = state.scheduleManualDraft;
     const parts = scheduleCalendarView.renderParts(model, { agendaView: state.scheduleAgendaView, agendaTypes: state.scheduleAgendaTypes, countdown: dueText });
     state.scheduleClockSignature = scheduleClockSignature(model);
-    return `
-      ${pageHeader("SCHEDULE", "日程", "一个月历，收好你的课程、作业与生活安排。")}
+    return ui.html`
+      ${pageHeader("SCHEDULE", ui.text("日程"), ui.text("一个月历，收好你的课程、作业与生活安排。"))}
       <section class="schedule-layout">
         <div id="scheduleCalendarView" class="planner-view">${parts.calendar}</div>
         ${scheduleCalendarView.courseManagementHtml(state.scheduleItems)}
@@ -1301,14 +1306,14 @@
           <details class="schedule-manual-fields" ${Object.entries(draft).some(([key, value]) => key !== "date" && value) ? "open" : ""}><summary>手动填写详细信息</summary>
           <div class="schedule-manual-form">
             <label class="schedule-field-wide">标题<input id="scheduleTitle" data-manual-field="title" maxlength="160" value="${esc(draft.title || "")}" placeholder="例如 复习 STA437 或 Essay 1 截止"></label>
-            <label>类型<select id="scheduleKind" data-manual-field="kind">${[["EVENT", "个人安排"], ["DDL", "作业 / 截止"], ["LEC", "Lecture"], ["TUT", "Tutorial"]].map(([kind, label]) => `<option value="${kind}" ${(draft.kind || "EVENT") === kind ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+            <label>类型<select id="scheduleKind" data-manual-field="kind">${[["EVENT", ui.text("个人安排")], ["DDL", ui.text("作业 / 截止")], ["LEC", "Lecture"], ["TUT", "Tutorial"]].map(([kind, label]) => `<option value="${kind}" ${(draft.kind || "EVENT") === kind ? "selected" : ""}>${label}</option>`).join("")}</select></label>
             <label>日期<input id="scheduleDate" data-manual-field="date" type="date" min="2000-01-01" max="2200-12-31" value="${esc(draft.date || model.selectedDate)}"></label>
             <label>开始 / 截止时间<input id="scheduleClock" data-manual-field="time" type="time" value="${esc(draft.time || "")}"></label>
             <label>结束时间（选填，当天）<input id="scheduleEndClock" data-manual-field="endTime" type="time" value="${esc(draft.endTime || "")}"></label>
             <label>课程（选填）<input id="scheduleCourse" data-manual-field="course" maxlength="80" value="${esc(draft.course || "")}" placeholder="例如 STA437"></label>
             <label>地点 / 链接（选填）<input id="scheduleLocation" data-manual-field="location" maxlength="160" value="${esc(draft.location || "")}" placeholder="教室、会议地点或提交入口"></label>
             <label class="schedule-field-wide">备注（选填）<textarea id="scheduleNotes" data-manual-field="notes" maxlength="600" placeholder="补充要求或备注">${esc(draft.notes || "")}</textarea></label>
-            <div class="schedule-field-wide schedule-form-actions"><button class="primary" data-action="add-schedule" ${state.scheduleSaving ? "disabled" : ""}>${state.scheduleSaving ? "正在保存…" : "保存安排"}</button></div>
+            <div class="schedule-field-wide schedule-form-actions"><button class="primary" data-action="add-schedule" ${state.scheduleSaving ? "disabled" : ""}>${state.scheduleSaving ? ui.text("正在保存…") : ui.text("保存安排")}</button></div>
           </div>
           </details>
         </details>
@@ -1325,9 +1330,9 @@
             <label class="schedule-file-picker ${state.scheduleImportBusy || state.scheduleDrafts.length ? "is-disabled" : ""}">
               <input id="scheduleFile" aria-label="选择课程文件" type="file" accept=".png,.jpg,.jpeg,.webp,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md,.csv,.json" ${state.scheduleImportBusy || state.scheduleDrafts.length ? "disabled" : ""}>
               <span class="schedule-file-symbol" aria-hidden="true">↑</span>
-              <span><strong id="scheduleFileName">${esc(state.scheduleUploadFile?.name || "选择课程文件")}</strong><small>课表截图、PDF、Word、PPT、Excel 或文字文件</small></span>
+              <span><strong id="scheduleFileName">${esc(state.scheduleUploadFile?.name || ui.text("选择课程文件"))}</strong><small>课表截图、PDF、Word、PPT、Excel 或文字文件</small></span>
             </label>
-            <div class="schedule-upload-bottom"><small>PDF ≤ 8 MB · 其他文件 ≤ 12 MB</small><button class="primary" data-action="extract-schedule" ${state.scheduleImportBusy || state.scheduleDrafts.length ? "disabled" : ""}>${state.scheduleImportBusy ? "处理中…" : "AI 提取时间"}</button></div>
+            <div class="schedule-upload-bottom"><small>PDF ≤ 8 MB · 其他文件 ≤ 12 MB</small><button class="primary" data-action="extract-schedule" ${state.scheduleImportBusy || state.scheduleDrafts.length ? "disabled" : ""}>${state.scheduleImportBusy ? ui.text("处理中…") : ui.text("AI 提取时间")}</button></div>
           </div>
           ${state.scheduleImportStatus ? `<p class="schedule-import-status" role="status" aria-live="polite">${esc(state.scheduleImportStatus)}</p>` : ""}
           </div>
@@ -1346,17 +1351,17 @@
   function scheduleQuickHtml(model) {
     const blocked = state.scheduleImportBusy || Boolean(state.scheduleDrafts.length);
     const voiceBusy = state.scheduleVoicePhase !== "idle" || state.scheduleVoicePending;
-    return `<section class="schedule-quick" aria-label="白话或语音新增安排" aria-busy="${Boolean(state.scheduleImportBusy && state.scheduleDraftOrigin === "quick")}">
+    return ui.html`<section class="schedule-quick" aria-label="白话或语音新增安排" aria-busy="${Boolean(state.scheduleImportBusy && state.scheduleDraftOrigin === "quick")}">
       <label for="scheduleQuickText">说说你的安排</label><p>可以一次描述多件事。未提日期时使用所选的 ${esc(model.selectedDate)}；“明天、下周”按今天计算。</p>
       <textarea id="scheduleQuickText" maxlength="6000" placeholder="比如：明天下午三点到四点在图书馆讨论作业；周五晚上八点交 STA437 作业。" ${blocked ? "disabled" : ""}>${esc(state.scheduleQuickText)}</textarea>
-      <div class="schedule-quick-actions"><button class="${state.scheduleVoicePhase === "recording" ? "is-recording" : ""}" data-action="schedule-voice" ${state.scheduleVoicePhase === "stopping" || state.scheduleVoicePending || state.scheduleVoicePhase === "idle" && (blocked || !scheduleVoiceRecorder.supported) ? "disabled" : ""}>${state.scheduleVoicePhase === "recording" ? "结束录音" : state.scheduleVoicePhase === "requesting" ? "取消录音" : "语音输入"}</button>
+      <div class="schedule-quick-actions"><button class="${state.scheduleVoicePhase === "recording" ? "is-recording" : ""}" data-action="schedule-voice" ${state.scheduleVoicePhase === "stopping" || state.scheduleVoicePending || state.scheduleVoicePhase === "idle" && (blocked || !scheduleVoiceRecorder.supported) ? "disabled" : ""}>${state.scheduleVoicePhase === "recording" ? ui.text("结束录音") : state.scheduleVoicePhase === "requesting" ? ui.text("取消录音") : ui.text("语音输入")}</button>
         <label class="schedule-audio-picker ${blocked || voiceBusy ? "is-disabled" : ""}">导入语音<input id="scheduleAudioFile" type="file" aria-label="导入语音文件" accept=".mp3,.mp4,.m4a,.wav,.webm,.mpeg,.mpga" ${blocked || voiceBusy ? "disabled" : ""}></label>
         <button data-action="schedule-voice-retry" ${state.scheduleVoiceFile && !voiceBusy ? "" : "hidden"} ${blocked ? "disabled" : ""}>重试转写</button>
-        <button class="primary" data-action="parse-schedule-text" ${blocked || voiceBusy ? "disabled" : ""}>${state.scheduleImportBusy && state.scheduleDraftOrigin === "quick" ? "正在整理…" : "AI 整理安排"}</button>
+        <button class="primary" data-action="parse-schedule-text" ${blocked || voiceBusy ? "disabled" : ""}>${state.scheduleImportBusy && state.scheduleDraftOrigin === "quick" ? ui.text("正在整理…") : ui.text("AI 整理安排")}</button>
         <button data-action="cancel-schedule-parse" ${scheduleQuickRequest ? "" : "hidden"}>取消整理</button>
       </div>
-      <p class="schedule-voice-hint">${scheduleVoiceRecorder.supported ? "结束录音后会转成文字，可修改后再整理。录音最多 2 分钟，语音文件最多 8 MB。" : "直接录音需要安全连接和浏览器支持；可导入语音文件，或点手机键盘的麦克风输入。"}</p>
-      ${state.scheduleDrafts.length && state.scheduleDraftOrigin === "file" ? `<p>请先确认或取消课程文件的待加入项目，再整理新的安排。</p>` : ""}
+      <p class="schedule-voice-hint">${scheduleVoiceRecorder.supported ? ui.text("结束录音后会转成文字，可修改后再整理。录音最多 2 分钟，语音文件最多 8 MB。") : ui.text("直接录音需要安全连接和浏览器支持；可导入语音文件，或点手机键盘的麦克风输入。")}</p>
+      ${state.scheduleDrafts.length && state.scheduleDraftOrigin === "file" ? ui.html`<p>请先确认或取消课程文件的待加入项目，再整理新的安排。</p>` : ""}
       <p id="scheduleVoiceStatus" role="status" aria-live="polite" ${state.scheduleVoiceMessage ? "" : "hidden"}>${esc(state.scheduleVoiceMessage)}</p>
       <p id="scheduleQuickStatus" class="schedule-import-status" role="status" aria-live="polite" ${state.scheduleQuickStatus ? "" : "hidden"}>${esc(state.scheduleQuickStatus)}</p>
     </section>`;
@@ -1367,7 +1372,7 @@
     if (!button) return;
     const busy = state.scheduleVoicePhase !== "idle" || state.scheduleVoicePending;
     const blocked = state.scheduleImportBusy || Boolean(state.scheduleDrafts.length);
-    button.textContent = state.scheduleVoicePhase === "recording" ? "结束录音" : state.scheduleVoicePhase === "requesting" ? "取消录音" : "语音输入";
+    button.textContent = state.scheduleVoicePhase === "recording" ? ui.text("结束录音") : state.scheduleVoicePhase === "requesting" ? ui.text("取消录音") : ui.text("语音输入");
     button.disabled = state.scheduleVoicePending || state.scheduleVoicePhase === "stopping" || state.scheduleVoicePhase === "idle" && (blocked || !scheduleVoiceRecorder.supported);
     button.classList.toggle("is-recording", state.scheduleVoicePhase === "recording");
     const status = $("scheduleVoiceStatus");
@@ -1380,7 +1385,7 @@
   }
 
   function cancelScheduleVoice() {
-    if (scheduleVoiceRequest) state.scheduleVoiceMessage = "已取消语音转写，原有文字已保留。";
+    if (scheduleVoiceRequest) state.scheduleVoiceMessage = ui.text("已取消语音转写，原有文字已保留。");
     scheduleVoiceRequest?.abort(); scheduleVoiceRequest = null;
     state.scheduleVoicePending = false;
     if (scheduleVoiceRecorder.phase !== "idle") scheduleVoiceRecorder.cancel();
@@ -1394,19 +1399,19 @@
     const controller = new AbortController();
     scheduleVoiceRequest = controller;
     state.scheduleVoiceFile = file; state.scheduleVoicePending = true;
-    state.scheduleVoiceMessage = "正在把语音转成文字…"; updateScheduleVoiceUi();
+    state.scheduleVoiceMessage = ui.text("正在把语音转成文字…"); updateScheduleVoiceUi();
     try {
       const [payload] = await readFiles([file], 8 * 1024 * 1024);
       if (controller.signal.aborted) return;
       const result = await api("/api/schedule/transcribe", { method: "POST", signal: controller.signal, body: payload });
       if (controller.signal.aborted || state.user?.id !== userId) return;
       const text = [state.scheduleQuickText.trim(), result.text].filter(Boolean).join("\n");
-      if (text.length > 6000) throw new Error("合并后的文字超过 6000 字，请先缩短输入内容，再重试转写。");
+      if (text.length > 6000) throw new Error(ui.text("合并后的文字超过 6000 字，请先缩短输入内容，再重试转写。"));
       state.scheduleQuickText = text;
       if ($("scheduleQuickText")) $("scheduleQuickText").value = text;
       state.scheduleVoiceFile = null;
-      state.scheduleVoiceMessage = "已转成文字，可修改后点击“AI 整理安排”。";
-    } catch (error) { if (!controller.signal.aborted && state.user?.id === userId) state.scheduleVoiceMessage = error.message || "语音转写失败，可以重试。"; }
+      state.scheduleVoiceMessage = ui.text("已转成文字，可修改后点击“AI 整理安排”。");
+    } catch (error) { if (!controller.signal.aborted && state.user?.id === userId) state.scheduleVoiceMessage = error.message || ui.text("语音转写失败，可以重试。"); }
     finally {
       if (scheduleVoiceRequest === controller) { scheduleVoiceRequest = null; state.scheduleVoicePending = false; updateScheduleVoiceUi(); }
     }
@@ -1427,7 +1432,7 @@
     status.textContent = state.scheduleQuickStatus;
     $("scheduleQuickText").disabled = state.scheduleImportBusy || Boolean(state.scheduleDrafts.length);
     const button = section.querySelector('[data-action="parse-schedule-text"]');
-    button.textContent = busy ? "正在整理…" : "AI 整理安排";
+    button.textContent = busy ? ui.text("正在整理…") : ui.text("AI 整理安排");
     section.querySelector('[data-action="cancel-schedule-parse"]').hidden = !scheduleQuickRequest;
     updateScheduleVoiceUi();
   }
@@ -1445,17 +1450,17 @@
   async function parseScheduleQuick() {
     if (state.scheduleImportBusy || state.scheduleVoicePending || state.scheduleVoicePhase !== "idle" || state.scheduleDrafts.length) return;
     const text = state.scheduleQuickText.trim();
-    if (!text) throw new Error("先写下或说出你的安排，例如“明天下午三点去图书馆”。");
+    if (!text) throw new Error(ui.text("先写下或说出你的安排，例如“明天下午三点去图书馆”。"));
     const userId = state.user.id;
     const controller = new AbortController();
     scheduleQuickRequest = controller;
     const started = Date.now();
     state.scheduleDraftOrigin = "quick"; state.scheduleImportBusy = true;
-    state.scheduleQuickStatus = "正在整理日期、时间和安排内容…"; updateScheduleQuickUi();
+    state.scheduleQuickStatus = ui.text("正在整理日期、时间和安排内容…"); updateScheduleQuickUi();
     const progress = window.setInterval(() => {
       if (state.user?.id !== userId) { controller.abort(); return; }
       const seconds = Math.floor((Date.now() - started) / 1000);
-      state.scheduleQuickStatus = `${seconds >= 12 ? "AI 仍在整理，请稍候；也可取消后重试。" : "正在整理日期、时间和安排内容…"}（已等待 ${seconds} 秒）`;
+      state.scheduleQuickStatus = ui.message`${seconds >= 12 ? ui.text("AI 仍在整理，请稍候；也可取消后重试。") : ui.text("正在整理日期、时间和安排内容…")}（已等待 ${seconds} 秒）`;
       const status = $("scheduleQuickStatus");
       if (status) status.textContent = state.scheduleQuickStatus;
     }, 1000);
@@ -1465,13 +1470,13 @@
       const result = await api("/api/schedule/parse-text", { method: "POST", signal: controller.signal, body: { text, selectedDate: state.scheduleSelectedDate, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone } });
       if (state.user?.id !== userId || controller.signal.aborted) return;
       state.scheduleReviewError = "";
-      state.scheduleDrafts = result.items; state.scheduleSource = "白话 / 语音输入";
+      state.scheduleDrafts = result.items; state.scheduleSource = ui.text("白话 / 语音输入");
       state.scheduleCalendar = null; state.scheduleFromDate = "";
-      state.scheduleQuickStatus = result.items.length ? `整理出 ${result.items.length} 条安排，请核对后确认加入。${result.duplicateCount ? `${result.duplicateCount} 条重复安排已标记，默认不勾选。` : ""}${result.clarification || ""}` : result.clarification || (result.duplicateCount ? "这些安排已存在，已跳过重复项目。" : "还没有找到明确安排，请补充日期、时间或事情内容。");
+      state.scheduleQuickStatus = result.items.length ? ui.message`整理出 ${result.items.length} 条安排，请核对后确认加入。${result.duplicateCount ? ui.message`${result.duplicateCount} 条重复安排已标记，默认不勾选。` : ""}${result.clarification || ""}` : result.clarification || (result.duplicateCount ? ui.text("这些安排已存在，已跳过重复项目。") : ui.text("还没有找到明确安排，请补充日期、时间或事情内容。"));
       reveal = Boolean(result.items.length);
     } catch (error) {
       if (state.user?.id === userId) state.scheduleQuickStatus = controller.signal.aborted
-        ? controller.signal.reason === "timeout" ? "整理超时，原文已保留，可重试或手动填写。" : "已取消整理，原文已保留。"
+        ? controller.signal.reason === "timeout" ? ui.text("整理超时，原文已保留，可重试或手动填写。") : ui.text("已取消整理，原文已保留。")
         : error.message;
     } finally {
       window.clearInterval(progress); window.clearTimeout(timeout);
@@ -1489,12 +1494,12 @@
 
   function scheduleReviewHtml() {
     if (!state.scheduleDrafts.length) return "";
-    return `<article class="card schedule-review"><h2 tabindex="-1">核对提取结果（${state.scheduleDrafts.length} 条）</h2>
-      <p>${esc(state.scheduleSource)} · 尚未加入日程。勾选要加入的项目，点开卡片可编辑并查看完整备注与原文。${state.scheduleDraftOrigin === "file" && state.scheduleImportedCourses.length ? "已识别的课程已自动加入「对话与课程」，取消预览不会删除课程。" : ""}${state.scheduleDrafts.some((item) => item.weekly) ? "每周课程确认一次即可生成本学期剩余安排。" : ""}</p>
+    return ui.html`<article class="card schedule-review"><h2 tabindex="-1">核对提取结果（${state.scheduleDrafts.length} 条）</h2>
+      <p>${esc(state.scheduleSource)} · 尚未加入日程。勾选要加入的项目，点开卡片可编辑并查看完整备注与原文。${state.scheduleDraftOrigin === "file" && state.scheduleImportedCourses.length ? ui.text("已识别的课程已自动加入「对话与课程」，取消预览不会删除课程。") : ""}${state.scheduleDrafts.some((item) => item.weekly) ? ui.text("每周课程确认一次即可生成本学期剩余安排。") : ""}</p>
       ${state.scheduleDrafts.some((item) => item.weekly) ? scheduleCalendarHtml() : ""}
       <fieldset ${state.scheduleImportBusy ? "disabled" : ""}>
       ${state.scheduleDrafts.map((item, index) => scheduleDraftHtml(item, index)).join("")}
-      <div class="schedule-review-actions"><div class="schedule-review-validation" data-review-validation role="status" aria-live="polite" hidden><b data-review-validation-text></b><button type="button" data-action="focus-schedule-issue">定位待补充项</button></div>${scheduleSaveProgressHtml()}<span data-review-selected-count aria-live="polite">已选 ${state.scheduleDrafts.filter((item) => item.selected).length} 项</span><button class="primary" data-action="confirm-schedule">${state.scheduleImportProgress ? "正在加入…" : "确认加入"}</button><button data-action="cancel-schedule">取消</button></div>
+      <div class="schedule-review-actions"><div class="schedule-review-validation" data-review-validation role="status" aria-live="polite" hidden><b data-review-validation-text></b><button type="button" data-action="focus-schedule-issue">定位待补充项</button></div>${scheduleSaveProgressHtml()}<span data-review-selected-count aria-live="polite">已选 ${state.scheduleDrafts.filter((item) => item.selected).length} 项</span><button class="primary" data-action="confirm-schedule">${state.scheduleImportProgress ? ui.text("正在加入…") : ui.text("确认加入")}</button><button data-action="cancel-schedule">取消</button></div>
       </fieldset></article>`;
   }
 
@@ -1502,10 +1507,10 @@
     const valid = item.weekly ? scheduleImport.validWeekly(item.weekly) : scheduleImport.validTime(item.startsAt);
     const parts = scheduleImport.draftDateTime(item);
     return {
-      title: item.title.trim() || "未命名项目", kind: item.kind === "EVENT" ? "个人安排" : item.kind,
-      time: item.weekly ? `每周${item.weekly.weekdays.map((weekday) => ["日", "一", "二", "三", "四", "五", "六"][weekday]).join("、") || "（待补星期）"} ${item.weekly.startTime || "时间待补充"}${item.weekly.endTime ? `–${item.weekly.endTime}` : ""}` : valid ? `${item.startsAt.replace("T", " ")}${item.endsAt ? ` → ${item.endsAt.replace("T", " ")}` : ""}` : parts.date ? `${parts.date} · ${item.timeAmbiguity ? `“${item.timeAmbiguity.text}”待确认时段` : "时间待补充"}` : parts.time ? `日期待补充 · ${parts.time}` : "日期 / 时间待补充",
+      title: item.title.trim() || ui.text("未命名项目"), kind: item.kind === "EVENT" ? ui.text("个人安排") : item.kind,
+      time: item.weekly ? ui.message`每周${item.weekly.weekdays.map((weekday) => ["日", "一", "二", "三", "四", "五", "六"][weekday]).join("、") || ui.text("（待补星期）")} ${item.weekly.startTime || ui.text("时间待补充")}${item.weekly.endTime ? `–${item.weekly.endTime}` : ""}` : valid ? `${item.startsAt.replace("T", " ")}${item.endsAt ? ` → ${item.endsAt.replace("T", " ")}` : ""}` : parts.date ? `${parts.date} · ${item.timeAmbiguity ? ui.message`“${item.timeAmbiguity.text}”待确认时段` : ui.text("时间待补充")}` : parts.time ? ui.message`日期待补充 · ${parts.time}` : ui.text("日期 / 时间待补充"),
       context: [item.course, item.location].filter(Boolean).join(" · "), notes: item.notes.trim(),
-      warning: item.warning || (!item.title.trim() || !valid ? "请补全标题或时间后再加入。" : ""), needsInput: !item.title.trim() || !valid || Boolean(item.endsAt && (!scheduleImport.validTime(item.endsAt) || item.endsAt <= item.startsAt))
+      warning: item.warning || (!item.title.trim() || !valid ? ui.text("请补全标题或时间后再加入。") : ""), needsInput: !item.title.trim() || !valid || Boolean(item.endsAt && (!scheduleImport.validTime(item.endsAt) || item.endsAt <= item.startsAt))
     };
   }
 
@@ -1513,7 +1518,7 @@
     const summary = scheduleDraftSummary(item);
     const parts = scheduleImport.draftDateTime(item);
     const open = scheduleDraftDisclosure.has(item) ? scheduleDraftDisclosure.get(item) : summary.needsInput;
-    return `<section class="schedule-draft" data-draft="${index}">
+    return ui.html`<section class="schedule-draft" data-draft="${index}">
       <label class="schedule-review-select"><input type="checkbox" data-draft-field="selected" aria-label="加入日程：${esc(summary.title)}" ${item.selected ? "checked" : ""}></label>
       <details class="schedule-draft-editor" data-review-editor="${index}" ${open ? "open" : ""}>
         <summary class="schedule-draft-summary"><b data-review-title>${esc(summary.title)}</b><span class="schedule-review-chevron" aria-hidden="true">⌄</span>
@@ -1521,19 +1526,19 @@
           <span class="schedule-review-required" data-review-required hidden></span>
           <span class="schedule-review-meta"><span data-review-kind>${esc(summary.kind)}</span><span data-review-time>${esc(summary.time)}</span></span>
           <span class="schedule-review-context" data-review-context ${summary.context ? "" : "hidden"}>${esc(summary.context)}</span>
-          <span class="schedule-review-note" data-review-note ${summary.notes ? "" : "hidden"}>${summary.notes ? `备注：${esc(summary.notes)}` : ""}</span>
+          <span class="schedule-review-note" data-review-note ${summary.notes ? "" : "hidden"}>${summary.notes ? ui.message`备注：${esc(summary.notes)}` : ""}</span>
           <span class="schedule-review-warning" data-review-warning ${summary.warning ? "" : "hidden"}>需核对：${esc(summary.warning)}</span>
         </summary>
         <div class="schedule-draft-fields">
-        ${item.timeAmbiguity ? `<div class="schedule-time-choices" role="group" aria-label="确认原文时间" data-review-time-choices><p>已识别“${esc(item.timeAmbiguity.text)}”，请选择时段（均为上述日期）：</p>${item.timeAmbiguity.options.map((time) => `<button type="button" data-action="choose-schedule-time" data-time="${esc(time)}" aria-pressed="${parts.time === time}">${time.startsWith("00:") ? "当天凌晨" : time.startsWith("12:") ? "中午" : Number(time.slice(0, 2)) < 12 ? "上午" : Number(time.slice(0, 2)) < 18 ? "下午" : "晚上"} ${esc(time)}</button>`).join("")}</div>` : ""}
-        <div class="inline-fields"><label>类型<select data-draft-field="kind">${(item.weekly ? ["LEC", "TUT"] : ["EVENT", "DDL", "LEC", "TUT"]).map((kind) => `<option value="${kind}" ${item.kind === kind ? "selected" : ""}>${kind === "EVENT" ? "个人安排" : kind}</option>`).join("")}</select></label>
-        ${item.weekly ? `<label>每周上课时间<input type="time" data-weekly-field="startTime" value="${esc(item.weekly.startTime)}"></label><label>结束时间<input type="time" data-weekly-field="endTime" value="${esc(item.weekly.endTime)}"></label>` : `<label>日期<input type="date" data-draft-field="date" value="${esc(parts.date)}"></label><label><span data-review-time-label>时间${!parts.time ? item.timeAmbiguity ? "（待确认时段）" : "（待补充）" : ""}</span><input type="time" data-draft-field="time" value="${esc(parts.time)}"></label><label>结束日期与时间（选填）<input type="datetime-local" data-draft-field="endsAt" value="${esc(item.endsAt || "")}"></label>`}</div>
-        ${item.weekly ? `<div class="schedule-weekdays" aria-label="每周上课日">${["日", "一", "二", "三", "四", "五", "六"].map((day, weekday) => `<label><input type="checkbox" data-weekday="${weekday}" ${item.weekly.weekdays.includes(weekday) ? "checked" : ""}>周${day}</label>`).join("")}</div><p class="muted">每周重复；只在授课日安排，跳过官网停课日期。</p>` : ""}
+        ${item.timeAmbiguity ? ui.html`<div class="schedule-time-choices" role="group" aria-label="确认原文时间" data-review-time-choices><p>已识别“${esc(item.timeAmbiguity.text)}”，请选择时段（均为上述日期）：</p>${item.timeAmbiguity.options.map((time) => `<button type="button" data-action="choose-schedule-time" data-time="${esc(time)}" aria-pressed="${parts.time === time}">${time.startsWith("00:") ? ui.text("当天凌晨") : time.startsWith("12:") ? ui.text("中午") : Number(time.slice(0, 2)) < 12 ? ui.text("上午") : Number(time.slice(0, 2)) < 18 ? ui.text("下午") : ui.text("晚上")} ${esc(time)}</button>`).join("")}</div>` : ""}
+        <div class="inline-fields"><label>类型<select data-draft-field="kind">${(item.weekly ? ["LEC", "TUT"] : ["EVENT", "DDL", "LEC", "TUT"]).map((kind) => `<option value="${kind}" ${item.kind === kind ? "selected" : ""}>${kind === "EVENT" ? ui.text("个人安排") : kind}</option>`).join("")}</select></label>
+        ${item.weekly ? ui.html`<label>每周上课时间<input type="time" data-weekly-field="startTime" value="${esc(item.weekly.startTime)}"></label><label>结束时间<input type="time" data-weekly-field="endTime" value="${esc(item.weekly.endTime)}"></label>` : ui.html`<label>日期<input type="date" data-draft-field="date" value="${esc(parts.date)}"></label><label><span data-review-time-label>时间${!parts.time ? item.timeAmbiguity ? ui.text("（待确认时段）") : ui.text("（待补充）") : ""}</span><input type="time" data-draft-field="time" value="${esc(parts.time)}"></label><label>结束日期与时间（选填）<input type="datetime-local" data-draft-field="endsAt" value="${esc(item.endsAt || "")}"></label>`}</div>
+        ${item.weekly ? ui.html`<div class="schedule-weekdays" aria-label="每周上课日">${["日", "一", "二", "三", "四", "五", "六"].map((day, weekday) => ui.html`<label><input type="checkbox" data-weekday="${weekday}" ${item.weekly.weekdays.includes(weekday) ? "checked" : ""}>周${day}</label>`).join("")}</div><p class="muted">每周重复；只在授课日安排，跳过官网停课日期。</p>` : ""}
         <label>标题<input data-draft-field="title" value="${esc(item.title)}" maxlength="160"></label>
         <div class="inline-fields"><label>课程<input data-draft-field="course" value="${esc(item.course)}"></label><label>地点 / 链接<input data-draft-field="location" value="${esc(item.location)}"></label></div>
         <label>备注<textarea data-draft-field="notes">${esc(item.notes)}</textarea></label>
-        ${item.evidence ? `<p class="muted">原文：${esc(item.evidence)}</p>` : ""}
-        <p class="schedule-warning" data-review-detail-warning ${item.warning ? "" : "hidden"}>${item.warning ? `需核对：${esc(item.warning)}` : ""}</p>
+        ${item.evidence ? ui.html`<p class="muted">原文：${esc(item.evidence)}</p>` : ""}
+        <p class="schedule-warning" data-review-detail-warning ${item.warning ? "" : "hidden"}>${item.warning ? ui.message`需核对：${esc(item.warning)}` : ""}</p>
         </div>
       </details>
     </section>`;
@@ -1546,26 +1551,26 @@
       const element = section.querySelector(`[data-review-${key}]`);
       if (!element) continue;
       const value = key === "note" ? summary.notes : summary[key];
-      element.textContent = `${key === "note" && value ? "备注：" : key === "warning" && value ? "需核对：" : ""}${value || ""}`;
+      element.textContent = `${key === "note" && value ? ui.text("备注：") : key === "warning" && value ? ui.text("需核对：") : ""}${value || ""}`;
       element.hidden = !value;
     }
     const detailWarning = section.querySelector("[data-review-detail-warning]");
-    if (detailWarning) { detailWarning.textContent = summary.warning ? `需核对：${summary.warning}` : ""; detailWarning.hidden = !summary.warning; }
+    if (detailWarning) { detailWarning.textContent = summary.warning ? ui.message`需核对：${summary.warning}` : ""; detailWarning.hidden = !summary.warning; }
     section.querySelectorAll('[data-action="choose-schedule-time"]').forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.time === scheduleImport.draftDateTime(item).time)));
     applyScheduleDraftValidation(section, item);
     updateScheduleReviewValidationNotice();
     const duplicate = section.querySelector("[data-review-duplicate]");
     if (duplicate) { duplicate.textContent = scheduleImport.duplicateNotice(item); duplicate.hidden = !duplicate.textContent; }
-    section.querySelector('[data-draft-field="selected"]').setAttribute("aria-label", `加入日程：${summary.title}`);
+    section.querySelector('[data-draft-field="selected"]').setAttribute("aria-label", ui.message`加入日程：${summary.title}`);
   }
 
   function applyScheduleDraftValidation(section, item) {
     const issues = item.selected ? scheduleImport.draftIssues(item) : [];
     const timeLabel = section.querySelector("[data-review-time-label]");
-    if (timeLabel) timeLabel.textContent = scheduleImport.draftDateTime(item).time ? "时间" : item.timeAmbiguity ? "时间（待确认时段）" : "时间（待补充）";
+    if (timeLabel) timeLabel.textContent = scheduleImport.draftDateTime(item).time ? ui.text("时间") : item.timeAmbiguity ? ui.text("时间（待确认时段）") : ui.text("时间（待补充）");
     section.classList.toggle("has-input-issues", issues.length > 0);
     const badge = section.querySelector("[data-review-required]");
-    if (badge) { badge.textContent = issues.length ? `需补充 / 修改：${issues.map((issue) => issue.label).join("、")}` : ""; badge.hidden = !issues.length; }
+    if (badge) { badge.textContent = issues.length ? ui.message`需补充 / 修改：${issues.map((issue) => issue.label).join("、")}` : ""; badge.hidden = !issues.length; }
     section.querySelectorAll('.schedule-draft-fields [data-draft-field], [data-weekly-field], .schedule-weekdays').forEach((control) => {
       const field = control.dataset.draftField || control.dataset.weeklyField || "weekdays";
       const issue = issues.find((entry) => entry.field === field);
@@ -1585,7 +1590,7 @@
     if (!notice) return;
     const pending = state.scheduleDrafts.filter((item) => item.selected && scheduleImport.draftIssues(item).length);
     notice.hidden = !pending.length && !state.scheduleReviewError;
-    notice.querySelector("[data-review-validation-text]").textContent = state.scheduleReviewError || (pending.length ? `已选项目中有 ${pending.length} 项信息不完整。请补充高亮字段，或取消勾选暂不添加。` : "");
+    notice.querySelector("[data-review-validation-text]").textContent = state.scheduleReviewError || (pending.length ? ui.message`已选项目中有 ${pending.length} 项信息不完整。请补充高亮字段，或取消勾选暂不添加。` : "");
     notice.querySelector('[data-action="focus-schedule-issue"]').hidden = !pending.length;
   }
 
@@ -1606,10 +1611,10 @@
     const draft = state.scheduleCalendarDraft;
     let count = null;
     try { if (calendar) count = scheduleImport.deduplicate(scheduleImport.expandWeekly(state.scheduleDrafts.filter((item) => item.selected), calendar, { fromDate: state.scheduleFromDate }), state.scheduleItems).items.length; } catch {}
-    return `<section class="schedule-calendar" aria-label="学期与停课规则"><h3>本学期循环规则</h3><p>${esc(state.scheduleCalendarNotice)}</p>
-      ${calendar ? `<p><strong>${esc([calendar.school, calendar.campus, calendar.label].filter(Boolean).join(" · "))}</strong></p><p>授课范围：${calendar.teachingPeriods.map((period) => `${esc(period.startDate)} — ${esc(period.endDate)}`).join("；")}<br>从 ${esc(state.scheduleFromDate)} 起生成；时区 ${esc(calendar.timeZone)} · <span data-schedule-preview-count>${count !== null ? `新增 ${count} 次安排（自动跳过重复）` : "请补全课程规则"}</span></p>
-      <p>停课：${calendar.breaks.length ? calendar.breaks.map((pause) => `${esc(pause.startDate)}${pause.endDate !== pause.startDate ? ` — ${esc(pause.endDate)}` : ""} ${esc(pause.label)}`).join("；") : "本次校历未列出范围内的停课日"}</p>
-      ${(calendar.sources || []).map((source) => `<a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a>`).join(" · ")}` : `<p class="schedule-warning">只需填写一次学期范围，所有已识别的每周课程都会使用它。</p>`}
+    return ui.html`<section class="schedule-calendar" aria-label="学期与停课规则"><h3>本学期循环规则</h3><p>${esc(state.scheduleCalendarNotice)}</p>
+      ${calendar ? ui.html`<p><strong>${esc([calendar.school, calendar.campus, calendar.label].filter(Boolean).join(" · "))}</strong></p><p>授课范围：${calendar.teachingPeriods.map((period) => `${esc(period.startDate)} — ${esc(period.endDate)}`).join("；")}<br>从 ${esc(state.scheduleFromDate)} 起生成；时区 ${esc(calendar.timeZone)} · <span data-schedule-preview-count>${count !== null ? ui.message`新增 ${count} 次安排（自动跳过重复）` : ui.text("请补全课程规则")}</span></p>
+      <p>停课：${calendar.breaks.length ? calendar.breaks.map((pause) => `${esc(pause.startDate)}${pause.endDate !== pause.startDate ? ` — ${esc(pause.endDate)}` : ""} ${esc(pause.label)}`).join("；") : ui.text("本次校历未列出范围内的停课日")}</p>
+      ${(calendar.sources || []).map((source) => `<a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a>`).join(" · ")}` : ui.html`<p class="schedule-warning">只需填写一次学期范围，所有已识别的每周课程都会使用它。</p>`}
       <details ${!calendar || state.scheduleCalendarEditing ? "open" : ""}><summary>手动确认或调整本学期</summary><div class="inline-fields"><label>授课开始<input type="date" data-calendar-field="startDate" value="${esc(draft.startDate)}"></label><label>最后授课日<input type="date" data-calendar-field="endDate" value="${esc(draft.endDate)}"></label></div><label>停课日期（每行一个日期或起止范围）<textarea data-calendar-field="breaks" placeholder="2026-10-12&#10;2026-10-26 / 2026-10-30">${esc(draft.breaks)}</textarea></label><label>学校时区<input data-calendar-field="timeZone" value="${esc(draft.timeZone)}" placeholder="America/Toronto"></label></details>
     </section>`;
   }
@@ -1619,11 +1624,11 @@
     try {
       const breaks = draft.breaks.split(/\n/).filter((line) => line.trim()).map((line) => {
         const dates = line.match(/\d{4}-\d{2}-\d{2}/g) || [];
-        if (dates.length < 1 || dates.length > 2) throw new Error("每行填写一个停课日期，或一个起止日期范围。");
-        return { startDate: dates[0], endDate: dates[1] || dates[0], label: "手动确认停课" };
+        if (dates.length < 1 || dates.length > 2) throw new Error(ui.text("每行填写一个停课日期，或一个起止日期范围。"));
+        return { startDate: dates[0], endDate: dates[1] || dates[0], label: ui.text("手动确认停课") };
       });
-      state.scheduleCalendar = scheduleImport.normalizeCalendar({ label: "手动确认的学期", timeZone: draft.timeZone, teachingPeriods: [{ startDate: draft.startDate, endDate: draft.endDate }], breaks, sources: [], replacements: [] });
-      state.scheduleCalendarNotice = "学期范围已手动确认；按这些日期生成每周安排。";
+      state.scheduleCalendar = scheduleImport.normalizeCalendar({ label: ui.text("手动确认的学期"), timeZone: draft.timeZone, teachingPeriods: [{ startDate: draft.startDate, endDate: draft.endDate }], breaks, sources: [], replacements: [] });
+      state.scheduleCalendarNotice = ui.text("学期范围已手动确认；按这些日期生成每周安排。");
       refreshScheduleDuplicateReview();
     } catch (error) { state.scheduleCalendar = null; state.scheduleCalendarNotice = error.message; }
     state.scheduleCalendarEditing = true;
@@ -1644,27 +1649,27 @@
         draft.warning = "";
         section.querySelector(".schedule-warning")?.remove();
       }
-      if (draft && !draft.weekly && scheduleImport.validTime(draft.startsAt) && ["日期或时间不完整，请补全后确认。", "日期已识别，请补充具体时间后确认。"].includes(draft.warning)) { draft.warning = ""; section.querySelector(".schedule-warning")?.remove(); }
+      if (draft && !draft.weekly && scheduleImport.validTime(draft.startsAt) && [ui.text("日期或时间不完整，请补全后确认。"), ui.text("日期已识别，请补充具体时间后确认。")].includes(draft.warning)) { draft.warning = ""; section.querySelector(".schedule-warning")?.remove(); }
       if (draft && draft.warning === "结束时间无效或早于开始时间，请核对。" && (!draft.endsAt || scheduleImport.validTime(draft.endsAt) && draft.endsAt > draft.startsAt)) { draft.warning = ""; section.querySelector(".schedule-warning")?.remove(); }
       refreshScheduleDraftSummary(section, draft);
     });
-    root.querySelectorAll("[data-review-selected-count]").forEach((element) => { element.textContent = `已选 ${state.scheduleDrafts.filter((item) => item.selected).length} 项`; });
+    root.querySelectorAll("[data-review-selected-count]").forEach((element) => { element.textContent = ui.message`已选 ${state.scheduleDrafts.filter((item) => item.selected).length} 项`; });
     const preview = root.querySelector("[data-schedule-preview-count]");
     if (!preview || !state.scheduleCalendar) return;
-    try { preview.textContent = `新增 ${scheduleImport.deduplicate(scheduleImport.expandWeekly(state.scheduleDrafts.filter((item) => item.selected), state.scheduleCalendar, { fromDate: state.scheduleFromDate }), state.scheduleItems).items.length} 次安排（自动跳过重复）`; }
-    catch { preview.textContent = "请补全课程规则"; }
+    try { preview.textContent = ui.message`新增 ${scheduleImport.deduplicate(scheduleImport.expandWeekly(state.scheduleDrafts.filter((item) => item.selected), state.scheduleCalendar, { fromDate: state.scheduleFromDate }), state.scheduleItems).items.length} 次安排（自动跳过重复）`; }
+    catch { preview.textContent = ui.text("请补全课程规则"); }
   }
 
   async function extractScheduleFile() {
     if (state.scheduleImportBusy || state.scheduleDrafts.length) return;
     cancelScheduleVoice();
     const file = $("scheduleFile")?.files?.[0] || state.scheduleUploadFile;
-    if (!file) throw new Error("请先选择一个文件。");
+    if (!file) throw new Error(ui.text("请先选择一个文件。"));
     validateUploadFile(file);
-    if (/\.pdf$/i.test(file.name) && file.size > 8 * 1024 * 1024) throw new Error("PDF 最大支持 8 MB。");
+    if (/\.pdf$/i.test(file.name) && file.size > 8 * 1024 * 1024) throw new Error(ui.text("PDF 最大支持 8 MB。"));
     state.scheduleDraftOrigin = "file";
     state.scheduleImportBusy = true;
-    state.scheduleImportStatus = "正在读取课表版面与时间；识别到每周课程后将自动核对学校官网校历…";
+    state.scheduleImportStatus = ui.text("正在读取课表版面与时间；识别到每周课程后将自动核对学校官网校历…");
     render();
     try {
       const [payload] = await readFiles([file]);
@@ -1679,8 +1684,8 @@
       state.scheduleFromDate = result.importFromDate || scheduleImport.todayInZone(result.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone);
       state.scheduleCalendarEditing = false;
       state.scheduleCalendarDraft = { startDate: result.calendar?.teachingPeriods[0]?.startDate || "", endDate: result.calendar?.teachingPeriods.at(-1)?.endDate || "", breaks: (result.calendar ? scheduleImport.nonTeachingRanges(result.calendar) : []).map((pause) => `${pause.startDate} / ${pause.endDate}`).join("\n"), timeZone: result.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone };
-      state.scheduleImportStatus = result.items.length ? `提取到 ${result.items.length} 条待核对安排${result.duplicateCount ? `，发现 ${result.duplicateCount} 项重复，已标记已有安排并默认取消勾选` : ""}。请在下方核对并确认。` : result.duplicateCount ? `识别的安排已存在，已跳过 ${result.duplicateCount} 项重复，无需再次添加。` : "未找到可提取的时间点。请尝试更清晰的文件或分批上传，也可以手动添加。";
-      if (result.courses?.length) state.scheduleImportStatus += ` ${result.createdCourses?.length ? `已自动添加 ${result.createdCourses.length} 门课程；` : ""}已识别课程可直接在「对话与课程」中打开。`;
+      state.scheduleImportStatus = result.items.length ? ui.message`提取到 ${result.items.length} 条待核对安排${result.duplicateCount ? ui.message`，发现 ${result.duplicateCount} 项重复，已标记已有安排并默认取消勾选` : ""}。请在下方核对并确认。` : result.duplicateCount ? ui.message`识别的安排已存在，已跳过 ${result.duplicateCount} 项重复，无需再次添加。` : ui.text("未找到可提取的时间点。请尝试更清晰的文件或分批上传，也可以手动添加。");
+      if (result.courses?.length) state.scheduleImportStatus += ui.message` ${result.createdCourses?.length ? ui.message`已自动添加 ${result.createdCourses.length} 门课程；` : ""}已识别课程可直接在「对话与课程」中打开。`;
     } catch (error) { state.scheduleImportStatus = error.message; }
     finally { state.scheduleImportBusy = false; render(); }
   }
@@ -1688,7 +1693,7 @@
   function scheduleSaveProgressHtml() {
     const progress = state.scheduleImportProgress;
     if (!progress) return "";
-    return `<div class="schedule-save-progress" data-save-progress role="status" aria-live="polite"><span data-save-progress-text>${esc(progress.message)}</span><progress aria-label="加入日历进度" max="${progress.total || 1}" value="${progress.processed}"></progress></div>`;
+    return ui.html`<div class="schedule-save-progress" data-save-progress role="status" aria-live="polite"><span data-save-progress-text>${esc(progress.message)}</span><progress aria-label="加入日历进度" max="${progress.total || 1}" value="${progress.processed}"></progress></div>`;
   }
 
   function updateScheduleSaveProgress(progress) {
@@ -1704,12 +1709,12 @@
     updateSchedulePreviewCount();
     const selectedDrafts = state.scheduleDrafts.filter((item) => item.selected);
     if (!selectedDrafts.length) {
-      state.scheduleReviewError = "请至少勾选一个要加入的项目。"; updateScheduleReviewValidationNotice(); focusScheduleDraftIssue(); return;
+      state.scheduleReviewError = ui.text("请至少勾选一个要加入的项目。"); updateScheduleReviewValidationNotice(); focusScheduleDraftIssue(); return;
     }
     if (selectedDrafts.some((item) => scheduleImport.draftIssues(item).length)) { focusScheduleDraftIssue(); return; }
     const userId = state.user.id;
     state.scheduleImportBusy = true;
-    state.scheduleImportProgress = { processed: 0, total: 0, message: "正在整理课程日期，准备批量保存…" };
+    state.scheduleImportProgress = { processed: 0, total: 0, message: ui.text("正在整理课程日期，准备批量保存…") };
     render();
     let saved = 0, duplicates = 0;
     try {
@@ -1717,12 +1722,12 @@
       await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
       const selectedDrafts = state.scheduleDrafts.filter((item) => item.selected);
       const selected = scheduleImport.expandWeekly(selectedDrafts, state.scheduleCalendar, { fromDate: state.scheduleFromDate });
-      if (!selected.length) throw new Error(selectedDrafts.length ? "本学期已无可生成的未来上课日期，请核对学期范围。" : "请至少勾选一个项目。");
-      if (selected.some((item) => !item.title.trim() || !scheduleImport.validTime(item.startsAt))) throw new Error("请为所选项目补全有效的标题、日期和时间。");
-      if (selected.some((item) => item.endsAt && (!scheduleImport.validTime(item.endsAt) || item.endsAt <= item.startsAt))) throw new Error("结束时间应晚于开始时间。");
-      updateScheduleSaveProgress({ total: selected.length, message: `正在检查重复并批量保存：0 / ${selected.length} 条…` });
+      if (!selected.length) throw new Error(selectedDrafts.length ? ui.text("本学期已无可生成的未来上课日期，请核对学期范围。") : ui.text("请至少勾选一个项目。"));
+      if (selected.some((item) => !item.title.trim() || !scheduleImport.validTime(item.startsAt))) throw new Error(ui.text("请为所选项目补全有效的标题、日期和时间。"));
+      if (selected.some((item) => item.endsAt && (!scheduleImport.validTime(item.endsAt) || item.endsAt <= item.startsAt))) throw new Error(ui.text("结束时间应晚于开始时间。"));
+      updateScheduleSaveProgress({ total: selected.length, message: ui.message`正在检查重复并批量保存：0 / ${selected.length} 条…` });
       for (let offset = 0; offset < selected.length; offset += 80) {
-        if (state.user?.id !== userId) throw new Error("登录账号已变化，请重新确认安排。");
+        if (state.user?.id !== userId) throw new Error(ui.text("登录账号已变化，请重新确认安排。"));
         const result = await api("/api/schedule/import", { method: "POST", body: {
           items: selected.slice(offset, offset + 80), source: state.scheduleSource, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
         } });
@@ -1733,14 +1738,14 @@
         const known = new Set(state.scheduleItems.map((item) => item.docId));
         state.scheduleItems.push(...result.items.filter((item) => !known.has(item.docId)));
         const processed = Math.min(offset + 80, selected.length);
-        updateScheduleSaveProgress({ processed, message: `已处理 ${processed} / ${selected.length} 条 · 已保存 ${saved} 条 · 跳过重复 ${duplicates} 条` });
+        updateScheduleSaveProgress({ processed, message: ui.message`已处理 ${processed} / ${selected.length} 条 · 已保存 ${saved} 条 · 跳过重复 ${duplicates} 条` });
         if (processed < selected.length) {
           await new Promise((resolve) => setTimeout(resolve, 0));
         }
       }
       state.scheduleDrafts = [];
       state.scheduleUploadFile = null;
-      setScheduleImportStatus(`已添加 ${saved} 条安排${duplicates ? `，跳过 ${duplicates} 条重复项目` : ""}。`);
+      setScheduleImportStatus(ui.message`已添加 ${saved} 条安排${duplicates ? ui.message`，跳过 ${duplicates} 条重复项目` : ""}。`);
       if (state.scheduleDraftOrigin === "quick") {
         const message = state.scheduleQuickStatus;
         cancelScheduleVoice();
@@ -1767,14 +1772,14 @@
       }
     } catch (error) {
       if (state.user?.id === userId) {
-        state.scheduleReviewError = `${error.message} 本次已保存 ${saved} 条，跳过重复 ${duplicates} 条；预览已保留，可修改后重试。`;
+        state.scheduleReviewError = ui.message`${error.message} 本次已保存 ${saved} 条，跳过重复 ${duplicates} 条；预览已保留，可修改后重试。`;
         setScheduleImportStatus(state.scheduleReviewError);
       }
     }
     finally {
       if (state.user?.id === userId) {
-        updateScheduleSaveProgress({ message: "正在同步日历，已保存的安排不会丢失…" });
-        await loadScheduleItems().catch(() => { setScheduleImportStatus(`${state.scheduleDraftOrigin === "quick" ? state.scheduleQuickStatus : state.scheduleImportStatus} 日历同步暂未完成，请刷新；重试添加会自动跳过重复项目。`); });
+        updateScheduleSaveProgress({ message: ui.text("正在同步日历，已保存的安排不会丢失…") });
+        await loadScheduleItems().catch(() => { setScheduleImportStatus(ui.message`${state.scheduleDraftOrigin === "quick" ? state.scheduleQuickStatus : state.scheduleImportStatus} 日历同步暂未完成，请刷新；重试添加会自动跳过重复项目。`); });
         state.scheduleImportBusy = false;
         state.scheduleImportProgress = null;
         if (state.page === "schedule") { render(); if (state.scheduleReviewError) root.querySelector("[data-review-validation]")?.scrollIntoView({ block: "center" }); }
@@ -1783,12 +1788,12 @@
   }
 
   function toolsPage() {
-    return `
-      ${pageHeader("STUDY TOOLS", "工具", "文档、表格、演示和图片")}
+    return ui.html`
+      ${pageHeader("STUDY TOOLS", ui.text("工具"), ui.text("文档、表格、演示和图片"))}
       <section class="tools-tabs" aria-label="工具选择">
-        ${["docs", "sheets", "slides", "images", "cheatsheet", "video"].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" aria-pressed="${(state.tool || "docs") === tool}" data-action="tool-mode" data-tool="${tool}" ${tool === "video" && !creativeTools.videoEnabled() ? 'disabled title="视频生成暂未开放"' : ""}>${({ docs: "SB Docs", sheets: "SB Sheets", slides: "SB Slides", images: "图片", cheatsheet: "Cheatsheet PDF", video: creativeTools.videoEnabled() ? "视频" : "视频 · 未开放" })[tool]}</button>`).join("")}
+        ${["docs", "sheets", "slides", "images", "cheatsheet", "video"].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" aria-pressed="${(state.tool || "docs") === tool}" data-action="tool-mode" data-tool="${tool}" ${tool === "video" && !creativeTools.videoEnabled() ? ui.text('disabled title="视频生成暂未开放"') : ""}>${({ docs: "SB Docs", sheets: "SB Sheets", slides: "SB Slides", images: ui.text("图片"), cheatsheet: "Cheatsheet PDF", video: creativeTools.videoEnabled() ? ui.text("视频") : ui.text("视频 · 未开放") })[tool]}</button>`).join("")}
       </section>
-      ${officeTools.supports(state.tool || "docs") ? `<nav class="office-view-switch" aria-label="工作方式"><button data-action="office-view-edit" aria-pressed="${state.toolView !== "generate"}">自主编辑</button><button data-action="office-view-generate" aria-pressed="${state.toolView === "generate"}">AI 文件生成</button></nav>` : ""}
+      ${officeTools.supports(state.tool || "docs") ? ui.html`<nav class="office-view-switch" aria-label="工作方式"><button data-action="office-view-edit" aria-pressed="${state.toolView !== "generate"}">自主编辑</button><button data-action="office-view-generate" aria-pressed="${state.toolView === "generate"}">AI 文件生成</button></nav>` : ""}
       ${officeTools.supports(state.tool || "docs") && state.toolView !== "generate" ? officeTools.html(state.tool || "docs") : creativeTools.html(creativeContext())}
     `;
   }
@@ -1814,9 +1819,9 @@
     const overview = state.admin;
     const invites = overview?.invites || [];
     const users = overview?.users || [];
-    const roleLabel = (role) => ["admin", "co-admin"].includes(String(role).toLowerCase()) ? "管理员" : "用户";
-    return `
-      ${pageHeader("CREATOR CONSOLE", "开发者端", "管理邀请码、用户、系统状态和密码重置申请。", false)}
+    const roleLabel = (role) => ["admin", "co-admin"].includes(String(role).toLowerCase()) ? ui.text("管理员") : ui.text("用户");
+    return ui.html`
+      ${pageHeader("CREATOR CONSOLE", ui.text("开发者端"), ui.text("管理邀请码、用户、系统状态和密码重置申请。"), false)}
       ${adminStatusHtml()}
       <section class="admin-management">
         <article class="admin-section" aria-labelledby="adminInvitesTitle">
@@ -1826,20 +1831,20 @@
             <label for="inviteRole">权限角色<select id="inviteRole"><option value="student">Plus 用户</option><option value="admin">Co-admin（同时为 Plus）</option></select></label>
             <button class="primary" data-action="generate-invite">生成邀请码</button>
           </div>
-          <div class="admin-list">${invites.length ? invites.map((invite) => `<div class="invite-row">
-            <div class="admin-record-details"><b class="admin-invite-code">${esc(invite.code)}</b><div class="admin-record-meta"><span>${roleLabel(invite.role)}</span><span>注册为 Plus</span><span>仅限一次</span><span class="admin-invite-status ${invite.uses > 0 || !invite.active ? "is-disabled" : "is-active"}">${invite.uses > 0 ? "已使用" : invite.active ? "未使用" : "已停用"}</span></div>${invite.label ? `<p class="admin-record-note">${esc(invite.label)}</p>` : ""}</div>
-            <div class="admin-row-actions"><button data-copy="${esc(invite.code)}" aria-label="复制邀请码 ${esc(invite.code)}">复制</button><button data-action="toggle-invite" data-id="${esc(invite.id)}" data-active="${invite.active ? "false" : "true"}" ${invite.uses > 0 ? "disabled" : ""}>${invite.uses > 0 ? "已使用" : invite.active ? "停用" : "启用"}</button><button class="admin-delete-invite" data-action="delete-invite" data-id="${esc(invite.id)}" data-code="${esc(invite.code)}" aria-label="删除邀请码 ${esc(invite.code)}">删除</button></div>
-          </div>`).join("") : `<p class="muted admin-empty">暂无邀请码。</p>`}</div>
+          <div class="admin-list">${invites.length ? invites.map((invite) => ui.html`<div class="invite-row">
+            <div class="admin-record-details"><b class="admin-invite-code">${esc(invite.code)}</b><div class="admin-record-meta"><span>${roleLabel(invite.role)}</span><span>注册为 Plus</span><span>仅限一次</span><span class="admin-invite-status ${invite.uses > 0 || !invite.active ? "is-disabled" : "is-active"}">${invite.uses > 0 ? ui.text("已使用") : invite.active ? ui.text("未使用") : ui.text("已停用")}</span></div>${invite.label ? `<p class="admin-record-note">${esc(invite.label)}</p>` : ""}</div>
+            <div class="admin-row-actions"><button data-copy="${esc(invite.code)}" aria-label="复制邀请码 ${esc(invite.code)}">复制</button><button data-action="toggle-invite" data-id="${esc(invite.id)}" data-active="${invite.active ? "false" : "true"}" ${invite.uses > 0 ? "disabled" : ""}>${invite.uses > 0 ? ui.text("已使用") : invite.active ? ui.text("停用") : ui.text("启用")}</button><button class="admin-delete-invite" data-action="delete-invite" data-id="${esc(invite.id)}" data-code="${esc(invite.code)}" aria-label="删除邀请码 ${esc(invite.code)}">删除</button></div>
+          </div>`).join("") : ui.html`<p class="muted admin-empty">暂无邀请码。</p>`}</div>
         </article>
         <article class="admin-section" aria-labelledby="adminUsersTitle">
           <div class="section-title"><h2 id="adminUsersTitle">用户</h2><small data-membership-count>共 ${users.length} 人 · 普通 ${users.filter(user => user.membershipTier !== "plus").length} · Plus ${users.filter(user => user.membershipTier === "plus").length}</small></div>
-          <div class="admin-list">${users.length ? users.map((user) => `<div class="user-row" data-membership-user-row="${esc(user.id)}">
-            <div class="admin-record-details"><b>${esc(user.name)}</b><p class="admin-record-note">${esc(user.email)}</p><div class="admin-record-meta"><span>${roleLabel(user.role)}</span><span class="membership-badge" data-membership="${user.membershipTier === "plus" ? "plus" : "standard"}">${user.membershipTier === "plus" ? "Plus 用户" : "普通用户"}</span>${user.inviteCode ? `<span>邀请码 <span class="admin-invite-code">${esc(user.inviteCode)}</span></span>` : ""}</div><p class="admin-record-note">最近在线：<time data-last-seen-user="${esc(user.id)}" ${user.lastSeenAt ? `datetime="${esc(user.lastSeenAt)}" title="${esc(new Date(user.lastSeenAt).toLocaleString())}"` : ""}>${userActivity.relativeTime(user.lastSeenAt)}</time></p></div>
-            <div class="admin-user-controls"><dl class="admin-user-stats"><div><dt>课程</dt><dd>${user.stats?.courses || 0}</dd></div><div><dt>文档</dt><dd>${user.stats?.documents || 0}</dd></div><div><dt>聊天</dt><dd>${user.stats?.messages || 0}</dd></div></dl><button type="button" data-action="set-user-membership" data-id="${esc(user.id)}" data-tier="${user.membershipTier === "plus" ? "standard" : "plus"}" data-expected="${user.membershipTier === "plus" ? "plus" : "standard"}" ${adminMembershipPending.has(user.id) ? "disabled" : ""}>${user.membershipTier === "plus" ? "设为普通用户" : "设为 Plus"}</button><span class="admin-membership-status" role="status" aria-live="polite"></span></div>
-          </div>`).join("") : `<p class="muted admin-empty">暂无用户。</p>`}</div>
+          <div class="admin-list">${users.length ? users.map((user) => ui.html`<div class="user-row" data-membership-user-row="${esc(user.id)}">
+            <div class="admin-record-details"><b>${esc(user.name)}</b><p class="admin-record-note">${esc(user.email)}</p><div class="admin-record-meta"><span>${roleLabel(user.role)}</span><span class="membership-badge" data-membership="${user.membershipTier === "plus" ? "plus" : "standard"}">${user.membershipTier === "plus" ? ui.text("Plus 用户") : ui.text("普通用户")}</span>${user.inviteCode ? ui.html`<span>邀请码 <span class="admin-invite-code">${esc(user.inviteCode)}</span></span>` : ""}</div><p class="admin-record-note">最近在线：<time data-last-seen-user="${esc(user.id)}" ${user.lastSeenAt ? `datetime="${esc(user.lastSeenAt)}" title="${esc(new Date(user.lastSeenAt).toLocaleString())}"` : ""}>${userActivity.relativeTime(user.lastSeenAt)}</time></p></div>
+            <div class="admin-user-controls"><dl class="admin-user-stats"><div><dt>课程</dt><dd>${user.stats?.courses || 0}</dd></div><div><dt>文档</dt><dd>${user.stats?.documents || 0}</dd></div><div><dt>聊天</dt><dd>${user.stats?.messages || 0}</dd></div></dl><button type="button" data-action="set-user-membership" data-id="${esc(user.id)}" data-tier="${user.membershipTier === "plus" ? "standard" : "plus"}" data-expected="${user.membershipTier === "plus" ? "plus" : "standard"}" ${adminMembershipPending.has(user.id) ? "disabled" : ""}>${user.membershipTier === "plus" ? ui.text("设为普通用户") : ui.text("设为 Plus")}</button><span class="admin-membership-status" role="status" aria-live="polite"></span></div>
+          </div>`).join("") : ui.html`<p class="muted admin-empty">暂无用户。</p>`}</div>
         </article>
       </section>
-      <section class="card"><h2>密码重置申请</h2>${(overview?.resetRequests || []).length ? overview.resetRequests.map((req) => `<div class="mini-row"><b>${esc(req.email)}</b><small>${esc(req.status)}</small><button data-action="reset-password" data-id="${esc(req.id)}">生成临时密码</button></div>`).join("") : `<p class="muted">还没有密码重置申请。</p>`}</section>
+      <section class="card"><h2>密码重置申请</h2>${(overview?.resetRequests || []).length ? overview.resetRequests.map((req) => ui.html`<div class="mini-row"><b>${esc(req.email)}</b><small>${esc(req.status)}</small><button data-action="reset-password" data-id="${esc(req.id)}">生成临时密码</button></div>`).join("") : ui.html`<p class="muted">还没有密码重置申请。</p>`}</section>
     `;
   }
 
@@ -1849,7 +1854,7 @@
       dialog.className = "admin-delete-dialog";
       dialog.setAttribute("aria-labelledby", "deleteInviteTitle");
       dialog.setAttribute("aria-describedby", "deleteInviteDescription");
-      dialog.innerHTML = `<h2 id="deleteInviteTitle">删除邀请码？</h2><p class="admin-invite-code">${esc(code)}</p><p id="deleteInviteDescription">删除后，该邀请码将无法再用于注册。已注册的用户不受影响。</p><form method="dialog"><button value="cancel" autofocus>取消</button><button class="admin-confirm-delete" value="delete">删除邀请码</button></form>`;
+      dialog.innerHTML = ui.html`<h2 id="deleteInviteTitle">删除邀请码？</h2><p class="admin-invite-code">${esc(code)}</p><p id="deleteInviteDescription">删除后，该邀请码将无法再用于注册。已注册的用户不受影响。</p><form method="dialog"><button value="cancel" autofocus>取消</button><button class="admin-confirm-delete" value="delete">删除邀请码</button></form>`;
       dialog.addEventListener("close", () => {
         const confirmed = dialog.returnValue === "delete";
         dialog.remove();
@@ -1863,23 +1868,23 @@
   function adminStatusHtml() {
     const s = state.status;
     const cards = s ? [
-      ["当前版本", s.version?.app || VERSION, `Node ${s.version?.node || ""}`],
-      ["最后部署时间", formatDate(s.deploy?.lastCodeUpdateAt), "按服务器文件时间显示。"],
-      ["数据库模式", s.database?.mode || "local", s.database?.ready ? "数据库可读取。" : "需要检查数据库。"],
-      ["普通任务模型", s.ai?.simpleModel || "待检测", "普通任务的模型配置。"],
-      ["复杂任务模型", s.ai?.complexModel || "待检测", s.ai?.routing === "task-complexity" ? "复杂任务固定使用此模型。" : `复杂任务分流比例：${s.ai?.complexRoutePercent ?? 0}%。`],
-      ["联网模型分流", s.ai?.webSearchEnabled ? "沿用任务模型" : "联网已关闭", "联网、兼容重试和回退均保留普通／复杂任务的模型选择。"],
-      ["最近完成的 AI 请求", s.ai?.lastRequest?.model || "暂无记录", s.ai?.lastRequest ? `${s.ai.lastRequest.api} · ${formatDate(s.ai.lastRequest.completedAt)}` : "仅记录本次服务启动后的模型和接口，不记录问题内容。"],
-      ["AI 连通检测", s.ai?.configured === false ? "未配置" : s.ai?.ok ? "正常" : "异常", `仅检测普通任务模型。${s.ai?.detail || "等待检测。"}`],
-      ["Google 登录", s.google?.enabled ? "已配置" : "未配置", "普通邮箱注册仍可用。"],
-      ["邮箱验证码", s.email?.verificationRequired ? "已启用" : "非必需", s.email?.sendingConfigured ? "可发送邮件。" : "当前不强制邮箱发信。"],
-      ["服务器自动同步", s.autoSync?.configured ? "已检测到" : "未确认", "用于从 GitHub 自动拉取更新。"],
-      ["管理接口", "正常", "可以读取用户、邀请码和重置申请。"]
-    ] : [["系统可访问", "待检测", "点击检测读取真实状态。"]];
-    return `
+      [ui.text("当前版本"), s.version?.app || VERSION, `Node ${s.version?.node || ""}`],
+      [ui.text("最后部署时间"), formatDate(s.deploy?.lastCodeUpdateAt), ui.text("按服务器文件时间显示。")],
+      [ui.text("数据库模式"), s.database?.mode || "local", s.database?.ready ? ui.text("数据库可读取。") : ui.text("需要检查数据库。")],
+      [ui.text("普通任务模型"), s.ai?.simpleModel || ui.text("待检测"), ui.text("普通任务的模型配置。")],
+      [ui.text("复杂任务模型"), s.ai?.complexModel || ui.text("待检测"), s.ai?.routing === "task-complexity" ? ui.text("复杂任务固定使用此模型。") : ui.message`复杂任务分流比例：${s.ai?.complexRoutePercent ?? 0}%。`],
+      [ui.text("联网模型分流"), s.ai?.webSearchEnabled ? ui.text("沿用任务模型") : ui.text("联网已关闭"), ui.text("联网、兼容重试和回退均保留普通／复杂任务的模型选择。")],
+      [ui.text("最近完成的 AI 请求"), s.ai?.lastRequest?.model || ui.text("暂无记录"), s.ai?.lastRequest ? `${s.ai.lastRequest.api} · ${formatDate(s.ai.lastRequest.completedAt)}` : ui.text("仅记录本次服务启动后的模型和接口，不记录问题内容。")],
+      [ui.text("AI 连通检测"), s.ai?.configured === false ? ui.text("未配置") : s.ai?.ok ? ui.text("正常") : ui.text("异常"), ui.message`仅检测普通任务模型。${s.ai?.detail || ui.text("等待检测。")}`],
+      [ui.text("Google 登录"), s.google?.enabled ? ui.text("已配置") : ui.text("未配置"), ui.text("普通邮箱注册仍可用。")],
+      [ui.text("邮箱验证码"), s.email?.verificationRequired ? ui.text("已启用") : ui.text("非必需"), s.email?.sendingConfigured ? ui.text("可发送邮件。") : ui.text("当前不强制邮箱发信。")],
+      [ui.text("服务器自动同步"), s.autoSync?.configured ? ui.text("已检测到") : ui.text("未确认"), ui.text("用于从 GitHub 自动拉取更新。")],
+      [ui.text("管理接口"), ui.text("正常"), ui.text("可以读取用户、邀请码和重置申请。")]
+    ] : [[ui.text("系统可访问"), ui.text("待检测"), ui.text("点击检测读取真实状态。")]];
+    return ui.html`
       <section class="card status-panel">
-        <div class="section-title"><div><h2>系统状态</h2><small>${s ? `检测完成：${esc(formatDate(new Date()))}` : "还没有检测"}</small></div><button data-action="admin-refresh">检测</button></div>
-        <div class="status-grid">${cards.map(([title, value, desc]) => `<div><span class="${value === "异常" ? "red" : value === "待检测" || value === "未配置" ? "orange" : "green"}"></span><b>${esc(title)}</b><strong>${esc(value || "暂未检测到")}</strong><p>${esc(desc || "")}</p></div>`).join("")}</div>
+        <div class="section-title"><div><h2>系统状态</h2><small>${s ? ui.message`检测完成：${esc(formatDate(new Date()))}` : ui.text("还没有检测")}</small></div><button data-action="admin-refresh">检测</button></div>
+        <div class="status-grid">${cards.map(([title, value, desc]) => `<div><span class="${value === ui.text("异常") ? "red" : value === ui.text("待检测") || value === ui.text("未配置") ? "orange" : "green"}"></span><b>${esc(title)}</b><strong>${esc(value || ui.text("暂未检测到"))}</strong><p>${esc(desc || "")}</p></div>`).join("")}</div>
       </section>
     `;
   }
@@ -2228,9 +2233,9 @@
         const sending = classmateMutations.has(classmateMutationKey(button));
         button.classList.toggle("is-sending", sending);
         button.setAttribute("aria-busy", String(sending));
-        button.setAttribute("aria-label", sending ? "正在发送" : "发送消息");
+        button.setAttribute("aria-label", sending ? ui.text("正在发送") : ui.text("发送消息"));
         const status = root.querySelector(".dm-send-status");
-        if (status) status.textContent = sending ? "正在发送… 请稍候" : "可粘贴截图或拖入文件 · 单个 12 MB，合计 20 MB";
+        if (status) status.textContent = sending ? ui.text("正在发送… 请稍候") : ui.text("可粘贴截图或拖入文件 · 单个 12 MB，合计 20 MB");
         root.querySelectorAll('[data-action="remove-dm-file"]').forEach((remove) => { remove.disabled = sending; });
       }
     });
@@ -2265,9 +2270,9 @@
   }
 
   function validateUploadFile(file, maxBytes = MAX_UPLOAD_BYTES) {
-    if (!file) throw new Error("没有读取到文件。");
+    if (!file) throw new Error(ui.text("没有读取到文件。"));
     if (file.size > maxBytes) {
-      throw new Error(`文件太大：${file.name}。单文件最大支持 ${maxBytes / 1024 / 1024} MB。`);
+      throw new Error(ui.message`文件太大：${file.name}。单文件最大支持 ${maxBytes / 1024 / 1024} MB。`);
     }
   }
 
@@ -2295,16 +2300,16 @@
         seen.add(key);
       }
     }
-    setToast(`已添加 ${incoming.length} 个文件，发送问题时会一起上传。`);
+    setToast(ui.message`已添加 ${incoming.length} 个文件，发送问题时会一起上传。`);
     return true;
   }
 
   async function uploadCourseFiles(files) {
-    if (courseUploadPending) throw new Error("课程资料正在上传，请等待当前上传完成。");
-    if (isGeneralChat()) throw new Error("请在对话输入区上传附件，或选择课程后上传课程资料。");
-    if (!state.activeCourseId) throw new Error("请先选择或新增课程。");
+    if (courseUploadPending) throw new Error(ui.text("课程资料正在上传，请等待当前上传完成。"));
+    if (isGeneralChat()) throw new Error(ui.text("请在对话输入区上传附件，或选择课程后上传课程资料。"));
+    if (!state.activeCourseId) throw new Error(ui.text("请先选择或新增课程。"));
     const selectedFiles = Array.from(files || []);
-    if (!selectedFiles.length) throw new Error("请先选择要上传的文件。");
+    if (!selectedFiles.length) throw new Error(ui.text("请先选择要上传的文件。"));
     selectedFiles.forEach((file) => validateUploadFile(file, MAX_COURSE_UPLOAD_BYTES));
     const courseId = state.activeCourseId;
     let uploaded = 0;
@@ -2314,16 +2319,16 @@
       for (const selected of selectedFiles) {
         try {
           const status = $("courseUploadStatus");
-          if (status && state.activeCourseId === courseId) status.textContent = `正在上传 ${uploaded + 1}/${selectedFiles.length}：${selected.name}`;
+          if (status && state.activeCourseId === courseId) status.textContent = ui.message`正在上传 ${uploaded + 1}/${selectedFiles.length}：${selected.name}`;
           const [file] = await readFiles([selected], MAX_COURSE_UPLOAD_BYTES);
           await api(`/api/courses/${courseId}/documents`, { method: "POST", body: { title: file.fileName, ...file } });
           uploaded += 1;
         } catch (error) {
           if (state.activeCourseId === courseId) await loadPage("study").catch(() => {});
-          throw new Error(`已成功上传 ${uploaded}/${selectedFiles.length} 个文件；${selected.name} 上传失败：${error.message}。已成功上传的资料已保留。`);
+          throw new Error(ui.message`已成功上传 ${uploaded}/${selectedFiles.length} 个文件；${selected.name} 上传失败：${error.message}。已成功上传的资料已保留。`);
         }
       }
-      setToast(`已上传 ${uploaded} 个文件。`);
+      setToast(ui.message`已上传 ${uploaded} 个文件。`);
       if (state.activeCourseId === courseId) await loadPage("study");
     } finally {
       courseUploadPending = false;
@@ -2353,10 +2358,10 @@
         return;
       }
       if (action === "register") {
-        if (!state.authConfig) throw new Error("注册配置暂时无法读取，请刷新后重试。");
+        if (!state.authConfig) throw new Error(ui.text("注册配置暂时无法读取，请刷新后重试。"));
         if (state.authConfig.emailVerificationRequired && !/^\d{6}$/.test($("authEmailCode")?.value.trim() || "")) {
           $("authEmailCode")?.focus();
-          throw new Error("请先向邮箱发送验证码，再填写收到的 6 位验证码。");
+          throw new Error(ui.text("请先向邮箱发送验证码，再填写收到的 6 位验证码。"));
         }
         const data = await api("/api/auth/register", {
           method: "POST",
@@ -2377,8 +2382,8 @@
       if (action === "send-email-code") {
         const input = $("authEmail");
         const email = input?.value.trim().toLowerCase() || "";
-        if (!email || !input.checkValidity()) { input?.reportValidity(); throw new Error("请先填写正确的邮箱地址。"); }
-        if (state.authConfig?.inviteRequired && !$("authInvite")?.value.trim()) { $("authInvite")?.focus(); throw new Error("请先填写邀请码。"); }
+        if (!email || !input.checkValidity()) { input?.reportValidity(); throw new Error(ui.text("请先填写正确的邮箱地址。")); }
+        if (state.authConfig?.inviteRequired && !$("authInvite")?.value.trim()) { $("authInvite")?.focus(); throw new Error(ui.text("请先填写邀请码。")); }
         if (button.disabled) return;
         button.dataset.sending = "true";
         updateEmailCooldown();
@@ -2391,7 +2396,7 @@
           else if (data.emailDelivery === "page") {
             if (input.value.trim().toLowerCase() === email) $("authEmailCode").value = data.emailCode;
             authMessage(data.message);
-          } else authMessage(`验证码已发送至 ${email}，${Math.ceil(data.expiresIn / 60)} 分钟内有效。请查看收件箱或垃圾邮件。`);
+          } else authMessage(ui.message`验证码已发送至 ${email}，${Math.ceil(data.expiresIn / 60)} 分钟内有效。请查看收件箱或垃圾邮件。`);
         } catch (error) {
           if (error.retryAfter) startEmailCooldown(email, error.retryAfter);
           throw error;
@@ -2406,9 +2411,9 @@
       }
       if (action === "forgot-password") {
         const email = $("authEmail")?.value || "";
-        if (!email) throw new Error("请先填写邮箱。");
+        if (!email) throw new Error(ui.text("请先填写邮箱。"));
         await api("/api/auth/request-manual-reset", { method: "POST", body: { email } });
-        setToast("已提交密码重置申请，请联系创作者。");
+        setToast(ui.text("已提交密码重置申请，请联系创作者。"));
         render();
         return;
       }
@@ -2460,7 +2465,7 @@
         return;
       }
       if (action === "add-course") {
-        const name = prompt("课程名称，例如 ECO101");
+        const name = prompt(ui.text("课程名称，例如 ECO101"));
         if (!name) return;
         const data = await api("/api/courses", { method: "POST", body: { name, term: "Current term" } });
         await selectConversation(data.course.id, "default");
@@ -2505,8 +2510,8 @@
       }
       if (action === "delete-conversation") {
         const courseId = button.dataset.id, conversationId = button.dataset.conversation;
-        const title = state.courseConversations[courseId]?.find((chat) => chat.id === conversationId)?.title || "此对话";
-        if (!confirm(`确定删除“${title}”及其中的消息和对话附件吗？课程资料和其他对话会保留。`)) return;
+        const title = state.courseConversations[courseId]?.find((chat) => chat.id === conversationId)?.title || ui.text("此对话");
+        if (!confirm(ui.message`确定删除“${title}”及其中的消息和对话附件吗？课程资料和其他对话会保留。`)) return;
         button.disabled = true;
         const key = studyReplyKey(state.user.id, courseId, conversationId);
         studyReplies.get(key)?.controller.abort();
@@ -2524,7 +2529,7 @@
         return;
       }
       if (action === "delete-course") {
-        if (!confirm("确定删除这门课程吗？")) return;
+        if (!confirm(ui.text("确定删除这门课程吗？"))) return;
         for (const reply of studyReplies.values()) if (reply.userId === state.user.id && reply.courseId === button.dataset.id) reply.controller.abort();
         await api(`/api/courses/${button.dataset.id}`, { method: "DELETE" });
         if (state.activeCourseId === button.dataset.id) state.activeCourseId = "";
@@ -2534,14 +2539,14 @@
         return;
       }
       if (action === "save-doc") {
-        if (!state.activeCourseId) throw new Error("请先选择或新增课程。");
+        if (!state.activeCourseId) throw new Error(ui.text("请先选择或新增课程。"));
         const selectedFiles = $("docFile")?.files;
         if (selectedFiles?.length) {
           await uploadCourseFiles(selectedFiles);
           return;
         }
         const docText = $("docText")?.value || "";
-        if (!docText.trim()) throw new Error("请先粘贴资料文字，或选择 PDF / Word / PPT / Excel 文件上传。");
+        if (!docText.trim()) throw new Error(ui.text("请先粘贴资料文字，或选择 PDF / Word / PPT / Excel 文件上传。"));
         await api(`/api/courses/${state.activeCourseId}/documents`, { method: "POST", body: { title: $("docTitle")?.value || "Course note", text: docText, type: "Note" } });
         await loadPage("study");
         return;
@@ -2553,7 +2558,7 @@
       if (action === "save-prefs") {
         clearTimeout(learningStyleTimer);
         await captureLearningStyle().saver.flush();
-        setToast("偏好已保存。");
+        setToast(ui.text("偏好已保存。"));
         render();
         return;
       }
@@ -2588,9 +2593,9 @@
         if (button.disabled) return;
         button.disabled = true;
         const label = button.textContent;
-        button.textContent = "正在处理照片并保存…";
+        button.textContent = ui.text("正在处理照片并保存…");
         const message = $("profileSaveStatus");
-        if (message) message.textContent = "正在处理照片并保存…";
+        if (message) message.textContent = ui.text("正在处理照片并保存…");
         const userId = state.user.id;
         const values = { name: $("profileName")?.value || "", school: $("profileSchool")?.value || "", major: $("profileMajor")?.value || "", sbId: $("profileSbId")?.value || "" };
         const avatarInput = $("profileAvatarFile"), coverInput = $("profileCoverFile");
@@ -2602,14 +2607,14 @@
           if (state.user?.id !== userId) return;
           data = await api("/api/me/profile", { method: "PUT", body: values });
         } catch (error) {
-          if (message) message.textContent = error.message || "保存失败，请重试。";
+          if (message) message.textContent = error.message || ui.text("保存失败，请重试。");
           return;
         } finally {
           button.disabled = false;
           button.textContent = label;
         }
         state.user = data.user;
-        setToast("资料已保存。");
+        setToast(ui.text("资料已保存。"));
         await loadPage("profile");
         return;
       }
@@ -2620,7 +2625,7 @@
       }
       if (action === "community-select" || action === "community-default") {
         const value = action === "community-default" ? profile()[state.communityChannel] : $("communityChannelValue")?.value.trim();
-        if (!value) throw new Error("请先选择或输入频道名称。");
+        if (!value) throw new Error(ui.text("请先选择或输入频道名称。"));
         state.communitySelections[state.communityChannel] = value;
         await loadPage("community");
         return;
@@ -2653,7 +2658,7 @@
       }
       if (action === "community-edit") {
         const draft = communityEditor.snapshot();
-        if (draft?.saving || (draft && !confirm("放弃当前未保存的编辑，打开这条帖子？"))) return;
+        if (draft?.saving || (draft && !confirm(ui.text("放弃当前未保存的编辑，打开这条帖子？")))) return;
         const userId = state.user.id, pageGeneration = pageLoadGeneration, generation = ++communityEditOpenGeneration;
         button.disabled = true;
         try {
@@ -2677,7 +2682,7 @@
           if (state.user?.id !== userId) return;
           if (JSON.stringify(state.communityDraft) === draft) state.communityDraft = { topic: "", content: "", anonymous: false, channels: state.communityDraft.channels.slice() };
           state.communityChoices = null;
-          setToast("讨论已发布到所选频道。");
+          setToast(ui.text("讨论已发布到所选频道。"));
           if (state.page === "community") await loadPage("community");
         } finally { state.communityPosting = false; if (state.page === "community") render(); }
         return;
@@ -2694,7 +2699,7 @@
       }
       if (action === "community-reply-send") { await communityReplies.send(button.dataset.id); return; }
       if (action === "community-reply-delete") {
-        if (confirm("删除这条回复？")) await communityReplies.remove(button.dataset.id, button.dataset.replyId);
+        if (confirm(ui.text("删除这条回复？"))) await communityReplies.remove(button.dataset.id, button.dataset.replyId);
         return;
       }
       if (action === "community-focus-close") { state.communityFocusedPost = null; render(); return; }
@@ -2707,7 +2712,7 @@
             const post = state.communityFocusedPost?.id === button.dataset.id ? state.communityFocusedPost : state.community?.posts.find((post) => post.id === button.dataset.id);
             if (!post) return;
             if (action === "community-delete") {
-              if (!confirm("删除这条帖子？它将从所有发布频道移除，回复也将无法访问。")) return;
+              if (!confirm(ui.text("删除这条帖子？它将从所有发布频道移除，回复也将无法访问。"))) return;
               await api(`/api/community/posts/${post.id}`, { method: "DELETE" });
               if (state.user?.id !== userId) return;
               if (state.community) state.community.posts = state.community.posts.filter((item) => item.id !== post.id);
@@ -2757,7 +2762,7 @@
           if ($("classmateSbId")?.value === sbId) $("classmateSbId").value = "";
           if (classmateListDraft === sbId) classmateListDraft = "";
           if (!isCurrent()) return;
-          setToast(data.status === "connected" ? "已经成为同学，可以聊天了。" : "好友申请已发送，等待对方通过。");
+          setToast(data.status === "connected" ? ui.text("已经成为同学，可以聊天了。") : ui.text("好友申请已发送，等待对方通过。"));
           await loadPage("classmates");
         });
         return;
@@ -2816,7 +2821,7 @@
       if (action === "attach-dm") { $("dmFiles")?.click(); return; }
       if (action === "remove-dm-file") { dmAttachments.remove(Number(button.dataset.index)); render(); return; }
       if (action === "send-dm") {
-        if (!state.activeClassmateId) throw new Error("请先选择一位同学。");
+        if (!state.activeClassmateId) throw new Error(ui.text("请先选择一位同学。"));
         const chatId = state.activeClassmateId;
         const input = $("dmInput");
         const draft = input?.value || "";
@@ -2843,7 +2848,7 @@
       }
       if (action === "draft-email") {
         if (emailDraft.generating) return;
-        if (!$("emailOriginal")?.value.trim()) { emailDraft.error = "请先粘贴收到的邮件内容。"; render(); $("emailOriginal")?.focus(); return; }
+        if (!$("emailOriginal")?.value.trim()) { emailDraft.error = ui.text("请先粘贴收到的邮件内容。"); render(); $("emailOriginal")?.focus(); return; }
         const prompt = `请帮我处理这封邮件。\n邮件原文：${$("emailOriginal")?.value || ""}\n我想怎么回复：${$("emailGoal")?.value || ""}\n语气：${$("emailTone")?.value || ""}\n输出：${$("emailOutput")?.value || ""}`;
         const actor = state.user.id, request = {};
         emailDraft.request = request; emailDraft.generating = true; emailDraft.error = "";
@@ -2899,8 +2904,8 @@
           time: $("scheduleClock")?.value || "", endTime: endClock,
           course: $("scheduleCourse")?.value || "", location: $("scheduleLocation")?.value || "", notes: $("scheduleNotes")?.value || ""
         };
-        if (!title || !scheduleImport.validTime(startsAt)) throw new Error("请填写标题和有效日期、时间。");
-        if (endClock && (!scheduleImport.validClock(endClock) || endClock <= startsAt.slice(11))) throw new Error("结束时间应晚于开始时间；跨天安排请分天添加。");
+        if (!title || !scheduleImport.validTime(startsAt)) throw new Error(ui.text("请填写标题和有效日期、时间。"));
+        if (endClock && (!scheduleImport.validClock(endClock) || endClock <= startsAt.slice(11))) throw new Error(ui.text("结束时间应晚于开始时间；跨天安排请分天添加。"));
         cancelScheduleVoice();
         const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         const payload = { title, kind: scheduleImport.kind($("scheduleKind")?.value) || "EVENT", course: $("scheduleCourse")?.value || "", startsAt: scheduleImport.toUtc(startsAt, timeZone),
@@ -2915,12 +2920,12 @@
         state.scheduleSelectedDate = day;
         state.scheduleMonth = day.slice(0, 7);
         state.scheduleSaving = false;
-        setToast("安排已保存，已同步到月历和完整日程。");
+        setToast(ui.text("安排已保存，已同步到月历和完整日程。"));
         if (state.page === "schedule") render();
         try {
           await loadScheduleItems();
         } catch {
-          setToast("安排已保存，日历刷新暂未完成，请稍后刷新页面；无需重复添加。");
+          setToast(ui.text("安排已保存，日历刷新暂未完成，请稍后刷新页面；无需重复添加。"));
         }
         if (state.page === "schedule") render();
         } finally { state.scheduleSaving = false; button.disabled = false; }
@@ -2953,14 +2958,14 @@
         if (state.scheduleImportBusy) return;
         state.scheduleDrafts = [];
         if (state.scheduleDraftOrigin === "file") state.scheduleUploadFile = null;
-        setScheduleImportStatus("已取消，未添加待确认项目。原文已保留，可修改后重新整理。");
+        setScheduleImportStatus(ui.text("已取消，未添加待确认项目。原文已保留，可修改后重新整理。"));
         render(); return;
       }
       if (["edit-schedule", "delete-schedule", "edit-schedule-course", "delete-schedule-course"].includes(action)) {
         const userId = state.user.id;
         const group = action.endsWith("-course") ? scheduleManagement.groups(state.scheduleItems).find((entry) => entry.key === button.dataset.key) : null;
         const item = group ? null : state.scheduleItems.find((entry) => entry.docId === button.dataset.doc && entry.courseId === button.dataset.course);
-        if (!group && !item) throw new Error("找不到这个安排，请刷新日程后重试。");
+        if (!group && !item) throw new Error(ui.text("找不到这个安排，请刷新日程后重试。"));
         scheduleManagementUi.open({ items: state.scheduleItems, item, group, operation: action.startsWith("edit") ? "edit" : "delete", api,
           isCurrent: () => state.user?.id === userId,
           onBatch: ({ operation, batch, items }) => {
@@ -2975,7 +2980,7 @@
       }
       if (action === "complete-schedule") {
         const item = state.scheduleItems.find((entry) => entry.docId === button.dataset.doc && entry.courseId === button.dataset.course);
-        if (!item) throw new Error("找不到这个提醒。");
+        if (!item) throw new Error(ui.text("找不到这个提醒。"));
         if (scheduleImport.completion(item).classMeeting) return;
         const updated = { ...item, completedAt: new Date().toISOString() };
         await api(`/api/courses/${item.courseId}/documents/${item.docId}`, { method: "PATCH", body: { title: `${SCHEDULE_PREFIX} ${item.title}`, type: "Schedule", text: JSON.stringify(updated) } });
@@ -3003,7 +3008,7 @@
       }
       if (action === "copy-output") {
         await window.StudyBridgeClipboard.copyText($("toolOutput")?.innerText || "");
-        setToast("已复制。");
+        setToast(ui.text("已复制。"));
         render();
         return;
       }
@@ -3016,7 +3021,7 @@
         const userId = button.dataset.id, actorId = state.user.id;
         if (adminMembershipPending.has(userId)) return;
         const row = button.closest("[data-membership-user-row]"), status = row.querySelector(".admin-membership-status");
-        adminMembershipPending.add(userId); button.disabled = true; status.classList.remove("is-error"); status.textContent = "正在更新…";
+        adminMembershipPending.add(userId); button.disabled = true; status.classList.remove("is-error"); status.textContent = ui.text("正在更新…");
         try {
           const result = await api(`/api/admin/users/${encodeURIComponent(userId)}/membership`, { method: "PATCH",
             headers: { "x-csrf-token": state.admin.membershipCsrfToken }, body: { actorId, membershipTier: button.dataset.tier, expectedTier: button.dataset.expected } });
@@ -3024,10 +3029,10 @@
           const target = state.admin?.users.find(user => user.id === userId);
           if (target) target.membershipTier = result.user.membershipTier;
           if (userId === actorId) applyMembership(result.user.membershipTier);
-          updateAdminMembershipLabels(); status.textContent = result.user.membershipTier === "plus" ? "已设为 Plus 用户" : "已设为普通用户";
+          updateAdminMembershipLabels(); status.textContent = result.user.membershipTier === "plus" ? ui.text("已设为 Plus 用户") : ui.text("已设为普通用户");
         } catch (error) {
           if (state.user?.id !== actorId) return;
-          status.classList.add("is-error"); status.textContent = error.message || "更新失败，请重试。";
+          status.classList.add("is-error"); status.textContent = error.message || ui.text("更新失败，请重试。");
           if (error.status === 409) {
             try {
               const overview = await api("/api/admin/overview");
@@ -3055,7 +3060,7 @@
         button.disabled = true;
         try {
           await api(`/api/admin/invites/${button.dataset.id}`, { method: "DELETE" });
-          setToast("邀请码已删除。");
+          setToast(ui.text("邀请码已删除。"));
           await loadPage("admin");
         } finally {
           button.disabled = false;
@@ -3064,7 +3069,7 @@
       }
       if (action === "reset-password") {
         const data = await api(`/api/admin/password-resets/${button.dataset.id}`, { method: "POST" });
-        alert(`临时密码：${data.temporaryPassword || data.password || "请查看返回结果"}`);
+        alert(ui.message`临时密码：${data.temporaryPassword || data.password || ui.text("请查看返回结果")}`);
         await loadPage("admin");
         return;
       }
@@ -3133,9 +3138,9 @@
     try {
       root.innerHTML = routeHtml();
     } catch (error) {
-      const message = esc(error.message || "页面渲染时出现问题。");
+      const message = esc(error.message || ui.text("页面渲染时出现问题。"));
       root.innerHTML = state.user
-        ? shellHtml(`
+        ? shellHtml(ui.html`
           <section class="page-header">
             <div>
               <span>StudyBridge</span>
@@ -3144,7 +3149,7 @@
             </div>
           </section>
         `)
-        : `<main class="auth-shell"><section class="auth-card"><h1>StudyBridge</h1><p class="notice">${message}</p><button onclick="location.reload()">刷新</button></section></main>`;
+        : ui.html`<main class="auth-shell"><section class="auth-card"><h1>StudyBridge</h1><p class="notice">${message}</p><button onclick="location.reload()">刷新</button></section></main>`;
     }
     if (state.page === "schedule") updateSchedulePreviewCount();
     if (state.page === "schedule" && previousSchedule && root.querySelector(".schedule-layout")) {
@@ -3200,12 +3205,12 @@
         history.replaceState(null, "", `/login${location.search}`);
         const authError = new URL(location.href).searchParams.get("authError");
         if (authError) state.toast = authError;
-        else if (!authConfig) state.toast = "注册配置暂时无法读取，请刷新后重试。";
-        document.title = "登录 · StudyBridge";
+        else if (!authConfig) state.toast = ui.text("注册配置暂时无法读取，请刷新后重试。");
+        document.title = ui.text("登录 · StudyBridge");
         render();
         return;
       }
-      document.title = "学习空间 · StudyBridge";
+      document.title = ui.text("学习空间 · StudyBridge");
       state.user = data.user;
       void reportUserActivity();
       const savedTool = localStorage.getItem("studybridge.tool");
@@ -3213,12 +3218,12 @@
       state.mode = isAdmin() && localStorage.getItem("studybridge.mode") === "admin" ? "admin" : "student";
       const urlPage = new URL(location.href).searchParams.get("page");
       const mailboxResult = new URL(location.href).searchParams.get("mailbox");
-      if (mailboxResult) mailboxView.setBanner(({ connected: "邮箱已绑定，正在整理学习通知。", denied: "此次邮箱授权未完成，你仍可以粘贴邮件生成回复。", failed: "邮箱绑定未成功，请在设置中重试。" })[mailboxResult] || "请在设置中查看邮箱连接状态。", { showInbox: mailboxResult === "connected" });
+      if (mailboxResult) mailboxView.setBanner(({ connected: ui.text("邮箱已绑定，正在整理学习通知。"), denied: ui.text("此次邮箱授权未完成，你仍可以粘贴邮件生成回复。"), failed: ui.text("邮箱绑定未成功，请在设置中重试。") })[mailboxResult] || ui.text("请在设置中查看邮箱连接状态。"), { showInbox: mailboxResult === "connected" });
       const savedPage = localStorage.getItem("studybridge.page");
       const page = urlPage || savedPage || "study";
       await loadPage(page);
     } catch (error) {
-      root.innerHTML = `<main class="auth-shell"><section class="auth-card"><h1>StudyBridge</h1><p class="notice">${esc(error.message)}</p><button onclick="location.reload()">刷新</button></section></main>`;
+      root.innerHTML = ui.html`<main class="auth-shell"><section class="auth-card"><h1>StudyBridge</h1><p class="notice">${esc(error.message)}</p><button onclick="location.reload()">刷新</button></section></main>`;
     }
   }
 
@@ -3235,9 +3240,9 @@
       event.preventDefault();
       try {
         await window.StudyBridgeClipboard.copyText(copyTarget.dataset.copy || "");
-        setToast("邀请码已复制。");
+        setToast(ui.text("邀请码已复制。"));
       } catch (error) {
-        setToast(error.message || "复制失败，请直接选中邀请码手动复制。");
+        setToast(error.message || ui.text("复制失败，请直接选中邀请码手动复制。"));
       }
       root.querySelector(".toast")?.remove();
       root.insertAdjacentHTML("beforeend", `<div class="toast" role="status" aria-live="polite">${esc(state.toast)}</div>`);
@@ -3308,7 +3313,7 @@
     if (event.target?.id === "scheduleFile") {
       state.scheduleUploadFile = event.target.files?.[0] || state.scheduleUploadFile;
       const name = $("scheduleFileName");
-      if (name) name.textContent = state.scheduleUploadFile?.name || "选择课程文件";
+      if (name) name.textContent = state.scheduleUploadFile?.name || ui.text("选择课程文件");
       return;
     }
     if (event.target?.id === "studyMode") {
@@ -3323,7 +3328,7 @@
       try {
         if (addChatFiles(event.target.files)) render();
       } catch (error) {
-        setToast(error.message || "文件读取失败。");
+        setToast(error.message || ui.text("文件读取失败。"));
         render();
       } finally {
         event.target.value = "";
@@ -3391,20 +3396,20 @@
   function applyMembership(tier) {
     if (!state.user || !["standard", "plus"].includes(tier)) return;
     if (state.user.membershipTier !== tier) { state.user = { ...state.user, membershipTier: tier }; membershipGeneration++; }
-    root.querySelectorAll("[data-current-membership]").forEach((badge) => { badge.dataset.membership = tier; badge.textContent = tier === "plus" ? "Plus 用户" : "普通用户"; });
+    root.querySelectorAll("[data-current-membership]").forEach((badge) => { badge.dataset.membership = tier; badge.textContent = tier === "plus" ? ui.text("Plus 用户") : ui.text("普通用户"); });
     appearanceController.refreshMembership(tier);
   }
 
   function updateAdminMembershipLabels() {
     const users = state.admin?.users || [], byId = new Map(users.map(user => [user.id, user]));
     const count = root.querySelector("[data-membership-count]");
-    if (count) count.textContent = `共 ${users.length} 人 · 普通 ${users.filter(user => user.membershipTier !== "plus").length} · Plus ${users.filter(user => user.membershipTier === "plus").length}`;
+    if (count) count.textContent = ui.message`共 ${users.length} 人 · 普通 ${users.filter(user => user.membershipTier !== "plus").length} · Plus ${users.filter(user => user.membershipTier === "plus").length}`;
     root.querySelectorAll("[data-membership-user-row]").forEach((row) => {
       const user = byId.get(row.dataset.membershipUserRow); if (!user) return;
       const tier = user.membershipTier === "plus" ? "plus" : "standard", badge = row.querySelector(".membership-badge"), button = row.querySelector('[data-action="set-user-membership"]');
-      badge.dataset.membership = tier; badge.textContent = tier === "plus" ? "Plus 用户" : "普通用户";
+      badge.dataset.membership = tier; badge.textContent = tier === "plus" ? ui.text("Plus 用户") : ui.text("普通用户");
       button.disabled = adminMembershipPending.has(user.id);
-      if (!adminMembershipPending.has(user.id)) { button.dataset.tier = tier === "plus" ? "standard" : "plus"; button.dataset.expected = tier; button.textContent = tier === "plus" ? "设为普通用户" : "设为 Plus"; }
+      if (!adminMembershipPending.has(user.id)) { button.dataset.tier = tier === "plus" ? "standard" : "plus"; button.dataset.expected = tier; button.textContent = tier === "plus" ? ui.text("设为普通用户") : ui.text("设为 Plus"); }
     });
   }
 
@@ -3523,7 +3528,7 @@
       start = input.selectionStart;
       end = input.selectionEnd;
     } catch (error) {
-      setToast(error.message || "截图读取失败，请重试或选择图片文件。");
+      setToast(error.message || ui.text("截图读取失败，请重试或选择图片文件。"));
     }
     render();
     const restored = $("chatInput");
@@ -3568,7 +3573,7 @@
     document.querySelectorAll("[data-chat-dropzone], [data-doc-dropzone]").forEach((item) => item.classList.remove("drop-ready"));
     const droppedFiles = filesFromDataTransfer(event.dataTransfer);
     if (!droppedFiles.length) {
-      setToast("没有读取到文件。请从桌面、文件夹或 Chrome 下载列表直接拖到这里。");
+      setToast(ui.text("没有读取到文件。请从桌面、文件夹或 Chrome 下载列表直接拖到这里。"));
       render();
       return;
     }
@@ -3579,10 +3584,30 @@
       }
       if (addChatFiles(droppedFiles)) render();
     } catch (error) {
-      setToast(error.message || "文件上传失败。");
+      setToast(error.message || ui.text("文件上传失败。"));
       render();
     }
   });
 
+  ui.subscribe(() => {
+    const fields = Array.from(root.querySelectorAll("input, textarea, select")).filter((field) => field.id && !field.matches("[data-interface-language]"))
+      .map((field) => ({ id: field.id, value: field.value, checked: field.checked, files: field.files, start: field.selectionStart, end: field.selectionEnd }));
+    const activeId = document.activeElement?.id;
+    const authMode = root.querySelector('[data-action="auth-tab"][aria-pressed="true"]')?.dataset.tab;
+    render();
+    if (!state.user && authMode === "register") root.innerHTML = authHtml("register");
+    for (const field of fields) {
+      const target = $(field.id);
+      if (!target) continue;
+      if (target.type === "file") { if (field.files?.length) target.files = field.files; continue; }
+      target.value = field.value; target.checked = field.checked;
+      if (field.id === activeId) {
+        target.focus({ preventScroll: true });
+        if (["textarea", "input"].includes(target.tagName.toLowerCase()) && typeof field.start === "number") target.setSelectionRange(field.start, field.end);
+      }
+    }
+    document.title = ui.text(state.user ? "学习空间 · StudyBridge" : "登录 · StudyBridge");
+    updateEmailCooldown();
+  });
   boot();
 })();

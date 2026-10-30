@@ -14,7 +14,7 @@ function harness() {
   };
   const requests = [];
   const notices = [];
-  const context = vm.createContext({
+  const context = vm.createContext({ ui: require("../public/i18n"),
     state, URLSearchParams, notices,
     profile: () => ({ school: "University of Toronto", major: "Computer Science" }),
     setPage: (page) => { state.page = page; },

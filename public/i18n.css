@@ -1,0 +1,11 @@
+.interface-language { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 500; color: inherit; }
+.interface-language select { width: auto; min-width: 108px; padding: 7px 9px; font: inherit; color: inherit; background: var(--panel, #fff); border: 1px solid var(--line, #cfdbeb); border-radius: 8px; }
+.side-head { flex-wrap: wrap; }
+.sidebar > .interface-language { margin: 8px 14px; }
+.settings-interface-language { margin-bottom: 20px; }
+html[lang="en"] .side-nav .nav-card { overflow-wrap: anywhere; }
+html[lang="en"] .settings-nav button { white-space: normal; }
+@media (max-width: 700px) {
+  .auth-header, .site-header { flex-wrap: wrap; gap: 12px; }
+  .interface-language { max-width: 100%; }
+}

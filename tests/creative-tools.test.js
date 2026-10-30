@@ -8,7 +8,7 @@ function harness(courses = [{ id: "math", name: "Math" }, { id: "econ", name: "E
   let ctx, output = "";
   const document = { hidden: false, getElementById: (id) => fields[id], addEventListener: (type, callback) => { listeners[type] = callback; } };
   const window = { StudyBridgeCheatsheetPrint: require("../public/cheatsheet-print"), StudyBridgeMarkdown: { render: (text) => text } };
-  vm.runInNewContext(fs.readFileSync(require.resolve("../public/creative-tools"), "utf8"), { window, document, setTimeout, clearTimeout, confirm: () => true });
+  vm.runInNewContext(fs.readFileSync(require.resolve("../public/creative-tools"), "utf8"), { StudyBridgeI18n: require("../public/i18n"), window, document, setTimeout, clearTimeout, confirm: () => true });
   const tools = window.StudyBridgeCreativeTools;
   function render() {
     tools.capture();
@@ -90,7 +90,7 @@ test("remembered tools course takes priority over study course and falls back af
   const end = source.indexOf("  function adminPage()", start);
   const saved = new Map([["studybridge.cheatsheetCourse.alice", "econ"]]);
   const state = { user: { id: "alice" }, tool: "cheatsheet", activeCourseId: "math", courses: [{ id: "math" }, { id: "econ" }] };
-  const context = vm.createContext({ state, localStorage: { getItem: (key) => saved.get(key), setItem: (key, value) => saved.set(key, value) },
+  const context = vm.createContext({ ui: require("../public/i18n"), state, localStorage: { getItem: (key) => saved.get(key), setItem: (key, value) => saved.set(key, value) },
     cheatsheetCourses: new Map(), api() {}, readFiles() {}, esc() {}, render() {} });
   vm.runInContext(source.slice(start, end), context);
   assert.equal(context.creativeContext().courseId, "econ");

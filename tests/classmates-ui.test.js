@@ -13,7 +13,7 @@ function harness(action = "send-dm") {
   const input = { value: "Hello", focus() {} }, sbInput = { value: "PeerID" };
   const requests = [], loads = [], notices = [];
   let generation = 1;
-  const context = vm.createContext({ state, JSON,
+  const context = vm.createContext({ ui: require("../public/i18n"), state, JSON,
     dmAttachments: require("../public/direct-message-attachments").createDrafts({ userId: () => state.user?.id, chatId: () => state.activeClassmateId, createId: () => "test-message-id" }),
     $: (id) => id === "dmInput" ? input : id === "classmateSbId" ? sbInput : null,
     root: { querySelector: (selector) => selector === ".chat-panel" && state.classmateChatOpen ? { dataset: { chatId: state.activeClassmateId } } : null,
@@ -104,7 +104,7 @@ test("obsolete live responses stop before fetching another account's chat or clo
   for (const fail of [false, true]) {
     const state = { user: { id: "alice" }, page: "classmates", activeClassmateId: "chat", classmateChatOpen: true };
     const requests = [], updates = [];
-    const context = vm.createContext({ state, document: { hidden: false }, requestAnimationFrame() {},
+    const context = vm.createContext({ ui: require("../public/i18n"), state, document: { hidden: false }, requestAnimationFrame() {},
       api: (path) => new Promise((resolve, reject) => requests.push({ path, resolve, reject })),
       updateClassmatesLiveView: () => updates.push("render"), stopClassmatesLive: () => updates.push("stop") });
     vm.runInContext(`let classmatesSyncing = false, classmatesSyncQueued = false, classmatesGeneration = 1; ${live}`, context);
@@ -124,7 +124,7 @@ test("late read acknowledgements cannot alter a newly signed-in account's unread
   const state = { user: { id: "alice" }, page: "classmates", activeClassmateId: "chat", classmateChatOpen: true,
     directMessageReadIds: ["message"], classmates: { classmates: [{ id: "chat", unreadCount: 5 }] } };
   let complete; const updates = [];
-  const context = vm.createContext({ state, document: { hidden: false },
+  const context = vm.createContext({ ui: require("../public/i18n"), state, document: { hidden: false },
     root: { querySelector: () => ({ dataset: { chatId: "chat" } }) },
     api: () => new Promise((resolve) => { complete = resolve; }), updateClassmatesLiveView: () => updates.push("render") });
   vm.runInContext(`const classmateReadPending = new Set(); ${acknowledge}`, context);

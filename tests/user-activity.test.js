@@ -11,7 +11,7 @@ test("recent activity labels handle missing, future and minute/hour/day boundari
     assert.equal(activity.relativeTime(new Date(now - seconds * 1000).toISOString(), now), label);
   }
   for (const value of [null, undefined, "", "invalid"]) assert.equal(activity.relativeTime(value, now), "暂无记录");
-  const browser = {};
+  const browser = { StudyBridgeI18n: require("../public/i18n") };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../public/user-activity.js"), "utf8"), browser);
   assert.equal(browser.StudyBridgeUserActivity.relativeTime(new Date(now - 60000).toISOString(), now), "1 分钟前");
 });

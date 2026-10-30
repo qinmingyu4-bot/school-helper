@@ -464,6 +464,35 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     await request(`/api/community/posts/${onlyAll.data.post.id}`, { method: "DELETE", cookie: alice.cookie });
   });
 
+  await t.test("community post editing authorizes owners and preserves the discussion across destinations", async () => {
+    const created = await request("/api/community/posts", { method: "POST", cookie: alice.cookie, body: { channels: [{ type: "all" }], anonymous: true, topic: "Edit source", content: "Original post content" } });
+    const post = created.data.post, route = `/api/community/posts/${post.id}`;
+    assert.equal((await request(route, { method: "PATCH", body: { content: "Unauthorized" } })).status, 401);
+    assert.equal((await request(route, { method: "PATCH", cookie: bob.cookie, body: { content: "Hijack", editRevision: 0 } })).status, 403);
+    await request(`${route}/like?channel=all`, { method: "PATCH", cookie: bob.cookie, body: { liked: true } });
+    const reply = await request(`${route}/replies`, { method: "POST", cookie: bob.cookie, body: { content: "Preserve this reply", anonymous: true } });
+    for (const body of [{ channels: [], editRevision: 0 }, { channels: [{ type: "other" }], editRevision: 0 }, { channels: [{ type: "school", value: {} }], editRevision: 0 },
+      { content: "  ", editRevision: 0 }, { content: "x".repeat(1601), editRevision: 0 }, { topic: "x".repeat(41), editRevision: 0 }, { anonymous: "false", editRevision: 0 }, { content: "Missing revision" }]) {
+      assert.equal((await request(route, { method: "PATCH", cookie: alice.cookie, body })).status, 400);
+    }
+    const updated = await request(route, { method: "PATCH", cookie: alice.cookie, body: { topic: "Edited topic", content: "Changed post content", channels: [{ type: "all" }, { type: "major", value: "Editing major" }], editRevision: 0, userId: bob.data.user.id, likes: [], createdAt: "forged" } });
+    assert.equal(updated.status, 200);
+    assert.equal(updated.data.post.createdAt, post.createdAt); assert.equal(updated.data.post.likeCount, 1);
+    assert.equal(updated.data.post.anonymous, true); assert.equal(updated.data.post.authorName, "匿名同学");
+    assert.equal(updated.data.post.editRevision, 1); assert.ok(updated.data.post.editedAt);
+    assert.equal(updated.data.post.mine, true); assert.equal(updated.data.post.userId, undefined);
+    assert.equal((await request(`${route}/replies`, { cookie: alice.cookie })).data.replies[0].id, reply.data.reply.id);
+    assert.equal((await request("/api/community?channel=major&value=Editing%20major&search=Changed", { cookie: bob.cookie })).data.posts[0].id, post.id);
+    assert.equal((await request("/api/community?channel=all&search=Original%20post%20content", { cookie: bob.cookie })).data.posts.some((item) => item.id === post.id), false);
+    assert.equal((await request(route, { method: "PATCH", cookie: alice.cookie, body: { content: "Stale", editRevision: 0 } })).status, 409);
+    const moved = await request(route, { method: "PATCH", cookie: alice.cookie, body: { channels: [{ type: "school", value: "Editing school" }], editRevision: 1 } });
+    assert.equal(moved.status, 200);
+    for (const query of ["channel=all", "channel=major&value=Editing%20major"]) assert.equal((await request(`/api/community?${query}`, { cookie: bob.cookie })).data.posts.some((item) => item.id === post.id), false);
+    assert.equal((await request("/api/community?channel=school&value=Editing%20school", { cookie: bob.cookie })).data.posts[0].id, post.id);
+    await request(route, { method: "DELETE", cookie: alice.cookie });
+    assert.equal((await request(route, { method: "PATCH", cookie: alice.cookie, body: { content: "Restore", editRevision: 2 } })).status, 404);
+  });
+
   await t.test("community and accepted classmate messaging", async () => {
     const post = await request("/api/community/posts", {
       method: "POST", cookie: alice.cookie, body: { channel: "all", content: "Health check community post" }

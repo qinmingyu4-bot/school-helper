@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.2.2";
+  const VERSION = "1.2.3";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -32,6 +32,8 @@
   const MAX_COURSE_UPLOAD_BYTES = window.StudyBridgeUploadLimits.courseFileBytes;
   let courseUploadPending = false;
   const communityReplies = window.StudyBridgeCommunityReplies.createController({ api, getUser: () => state.user, onChange: updateCommunityThread });
+  const communityEditor = window.StudyBridgeCommunityEditor.createController({ api, getUser: () => state.user,
+    getDefaults: () => profile(), onChange: () => { if (state.page === "community") render(); }, onSaved: updateEditedCommunityPost });
 
   const root = document.getElementById("root");
   const studyComposer = window.StudyBridgeComposer.create({ root });
@@ -130,6 +132,7 @@
   const directAttachments = window.StudyBridgeDirectAttachments;
   const dmAttachments = directAttachments.createDrafts({ userId: () => state.user?.id, chatId: () => state.activeClassmateId });
   const communityMutations = new Set();
+  let communityEditOpenGeneration = 0;
   const state = {
     version: VERSION,
     user: null,
@@ -1074,6 +1077,39 @@
     if (restore && input && !input.disabled) { input.focus({ preventScroll: true }); input.setSelectionRange(...selection); }
   }
 
+  function updateEditedCommunityPost(post) {
+    if (state.community) {
+      const matches = post.channels.some((entry) => entry.key === state.community.channel?.key)
+        && `${post.topic}\n${post.content}`.normalize("NFKC").toLowerCase().includes(String(state.communitySearch || "").normalize("NFKC").toLowerCase());
+      state.community.posts = state.community.posts.flatMap((item) => item.id === post.id ? (matches ? [post] : []) : [item]);
+    }
+    if (state.communityFocusedPost?.id === post.id) state.communityFocusedPost = post;
+    for (const notice of state.communityNotices?.notifications || []) if (notice.postId === post.id) notice.topic = post.topic;
+    state.communityChoices = null;
+    setToast("帖子已更新，点赞和回复已保留。");
+    if (state.page === "community") {
+      if (state.busy) void loadPage("community");
+      else { pageLoadGeneration++; state.communityMoreLoading = false; }
+    }
+  }
+
+  function communityEditHtml() {
+    const draft = communityEditor.snapshot();
+    if (!draft) return "";
+    return `<section class="community-edit-card" aria-labelledby="communityEditTitle">
+      <h3 id="communityEditTitle">编辑帖子</h3><p class="muted">修改将同步到所有选中频道，原有点赞和回复会保留。</p>
+      <fieldset ${draft.saving ? "disabled" : ""}>
+        <legend>发布到（可多选）</legend>
+        ${["all", "school", "major"].map((type) => `<label class="community-edit-destination"><input type="checkbox" data-community-edit-channel="${type}" ${draft.channels.includes(type) ? "checked" : ""}>${type === "all" ? "全部社区" : type === "school" ? "学校社区" : "专业社区"}</label>
+          ${type !== "all" && draft.channels.includes(type) ? `<label for="communityEdit-${type}">${type === "school" ? "学校名称" : "专业名称"}</label><input id="communityEdit-${type}" data-community-edit-value="${type}" maxlength="90" value="${esc(draft.values[type])}" placeholder="选择的${type === "school" ? "学校" : "专业"}名称">` : ""}`).join("")}
+        <label for="communityEditTopic">讨论主题</label><input id="communityEditTopic" data-community-edit-field="topic" maxlength="40" value="${esc(draft.topic)}">
+        <label for="communityEditContent">帖子内容</label><textarea id="communityEditContent" data-community-edit-field="content" maxlength="1600" rows="5">${esc(draft.content)}</textarea>
+        <label class="community-edit-destination"><input type="checkbox" data-community-edit-anonymous ${draft.anonymous ? "checked" : ""}>匿名发布（所有频道一致）</label>
+        ${draft.error ? `<p class="community-reply-error" role="alert">${esc(draft.error)}</p>` : ""}
+        <div class="community-edit-actions"><button type="button" class="primary" data-action="community-edit-save">${draft.saving ? "保存中…" : "保存修改"}</button><button type="button" data-action="community-edit-cancel">取消编辑</button></div>
+      </fieldset></section>`;
+  }
+
   function communityPage() {
     const data = state.community;
     const posts = state.communityFocusedPost ? [state.communityFocusedPost] : data?.posts || [];
@@ -1103,12 +1139,15 @@
           ${data?.indexing ? `<p class="community-feed-status" role="status">正在分批整理历史讨论，点击刷新可继续加载。</p>` : ""}
           ${state.communityFocusedPost ? `<button type="button" data-action="community-focus-close">返回频道列表</button>` : ""}
           <div class="community-feed-heading"><h3 id="communityFeedTitle">${state.communityFocusedPost ? "通知中的讨论" : esc(channelName)}</h3><span>已加载 ${posts.length} 条讨论</span></div>
+          ${communityEditHtml()}
           <div class="community-feed">
             ${state.busy ? `<p class="community-feed-status" role="status">正在加载讨论…</p>` : state.communityError ? `<div class="community-feed-status" role="alert"><p>${esc(state.communityError)}</p><button type="button" data-action="community-retry">重新加载</button></div>` : !state.communityFocusedPost && channel !== "all" && !communityValue().trim() ? `<p class="community-feed-status">先选择或输入一个${kind}，看看大家在聊什么。</p>` : posts.length ? posts.map((post) => `
               <article class="community-post">
                 <div class="community-post-meta"><span class="community-avatar" aria-hidden="true">${esc((post.authorName || "同").slice(0, 1))}</span><div><b>${esc(post.authorName)}</b><time datetime="${esc(post.createdAt)}">${esc(formatDate(post.createdAt))}</time></div><span class="community-channel-badge">${esc(post.channels?.map((entry) => entry.label).join(" · ") || post.channelLabel || "全部社区")}</span></div>
                 <h4>${esc(post.topic)}</h4>
                 <div class="formatted-text">${formatText(post.content)}</div>
+                ${post.editedAt ? `<small class="community-edited">已编辑 · ${esc(formatDate(post.editedAt))}</small>` : ""}
+                ${post.mine ? `<button type="button" class="community-edit-button" data-action="community-edit" data-id="${esc(post.id)}">编辑帖子</button>` : ""}
                 <footer><button type="button" class="community-like ${post.likedByMe ? "is-liked" : ""}" aria-pressed="${Boolean(post.likedByMe)}" aria-label="${post.likedByMe ? "取消赞同" : "赞同"}" data-action="community-like" data-id="${esc(post.id)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11H3V10h4Zm0 0 5-7c2 0 3 1 2 4l-1 3h5a2 2 0 0 1 2 2l-1 7a2 2 0 0 1-2 2H7"/></svg>赞同 <span>${post.likeCount || 0}</span></button>${post.mine || ["admin", "owner"].includes(state.user?.role) ? `<button type="button" data-action="community-delete" data-id="${esc(post.id)}">删除帖子</button>` : ""}</footer>
                 <button type="button" class="community-replies-toggle" data-action="community-replies-toggle" data-id="${esc(post.id)}" aria-expanded="${communityReplies.thread(post.id).open}" aria-controls="community-thread-${esc(post.id)}">${communityReplies.thread(post.id).open ? "收起讨论" : "回复 / 讨论"}</button>
                 ${communityThreadHtml(post.id)}
@@ -2612,6 +2651,22 @@
         } finally { if (generation === pageLoadGeneration) { state.communityMoreLoading = false; render(); } }
         return;
       }
+      if (action === "community-edit") {
+        const draft = communityEditor.snapshot();
+        if (draft?.saving || (draft && !confirm("放弃当前未保存的编辑，打开这条帖子？"))) return;
+        const userId = state.user.id, pageGeneration = pageLoadGeneration, generation = ++communityEditOpenGeneration;
+        button.disabled = true;
+        try {
+          const result = await api(`/api/community/posts/${encodeURIComponent(button.dataset.id)}`);
+          if (state.user?.id !== userId || state.page !== "community" || pageGeneration !== pageLoadGeneration || generation !== communityEditOpenGeneration) return;
+          communityEditor.start(result.post);
+          $("communityEditTitle")?.scrollIntoView({ behavior: "smooth", block: "center" });
+          $("communityEditContent")?.focus({ preventScroll: true });
+        } finally { button.disabled = false; }
+        return;
+      }
+      if (action === "community-edit-save") { communityEditOpenGeneration++; await communityEditor.save(); return; }
+      if (action === "community-edit-cancel") { communityEditOpenGeneration++; communityEditor.cancel(); return; }
       if (action === "community-post") {
         if (state.communityPosting || !state.communityDraft.channels.length) return;
         const userId = state.user.id, draft = JSON.stringify(state.communityDraft);
@@ -3215,6 +3270,12 @@
   }, true);
 
   document.addEventListener("change", (event) => {
+    if (event.target.dataset?.communityEditChannel) {
+      const draft = communityEditor.snapshot(), type = event.target.dataset.communityEditChannel;
+      if (draft && !draft.saving) { communityEditor.set("channels", event.target.checked ? [...new Set([...draft.channels, type])] : draft.channels.filter((entry) => entry !== type)); render(); }
+      return;
+    }
+    if (event.target.hasAttribute?.("data-community-edit-anonymous")) { communityEditor.set("anonymous", event.target.checked); return; }
     if (event.target?.id === "dmFiles") {
       try { dmAttachments.add(event.target.files); } catch (error) { setToast(error.message); }
       event.target.value = "";
@@ -3271,6 +3332,12 @@
   });
 
   document.addEventListener("input", (event) => {
+    if (event.target.dataset?.communityEditField) { communityEditor.set(event.target.dataset.communityEditField, event.target.value); return; }
+    if (event.target.dataset?.communityEditValue) {
+      const draft = communityEditor.snapshot();
+      if (draft) communityEditor.set("values", { ...draft.values, [event.target.dataset.communityEditValue]: event.target.value });
+      return;
+    }
     if (event.target?.id === "scheduleQuickText") { state.scheduleQuickText = event.target.value; return; }
     if (event.target.dataset?.calendarField) { state.scheduleCalendarDraft[event.target.dataset.calendarField] = event.target.value; return; }
     if (event.target.dataset?.weeklyField) { const section = event.target.closest("[data-draft]"); const draft = state.scheduleDrafts[Number(section?.dataset.draft)]; if (draft?.weekly) { draft.weekly[event.target.dataset.weeklyField] = event.target.value; refreshScheduleDraftSummary(section, draft); } return; }

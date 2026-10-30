@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-30
+
+- Release `1.2.3`: add owner-only community post editing for the topic, content, publishing channels and anonymous setting. Keep the same post ID, original creation time, likes and replies; show edited time and retain failed drafts. Save channel/search index changes with the post in one conditional cloud transaction and reject stale edit revisions while preserving concurrent likes. Include legacy destinations when prefilling edits. Refresh frontend/package/cache versions. Previous production code: `5bad7cb` (`1.2.2`).
+- Validate 384 automated tests and 223-file syntax/asset/version checks, including edit permissions, channel additions/removals, updated search, concurrent likes/edits, atomic failures, local save rollback/retry, stale-edit rejection, delayed feed responses and account-isolated drafts. Isolated browser checks cover all-to-major and all-to-school editing, retained replies/likes, edited labels and the 390 px form without horizontal overflow or page errors.
+
 ## 2026-10-29
 
 - Release `1.2.2`: publish owner-approved Classmates fixes and private image/file sharing from `b768286` and `eaf811e`. Include removable previews, image enlargement, original downloads, attachment-only messages, retry deduplication and account/chat isolation; retain the latest Google verification disclosures from `3558c69`, existing accounts, sessions, mailbox configuration and all learning data. Refresh package/frontend cache versions. Use the existing private verified-backup, unchanged data/configuration and automatic code rollback workflow. Previous production code: `3558c69` (`1.2.1`).

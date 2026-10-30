@@ -314,14 +314,25 @@ function communityChannelForUser(user, requestedType = "all", requestedValue) {
   return { type: "all", label: "全部社区", key: "all" };
 }
 
+function communityPublishChannels(user, selected) {
+  if (!Array.isArray(selected) || !selected.length || selected.length > 3) throw new Error("请选择 1–3 个发布频道。");
+  const result = selected.map((entry) => {
+    if (!entry || !["all", "school", "major"].includes(entry.type)) throw new Error("发布频道无效。");
+    return communityChannelForUser(user, entry.type, entry.value);
+  });
+  if (new Set(result.map((entry) => entry.type)).size !== result.length) throw new Error("每种频道只能选择一次。");
+  return result;
+}
+
 function publicCommunityPost(post, viewer) {
   const likes = Array.isArray(post.likes) ? post.likes : [];
-  const channels = post.channels || [{ type: post.channelType || (post.schoolKey ? "school" : "all"), key: post.channelKey || post.schoolKey || "all", label: post.channelLabel || post.school || "全部社区" }];
+  const channels = db.communityPostChannels(post);
   return {
     id: post.id, channels, channelType: channels[0].type, channelKey: channels[0].key, channelLabel: channels[0].label,
     topic: post.topic || "问问题", content: post.content || "", anonymous: post.anonymous === true,
     authorName: post.anonymous ? "匿名同学" : post.authorName || "同学", mine: post.userId === viewer.id,
-    createdAt: post.createdAt, updatedAt: post.updatedAt, likeCount: likes.length, likedByMe: likes.includes(viewer.id)
+    createdAt: post.createdAt, updatedAt: post.updatedAt, editedAt: post.editedAt || null, editRevision: post.editRevision || 0,
+    likeCount: likes.length, likedByMe: likes.includes(viewer.id)
   };
 }
 
@@ -2344,12 +2355,7 @@ async function routeApi(req, res) {
     let selected;
     try {
       if (body.channels !== undefined) {
-        if (!Array.isArray(body.channels) || !body.channels.length || body.channels.length > 3) throw new Error("请选择 1–3 个发布频道。");
-        selected = body.channels.map((entry) => {
-          if (!entry || !["all", "school", "major"].includes(entry.type)) throw new Error("发布频道无效。");
-          return communityChannelForUser(user, entry.type, entry.value);
-        });
-        if (new Set(selected.map((entry) => entry.type)).size !== selected.length) throw new Error("每种频道只能选择一次。");
+        selected = communityPublishChannels(user, body.channels);
       } else {
         // Old clients retain the aggregate-feed behavior until their assets refresh.
         const channel = communityChannelForUser(user, body.channel || "all", body.channelValue);
@@ -2367,9 +2373,35 @@ async function routeApi(req, res) {
   }
 
   const communityPostMatch = url.pathname.match(/^\/api\/community\/posts\/([^/]+)$/);
-  if (communityPostMatch && ["GET", "DELETE"].includes(method)) {
+  if (communityPostMatch && ["GET", "PATCH", "DELETE"].includes(method)) {
     const user = await requireUser(req, res);
     if (!user) return;
+    if (method === "PATCH") {
+      const existing = await db.getCommunityPost(communityPostMatch[1]);
+      if (!existing) return sendError(res, 404, "帖子不存在或已删除。");
+      if (existing.userId !== user.id) return sendError(res, 403, "只能编辑自己发布的帖子。");
+      const body = await readJson(req), changes = {};
+      try {
+        if (body.channels !== undefined) changes.channels = communityPublishChannels(user, body.channels);
+        if (body.content !== undefined) {
+          if (typeof body.content !== "string" || body.content.trim().length < 3 || body.content.trim().length > 1600) throw new Error("正文须为 3–1600 字。");
+          changes.content = body.content.trim();
+        }
+        if (body.topic !== undefined) {
+          if (typeof body.topic !== "string" || body.topic.trim().length > 40) throw new Error("主题最多 40 字。");
+          changes.topic = body.topic.trim() || "问问题";
+        }
+        if (body.anonymous !== undefined) {
+          if (typeof body.anonymous !== "boolean") throw new Error("匿名设置无效。");
+          changes.anonymous = body.anonymous;
+        }
+        if (!Object.keys(changes).length) throw new Error("请提供要修改的内容或频道。");
+        if (!Number.isSafeInteger(body.editRevision) || body.editRevision < 0) throw new Error("请重新打开帖子编辑后再保存。");
+      } catch (error) { return sendError(res, 400, error.message); }
+      const post = await db.editCommunityPost(communityPostMatch[1], user.id, changes, body.editRevision);
+      if (!post) return sendError(res, 404, "帖子不存在或已删除。");
+      return sendJson(res, 200, { post: publicCommunityPost(post, user) });
+    }
     const post = method === "DELETE" ? await db.deleteCommunityPost(communityPostMatch[1], user.id, ["admin", "owner"].includes(user.role)) : await db.getCommunityPost(communityPostMatch[1]);
     if (!post) return sendError(res, 404, "帖子不存在或已删除。");
     return sendJson(res, 200, method === "DELETE" ? { deleted: true } : { post: publicCommunityPost(post, user) });

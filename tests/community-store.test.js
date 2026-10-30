@@ -18,6 +18,30 @@ async function database(t, mode) {
 }
 
 for (const mode of ["local", "dynamodb"]) {
+  test(`${mode}: edits move the same discussion and update search without losing reactions`, async (t) => {
+    const { db } = await database(t, mode);
+    await db.communityIndexStep();
+    const original = await db.createCommunityPost({ id: "edit", userId: "alice", authorName: "Alice", anonymous: true, channels: [all], topic: "Old topic", content: "Old wording" });
+    await db.toggleCommunityPostLike("all", "edit", "bob", true);
+    await db.createCommunityReply({ id: "reply", postId: "edit", userId: "bob", content: "Original reply" });
+    await assert.rejects(db.editCommunityPost("edit", "bob", { content: "Hijack" }, 0), { statusCode: 403 });
+    const updated = await db.editCommunityPost("edit", "alice", { topic: "New topic", content: "New wording", channels: [all, major] }, 0);
+    assert.equal(updated.id, original.id); assert.equal(updated.createdAt, original.createdAt);
+    assert.equal(updated.editRevision, 1); assert.ok(updated.editedAt); assert.equal(updated.anonymous, true);
+    assert.equal(updated.likeCount, 1); assert.equal((await db.listCommunityReplies("edit")).replies[0].content, "Original reply");
+    assert.equal((await db.listCommunityPage("all", { search: "Old wording" })).posts.length, 0);
+    assert.equal((await db.listCommunityPage(major.key, { search: "New wording" })).posts[0].id, "edit");
+    const school = { type: "school", key: "school:new-school", label: "New school" };
+    await db.editCommunityPost("edit", "alice", { channels: [school] }, 1);
+    assert.equal((await db.listCommunityPage("all")).posts.length, 0);
+    assert.equal((await db.listCommunityPage(major.key)).posts.length, 0);
+    assert.equal((await db.listCommunityPage(school.key)).posts[0].likeCount, 1);
+    await assert.rejects(db.editCommunityPost("edit", "alice", { content: "Stale content" }, 1), { statusCode: 409 });
+    if (mode === "local") db.local.state = null;
+    assert.equal((await db.getCommunityPost("edit")).content, "New wording");
+    await db.deleteCommunityPost("edit", "alice");
+    assert.equal(await db.editCommunityPost("edit", "alice", { content: "Restore" }, 2), null);
+  });
   test(`${mode}: multi-channel posts share likes/replies and support more than 80 posts`, async (t) => {
     const { db, calls } = await database(t, mode);
     await db.communityIndexStep();
@@ -98,6 +122,40 @@ test("DynamoDB concurrent likes are lossless, idempotent, and cannot restore a d
   await db.deleteCommunityPost("post", "alice"); release();
   assert.equal(await pending, null);
   assert.equal(await db.getCommunityPost("post"), null);
+});
+
+test("DynamoDB edits preserve concurrent likes, reject stale editors and atomically update indexes", async (t) => {
+  const { db, store } = await database(t, "dynamodb");
+  await db.communityIndexStep();
+  await db.createCommunityPost({ id: "post", userId: "alice", channels: [all], content: "Original" });
+  await Promise.all([db.editCommunityPost("post", "alice", { content: "New content", channels: [all, major] }, 0),
+    ...Array.from({ length: 16 }, (_, index) => db.toggleCommunityPostLike("all", "post", `user-${index}`, true))]);
+  assert.equal((await db.getCommunityPost("post")).likeCount, 16);
+  const attempts = await Promise.allSettled(["First", "Second"].map((content) => db.editCommunityPost("post", "alice", { content }, 1)));
+  assert.equal(attempts.filter((attempt) => attempt.status === "fulfilled").length, 1);
+  assert.equal(attempts.find((attempt) => attempt.status === "rejected").reason.statusCode, 409);
+  const before = await db.getCommunityPost("post"), transact = store.transactPut.bind(store);
+  store.transactPut = async () => { throw new Error("Save unavailable"); };
+  await assert.rejects(db.editCommunityPost("post", "alice", { channels: [major], content: "Must not persist" }, 2), /Save unavailable/);
+  assert.deepEqual(await db.getCommunityPost("post"), before);
+  store.transactPut = transact;
+  assert.equal((await db.listCommunityPage("all")).posts[0].content, before.content);
+  assert.equal((await db.listCommunityPage(major.key)).posts[0].content, before.content);
+});
+
+test("local edit save failures restore the prior revision and allow a safe retry", async (t) => {
+  const { db } = await database(t, "local");
+  await db.createCommunityPost({ id: "post", userId: "alice", channels: [all], content: "Original content" });
+  const save = db.local.save.bind(db.local);
+  db.local.save = async () => { throw new Error("Disk unavailable"); };
+  await assert.rejects(db.editCommunityPost("post", "alice", { content: "Updated content", channels: [major] }, 0), /Disk unavailable/);
+  assert.equal((await db.getCommunityPost("post")).content, "Original content");
+  assert.equal((await db.listCommunityPage("all")).posts.length, 1);
+  db.local.save = save;
+  await db.editCommunityPost("post", "alice", { content: "Updated content", channels: [major] }, 0);
+  db.local.state = null;
+  assert.equal((await db.getCommunityPost("post")).editRevision, 1);
+  assert.equal((await db.listCommunityPage(major.key)).posts[0].content, "Updated content");
 });
 
 test("legacy upgrade is bounded, resumable, preserves data and cannot resurrect tombstones", async (t) => {

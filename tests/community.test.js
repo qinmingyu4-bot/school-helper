@@ -75,3 +75,20 @@ test("channel failures show an error, while stale failures cannot overwrite a ne
   assert.equal(state.page, "profile");
   assert.deepEqual(notices, ["Channel unavailable"]);
 });
+
+test("a post save refreshes an in-flight feed and a delayed pre-edit response cannot restore old content", async () => {
+  const { state, requests, context } = harness();
+  const original = context.loadPage;
+  const old = original("community");
+  let refresh;
+  context.loadPage = (page) => { refresh = original(page); return refresh; };
+  const post = { id: "edited", content: "New content", topic: "New topic", channels: [{ key: "school:university-of-toronto" }] };
+  context.updateEditedCommunityPost(post);
+  assert.equal(requests.length, 3);
+  requests[2].resolve({ schools: [], majors: [] });
+  requests[1].resolve({ channel: { key: "school:university-of-toronto" }, posts: [post] });
+  await refresh;
+  requests[0].resolve({ posts: [{ id: "edited", content: "Old content" }] });
+  await old;
+  assert.equal(state.community.posts[0].content, "New content");
+});

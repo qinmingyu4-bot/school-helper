@@ -111,6 +111,17 @@ export a JPG/PNG first. Unsupported or oversized images show an error without
 silently truncating the image data or replacing the saved profile.
 
 Community publishing has explicit checkboxes for all, school and major channels.
+Authors can choose **编辑帖子** to change the topic, body, destination channels or
+anonymous setting. The editor prefills the original destinations, offers profile
+school/major defaults when adding a channel, and accepts another school/major name.
+Saving updates the same post in every selected channel and removes it from channels
+that were unchecked. Creation time, likes and replies stay attached to the original
+post; search indexes update atomically in DynamoDB. Other accounts, including admins,
+cannot edit the author's text. An edited-time label distinguishes an edit from a new
+post. Failed saves retain the draft; stale edits show a conflict instead of overwriting
+a newer edit. Cancel and reopen to load the newer text after copying any desired draft
+changes. No extra reply notification is sent for editing a post.
+
 Only checked destinations receive a new post; a shared post ID keeps likes and
 replies together across those destinations. School/major destinations use the
 selected channel, falling back to the profile. Anonymous posts hide the account

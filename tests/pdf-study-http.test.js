@@ -40,12 +40,15 @@ test("study PDFs retain original private bytes across restart, API transports, s
   assert(content[0].text.includes('"number":6,"parts":["a","b","c","d"]'));
   assert(outbound.messages[0].content.includes("cover every numbered problem and every subpart"));
   assert(outbound.messages[0].content.includes("Teach progressively WITHIN each part"));
+  assert(outbound.messages[0].content.includes("place a concise source annotation beside that statement"));
+  assert(content[0].text.includes("Verified PDF page 1"));
   assert.equal(reply.data.messages[0].attachments[0].dataUrl, undefined);
   assert.equal(reply.data.messages[0].attachments[0].file_data, undefined);
   await stop(); await start(true);
   const again = await request(route + "/chat", "POST", { mode: "guided", message: "继续讲解 paper.pdf，只解释第一题，不要给其余题答案" }, cookie);
   assert.equal(again.status, 201);
   const responses = JSON.parse(again.data.messages[1].content);
+  assert(responses.input[1].content[0].text.includes("Verified PDF page 1"), "page positions survive retained-attachment reload after restart");
   assert.equal(responses.input[1].content.find((part) => part.type === "input_file").file_data, dataUrl);
   assert(responses.input[1].content[0].text.includes("只解释第一题，不要给其余题答案"));
   const streamed = await fetch(base + route + "/chat", { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ stream: true, mode: "guided", message: "STREAM_EARLY_FAIL 继续讲解 paper.pdf" }) });
@@ -56,6 +59,7 @@ test("study PDFs retain original private bytes across restart, API transports, s
   assert.equal(fallback.messages[1].content.find((part) => part.type === "file").file.file_data, dataUrl);
   const doc = await request(route + "/documents", "POST", { title: "Source PDF", fileName: "source.pdf", fileType: "application/pdf", fileData: pdf.toString("base64") }, cookie);
   assert.equal(doc.status, 201); assert.equal(doc.data.document.hasSourcePdf, true); assert.equal(doc.data.document.dataUrl, undefined);
+  assert.equal(doc.data.document.sourcePages[0].page, 1);
   const docId = doc.data.document.id;
   const stored = JSON.parse(await fs.readFile(database, "utf8"));
   assert(Object.values(stored.materials).some((row) => row.id === `DOCFILE#${docId}#PDF` && row.value.dataUrl === dataUrl));
@@ -63,9 +67,11 @@ test("study PDFs retain original private bytes across restart, API transports, s
   const docOnly = await request(docOnlyRoute + "/documents", "POST", { title: "Native source", fileName: "source.pdf", fileType: "application/pdf", fileData: pdf.toString("base64") }, cookie);
   const docReply = await request(docOnlyRoute + "/chat", "POST", { message: "请讲解这份 PDF", mode: "guided" }, cookie);
   assert.equal(JSON.parse(docReply.data.messages[1].content).input[1].content.find((part) => part.type === "input_file").file_data, dataUrl);
+  assert(JSON.parse(docReply.data.messages[1].content).input[1].content[0].text.includes("Verified PDF page 1"));
   const listed = await request(docOnlyRoute + "/documents", "GET", null, cookie); assert.equal(listed.data.documents[0].dataUrl, undefined);
   const changed = await request(docOnlyRoute + "/documents/" + docOnly.data.document.id, "PUT", { title: "Edited source", text: "The student replaced the source text." }, cookie);
   assert.equal(changed.data.document.hasSourcePdf, false);
+  assert.deepEqual(changed.data.document.sourcePages, []);
   const afterEdit = await request(docOnlyRoute + "/chat", "POST", { message: "Explain the edited source", mode: "guided" }, cookie);
   assert.equal(typeof JSON.parse(afterEdit.data.messages[1].content).input[1].content, "string", "Old visuals must not override edited course text");
   await request(route + "/documents/" + docId, "DELETE", null, cookie);

@@ -2,6 +2,10 @@
 
 ## 2026-10-30
 
+- Add default inline course-source annotations beside source-backed claims and worked steps, with filename/title and verified PDF page or slide positions where available. Preserve PDF physical-page offsets through storage/retrieval, follow PowerPoint presentation/notes order, and give legacy sources explicit extracted-text line/character locators or short locating quotes. Disambiguate duplicate names, clear stale PDF locations when source text is replaced, and distinguish AI derivations from quoted source content. Prepared with bilingual retrieval on a task branch without AWS deployment.
+
+- Improve large-course retrieval with bounded Chinese/English query expansion, synonyms and academic terminology, then rank source passages by original/expanded terms, exact phrases, term rarity and filenames. Preserve complete small collections, current-upload priority and course/conversation isolation; use only real source passages as evidence. Add an eight-second fallback and stream cancellation without a shared query cache. Prepared on a task branch without AWS deployment.
+
 - Release `1.2.4`: publish the owner-approved Chinese / English interface, preserving the `1.2.3` community post editor and all existing data/configuration. Refresh release and frontend cache versions. Use the existing verified private backup, data/configuration checks and automatic code rollback deployment. Previous production code: `52c4d6e` (`1.2.3`).
 - Follow-up live verification: allow English homepage headings/actions and the mobile language header to wrap naturally, and preserve spacing before the accented hero word. Verify both languages at 320, 390, 768 and 1440 px without horizontal overflow. The follow-up contains presentation assets only.
 - Validate 389 automated tests and 227-file syntax/asset/version checks. Isolated Chrome checks cover homepage and authentication switching/persistence, all six destinations, retained profile/chat/document/file drafts, settings and 390 px layout, plus community post editing in English with unsaved content retained across language switches. No production test content is written.

@@ -8,12 +8,13 @@ const actions = source.slice(source.indexOf('      if (action === "add-classmate
 
 function harness(action = "send-dm") {
   const state = { user: { id: "alice" }, page: "classmates", activeClassmateId: "chat", classmateChatOpen: true, directMessageDrafts: { chat: "Hello" } };
-  const button = { dataset: { action, id: "request" }, disabled: false };
+  const button = { dataset: { action, id: "request" }, disabled: false, classList: { toggle() {} }, setAttribute() {} };
   const buttons = [button];
   const input = { value: "Hello", focus() {} }, sbInput = { value: "PeerID" };
   const requests = [], loads = [], notices = [];
   let generation = 1;
   const context = vm.createContext({ state, JSON,
+    dmAttachments: require("../public/direct-message-attachments").createDrafts({ userId: () => state.user?.id, chatId: () => state.activeClassmateId, createId: () => "test-message-id" }),
     $: (id) => id === "dmInput" ? input : id === "classmateSbId" ? sbInput : null,
     root: { querySelector: (selector) => selector === ".chat-panel" && state.classmateChatOpen ? { dataset: { chatId: state.activeClassmateId } } : null,
       querySelectorAll: () => buttons },
@@ -74,7 +75,7 @@ test("obsolete errors and successes cannot affect a different account", async ()
 test("rerendered send buttons and conflicting request actions share a pending guard", async () => {
   for (const action of ["send-dm", "add-classmate", "friend-accept"]) {
     const h = harness(action); const first = h.run();
-    const replacement = { dataset: { ...h.button.dataset, action: action === "friend-accept" ? "friend-ignore" : action }, disabled: false };
+    const replacement = { dataset: { ...h.button.dataset, action: action === "friend-accept" ? "friend-ignore" : action }, disabled: false, classList: { toggle() {} }, setAttribute() {} };
     h.buttons.push(replacement);
     h.context.updateClassmateMutationButtons();
     assert.equal(replacement.disabled, true);

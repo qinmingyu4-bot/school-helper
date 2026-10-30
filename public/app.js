@@ -127,6 +127,8 @@
   let classmateProfileChatAtBottom = true;
   const classmateReadPending = new Set();
   const classmateMutations = new Set();
+  const directAttachments = window.StudyBridgeDirectAttachments;
+  const dmAttachments = directAttachments.createDrafts({ userId: () => state.user?.id, chatId: () => state.activeClassmateId });
   const communityMutations = new Set();
   const state = {
     version: VERSION,
@@ -780,7 +782,7 @@
   }
 
   function showChatImage(url, name) {
-    if (!window.StudyBridgeChatAttachments.isPreviewUrl(url)) return;
+    if (!window.StudyBridgeChatAttachments.isPreviewUrl(url) && !directAttachments.isUrl(url)) return;
     const dialog = document.createElement("dialog");
     dialog.className = "chat-image-dialog";
     dialog.setAttribute("aria-label", "图片预览");
@@ -1182,8 +1184,15 @@
             <div class="dm-peer"><h2>${esc(active?.peer?.name || "请选择一位同学")}</h2>${active ? `<p>SB ID: ${esc(active.peer?.sbId || "")}${active.peer?.school ? ` · ${esc(active.peer.school)}` : ""}</p>` : ""}</div>
             <button class="dm-icon-button" data-action="refresh-classmates" title="刷新聊天" aria-label="刷新聊天"><svg aria-hidden="true"><use href="/classmates-icons.svg#refresh"></use></svg></button>
           </header>
-          <div class="dm-list" role="log" aria-label="聊天记录">${state.directMessages.length ? state.directMessages.map((msg) => `<div class="dm-row ${msg.mine ? "mine" : ""}">${!msg.mine && active ? classmateProfileAvatar(active.peer) : ""}<div class="dm ${msg.mine ? "mine" : ""}">${!msg.mine ? `<span class="dm-sender">${esc(active?.peer?.name || "同学")}</span>` : ""}<div class="dm-content">${esc(msg.content)}</div><small>${esc(formatDate(msg.createdAt))}</small></div></div>`).join("") : `<p class="empty">${active ? "还没有聊天记录。先打个招呼吧。" : "选择同学后，这里会显示你们的聊天。"}</p>`}</div>
-          <form class="compose-row dm-compose"><input id="dmInput" aria-label="聊天消息" autocomplete="off" maxlength="1200" placeholder="写一句话给同学" value="${esc(state.directMessageDrafts[state.activeClassmateId] || "")}" ${active ? "" : "disabled"}><button class="send dm-icon-button" data-action="send-dm" type="submit" title="发送消息" aria-label="发送消息" ${active ? "" : "disabled"}><svg aria-hidden="true"><use href="/classmates-icons.svg#send"></use></svg></button></form>
+          <div class="dm-list" role="log" aria-label="聊天记录">${state.directMessages.length ? state.directMessages.map((msg) => `<div class="dm-row ${msg.mine ? "mine" : ""}">${!msg.mine && active ? classmateProfileAvatar(active.peer) : ""}<div class="dm ${msg.mine ? "mine" : ""}">${!msg.mine ? `<span class="dm-sender">${esc(active?.peer?.name || "同学")}</span>` : ""}<div class="dm-content">${esc(msg.content)}</div>${directAttachments.render(msg.attachments)}<small>${esc(formatDate(msg.createdAt))}</small></div></div>`).join("") : `<p class="empty">${active ? "还没有聊天记录。先打个招呼吧。" : "选择同学后，这里会显示你们的聊天。"}</p>`}</div>
+          <form class="dm-compose" data-dm-dropzone>
+            <div class="dm-file-queue" aria-label="待发送附件">${dmAttachments.files().map((file, index) => {
+              const preview = dmAttachments.preview(file);
+              return `<div class="dm-pending-file">${preview ? `<img src="${esc(preview)}" alt="待发送图片：${esc(file.name)}">` : '<span aria-hidden="true">文件</span>'}<span><b>${esc(file.name)}</b><small>${directAttachments.sizeLabel(file.size)}</small></span><button type="button" data-action="remove-dm-file" data-index="${index}" aria-label="移除附件：${esc(file.name)}">×</button></div>`;
+            }).join("")}</div>
+            <div class="dm-compose-row"><input id="dmFiles" type="file" multiple hidden><button class="dm-icon-button dm-attach" type="button" data-action="attach-dm" title="添加图片或文件" aria-label="添加图片或文件" ${active ? "" : "disabled"}><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21 11-8.5 8.5a6 6 0 0 1-8.5-8.5l9-9a4 4 0 0 1 5.7 5.7l-9 9a2 2 0 0 1-2.9-2.9L15 6.5"/></svg></button><input id="dmInput" aria-label="聊天消息" autocomplete="off" maxlength="1200" placeholder="写消息，或添加图片、文件" value="${esc(state.directMessageDrafts[state.activeClassmateId] || "")}" ${active ? "" : "disabled"}><button class="send dm-icon-button" data-action="send-dm" type="submit" title="发送消息" aria-label="发送消息" ${active ? "" : "disabled"}><svg aria-hidden="true"><use href="/classmates-icons.svg#send"></use></svg></button></div>
+            <p class="dm-send-status" role="status" aria-live="polite">可粘贴截图或拖入文件 · 单个 12 MB，合计 20 MB</p>
+          </form>
         </article>
       </section>
     `;
@@ -2176,6 +2185,15 @@
   function updateClassmateMutationButtons() {
     root.querySelectorAll('[data-action="add-classmate"], [data-action="friend-accept"], [data-action="friend-ignore"], [data-action="send-dm"]').forEach((button) => {
       button.disabled = classmateMutations.has(classmateMutationKey(button)) || (button.dataset.action === "send-dm" && !state.activeClassmateId);
+      if (button.dataset.action === "send-dm") {
+        const sending = classmateMutations.has(classmateMutationKey(button));
+        button.classList.toggle("is-sending", sending);
+        button.setAttribute("aria-busy", String(sending));
+        button.setAttribute("aria-label", sending ? "正在发送" : "发送消息");
+        const status = root.querySelector(".dm-send-status");
+        if (status) status.textContent = sending ? "正在发送… 请稍候" : "可粘贴截图或拖入文件 · 单个 12 MB，合计 20 MB";
+        root.querySelectorAll('[data-action="remove-dm-file"]').forEach((remove) => { remove.disabled = sending; });
+      }
     });
   }
 
@@ -2373,6 +2391,7 @@
         return;
       }
       if (action === "logout") {
+        dmAttachments.reset();
         mailboxView.reset();
         for (const key of Object.keys(emailDraft)) delete emailDraft[key];
         scheduleQuickRequest?.abort();
@@ -2739,16 +2758,22 @@
         void syncClassmatesLive();
         return;
       }
+      if (action === "attach-dm") { $("dmFiles")?.click(); return; }
+      if (action === "remove-dm-file") { dmAttachments.remove(Number(button.dataset.index)); render(); return; }
       if (action === "send-dm") {
         if (!state.activeClassmateId) throw new Error("请先选择一位同学。");
         const chatId = state.activeClassmateId;
         const input = $("dmInput");
         const draft = input?.value || "";
         const content = draft.trim();
-        if (!content || button.disabled) return;
+        if ((!content && !dmAttachments.files().length) || button.disabled) return;
+        const sent = dmAttachments.snapshot(draft);
         await runClassmateMutation(button, async (isCurrent, userId) => {
-          await api(`/api/classmates/${chatId}/messages`, { method: "POST", body: { content } });
+          const attachments = sent.files.length ? await readFiles(sent.files, directAttachments.fileBytes) : [];
           if (state.user?.id !== userId) return;
+          await api(`/api/classmates/${chatId}/messages`, { method: "POST", body: { content, attachments, clientId: sent.clientId } });
+          if (state.user?.id !== userId) return;
+          dmAttachments.sent(sent);
           const currentInput = root.querySelector(".chat-panel")?.dataset.chatId === chatId ? $("dmInput") : null;
           if (currentInput?.value === draft) currentInput.value = "";
           if (state.directMessageDrafts[chatId] === draft) state.directMessageDrafts[chatId] = "";
@@ -3039,6 +3064,7 @@
     const previousDmId = previousDm?.parentElement.dataset.chatId;
     const previousDmMessages = previousDm?.innerHTML;
     const previousDmScroll = previousDm?.scrollTop || 0;
+    const previousDmAtBottom = previousDm && previousDm.scrollHeight - previousDm.clientHeight - previousDmScroll < 64;
     const previousDmDraft = $("dmInput")?.value || "";
     if (state.user && previousDmId) state.directMessageDrafts[previousDmId] = previousDmDraft;
     const previousChat = root.querySelector(".study-workspace .chat-area");
@@ -3100,7 +3126,7 @@
     const dm = root.querySelector(".dm-list");
     if (dm) {
       const sameChat = previousDmId === dm.parentElement.dataset.chatId;
-      dm.scrollTop = !sameChat || previousDmMessages !== dm.innerHTML ? dm.scrollHeight : previousDmScroll;
+      dm.scrollTop = !sameChat || previousDmMessages !== dm.innerHTML || previousDmAtBottom ? dm.scrollHeight : previousDmScroll;
       keepLatestAfterFontLoad(dm);
       if (sameChat) $("dmInput").value = previousDmDraft;
     }
@@ -3189,6 +3215,13 @@
   }, true);
 
   document.addEventListener("change", (event) => {
+    if (event.target?.id === "dmFiles") {
+      try { dmAttachments.add(event.target.files); } catch (error) { setToast(error.message); }
+      event.target.value = "";
+      render();
+      $("dmInput")?.focus({ preventScroll: true });
+      return;
+    }
     if (event.target?.id === "scheduleAudioFile") { void transcribeScheduleVoice(event.target.files?.[0]); event.target.value = ""; return; }
     if (event.target?.id === "scheduleMonthPicker") {
       if (scheduleImport.validDate(`${event.target.value}-01`)) { state.scheduleMonth = event.target.value; state.scheduleSelectedDate = `${event.target.value}-01`; render(); $("scheduleMonthPicker")?.focus({ preventScroll: true }); }
@@ -3401,6 +3434,15 @@
   window.addEventListener("pageshow", startClassmatesLive);
 
   document.addEventListener("paste", (event) => {
+    if (state.user && state.page === "classmates" && event.target?.id === "dmInput") {
+      const files = window.StudyBridgeChatAttachments.clipboardImages(event.clipboardData);
+      if (!files.length) return;
+      event.preventDefault();
+      try { dmAttachments.add(files); } catch (error) { setToast(error.message); }
+      render();
+      $("dmInput")?.focus({ preventScroll: true });
+      return;
+    }
     if (!state.user || state.page !== "study" || event.target?.id !== "chatInput") return;
     const files = window.StudyBridgeChatAttachments.clipboardImages(event.clipboardData);
     if (!files.length) return; // Let the browser paste ordinary text normally.
@@ -3423,6 +3465,11 @@
   });
 
   document.addEventListener("dragover", (event) => {
+    if (state.user && state.page === "classmates" && state.classmateChatOpen && hasDataTransferFiles(event.dataTransfer)) {
+      const zone = root.querySelector("[data-dm-dropzone]");
+      if (zone) { event.preventDefault(); zone.classList.add("drop-ready"); }
+      return;
+    }
     if (!state.user || state.page !== "study") return;
     const zone = event.target.closest("[data-chat-dropzone], [data-doc-dropzone]") || $("chatInput")?.closest("[data-chat-dropzone]");
     if (!zone) return;
@@ -3431,10 +3478,20 @@
   });
 
   document.addEventListener("dragleave", (event) => {
+    event.target.closest?.("[data-dm-dropzone]")?.classList.remove("drop-ready");
     event.target.closest?.("[data-chat-dropzone], [data-doc-dropzone]")?.classList.remove("drop-ready");
   });
 
   document.addEventListener("drop", async (event) => {
+    if (state.user && state.page === "classmates" && state.classmateChatOpen && root.querySelector("[data-dm-dropzone]")) {
+      if (!hasDataTransferFiles(event.dataTransfer)) return;
+      event.preventDefault();
+      root.querySelector("[data-dm-dropzone]").classList.remove("drop-ready");
+      try { dmAttachments.add(filesFromDataTransfer(event.dataTransfer)); } catch (error) { setToast(error.message); }
+      render();
+      $("dmInput")?.focus({ preventScroll: true });
+      return;
+    }
     if (!state.user || state.page !== "study") return;
     const docZone = event.target.closest("[data-doc-dropzone]");
     const chatZone = event.target.closest("[data-chat-dropzone]") || $("chatInput")?.closest("[data-chat-dropzone]");

@@ -26,6 +26,7 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, op
 - Local JSON database for development or small private deployments
 - Optional DynamoDB storage for AWS production
 - Full-window classmate chats with live messages/requests, persistent unread counts, latest-message sorting, and clickable peer avatars and public profiles. Concurrent requests/acceptance share one chat; failed saves retain pending requests, and refreshes or delayed responses preserve new drafts and the current destination.
+- Classmate messages support original images and files, with thumbnails, enlarged image viewing and private downloads. Pick multiple files, paste screenshots or drag files into chat; remove queued attachments before sending. Send up to 6 files, 12 MB each and 20 MB total, with or without text. Failed sends retain the draft and retries reuse the same message identity. Selected files stay separate by chat during navigation; unsent files must be selected again after a page reload. Sent originals survive reloads/restarts and are accessible only to that chat's participants. SVG/HTML and other files download as attachments; only validated raster images preview inline.
 
 ## Website entry paths
 

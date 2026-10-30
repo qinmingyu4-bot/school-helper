@@ -624,6 +624,62 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     }
   });
 
+  await t.test("private classmate images and files preserve bytes, authorize both peers and survive restart", async () => {
+    const mate = (await request("/api/classmates", { cookie: alice.cookie })).data.classmates.find((item) => item.peer.id === bob.data.user.id);
+    const route = `/api/classmates/${mate.id}/messages`;
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aL1cAAAAASUVORK5CYII=", "base64");
+    const notes = Buffer.from("课程笔记\n原件保留\n", "utf8");
+    const body = { content: "", clientId: "attachment-http-retry", attachments: [
+      { fileName: "截图.png", fileData: `data:image/png;base64,${png.toString("base64")}` },
+      { fileName: "课程笔记.txt", fileData: `data:text/plain;base64,${notes.toString("base64")}` }
+    ] };
+    const sent = await Promise.all(Array.from({ length: 4 }, () => request(route, { method: "POST", cookie: alice.cookie, body })));
+    assert.ok(sent.every((item) => item.status === 201));
+    assert.equal(new Set(sent.map((item) => item.data.message.id)).size, 1);
+    const message = sent[0].data.message;
+    assert.equal(message.attachments.length, 2);
+    assert.equal(message.attachments[0].kind, "image");
+    assert.equal(message.attachments[1].size, notes.length);
+    assert.ok(!JSON.stringify(message).includes("base64"));
+    assert.ok(!JSON.stringify(message).includes("attachmentRef"));
+    const readFile = async (url, cookie, expected, inline) => {
+      const response = await fetch(base + url, { headers: { cookie } });
+      assert.equal(response.status, 200); assert.deepEqual(Buffer.from(await response.arrayBuffer()), expected);
+      assert.match(response.headers.get("cache-control"), /private.*no-store/);
+      assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+      assert.match(response.headers.get("content-disposition"), inline ? /^inline;/ : /^attachment;/);
+      assert.equal(response.headers.get("content-type"), inline ? "image/png" : "application/octet-stream");
+    };
+    for (const cookie of [alice.cookie, bob.cookie]) {
+      await readFile(message.attachments[0].url, cookie, png, true);
+      await readFile(message.attachments[0].url + "&download=1", cookie, png, false);
+      await readFile(message.attachments[1].url, cookie, notes, false);
+    }
+    assert.equal((await fetch(base + message.attachments[0].url)).status, 401);
+    assert.equal((await fetch(base + message.attachments[0].url, { headers: { cookie: admin.cookie } })).status, 404);
+    assert.equal((await request(message.attachments[0].url.replace("index=0", "index=6"), { cookie: bob.cookie })).status, 400);
+    assert.equal((await request(message.attachments[0].url.replace(message.id, "dm_missing"), { cookie: bob.cookie })).status, 404);
+    assert.equal((await request(route, { method: "POST", cookie: alice.cookie, body: { ...body, content: "Changed retry" } })).status, 409);
+    assert.equal((await request(route, { method: "POST", cookie: admin.cookie, body })).status, 404);
+    assert.equal((await request(route, { method: "POST", cookie: alice.cookie, body: { content: "", attachments: [] } })).status, 400);
+    const snapshot = (await request(route, { cookie: bob.cookie })).data;
+    assert.equal(snapshot.messages.filter((item) => item.id === message.id).length, 1);
+    assert.equal(snapshot.messages.find((item) => item.id === message.id).attachments[1].name, "课程笔记.txt");
+    assert.ok(snapshot.readMessageIds.includes(message.id));
+    const listed = (await request("/api/classmates", { cookie: bob.cookie })).data.classmates.find((item) => item.id === mate.id);
+    assert.equal(listed.unreadCount, 1); assert.match(listed.lastMessage.content, /\[图片\].*课程笔记.txt/);
+    await request(`/api/classmates/${mate.id}/read`, { method: "POST", cookie: bob.cookie, body: { messageIds: snapshot.readMessageIds } });
+    await stop(); await start();
+    await readFile(message.attachments[0].url, bob.cookie, png, true);
+    await readFile(message.attachments[1].url, alice.cookie, notes, false);
+    const active = await request(route, { method: "POST", cookie: alice.cookie, body: { attachments: [{ fileName: "page.html", fileData: "data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==" }] } });
+    assert.equal(active.data.message.attachments[0].kind, "file");
+    const response = await fetch(base + active.data.message.attachments[0].url, { headers: { cookie: bob.cookie } });
+    assert.equal(response.headers.get("content-type"), "application/octet-stream"); assert.match(response.headers.get("content-disposition"), /^attachment;/);
+    const after = (await request(route, { cookie: bob.cookie })).data;
+    await request(`/api/classmates/${mate.id}/read`, { method: "POST", cookie: bob.cookie, body: { messageIds: after.readMessageIds } });
+  });
+
   await t.test("AI fallback and persistence across restart", async () => {
     const chat = await request(`/api/courses/${courseId}/chat`, { method: "POST", cookie: alice.cookie, body: { message: "Explain calculus" } });
     assert.equal(chat.status, 201);

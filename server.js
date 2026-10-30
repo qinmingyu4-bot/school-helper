@@ -30,6 +30,7 @@ const learningStyle = require("./public/learning-style");
 const appearance = require("./public/appearance");
 const chatSpaces = require("./public/chat-spaces");
 const uploadLimits = require("./public/upload-limits");
+const directAttachments = require("./lib/direct-message-attachments");
 
 async function getChatCourse(userId, courseId) {
   // A virtual, account-scoped space reuses durable chat storage without creating a course.
@@ -346,7 +347,7 @@ async function publicClassmate(connection, viewerId) {
       : null,
     lastMessage: last
       ? {
-          content: last.content || "",
+          content: last.content || (last.attachments?.length ? last.attachments.map((item) => item.kind === "image" ? "[图片]" : `[文件] ${item.name}`).join(" · ") : ""),
           createdAt: last.createdAt,
           mine: last.senderId === viewerId
         }
@@ -2738,6 +2739,28 @@ if (classmateRequestMatch && method === "PATCH") {
     ...(result.connection ? { classmate: await publicClassmate(result.connection, user.id) } : {}) });
 }
 
+const directAttachmentMatch = url.pathname.match(/^\/api\/classmates\/([^/]+)\/attachments\/([^/]+)$/);
+if (directAttachmentMatch && method === "GET") {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  const connection = await db.getClassmate(user.id, directAttachmentMatch[1]);
+  if (!connection) return sendError(res, 404, "Attachment not found.");
+  const index = url.searchParams.get("index");
+  if (!/^[0-5]$/.test(index || "")) return sendError(res, 400, "Invalid attachment index.");
+  const message = await db.getDirectMessage(connection.id, directAttachmentMatch[2]);
+  if (!message?.attachments?.[Number(index)]) return sendError(res, 404, "Attachment not found.");
+  let file;
+  try { file = await db.readDirectMessageAttachment(connection.id, message, Number(index)); } catch { return sendError(res, 404, "Attachment not found."); }
+  if (!file?.base64) return sendError(res, 404, "Attachment not found.");
+  const bytes = Buffer.from(file.base64, "base64");
+  const inline = file.kind === "image" && url.searchParams.get("download") !== "1";
+  const filename = encodeURIComponent(file.name).replace(/[!'()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
+  res.writeHead(200, { "content-type": inline ? file.mime : "application/octet-stream", "content-length": bytes.length,
+    "content-disposition": `${inline ? "inline" : "attachment"}; filename="attachment"; filename*=UTF-8''${filename}`,
+    "cache-control": "private, no-store", "x-content-type-options": "nosniff", "content-security-policy": "default-src 'none'; sandbox" });
+  return res.end(bytes);
+}
+
 const directMessageMatch = url.pathname.match(/^\/api\/classmates\/([^/]+)\/messages$/);
 if (directMessageMatch && method === "GET") {
   const user = await requireUser(req, res);
@@ -2750,6 +2773,7 @@ if (directMessageMatch && method === "GET") {
     messages: messages.slice(-80).map((message) => ({
       id: message.id,
       content: message.content,
+      ...(message.attachments ? { attachments: message.attachments } : {}),
       createdAt: message.createdAt,
       senderId: message.senderId,
       mine: message.senderId === user.id
@@ -2779,12 +2803,15 @@ if (directMessageMatch && method === "POST") {
   if (!user) return;
   const connection = await db.getClassmate(user.id, directMessageMatch[1]);
   if (!connection) return sendError(res, 404, "Classmate chat not found.");
-  const body = await readJson(req);
+  const body = await readJson(req, directAttachments.requestBytes);
   const content = String(body.content || "").trim().slice(0, 1200);
-  if (!content) return sendError(res, 400, "Message is required.");
-  const message = await db.createDirectMessage({ id: createId("dm"), chatId: connection.id, senderId: user.id, content });
+  const attachments = directAttachments.normalize(body.attachments);
+  if (!content && !attachments.length) return sendError(res, 400, "请填写消息或选择图片、文件。");
+  if (body.clientId !== undefined && (typeof body.clientId !== "string" || !/^[A-Za-z0-9_-]{8,100}$/.test(body.clientId))) return sendError(res, 400, "Invalid message identity.");
+  const message = await db.sendDirectMessage({ chatId: connection.id, senderId: user.id, content, attachments, clientId: body.clientId });
   notifyClassmates(connection.userIds, connection.id);
-  return sendJson(res, 201, { message: { ...message, mine: true } });
+  return sendJson(res, 201, { message: { id: message.id, content: message.content, createdAt: message.createdAt, senderId: message.senderId,
+    ...(message.attachments ? { attachments: message.attachments } : {}), mine: true } });
 }
 
   if (url.pathname === "/api/schedule/items" && method === "GET") {

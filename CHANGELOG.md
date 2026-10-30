@@ -2,6 +2,9 @@
 
 ## 2026-10-30
 
+- Add a bilingual in-page classmate message notification that closes automatically after 10 seconds or manually. Replace the reminder and restart the timer for later messages, suppress the current visible conversation and duplicate/outgoing/background events, and retain the unread dot after dismissal. Keep Study drafts/focus/streamed answers intact and clear reminders on sign-out/account changes. Live event metadata includes only message, conversation and sender identifiers. Prepared on a task branch without AWS deployment.
+- Validate 416 automated tests and 235-file source/assets/version checks. Isolated Chrome/WebKit checks verify actual ten-second expiry, manual dismissal, retry deduplication, visible-chat suppression, returning from the phone menu, retained Study DOM/draft/focus, bilingual labels and 320/390/1280 px light/dark notification layouts.
+
 - Add a persistent unread red dot beside **同学 / Classmates** across all student pages, plus a matching phone **Main menu** cue. Keep it visible until all incoming conversations are read, synchronize other-device reads, and avoid marking a hidden mounted chat read behind the phone menu. Preserve the existing per-conversation unread badges and all drafts/focus without rebuilding the Study page.
 - Keep one account-bound live event connection across navigation and reconcile missed events with a private unread-only endpoint every 15 seconds while visible. Isolate accounts/admin mode/logout, discard superseded responses and retain the last known indicator during transient failures. Prepared on a task branch without AWS deployment.
 - Validate 411 automated tests and 235-file source/assets/version checks on the latest 1.2.5 base. Isolated Chrome/WebKit checks cover cross-page messages, retained Study DOM/drafts/focus, multiple unread chats, other-device reads, hidden phone conversations, English accessible labels and 320/390/1280 px light/dark layouts without overflow or page errors.

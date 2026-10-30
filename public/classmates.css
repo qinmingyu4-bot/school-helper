@@ -3,6 +3,32 @@
 .classmate-unread-dot { display: inline-block; flex: 0 0 9px; width: 9px; height: 9px; border-radius: 50%; background: #e34b4b; }
 .classmate-unread-dot[hidden] { display: none !important; }
 .mobile-page-bar [data-mobile-action="menu"] .classmate-unread-dot { margin-left: 6px; vertical-align: middle; }
+.classmate-message-toast {
+  position: fixed;
+  z-index: 80;
+  top: max(20px, env(safe-area-inset-top));
+  right: max(20px, env(safe-area-inset-right));
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  width: 360px;
+  max-width: calc(100vw - 40px);
+  box-sizing: border-box;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: 0 10px 36px #0002;
+  font-family: inherit;
+}
+.classmate-message-toast > div { flex: 1; min-width: 0; }
+.classmate-message-toast strong { font-size: 15px; }
+.classmate-message-toast strong::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: #e34b4b; }
+.classmate-message-toast p { margin: 8px 0 0; font-size: 13px; line-height: 1.6; color: var(--muted); overflow-wrap: anywhere; }
+.classmate-message-toast > button { display: grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; padding: 0; margin: -5px -5px 0 0; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font: inherit; font-size: 24px; cursor: pointer; }
+.classmate-message-toast > button:hover { background: var(--line); color: var(--ink); }
+.classmate-message-toast > button:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 .classmates-workspace .page-header p:empty { display: none; }
 .classmates-workspace .classmates-layout {
   grid-template-columns: minmax(0, 1fr);

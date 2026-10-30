@@ -19,6 +19,9 @@
 社区|Community
 全部、学校和专业频道|All, school and major channels
 同学|Classmates
+同学新消息|New classmate message
+你收到了一条新消息，可前往「同学」查看。|You have a new message. Open Classmates to read it.
+关闭消息提醒|Dismiss message notification
 有未读消息|Unread messages
 返回主菜单，有同学未读消息|Back to main menu, unread classmate messages
 SB ID 申请和聊天|Connect and chat using SB ID

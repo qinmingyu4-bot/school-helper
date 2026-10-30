@@ -144,10 +144,11 @@ const creative = createCreativeService({
   contextFor: (userId, courseId, message, cheatsheet) => courseContext(db, userId, courseId, message, cheatsheet)
 });
 
-function notifyClassmates(userIds, chatId) {
+function notifyClassmates(userIds, chatId, message) {
+  const payload = { chatId, ...(message ? { type: "message", messageId: message.id, senderId: message.senderId } : {}) };
   for (const userId of userIds) {
     for (const client of classmateStreams.get(userId) || []) {
-      if (!client.res.destroyed && !client.res.writableEnded) client.res.write(`event: classmates\ndata: ${JSON.stringify({ chatId })}\n\n`);
+      if (!client.res.destroyed && !client.res.writableEnded) client.res.write(`event: classmates\ndata: ${JSON.stringify(payload)}\n\n`);
     }
   }
 }
@@ -2847,7 +2848,7 @@ if (directMessageMatch && method === "POST") {
   if (!content && !attachments.length) return sendError(res, 400, "请填写消息或选择图片、文件。");
   if (body.clientId !== undefined && (typeof body.clientId !== "string" || !/^[A-Za-z0-9_-]{8,100}$/.test(body.clientId))) return sendError(res, 400, "Invalid message identity.");
   const message = await db.sendDirectMessage({ chatId: connection.id, senderId: user.id, content, attachments, clientId: body.clientId });
-  notifyClassmates(connection.userIds, connection.id);
+  notifyClassmates(connection.userIds, connection.id, message);
   return sendJson(res, 201, { message: { id: message.id, content: message.content, createdAt: message.createdAt, senderId: message.senderId,
     ...(message.attachments ? { attachments: message.attachments } : {}), mine: true } });
 }

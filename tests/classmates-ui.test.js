@@ -6,6 +6,23 @@ const source = fs.readFileSync(require.resolve("../public/app.js"), "utf8");
 const helpers = source.slice(source.indexOf("  function classmateMutationKey("), source.indexOf("  async function readFiles("));
 const actions = source.slice(source.indexOf('      if (action === "add-classmate")'), source.indexOf('      if (action === "draft-email")'));
 
+test("reminder suppression requires the selected conversation to actually be visible", () => {
+  const state = { page: "classmates", classmateChatOpen: true, classmateProfileOpen: false, activeClassmateId: "chat" };
+  const mobile = { active: false, view: "page", panel: null };
+  let dialogOpen = false, mounted = true;
+  const context = vm.createContext({ state, mobileNavigation: { snapshot: () => mobile },
+    document: { querySelector: () => dialogOpen }, root: { querySelector: () => mounted ? { dataset: { chatId: "chat" } } : null } });
+  vm.runInContext(source.slice(source.indexOf("  function isClassmateChatVisible("), source.indexOf("  function showClassmateMessageToast(")), context);
+  assert.equal(context.isClassmateChatVisible("chat"), true);
+  assert.equal(context.isClassmateChatVisible("other"), false);
+  mobile.active = true; mobile.view = "menu"; assert.equal(context.isClassmateChatVisible("chat"), false);
+  mobile.view = "page"; mobile.panel = "settings"; assert.equal(context.isClassmateChatVisible("chat"), false);
+  mobile.panel = null; state.classmateProfileOpen = true; assert.equal(context.isClassmateChatVisible("chat"), false);
+  state.classmateProfileOpen = false; dialogOpen = true; assert.equal(context.isClassmateChatVisible("chat"), false);
+  dialogOpen = false; mounted = false; assert.equal(context.isClassmateChatVisible("chat"), false);
+  mounted = true; state.page = "study"; assert.equal(context.isClassmateChatVisible("chat"), false);
+});
+
 function harness(action = "send-dm") {
   const state = { user: { id: "alice" }, page: "classmates", activeClassmateId: "chat", classmateChatOpen: true, directMessageDrafts: { chat: "Hello" } };
   const button = { dataset: { action, id: "request" }, disabled: false, classList: { toggle() {} }, setAttribute() {} };

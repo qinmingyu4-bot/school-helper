@@ -125,6 +125,7 @@
   const classmateNotifications = window.StudyBridgeClassmateNotifications.create({
     getUserId: () => state.user?.id, enabled: () => state.mode !== "admin", hidden: () => document.hidden,
     request: () => api("/api/classmates/unread"), onChange: updateClassmateUnreadDots,
+    shouldNotify: (message) => !isClassmateChatVisible(message.chatId), onToast: showClassmateMessageToast,
     onEvent: () => void syncClassmatesLive()
   });
   let pageLoadGeneration = 0;
@@ -542,6 +543,24 @@
 
   function classmateUnreadDot() {
     return `<i class="classmate-unread-dot" data-classmates-unread role="img" aria-label="${esc(ui.text("有未读消息"))}" ${classmateNotifications.hasUnread() ? "" : "hidden"}></i>`;
+  }
+
+  function isClassmateChatVisible(chatId) {
+    if (state.page !== "classmates" || !state.classmateChatOpen || state.classmateProfileOpen
+      || state.activeClassmateId !== chatId || document.querySelector("dialog[open]")) return false;
+    const mobile = mobileNavigation.snapshot();
+    return !(mobile.active && (mobile.view !== "page" || mobile.panel))
+      && root.querySelector(".chat-panel")?.dataset.chatId === chatId;
+  }
+
+  function showClassmateMessageToast(message) {
+    document.querySelector(".classmate-message-toast")?.remove();
+    if (!message) return;
+    const toast = document.createElement("aside");
+    toast.className = "classmate-message-toast";
+    toast.innerHTML = `<div role="status" aria-live="polite" aria-atomic="true"><strong>${esc(ui.text("同学新消息"))}</strong><p>${esc(ui.text("你收到了一条新消息，可前往「同学」查看。"))}</p></div><button type="button" aria-label="${esc(ui.text("关闭消息提醒"))}">×</button>`;
+    toast.querySelector("button").addEventListener("click", () => classmateNotifications.dismissToast());
+    document.body.append(toast);
   }
 
   function updateClassmateUnreadDots() {
@@ -2117,6 +2136,7 @@
   }
 
   function startClassmatesLive() {
+    classmateNotifications.reconcileToast();
     classmateNotifications.sync();
     if (!state.user || state.mode === "admin" || state.page !== "classmates") {
       stopClassmatesLive();
@@ -3249,6 +3269,7 @@
     if (pageTarget) {
       event.preventDefault();
       if (mobileNavigation.enter(pageTarget.dataset.page)) {
+        classmateNotifications.reconcileToast();
         if (state.page === "classmates") requestAnimationFrame(acknowledgeClassmateRead);
         return;
       }
@@ -3514,6 +3535,7 @@
   });
 
   document.addEventListener("visibilitychange", () => {
+    classmateNotifications.reconcileToast();
     if (!document.hidden) {
       void classmateNotifications.refresh();
       lastInteractionAt = Date.now();
@@ -3611,6 +3633,7 @@
   });
 
   ui.subscribe(() => {
+    showClassmateMessageToast(classmateNotifications.currentToast());
     const fields = Array.from(root.querySelectorAll("input, textarea, select")).filter((field) => field.id && !field.matches("[data-interface-language]"))
       .map((field) => ({ id: field.id, value: field.value, checked: field.checked, files: field.files, start: field.selectionStart, end: field.selectionEnd }));
     const activeId = document.activeElement?.id;

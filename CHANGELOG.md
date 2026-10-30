@@ -2,6 +2,8 @@
 
 ## 2026-10-30
 
+- Release `1.2.6`: publish owner-approved global classmate unread indicators and ten-second in-page message reminders from `3bb41ee` and `c493553`. Preserve the latest `1.2.5` retrieval/source citations and existing image/file messaging, update release/frontend cache versions, and retain existing accounts, courses, uploads, messages, schedules and configuration without migration. Use the verified private-backup and automatic code-rollback deployment. Previous production code: `d1506bd` (`1.2.5`).
+
 - Add a bilingual in-page classmate message notification that closes automatically after 10 seconds or manually. Replace the reminder and restart the timer for later messages, suppress the current visible conversation and duplicate/outgoing/background events, and retain the unread dot after dismissal. Keep Study drafts/focus/streamed answers intact and clear reminders on sign-out/account changes. Live event metadata includes only message, conversation and sender identifiers. Prepared on a task branch without AWS deployment.
 - Validate 416 automated tests and 235-file source/assets/version checks. Isolated Chrome/WebKit checks verify actual ten-second expiry, manual dismissal, retry deduplication, visible-chat suppression, returning from the phone menu, retained Study DOM/draft/focus, bilingual labels and 320/390/1280 px light/dark notification layouts.
 

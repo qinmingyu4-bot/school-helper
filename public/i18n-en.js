@@ -1267,8 +1267,9 @@ StudyBridge · 连接学习的每一步|StudyBridge · Connect every step of lea
 如何开始|Get started
 进入 StudyBridge|Enter StudyBridge
 把学习的碎片，|Bring your learning
-连成自己的|together at your own
+连成自己的|together at your own\u0020
 节奏|pace
+。|.
 从一份课程资料，到一次真正的理解。|From course materials to real understanding.
 让课程、AI 学习、日程与创作，在同一个空间里连接起来。|Connect courses, AI learning, schedules and creation in one space.
 开始使用|Get started

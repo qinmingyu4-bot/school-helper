@@ -5,7 +5,11 @@
 .settings-interface-language { margin-bottom: 20px; }
 html[lang="en"] .side-nav .nav-card { overflow-wrap: anywhere; }
 html[lang="en"] .settings-nav button { white-space: normal; }
+html[lang="en"] .hero-copy, html[lang="en"] .workspace-figure { min-width: 0; }
+html[lang="en"] .hero h1 { white-space: normal; }
+html[lang="en"] .hero-actions { flex-wrap: wrap; }
 @media (max-width: 700px) {
   .auth-header, .site-header { flex-wrap: wrap; gap: 12px; }
+  html[lang] .site-header { height: auto; min-height: 80px; padding-block: 14px; }
   .interface-language { max-width: 100%; }
 }

@@ -2,6 +2,8 @@
 
 ## 2026-10-30
 
+- Release `1.2.5`: publish owner-approved bilingual course retrieval and inline uploaded-source citations from `d30ba9e`. Retain the latest mobile homepage fix, update package/frontend cache versions and preserve historical accounts, courses, uploads, chats and configuration without migration. Use the existing private verified-backup and automatic code rollback deployment. Previous production code: `f2bfe7d` (`1.2.4`).
+
 - Add default inline course-source annotations beside source-backed claims and worked steps, with filename/title and verified PDF page or slide positions where available. Preserve PDF physical-page offsets through storage/retrieval, follow PowerPoint presentation/notes order, and give legacy sources explicit extracted-text line/character locators or short locating quotes. Disambiguate duplicate names, clear stale PDF locations when source text is replaced, and distinguish AI derivations from quoted source content. Prepared with bilingual retrieval on a task branch without AWS deployment.
 
 - Improve large-course retrieval with bounded Chinese/English query expansion, synonyms and academic terminology, then rank source passages by original/expanded terms, exact phrases, term rarity and filenames. Preserve complete small collections, current-upload priority and course/conversation isolation; use only real source passages as evidence. Add an eight-second fallback and stream cancellation without a shared query cache. Prepared on a task branch without AWS deployment.

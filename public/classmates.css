@@ -151,12 +151,38 @@
 .dm small { display: block; margin-top: 6px; color: var(--muted); font-size: 11px; line-height: 1.4; text-align: right; white-space: nowrap; }
 .classmates-workspace .dm-list .empty { margin: auto; padding: 20px; text-align: center; font-size: 14px; line-height: 1.7; }
 .classmates-workspace .dm-compose {
-  grid-template-columns: minmax(0, 1fr) 42px;
-  gap: 10px;
-  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
   padding: 14px 16px;
   border-top: 1px solid var(--line);
 }
+.dm-compose-row { display: grid; grid-template-columns: 42px minmax(0, 1fr) 42px; gap: 8px; align-items: center; }
+.dm-content:empty, .dm-file-queue:empty { display: none; }
+.dm-send-status { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.dm-file-queue { display: grid; gap: 6px; max-height: min(160px, 24dvh); overflow: auto; }
+.dm-pending-file { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 6px 8px; background: var(--panel, #fff); border: 1px solid var(--line); border-radius: 8px; }
+.dm-pending-file > img { flex: 0 0 42px; width: 42px; height: 42px; border-radius: 5px; object-fit: cover; }
+.dm-pending-file > span:not(:first-child), .dm-pending-file > span:only-of-type { flex: 1; min-width: 0; }
+.dm-pending-file b { display: block; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dm-pending-file small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+.dm-pending-file button { flex: 0 0 32px; width: 32px; height: 32px; padding: 0; background: transparent; color: var(--ink); border: 0; font-size: 22px; }
+.dm-attachments { display: grid; gap: 8px; min-width: 0; width: min(260px, 100%); }
+.dm-attachment { min-width: 0; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.dm-image { display: block; width: 100%; padding: 0; border: 0; background: transparent; }
+.dm-image img { display: block; width: 100%; max-width: 260px; height: auto; max-height: 280px; object-fit: contain; }
+.dm-file { display: flex; align-items: center; gap: 8px; padding: 10px; color: var(--ink); text-decoration: none; font-size: 13px; }
+.dm-file:hover { background: var(--panel, #fff); }
+.dm-file > span:first-child { flex: 0 0 auto; color: var(--muted); font-size: 11px; }
+.dm-file > span:last-child { flex: 1; min-width: 0; }
+.dm-file b { display: block; overflow-wrap: anywhere; font-weight: 600; }
+.dm .dm-file small { margin: 3px 0 0; text-align: left; white-space: normal; }
+.dm-compose.drop-ready { outline: 2px dashed var(--green); outline-offset: -4px; }
+.dm-compose .send.is-sending svg { display: none; }
+.dm-compose .send.is-sending::after { content: ""; width: 16px; height: 16px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: dm-send-spin .8s linear infinite; }
+.dm-file:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+@keyframes dm-send-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .dm-compose .send.is-sending::after { animation: none; } }
 .dm-compose input { min-width: 0; height: 42px; padding: 10px 12px; font-size: 14px; }
 .dm-compose .send { background: var(--green); }
 .classmates-workspace button:focus-visible, .dm-compose input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }

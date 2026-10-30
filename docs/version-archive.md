@@ -10,6 +10,19 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.2.2 - 2026-10-29
+
+Purpose:
+- Publish the owner-approved Classmates audit fixes (`b768286`) and private original images/files (`eaf811e`), including previews/downloads, retry deduplication and chat/account isolation.
+- Preserve current Google verification privacy disclosures (`3558c69`), accounts, sessions, credentials, mailbox links, learning data and appearance; refresh release/cache versions without a data migration.
+
+Validation:
+- 375 regression tests and 221-file source/assets/version checks, plus Chrome/WebKit at 320/390/1280 px in light/dark mode with loss-of-response retry and original-download verification.
+- Require production dependency audit, verified private backup, unchanged configuration/data checks and automatic code rollback. Compare the existing account's 5 courses, 75 schedules and appearance using read-only pages after release.
+
+Rollback target:
+- `3558c69` (1.2.1). Restore application code only; retain current user data and private backups.
+
 ### 1.2.1 - 2026-10-28
 
 Purpose:

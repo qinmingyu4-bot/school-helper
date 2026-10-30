@@ -30,6 +30,7 @@ const learningStyle = require("./public/learning-style");
 const appearance = require("./public/appearance");
 const chatSpaces = require("./public/chat-spaces");
 const uploadLimits = require("./public/upload-limits");
+const directAttachments = require("./lib/direct-message-attachments");
 
 async function getChatCourse(userId, courseId) {
   // A virtual, account-scoped space reuses durable chat storage without creating a course.
@@ -346,7 +347,7 @@ async function publicClassmate(connection, viewerId) {
       : null,
     lastMessage: last
       ? {
-          content: last.content || "",
+          content: last.content || (last.attachments?.length ? last.attachments.map((item) => item.kind === "image" ? "[图片]" : `[文件] ${item.name}`).join(" · ") : ""),
           createdAt: last.createdAt,
           mine: last.senderId === viewerId
         }
@@ -2709,28 +2710,13 @@ if (url.pathname === "/api/classmates" && method === "POST") {
   const peer = sbId ? await db.findUserBySbId(sbId) : await db.findUserByEmail(email);
   if (!peer) return sendError(res, 404, sbId ? "No StudyBridge account was found for that SB ID." : "No StudyBridge account was found for that email.");
   if (peer.id === user.id) return sendError(res, 400, "You cannot add yourself.");
-  const existing = await db.findClassmateByUsers(user.id, peer.id);
-  if (existing) {
-    return sendJson(res, 200, { status: "connected", classmate: await publicClassmate(existing, user.id) });
-  }
-
-  const incomingRequest = await db.findClassmateRequestByUsers(peer.id, user.id);
-  if (incomingRequest) {
-    const accepted = await db.updateClassmateRequest(incomingRequest.id, {
-      status: "accepted",
-      respondedAt: new Date().toISOString()
-    });
-    const connection = await db.createClassmate({ id: createId("mate"), userIds: [user.id, peer.id], requestId: incomingRequest.id });
-    return sendJson(res, 201, { status: "connected", request: accepted, classmate: await publicClassmate(connection, user.id) });
-  }
-
-  const existingRequest = await db.findClassmateRequestByUsers(user.id, peer.id);
-  const request = existingRequest || await db.createClassmateRequest({
-    id: createId("mateReq"),
-    fromUserId: user.id,
-    toUserId: peer.id
+  const result = await db.requestClassmate(user.id, peer.id);
+  notifyClassmates([user.id, peer.id], result.connection?.id || "");
+  if (result.connection) return sendJson(res, result.request ? 201 : 200, {
+    status: "connected", request: result.request, classmate: await publicClassmate(result.connection, user.id)
   });
-  return sendJson(res, existingRequest ? 200 : 201, {
+  const { request } = result;
+  return sendJson(res, result.created ? 201 : 200, {
     status: "pending",
     request: {
       id: request.id,
@@ -2747,23 +2733,32 @@ if (classmateRequestMatch && method === "PATCH") {
   const body = await readJson(req);
   const action = String(body.action || "").toLowerCase();
   if (action !== "accept" && action !== "ignore") return sendError(res, 400, "Please choose accept or ignore.");
-  const request = await db.getClassmateRequest(user.id, classmateRequestMatch[1]);
-  if (!request || (request.status || "pending") !== "pending") return sendError(res, 404, "Friend request not found.");
-  if (request.toUserId !== user.id) return sendError(res, 403, "Only the receiver can respond to this request.");
+  const result = await db.respondClassmateRequest(user.id, classmateRequestMatch[1], action);
+  notifyClassmates([result.request.fromUserId, result.request.toUserId], result.connection?.id || "");
+  return sendJson(res, 200, { status: result.status, request: result.request,
+    ...(result.connection ? { classmate: await publicClassmate(result.connection, user.id) } : {}) });
+}
 
-  if (action === "ignore") {
-    const ignored = await db.updateClassmateRequest(request.id, { status: "ignored", respondedAt: new Date().toISOString() });
-    return sendJson(res, 200, { status: "ignored", request: ignored });
-  }
-
-  const existingConnection = await db.findClassmateByUsers(request.fromUserId, request.toUserId);
-  const connection = existingConnection || await db.createClassmate({
-    id: createId("mate"),
-    userIds: [request.fromUserId, request.toUserId],
-    requestId: request.id
-  });
-  const accepted = await db.updateClassmateRequest(request.id, { status: "accepted", respondedAt: new Date().toISOString() });
-  return sendJson(res, 200, { status: "connected", request: accepted, classmate: await publicClassmate(connection, user.id) });
+const directAttachmentMatch = url.pathname.match(/^\/api\/classmates\/([^/]+)\/attachments\/([^/]+)$/);
+if (directAttachmentMatch && method === "GET") {
+  const user = await requireUser(req, res);
+  if (!user) return;
+  const connection = await db.getClassmate(user.id, directAttachmentMatch[1]);
+  if (!connection) return sendError(res, 404, "Attachment not found.");
+  const index = url.searchParams.get("index");
+  if (!/^[0-5]$/.test(index || "")) return sendError(res, 400, "Invalid attachment index.");
+  const message = await db.getDirectMessage(connection.id, directAttachmentMatch[2]);
+  if (!message?.attachments?.[Number(index)]) return sendError(res, 404, "Attachment not found.");
+  let file;
+  try { file = await db.readDirectMessageAttachment(connection.id, message, Number(index)); } catch { return sendError(res, 404, "Attachment not found."); }
+  if (!file?.base64) return sendError(res, 404, "Attachment not found.");
+  const bytes = Buffer.from(file.base64, "base64");
+  const inline = file.kind === "image" && url.searchParams.get("download") !== "1";
+  const filename = encodeURIComponent(file.name).replace(/[!'()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
+  res.writeHead(200, { "content-type": inline ? file.mime : "application/octet-stream", "content-length": bytes.length,
+    "content-disposition": `${inline ? "inline" : "attachment"}; filename="attachment"; filename*=UTF-8''${filename}`,
+    "cache-control": "private, no-store", "x-content-type-options": "nosniff", "content-security-policy": "default-src 'none'; sandbox" });
+  return res.end(bytes);
 }
 
 const directMessageMatch = url.pathname.match(/^\/api\/classmates\/([^/]+)\/messages$/);
@@ -2778,6 +2773,7 @@ if (directMessageMatch && method === "GET") {
     messages: messages.slice(-80).map((message) => ({
       id: message.id,
       content: message.content,
+      ...(message.attachments ? { attachments: message.attachments } : {}),
       createdAt: message.createdAt,
       senderId: message.senderId,
       mine: message.senderId === user.id
@@ -2807,12 +2803,15 @@ if (directMessageMatch && method === "POST") {
   if (!user) return;
   const connection = await db.getClassmate(user.id, directMessageMatch[1]);
   if (!connection) return sendError(res, 404, "Classmate chat not found.");
-  const body = await readJson(req);
+  const body = await readJson(req, directAttachments.requestBytes);
   const content = String(body.content || "").trim().slice(0, 1200);
-  if (!content) return sendError(res, 400, "Message is required.");
-  const message = await db.createDirectMessage({ id: createId("dm"), chatId: connection.id, senderId: user.id, content });
+  const attachments = directAttachments.normalize(body.attachments);
+  if (!content && !attachments.length) return sendError(res, 400, "请填写消息或选择图片、文件。");
+  if (body.clientId !== undefined && (typeof body.clientId !== "string" || !/^[A-Za-z0-9_-]{8,100}$/.test(body.clientId))) return sendError(res, 400, "Invalid message identity.");
+  const message = await db.sendDirectMessage({ chatId: connection.id, senderId: user.id, content, attachments, clientId: body.clientId });
   notifyClassmates(connection.userIds, connection.id);
-  return sendJson(res, 201, { message: { ...message, mine: true } });
+  return sendJson(res, 201, { message: { id: message.id, content: message.content, createdAt: message.createdAt, senderId: message.senderId,
+    ...(message.attachments ? { attachments: message.attachments } : {}), mine: true } });
 }
 
   if (url.pathname === "/api/schedule/items" && method === "GET") {

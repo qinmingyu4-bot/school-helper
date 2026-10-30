@@ -37,6 +37,7 @@ async function getChatCourse(userId, courseId) {
   return courseId === chatSpaces.general.id ? { ...chatSpaces.general, userId } : db.getCourse(userId, courseId);
 }
 const { buildMaterialContext, selectStudyVisuals } = require("./lib/study-context");
+const { expandStudySearch } = require("./lib/study-search");
 const { buildExerciseCoverage, coverageInstruction } = require("./lib/study-coverage");
 const { selectAiModel } = require("./lib/ai-routing");
 const scheduleImport = require("./public/schedule-import");
@@ -1132,10 +1133,10 @@ async function getWeatherContextForQuestion(message, user) {
   }
 }
 
-function buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message, attachments = [], currentAttachments = [], documentPdfs = [] }) {
+function buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message, attachments = [], currentAttachments = [], documentPdfs = [], searchQueries = [] }) {
   const general = course.chatType === "general";
   const preferenceInstruction = buildPreferenceInstruction(user.preferences || {});
-  const docContext = buildMaterialContext({ documents, attachments, currentAttachments, history, message });
+  const docContext = buildMaterialContext({ documents, attachments, currentAttachments, history, message, searchQueries });
   const inventory = buildExerciseCoverage({ documents, attachments, currentAttachments, message });
   const visuals = selectStudyVisuals([...documentPdfs, ...attachments], message, currentAttachments);
   const recent = history
@@ -1365,7 +1366,7 @@ async function callAi(messages, model = simpleAiModel, stream = null) {
   return callAiWithChatCompletions(messages, model, stream);
 }
 
-async function studyAnswerContext({ user, course, conversationId = courseConversations.DEFAULT_ID, message, mode, attachments }) {
+async function studyAnswerContext({ user, course, conversationId = courseConversations.DEFAULT_ID, message, mode, attachments, signal }) {
   const [documents, history, scheduleItems, weatherContext, savedAttachments] = await Promise.all([
     course.chatType === "general" ? [] : db.listDocuments(user.id, course.id),
     db.listMessages(user.id, course.id, 80, conversationId),
@@ -1378,8 +1379,10 @@ async function studyAnswerContext({ user, course, conversationId = courseConvers
     catch { return null; }
   }))).filter(Boolean);
   const model = chooseAiModel({ history, mode, message, attachments, documents, savedAttachments: course.chatType === "general" ? [] : [...documentPdfs, ...savedAttachments] });
+  const searchQueries = await expandStudySearch({ documents, attachments: savedAttachments, history, message, signal,
+    generate: process.env.OPENAI_API_KEY ? (messages, options) => callAiWithChatCompletions(messages, simpleAiModel, null, { ...options, store: false }) : null });
   console.log(`StudyBridge AI route: ${model} | mode=${mode} | docs=${documents.length} | schedule=${scheduleItems.length} | attachments=${attachments.length}`);
-  return { model, prompt: buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message, attachments: savedAttachments, currentAttachments: attachments, documentPdfs }) };
+  return { model, prompt: buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message, attachments: savedAttachments, currentAttachments: attachments, documentPdfs, searchQueries }) };
 }
 
 async function saveChatQuestion({ user, course, conversationId, message, mode, attachments }) {
@@ -1420,7 +1423,7 @@ async function streamCourseChat(req, res, context) {
     userMessage = await saveChatQuestion(context);
     send("start", { message: userMessage });
     controller.signal.throwIfAborted();
-    const { prompt, model } = await studyAnswerContext(context);
+    const { prompt, model } = await studyAnswerContext({ ...context, signal: controller.signal });
     controller.signal.throwIfAborted();
     send("status", { phase: "thinking" });
     const content = await callAi(prompt, model, {

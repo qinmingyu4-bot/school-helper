@@ -853,6 +853,41 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     assert.deepEqual((await request("/api/courses", { cookie })).data, before);
   });
 
+  await t.test("bilingual query expansion retrieves deep passages, stays course-scoped and falls back on failure", async () => {
+    const login = await request("/api/auth/login", { method: "POST", body: { email: "alice@example.test", password: "HealthCheck-Password-123!" } });
+    const cookie = login.cookie;
+    const makeCourse = async (name, evidence) => {
+      const result = await request("/api/courses", { method: "POST", cookie, body: { name } });
+      const route = `/api/courses/${result.data.course.id}`;
+      const source = await request(`${route}/documents`, { method: "POST", cookie, body: { title: "Lecture 7.txt", text: "background ".repeat(9000) + `Opportunity cost is the best alternative forgone. ${evidence}` + " background".repeat(9000) } });
+      assert.equal(source.status, 201);
+      return route;
+    };
+    const route = await makeCourse("Bilingual economics", "THIS_COURSE_SEARCH_EVIDENCE");
+    const foreign = await makeCourse("Separate economics", "OTHER_COURSE_SEARCH_EVIDENCE");
+    const chat = await request(`${route}/chat`, { method: "POST", cookie, body: { message: "为什么要考虑放弃另一个选择的代价？", mode: "guided" } });
+    assert.equal(chat.status, 201);
+    assert.ok(chat.data.messages[1].content.includes("THIS_COURSE_SEARCH_EVIDENCE"));
+    assert.ok(!chat.data.messages[1].content.includes("OTHER_COURSE_SEARCH_EVIDENCE"));
+    assert.ok(!chat.data.messages[1].content.includes("course-search-query-expansion/v1"), "internal search planning is not an answer or evidence");
+    const isolated = await request(`${foreign}/chat`, { method: "POST", cookie, body: { message: "解释放弃其他选择的代价", mode: "review" } });
+    assert.ok(isolated.data.messages[1].content.includes("OTHER_COURSE_SEARCH_EVIDENCE"));
+    assert.ok(!isolated.data.messages[1].content.includes("THIS_COURSE_SEARCH_EVIDENCE"));
+    const fallback = await request(`${route}/chat`, { method: "POST", cookie, body: { message: "SEARCH_EXPANSION_FAIL opportunity cost", mode: "review" } });
+    assert.equal(fallback.status, 201);
+    assert.ok(fallback.data.messages[1].content.includes("THIS_COURSE_SEARCH_EVIDENCE"));
+    const response = await fetch(base + `${route}/chat`, { method: "POST", headers: { "content-type": "application/json", cookie }, body: JSON.stringify({ stream: true, message: "为什么要考虑放弃另一个选择的代价？", mode: "guided" }) });
+    let answer = "", done = false;
+    await readEvents(response, ({ event, data }) => {
+      const packet = JSON.parse(data);
+      if (event === "delta") answer += packet.text;
+      if (event === "done") done = true;
+      assert.notEqual(event, "error");
+    });
+    assert.ok(done && answer.includes("THIS_COURSE_SEARCH_EVIDENCE"));
+    assert.ok(!answer.includes("OTHER_COURSE_SEARCH_EVIDENCE"));
+  });
+
   await t.test("all six modes use late course content and durable chat attachments after restart", async () => {
     await stop();
     await start({ fakeAi: true });

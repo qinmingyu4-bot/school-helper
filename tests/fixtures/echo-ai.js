@@ -12,6 +12,12 @@ globalThis.fetch = async (url, options) => {
     return Response.json({ text: "明天下午三点到四点在图书馆复习。" });
   }
   const body = JSON.parse(options.body);
+  if (body.messages?.[0]?.content.startsWith("StudyBridge course-search-query-expansion/v1.")) {
+    if (body.store !== false || body.stream || !options.signal || body.messages.length !== 2) throw new Error("Search expansion must be a bounded, non-stored, non-streaming request.");
+    const question = JSON.parse(body.messages[1].content).question;
+    if (question.includes("SEARCH_EXPANSION_FAIL")) return new Response("Unavailable", { status: 503 });
+    return Response.json({ choices: [{ message: { content: JSON.stringify({ queries: ["opportunity cost", "alternative forgone", "机会成本"] }) } }] });
+  }
   if (typeof body.input?.[0]?.content === "string" && body.input[0].content.startsWith("Find official academic teaching dates")) {
     const sourceUrl = "https://rotmancommerce.utoronto.ca/current-students/international-student-welcome-guide/important-dates-and-deadlines-for-rotman-commerce-international-students/";
     const calendar = { year: 2026, season: "fall", label: "2026 Fall teaching term", campus: "St. George / Arts & Science", timeZone: "America/Toronto", scopeConfirmed: true, breaksConfirmed: true,

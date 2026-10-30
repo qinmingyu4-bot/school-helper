@@ -366,12 +366,24 @@ still take priority. Current or retained problem images paired with a solve/help
 request select the complex model; ordinary photo descriptions and everyday
 questions remain eligible for Luna.
 
-All six modes search the complete extracted text of every material in the
-current course and every chat attachment saved in that course. Small collections
-are supplied in full; larger collections use question- and recent-conversation-
-matched passages within a 60,000-character material budget. Broad reviews also
-sample source endings and middles. Replies should cite source filenames and must
-not claim exhaustive coverage when only selected passages were supplied.
+All six study-chat modes search the extracted text of shared materials in the
+current course and attachments in the current conversation. Small collections
+are supplied in full. For larger collections, the configured simple model rewrites
+the question and recent user questions into up to eight short Chinese/English
+search phrases, synonyms and academic terms. This extra non-stored request has an
+eight-second limit, receives no source files, and falls back to the original
+query if unavailable, malformed or timed out; stopping a streamed reply cancels it.
+No queries or results are cached across accounts or courses.
+
+Passages are ranked using original terms, bilingual alternatives, exact phrases,
+filenames and term rarity, ignoring common filler and respecting English word
+boundaries. Original terms remain in the search even when expansion fails or is
+imperfect. New attachments retain priority; broad reviews also sample source
+endings and middles within the approximately 60,000-character material budget.
+Generated search phrases affect ranking only and never count as source evidence.
+Replies should cite source filenames and must not claim exhaustive coverage when
+only selected passages were supplied. Expansion improves cross-language recall
+without guaranteeing that every relevant passage will be selected.
 New uploads no longer discard text after 12,000/9,000 characters. Unsupported or
 scanned files still require readable text; this does not add OCR.
 

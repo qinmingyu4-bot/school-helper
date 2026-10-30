@@ -2,6 +2,8 @@
 
 ## 2026-10-30
 
+- Improve large-course retrieval with bounded Chinese/English query expansion, synonyms and academic terminology, then rank source passages by original/expanded terms, exact phrases, term rarity and filenames. Preserve complete small collections, current-upload priority and course/conversation isolation; use only real source passages as evidence. Add an eight-second fallback and stream cancellation without a shared query cache. Prepared on a task branch without AWS deployment.
+
 - Release `1.2.4`: publish the owner-approved Chinese / English interface, preserving the `1.2.3` community post editor and all existing data/configuration. Refresh release and frontend cache versions. Use the existing verified private backup, data/configuration checks and automatic code rollback deployment. Previous production code: `52c4d6e` (`1.2.3`).
 - Validate 389 automated tests and 227-file syntax/asset/version checks. Isolated Chrome checks cover homepage and authentication switching/persistence, all six destinations, retained profile/chat/document/file drafts, settings and 390 px layout, plus community post editing in English with unsaved content retained across language switches. No production test content is written.
 

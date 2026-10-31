@@ -16,6 +16,29 @@
 整合中|Combining information
 正在回答|Writing an answer
 保存中|Saving
+正在保存题目|Saving questions
+等待处理|Waiting to start
+正在识别题目并匹配课程资料|Identifying questions and finding course sources
+正在分批解答|Solving questions in batches
+整套题已完成|Problem set completed
+部分题目需要重试|Some questions need a retry
+任务未完成|Task incomplete
+任务已停止|Task stopped
+请补充标明题号的清晰题图或资料|Please provide a clear image or source for the specified question
+停止任务|Stop task
+重试未完成题目|Retry unfinished questions
+后台会继续处理，刷新页面可恢复进度。|Work continues in the background. Refresh to restore progress.
+进度暂时无法更新，后台任务仍在继续。|Progress is temporarily unavailable. Work continues in the background.
+已完成 {0}/{1} 题|Completed {0}/{1} questions
+题目识别未完成，请重试。|Question identification did not finish. Please retry.
+部分题目未完成，可单独重试。|Some questions did not finish. You can retry them separately.
+课程资料已更新，请重新提交未完成题目。|Course sources changed. Please submit the unfinished questions again.
+题目保存未完成，请重新上传该套题。|The questions were not saved. Please upload the problem set again.
+当前对话的整套题仍在处理中，可以先停止该任务。|This conversation is still solving a problem set. Stop that task before starting another.
+同一请求的内容已变更，请重新提交。|This request's content changed. Please submit it again.
+任务请求标识无效。|Invalid task request identifier.
+任务不存在。|Task not found.
+任务操作无效。|Invalid task action.
 社区|Community
 全部、学校和专业频道|All, school and major channels
 同学|Classmates

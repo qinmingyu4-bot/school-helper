@@ -62,7 +62,9 @@ test("study PDFs retain original private bytes across restart, API transports, s
   assert.equal(doc.data.document.sourcePages[0].page, 1);
   const docId = doc.data.document.id;
   const stored = JSON.parse(await fs.readFile(database, "utf8"));
-  assert(Object.values(stored.materials).some((row) => row.id === `DOCFILE#${docId}#PDF` && row.value.dataUrl === dataUrl));
+  const row = Object.values(stored.materials).find((row) => row.id === `DOCFILE#${docId}#PDF`);
+  assert.equal((await require("../lib/material-files").read(database, row.userId, row.courseId, row.id, row.file)).dataUrl, dataUrl);
+  assert(!JSON.stringify(stored.materials).includes(dataUrl), "Original material bytes stay outside resident JSON");
   const isolated = await request("/api/courses", "POST", { name: "Course PDF only" }, cookie), docOnlyRoute = `/api/courses/${isolated.data.course.id}`;
   const docOnly = await request(docOnlyRoute + "/documents", "POST", { title: "Native source", fileName: "source.pdf", fileType: "application/pdf", fileData: pdf.toString("base64") }, cookie);
   const docReply = await request(docOnlyRoute + "/chat", "POST", { message: "请讲解这份 PDF", mode: "guided" }, cookie);
@@ -74,7 +76,8 @@ test("study PDFs retain original private bytes across restart, API transports, s
   assert.deepEqual(changed.data.document.sourcePages, []);
   const afterEdit = await request(docOnlyRoute + "/chat", "POST", { message: "Explain the edited source", mode: "guided" }, cookie);
   assert.equal(typeof JSON.parse(afterEdit.data.messages[1].content).input[1].content, "string", "Old visuals must not override edited course text");
-  await request(route + "/documents/" + docId, "DELETE", null, cookie);
+  const deleted = await request(route + "/documents/" + docId, "DELETE", null, cookie);
+  assert.equal(deleted.status, 200, JSON.stringify(deleted.data));
   const afterDelete = JSON.parse(await fs.readFile(database, "utf8"));
   assert(!Object.values(afterDelete.materials).some((row) => row.id.startsWith(`DOCFILE#${docId}#`)));
   assert.equal((await request(route + "/documents", "GET")).status, 401);

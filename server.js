@@ -40,6 +40,8 @@ const { buildMaterialContext, selectStudyVisuals } = require("./lib/study-contex
 const { expandStudySearch } = require("./lib/study-search");
 const { citationInstruction, extractPdfLocations } = require("./lib/study-citations");
 const { pptxSourceParts } = require("./lib/study-office-locations");
+const { createStudyIndex } = require("./lib/study-index");
+const { createStudyJobs } = require("./lib/study-jobs");
 const { buildExerciseCoverage, coverageInstruction } = require("./lib/study-coverage");
 const { selectAiModel } = require("./lib/ai-routing");
 const scheduleImport = require("./public/schedule-import");
@@ -142,6 +144,32 @@ const creative = createCreativeService({
   db,
   documentModel: () => process.env.OPENAI_DOCUMENT_MODEL || complexAiModel,
   contextFor: (userId, courseId, message, cheatsheet) => courseContext(db, userId, courseId, message, cheatsheet)
+});
+const studyIndex = createStudyIndex({ db });
+async function studySources({ userId, courseId, conversationId }) {
+  const [documents, groups] = await Promise.all([db.listDocuments(userId, courseId), db.listChatAttachmentSources(userId, courseId, conversationId)]);
+  return [...documents.filter((doc) => doc.type !== "Schedule").map((doc) => ({ id: `doc:${doc.id}`, name: doc.title, text: doc.text || "", sourcePages: doc.sourcePages || [],
+    kind: doc.hasSourcePdf ? "pdf" : "text", ...(doc.hasSourcePdf ? { materialId: `DOCFILE#${doc.id}#PDF` } : {}) })),
+    ...groups.flatMap((group) => group.attachments.map(({ dataUrl, ...item }, index) => ({ ...item, id: `attachment:${group.id}:${index}`, materialId: group.id, attachmentIndex: index })))];
+}
+async function studyVisual(job, source) {
+  if (!source.materialId) return null;
+  const value = await db.readMaterial(job.userId, job.courseId, source.materialId);
+  return Array.isArray(value) ? value[source.attachmentIndex] : value;
+}
+function studyProvider(model) {
+  return (messages, visuals, signal) => {
+    const parts = visuals.flatMap((file) => file.kind === "pdf" && file.dataUrl ? [{ type: "file", file: { filename: file.name, file_data: file.dataUrl } }]
+      : file.kind === "image" && file.dataUrl ? [{ type: "image_url", image_url: { url: file.dataUrl, detail: "high" } }] : []);
+    return callAiWithChatCompletions(messages.map((item) => item.role === "user" && parts.length ? { ...item, content: [{ type: "text", text: item.content }, ...parts] } : item), model, null, { signal, store: false });
+  };
+}
+const studyJobs = createStudyJobs({ db, index: studyIndex, loadSources: studySources, loadVisual: studyVisual,
+  plan: studyProvider(simpleAiModel), answer: studyProvider(complexAiModel), saveQuestion: saveChatQuestion,
+  learningInstruction: (preferences) => learningStyle.buildInstruction(preferences),
+  modeInstruction: (mode) => studyModes.buildInstruction(mode),
+  finalize: (job, content, interrupted) => db.saveStudyMessage({ id: job.assistantId, userId: job.userId, courseId: job.courseId, conversationId: job.conversationId,
+    role: "assistant", content, interrupted, studyJobId: job.id, createdAt: new Date(Date.parse(job.createdAt) + 1).toISOString() })
 });
 
 function notifyClassmates(userIds, chatId, message) {
@@ -1130,10 +1158,10 @@ async function getWeatherContextForQuestion(message, user) {
   }
 }
 
-function buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message, attachments = [], currentAttachments = [], documentPdfs = [], searchQueries = [] }) {
+function buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message, attachments = [], currentAttachments = [], documentPdfs = [], searchQueries = [], materialContext }) {
   const general = course.chatType === "general";
   const preferenceInstruction = buildPreferenceInstruction(user.preferences || {});
-  const docContext = buildMaterialContext({ documents, attachments, currentAttachments, history, message, searchQueries });
+  const docContext = materialContext ?? buildMaterialContext({ documents, attachments, currentAttachments, history, message, searchQueries });
   const inventory = buildExerciseCoverage({ documents, attachments, currentAttachments, message });
   const visuals = selectStudyVisuals([...documentPdfs, ...attachments], message, currentAttachments);
   const recent = history
@@ -1379,17 +1407,32 @@ async function studyAnswerContext({ user, course, conversationId = courseConvers
   const model = chooseAiModel({ history, mode, message, attachments, documents, savedAttachments: course.chatType === "general" ? [] : [...documentPdfs, ...savedAttachments] });
   const searchQueries = await expandStudySearch({ documents, attachments: savedAttachments, history, message, signal,
     generate: process.env.OPENAI_API_KEY ? (messages, options) => callAiWithChatCompletions(messages, simpleAiModel, null, { ...options, store: false }) : null });
+  let materialContext;
+  if (require("./lib/study-context").materialContextNeedsRetrieval({ documents, attachments: savedAttachments })) {
+    try {
+      const sources = [...documents.map((doc) => ({ id: `doc:${doc.id}`, name: doc.title, text: doc.text, sourcePages: doc.sourcePages })),
+        ...savedAttachments.filter((item) => item.kind !== "image").map((item, index) => ({ ...item, id: `retained:${index}:${item.name}` }))];
+      const query = [message, ...attachments.map((item) => String(item.text || "").slice(0, 4000))].join("\n");
+      const evidence = await studyIndex.retrieve(user.id, course.id, sources, query, searchQueries, { limit: 22 });
+      if (evidence.length) {
+        const fresh = buildMaterialContext({ attachments, currentAttachments: attachments, message, budget: 14000 });
+        materialContext = "Indexed passages from this course/conversation only. Selected passages, not exhaustive coverage.\n" + fresh + "\n\n" + evidence.map((item) => item.context).join("\n\n");
+      }
+    } catch { /* The existing bounded retrieval remains available if an index cannot be read. */ }
+  }
   console.log(`StudyBridge AI route: ${model} | mode=${mode} | docs=${documents.length} | schedule=${scheduleItems.length} | attachments=${attachments.length}`);
-  return { model, prompt: buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message, attachments: savedAttachments, currentAttachments: attachments, documentPdfs, searchQueries }) };
+  return { model, prompt: buildStudyPrompt({ user, course, documents, history, scheduleItems, weatherContext, mode, message, attachments: savedAttachments, currentAttachments: attachments, documentPdfs, searchQueries, materialContext }) };
 }
 
-async function saveChatQuestion({ user, course, conversationId, message, mode, attachments }) {
-  const messageId = createId("msg");
-  const attachmentRef = await db.saveChatAttachments(user.id, course.id, messageId, attachments);
+async function saveChatQuestion({ user, course, conversationId, message, mode, attachments, messageId = createId("msg"), studyJobId, createdAt }) {
+  const attachmentRef = await db.saveChatAttachments(user.id, course.id, messageId, attachments, studyJobId ? `CHAT#${createdAt}#${messageId}` : undefined);
   try {
-    return await db.createMessage({ id: messageId, userId: user.id, courseId: course.id, conversationId, role: "user", content: `${message}${chatAttachmentLabel(attachments)}`, displayText: message, ...(attachmentRef ? { attachments: chatAttachmentMetadata(course.id, attachmentRef, attachments) } : {}), mode });
+    const record = { id: messageId, userId: user.id, courseId: course.id, conversationId, role: "user", content: `${message}${chatAttachmentLabel(attachments)}`, displayText: message, ...(attachmentRef ? { attachments: chatAttachmentMetadata(course.id, attachmentRef, attachments), attachmentRef } : {}), mode,
+      ...(studyJobId ? { studyJobId, createdAt } : {}) };
+    return await (studyJobId ? db.saveStudyMessage(record) : db.createMessage(record));
   } catch (error) {
     if (attachmentRef) await db.deleteMaterials(user.id, course.id, `${attachmentRef}#`);
+    if (attachmentRef) await db.deleteMaterials(user.id, course.id, `STUDYSOURCE#${attachmentRef}#`);
     throw error;
   }
 }
@@ -1565,11 +1608,10 @@ async function listLocalBackups() {
 
 async function purgeOldLocalBackups(backups) {
   await Promise.all(
-    backups.slice(localBackupRetention).map((backup) =>
-      fs.unlink(backup.filePath).catch(() => {
-        // A stale backup cleanup failure should not block the app.
-      })
-    )
+    backups.slice(localBackupRetention).map(async (backup) => {
+      try { await fs.unlink(backup.filePath); await fs.rm(backup.filePath + ".materials", { recursive: true, force: true }); }
+      catch { /* Retain private files when the matching backup cannot be removed. */ }
+    })
   );
 }
 
@@ -1584,7 +1626,16 @@ async function ensureLocalDatabaseBackup(reason = "auto") {
   const backupDir = localBackupDirectory();
   await fs.mkdir(backupDir, { recursive: true });
   const target = path.join(backupDir, backupFileName(reason));
-  await fs.copyFile(source, target);
+  try {
+    await db.local.write(async (state) => {
+      await fs.writeFile(target, JSON.stringify(state), { mode: 0o600, flag: "wx" });
+      await require("./lib/material-files").snapshot(source, state, target + ".materials");
+    }, { skipSave: () => true });
+  } catch (error) {
+    await fs.unlink(target).catch(() => {});
+    await fs.rm(target + ".materials", { recursive: true, force: true }).catch(() => {});
+    throw error;
+  }
   const stat = await fs.stat(target);
   const updated = [{ name: path.basename(target), filePath: target, mtimeMs: stat.mtimeMs, mtime: stat.mtime.toISOString(), bytes: stat.size }, ...backups];
   await purgeOldLocalBackups(updated);
@@ -3013,6 +3064,8 @@ if (directMessageMatch && method === "POST") {
     }
 
     if (!child && method === "DELETE") {
+      for (const conversation of await db.listConversations(user.id, courseId)) await studyJobs.cancelConversation(user.id, courseId, conversation.id);
+      studyIndex.invalidate(user.id, courseId);
       await db.deleteCourse(user.id, courseId);
       return sendJson(res, 200, { ok: true });
     }
@@ -3063,6 +3116,7 @@ if (directMessageMatch && method === "POST") {
         if (sourcePdf) await db.deleteMaterials(user.id, courseId, `DOCFILE#${documentId}#`).catch(() => {});
         throw error;
       }
+      setImmediate(() => void studyIndex.prepare(user.id, courseId, { id: `doc:${document.id}`, name: document.title, text: document.text, sourcePages: document.sourcePages }).catch(() => {}));
       return sendJson(res, 201, { document });
     }
     if (child === "documents" && childId && (method === "PUT" || method === "PATCH")) {
@@ -3084,10 +3138,14 @@ if (directMessageMatch && method === "POST") {
         type: String(body.type || "Note").slice(0, 60)
       });
       if (!document) return sendError(res, 404, "Document not found.");
+      studyIndex.invalidate(user.id, courseId);
+      setImmediate(() => void studyIndex.prepare(user.id, courseId, { id: `doc:${document.id}`, name: document.title, text: document.text, sourcePages: document.sourcePages }).catch(() => {}));
       if (discardPdf) await db.deleteMaterials(user.id, courseId, `DOCFILE#${childId}#`);
       return sendJson(res, 200, { document });
     }
     if (child === "documents" && childId && method === "DELETE") {
+      studyIndex.invalidate(user.id, courseId);
+      await db.deleteMaterials(user.id, courseId, `STUDYINDEX#${require("./lib/material-files").hash(JSON.stringify(`doc:${childId}`))}#`);
       await db.deleteDocument(user.id, courseId, childId);
       return sendJson(res, 200, { ok: true });
     }
@@ -3102,7 +3160,10 @@ if (directMessageMatch && method === "POST") {
         return sendJson(res, 201, { conversation: await db.createConversation(user.id, courseId, title) });
       }
       if (method === "DELETE" && childId) {
+        await studyJobs.cancelConversation(user.id, courseId, childId);
         const deleted = await db.deleteConversation(user.id, courseId, childId);
+        studyIndex.invalidate(user.id, courseId);
+        if (deleted) await db.deleteMaterials(user.id, courseId, "STUDYINDEX#");
         return deleted ? sendJson(res, 200, { ok: true }) : sendError(res, 404, "Conversation not found.");
       }
       if (method === "PATCH" && childId) {
@@ -3117,6 +3178,25 @@ if (directMessageMatch && method === "POST") {
       const conversationId = url.searchParams.get("conversationId") || courseConversations.DEFAULT_ID;
       if (!(await db.getConversation(user.id, courseId, conversationId))) return sendError(res, 404, "Conversation not found.");
       return sendJson(res, 200, { messages: await chatMessagesForDisplay(user.id, courseId, conversationId) });
+    }
+    if (child === "study-jobs") {
+      if (childId) {
+        const job = await studyJobs.get(user.id, courseId, childId);
+        if (!job || !await db.getConversation(user.id, courseId, job.conversationId)) return sendError(res, 404, "任务不存在。");
+        if (method === "GET") return sendJson(res, 200, { job: await studyJobs.publicJob(job) });
+        if (method === "POST") {
+          const body = await readJson(req, 4096);
+          if (!["cancel", "retry"].includes(body.action)) return sendError(res, 400, "任务操作无效。");
+          const updated = await studyJobs[body.action](job);
+          return sendJson(res, 200, { job: await studyJobs.publicJob(updated) });
+        }
+      } else if (method === "GET") {
+        const conversationId = url.searchParams.get("conversationId") || "default";
+        if (!await db.getConversation(user.id, courseId, conversationId)) return sendError(res, 404, "Conversation not found.");
+        const jobs = await db.listStudyJobs(user.id, courseId, conversationId);
+        const selected = jobs.filter((job, index) => index < 12 || ["accepting", "queued", "planning", "running"].includes(job.status));
+        return sendJson(res, 200, { jobs: await Promise.all(selected.map((job) => studyJobs.publicJob(job))) });
+      }
     }
     if (child === "attachments" && childId && method === "GET") {
       let reference;
@@ -3150,6 +3230,20 @@ if (directMessageMatch && method === "POST") {
       const effectiveUser = body.learningStyle && typeof body.learningStyle === "object" && !Array.isArray(body.learningStyle)
         ? { ...user, preferences: learningStyle.normalize(body.learningStyle) } : user;
       const context = { user: effectiveUser, course, conversationId, message, mode, attachments };
+      if (body.background === true && course.chatType !== "general" && process.env.OPENAI_API_KEY) {
+        let sources = attachments.map((item, index) => ({ ...item, id: `upload:${index}` }));
+        if (!sources.length && /解答|解题|做.*题|讲解.*题|这套|全部|整套|作答|solve|problem.set|all.*questions/i.test(message)) {
+          const available = await studySources({ userId: user.id, courseId, conversationId });
+          const named = available.filter((source) => message.includes(source.name));
+          sources = named.length ? named : available.filter((source) => source.id.startsWith("attachment:")).slice(-1);
+        }
+        const detected = studyJobs.detectSet({ message, mode, sources });
+        if (detected) {
+          const job = await studyJobs.create(context, detected, body.requestId);
+          const question = (await db.listMessages(user.id, courseId, Infinity, conversationId)).find((item) => item.id === job.messageId);
+          return sendJson(res, 202, { job: await studyJobs.publicJob(job), message: question });
+        }
+      }
       if (body.stream === true) return streamCourseChat(req, res, context);
       const userMessage = await saveChatQuestion(context);
       const { prompt, model: selectedModel } = await studyAnswerContext(context);
@@ -3178,4 +3272,19 @@ server.listen(port, () => {
   console.log(`StudyBridge cloud app running on http://localhost:${server.address().port}`);
   scheduleLocalDatabaseBackups();
   mailbox.start();
+  studyJobs.start();
+  void db.compactStudyMaterials().catch(() => console.warn("Private material compaction deferred; legacy data remains readable."));
 });
+
+let shuttingDown = false;
+async function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  mailbox.stop();
+  await studyJobs.stop();
+  server.close();
+  server.closeAllConnections();
+  process.exit(0);
+}
+process.once("SIGTERM", () => void shutdown());
+process.once("SIGINT", () => void shutdown());

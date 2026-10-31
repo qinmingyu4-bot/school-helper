@@ -118,6 +118,11 @@
   };
   const studyReplyKey = (userId = state.user?.id, courseId = state.activeCourseId, conversationId = state.activeConversationId) => courseChats.key(userId, courseId, conversationId || courseChats.DEFAULT_ID);
   const activeStudyReply = () => studyReplies.get(studyReplyKey());
+  const studyTasks = window.StudyBridgeStudyTasks?.create({ request: api,
+    getContext: () => ({ userId: state.user?.id, courseId: state.activeCourseId, conversationId: state.activeConversationId }),
+    visible: () => state.page === "study" && state.mode === "student", onChange: updateStudyTasks, text: (value) => ui.text(value),
+    progress: (done, total) => ui.message`已完成 ${done}/${total} 题` });
+  const activeStudyTask = () => studyTasks?.active();
   let classmatesPoll = null;
   let classmatesSyncing = false;
   let classmatesSyncQueued = false;
@@ -783,7 +788,7 @@
           <button type="button" class="attach" data-action="pick-chat-file" aria-label="上传附件" title="上传附件；也可拖放文件，或在输入框按 Ctrl+V 粘贴截图"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.19 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
           <input id="chatFile" class="hidden" type="file" multiple accept="${SUPPORTED_UPLOAD_ACCEPT},*/*">
           <textarea id="chatInput" rows="1" placeholder="输入问题…" aria-label="问题"></textarea>
-          <button class="send" data-action="${activeStudyReply() ? "stop-chat" : "send-chat"}" ${state.busy ? "disabled" : ""} ${activeStudyReply() ? ui.text('title="正在生成，点击停止" aria-label="停止生成"') : ui.text('aria-label="发送"')}>${sendButtonContent(Boolean(activeStudyReply()))}</button>
+          <button class="send" data-action="${activeStudyTask() ? "stop-study-task" : activeStudyReply() ? "stop-chat" : "send-chat"}" ${state.busy ? "disabled" : ""} ${activeStudyReply() || activeStudyTask() ? ui.text('title="正在生成，点击停止" aria-label="停止生成"') : ui.text('aria-label="发送"')}>${sendButtonContent(Boolean(activeStudyReply() || activeStudyTask()))}</button>
         </div>
         ${selectedUploadFilesHtml()}
       </footer>
@@ -819,7 +824,7 @@
 
   function messageHtml(message) {
     const mine = message.role === "user";
-    return `<div class="message ${mine ? "user" : "ai"}" ${message.clientReplyId ? `data-reply-id="${esc(message.clientReplyId)}" aria-busy="${Boolean(message.pending)}"` : ""}><b>${mine ? ui.text("你") : "AI"}</b><div>${mine ? userMessageBody(message) : replyBodyHtml(message)}</div></div>`;
+    return `<div class="message ${mine ? "user" : "ai"}" ${!mine && message.studyJobId ? `data-study-job="${esc(message.studyJobId)}"` : ""} ${message.clientReplyId ? `data-reply-id="${esc(message.clientReplyId)}" aria-busy="${Boolean(message.pending)}"` : ""}><b>${mine ? ui.text("你") : "AI"}</b><div>${mine ? userMessageBody(message) : replyBodyHtml(message)}</div></div>`;
   }
 
   function userMessageBody(message) {
@@ -841,6 +846,7 @@
   }
 
   function replyBodyHtml(message) {
+    if (message.studyTask && studyTasks) return `<div class="reply-content">${window.StudyBridgeMarkdown.render(message.content || "")}</div>${studyTasks.html(message.studyTask)}`;
     const content = message.content || message.pending ? `<div class="reply-content">${window.StudyBridgeMarkdown.render(message.content)}</div>` : "";
     const status = message.pending
       ? `<div class="reply-status" role="status"><span class="reply-spinner" aria-hidden="true"></span><span>${esc(ui.text(replyPhases[message.phase] || replyPhases.thinking))}</span></div>`
@@ -849,6 +855,7 @@
   }
 
   function updateStudyReply(reply) {
+    if (reply.assistant.studyJobId) { updateStudyTasks(); return; }
     if (state.page !== "study" || state.mode !== "student" || studyReplyKey() !== reply.key) return;
     const message = root.querySelector(`[data-reply-id="${reply.assistant.clientReplyId}"]`);
     const chat = root.querySelector(".study-workspace .chat-area");
@@ -888,6 +895,26 @@
     send.disabled = state.busy;
   }
 
+  function updateStudyTasks() {
+    if (!studyTasks || state.page !== "study" || state.mode !== "student") return;
+    state.messages = studyTasks.mergeMessages(state.messages);
+    const chat = root.querySelector(".study-workspace .chat-area"), follow = chat && chat.scrollHeight - chat.clientHeight - chat.scrollTop < 48;
+    for (const message of state.messages.filter((item) => item.role === "assistant" && item.studyTask)) {
+      const node = root.querySelector(`[data-study-job="${message.studyJobId}"] > div`);
+      if (node) {
+        if (node.dataset.taskRevision !== String(message.studyTask.revision)) { node.innerHTML = replyBodyHtml(message); node.dataset.taskRevision = String(message.studyTask.revision); }
+        else { const status = node.querySelector(".study-task-status"); if (status) status.outerHTML = studyTasks.html(message.studyTask); }
+      }
+    }
+    if (follow) chat.scrollTop = chat.scrollHeight;
+    const send = root.querySelector(".compose-row .send");
+    if (send) {
+      const task = activeStudyTask(), reply = activeStudyReply(), action = task ? "stop-study-task" : reply ? "stop-chat" : "send-chat";
+      if (send.dataset.action !== action) send.innerHTML = sendButtonContent(Boolean(task || reply));
+      send.dataset.action = action; send.setAttribute("aria-label", ui.text(task || reply ? "停止生成" : "发送")); send.title = ui.text(task || reply ? "停止生成" : "发送");
+    }
+  }
+
   function scheduleStudyReply(reply) {
     if (reply.frame) return;
     reply.frame = requestAnimationFrame(() => {
@@ -903,7 +930,7 @@
   }
 
   async function sendStudyChat() {
-    if (state.busy || activeStudyReply()) return;
+    if (state.busy || activeStudyReply() || activeStudyTask()) return;
     if (!state.activeCourseId) throw new Error(ui.text("请先选择或新增课程，然后再提问。"));
     const input = $("chatInput");
     const text = input?.value || "";
@@ -940,7 +967,8 @@
       const response = await fetch(`/api/courses/${reply.courseId}/chat`, {
         method: "POST", credentials: "same-origin", signal: reply.controller.signal,
         headers: { "content-type": "application/json", accept: "text/event-stream" },
-        body: JSON.stringify({ conversationId: reply.conversationId, message: text, mode: reply.mode, attachments, learningStyle: reply.learningStyle, stream: true })
+        body: JSON.stringify({ conversationId: reply.conversationId, message: text, mode: reply.mode, attachments, learningStyle: reply.learningStyle, stream: true,
+          background: Boolean(studyTasks), requestId: crypto.randomUUID() })
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -950,12 +978,20 @@
       if (!(response.headers.get("content-type") || "").includes("text/event-stream")) {
         // Keep compatibility with a server that has not yet received the update.
         const data = await response.json();
-        if (data.messages?.length !== 2) throw new Error(ui.text("没有收到完整回复，请重试。"));
-        Object.assign(reply.user, data.messages[0]);
-        reply.userNeedsRender = true;
-        Object.assign(reply.assistant, data.messages[1]);
-        reply.started = true;
-        completed = true;
+        if (data.job && studyTasks) {
+          Object.assign(reply.user, data.message); reply.userNeedsRender = true; reply.started = true;
+          Object.assign(reply.assistant, { id: data.job.assistantId, studyJobId: data.job.id, studyTask: data.job, content: data.job.content, pending: false });
+          studyTasks.accept({ userId: reply.userId, courseId: reply.courseId, conversationId: reply.conversationId }, data.job);
+          if (studyReplyKey() === reply.key) render();
+          completed = true;
+        } else {
+          if (data.messages?.length !== 2) throw new Error(ui.text("没有收到完整回复，请重试。"));
+          Object.assign(reply.user, data.messages[0]);
+          reply.userNeedsRender = true;
+          Object.assign(reply.assistant, data.messages[1]);
+          reply.started = true;
+          completed = true;
+        }
       } else {
         await window.StudyBridgeChatStream.readEvents(response, ({ event, data }) => {
           const packet = JSON.parse(data);
@@ -2020,6 +2056,7 @@
       if (!isCurrent() || courseId !== state.activeCourseId || conversationId !== state.activeConversationId) return;
       state.docs = docsData.documents || [];
       state.messages = mergeStudyReply(messagesData.messages || [], activeStudyReply() || replyAtLoad);
+      if (studyTasks) { await studyTasks.load({ userId: state.user.id, courseId, conversationId }); if (!isCurrent() || courseId !== state.activeCourseId || conversationId !== state.activeConversationId) return; state.messages = studyTasks.mergeMessages(state.messages); }
     } else {
       state.docs = [];
       state.messages = [];
@@ -2483,6 +2520,7 @@
         learningStyleEditor?.saver.dispose();
         learningStyleEditor = null;
         for (const reply of studyReplies.values()) reply.controller.abort();
+        studyTasks?.clear();
         await api("/api/auth/logout", { method: "POST" }).catch(() => null);
         localStorage.removeItem("studybridge.page");
         location.replace("/login");
@@ -2623,6 +2661,11 @@
       }
       if (action === "stop-chat") {
         activeStudyReply()?.controller.abort();
+        return;
+      }
+      if (action === "stop-study-task" || action === "study-task-cancel" || action === "study-task-retry") {
+        const id = button.dataset.job || activeStudyTask()?.id;
+        if (id) await studyTasks.action(id, action === "study-task-retry" ? "retry" : "cancel");
         return;
       }
       if (action === "save-profile") {
@@ -3413,7 +3456,7 @@
       if (event.defaultPrevented || event.isComposing || event.keyCode === 229 || composingChatInputs.has(event.target)) return;
       if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
       event.preventDefault();
-      if (event.repeat || !state.user || state.page !== "study" || state.busy || activeStudyReply()) return;
+      if (event.repeat || !state.user || state.page !== "study" || state.busy || activeStudyReply() || activeStudyTask()) return;
       if (!event.target.value.trim() && !state.uploadFiles.length) return;
       root.querySelector('[data-action="send-chat"]')?.click();
       return;

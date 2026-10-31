@@ -63,6 +63,10 @@ async function backupRelease({ root, directory, env, previousCommit, targetCommi
     }
     manifest.databaseFile = database;
     await writeJson("database.json", data);
+    if (Object.values(data.materials || {}).some((record) => record.file)) {
+      const files = require(path.join(root, "lib/material-files.js"));
+      manifest.materialFiles = await files.snapshot(database, data, path.join(directory, "material-files"));
+    }
     const creative = path.join(path.dirname(database), "creative-files");
     const hasCreative = await fs.stat(creative).then(() => true).catch((error) => { if (error.code === "ENOENT") return false; throw error; });
     if (hasCreative) {

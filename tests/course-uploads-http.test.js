@@ -61,7 +61,8 @@ test("large course PDFs cross the old PDF/body limits, remain private and surviv
   assert.equal(uploaded.data.document.dataUrl, undefined);
   assert.equal((await request(route, null, "", "GET")).status, 401);
   const stored = JSON.parse(await fs.readFile(database, "utf8"));
-  const original = Object.values(stored.materials).find((item) => item.id === `DOCFILE#${uploaded.data.document.id}#PDF`).value;
+  const row = Object.values(stored.materials).find((item) => item.id === `DOCFILE#${uploaded.data.document.id}#PDF`);
+  const original = await require("../lib/material-files").read(database, row.userId, row.courseId, row.id, row.file);
   assert.equal(createHash("sha256").update(Buffer.from(original.dataUrl.split(",")[1], "base64")).digest("hex"), createHash("sha256").update(pdf).digest("hex"));
   const empty = await request(route, { fileName: "empty.pdf", fileData: "data:application/pdf;base64," }, cookie);
   assert.equal(empty.status, 400);

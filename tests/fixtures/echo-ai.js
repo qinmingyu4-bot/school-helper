@@ -12,6 +12,21 @@ globalThis.fetch = async (url, options) => {
     return Response.json({ text: "明天下午三点到四点在图书馆复习。" });
   }
   const body = JSON.parse(options.body);
+  if (body.messages?.[0]?.content.startsWith("StudyBridge problem-set")) {
+    if (body.store !== false || !options.signal || body.stream) throw new Error("Problem-set workers must be bounded and private.");
+    const last = body.messages[1].content;
+    const input = JSON.parse(typeof last === "string" ? last : last.find((part) => part.type === "text").text);
+    if (body.messages[0].content.startsWith("StudyBridge problem-set planning")) {
+      return Response.json({ choices: [{ message: { content: JSON.stringify({ questions: input.questions.map(({ id }) => ({ id, queries: ["opportunity cost", "机会成本"], dependsOn: [] })) }) } }] });
+    }
+    await require("node:timers/promises").setTimeout(Number(process.env.TEST_STUDY_DELAY || 250), undefined, { signal: options.signal });
+    const answers = input.questions.map((question) => ({ id: question.id, parts: question.parts.map((id) => {
+      const evidence = input.evidence[question.id];
+      if (evidence.some((source) => /FOREIGN_(?:COURSE|CHAT)/.test(source.text))) throw new Error("Cross-scope evidence leaked.");
+      return { id, status: "done", basis: evidence.length ? "derived" : "general", sources: evidence.length ? [evidence[0].ref] : [], text: `Method and working for ${question.id}(${id}). Final answer: opportunity cost. MATH_TASK_FIXTURE` };
+    }) }));
+    return Response.json({ choices: [{ message: { content: JSON.stringify({ answers }) } }] });
+  }
   if (body.messages?.[0]?.content.startsWith("StudyBridge course-search-query-expansion/v1.")) {
     if (body.store !== false || body.stream || !options.signal || body.messages.length !== 2) throw new Error("Search expansion must be a bounded, non-stored, non-streaming request.");
     const question = JSON.parse(body.messages[1].content).question;

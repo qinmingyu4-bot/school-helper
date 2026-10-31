@@ -21,6 +21,14 @@ recover() {
   trap - EXIT
   if [ "$result" -ne 0 ] && [ "$restore_needed" -eq 1 ]; then
     echo "Release failed; restoring previous application code without restoring or deleting user data."
+    if [ -f "$backup/manifest.json" ] && git cat-file -e "$target:scripts/material-compat.js" 2>/dev/null; then
+      pm2 stop studybridge || true
+      git show "$target:scripts/material-compat.js" > "$backup/material-compat.cjs"
+      if ! node "$backup/material-compat.cjs" "$PWD" "$backup/manifest.json"; then
+        echo "Retaining current code and private data; compatibility recovery requires inspection."
+        exit "$result"
+      fi
+    fi
     if [ "$(git rev-parse HEAD)" != "$previous" ]; then
       git switch --detach "$previous" && npm ci --omit=dev || true
     fi

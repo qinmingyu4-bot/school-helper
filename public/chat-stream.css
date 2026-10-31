@@ -21,6 +21,10 @@
   animation: reply-spin .85s linear infinite;
 }
 .reply-notice { margin-top: 8px; color: #70614c; font-size: 13px; line-height: 20px; }
+.study-task-status { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-top:12px; max-width:100%; overflow-wrap:anywhere; font-size:13px; }
+.study-task-status small, .study-task-status .reply-notice { flex-basis:100%; }
+.study-task-status button { min-height:32px; padding:4px 10px; border:1px solid var(--line, #ddd); border-radius:8px; background:transparent; color:inherit; cursor:pointer; }
+.study-task-status button:disabled { opacity:.6; cursor:wait; }
 .compose-row .send svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; }
 .compose-row .send { display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
 .study-workspace .compose-row .send { min-width: 84px; }

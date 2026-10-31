@@ -19,6 +19,7 @@ globalThis.fetch = async (url, options) => {
     if (body.messages[0].content.startsWith("StudyBridge problem-set planning")) {
       return Response.json({ choices: [{ message: { content: JSON.stringify({ questions: input.questions.map(({ id }) => ({ id, queries: ["opportunity cost", "机会成本"], dependsOn: [] })) }) } }] });
     }
+    if (!body.messages[0].content.includes("check all alternatives")) throw new Error("Problem-set answer requests must retain the academic accuracy instruction.");
     await require("node:timers/promises").setTimeout(Number(process.env.TEST_STUDY_DELAY || 250), undefined, { signal: options.signal });
     const answers = input.questions.map((question) => ({ id: question.id, parts: question.parts.map((id) => {
       const evidence = input.evidence[question.id];

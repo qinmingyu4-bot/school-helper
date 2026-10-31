@@ -62,8 +62,11 @@ test("basic review and short objective questions use Luna across academic modes"
     ]) assert.equal(selectAiModel({ mode, message }, models), models.simpleModel, `${mode}: ${message}`);
   }
   for (const mode of ["review", "cram"]) {
-    for (const message of ["帮我复习这章", "帮我整理考试知识点", "Review economics key concepts", "复习机会成本的定义和例子"]) {
+    for (const message of ["Define opportunity cost.", "Explain the definition of scarcity.", "复习机会成本的定义和例子"]) {
       assert.equal(selectAiModel({ mode, message, documents: [{ text: "long notes ".repeat(10000) }] }, models), models.simpleModel, message);
+    }
+    for (const message of ["帮我复习这章", "帮我整理考试知识点", "Review economics key concepts"]) {
+      assert.equal(selectAiModel({ mode, message }, models), models.complexModel, message);
     }
   }
 });
@@ -105,4 +108,31 @@ test("background batches use Luna only when every question is short, readable an
   }
   assert.equal(selectStudyBatchModel({ questions: [question], message: "请深入分析每题" }, models), models.complexModel);
   assert.equal(selectStudyBatchModel({ questions: [] }, models), models.complexModel);
+});
+
+test("objective format alone never downgrades incomplete, tricky or advanced questions", () => {
+  const questions = [
+    "选择题", "这道判断题怎么做", "Multiple-choice: which option is correct?",
+    "True or false: every continuous function is differentiable.",
+    "判断题：所有连续函数都可导。", "判断题：至少存在一个满足条件的解。",
+    "单选题：哪个说法不正确？\nA. 资源稀缺\nB. 资源无限",
+    "多选题：选择正确选项。\nA. 资源稀缺\nB. 资源无限",
+    "Which statement is NOT correct?\nA. Resources are scarce\nB. Resources are infinite",
+    "True or false: if demand falls then equilibrium prices always fall.",
+    "True or false: if demand falls, equilibrium prices fall.", "Please solve true or false",
+    "What is the probability of obtaining this result?",
+    "True or false: x^2 = x implies x = 1."
+  ];
+  for (const text of questions) {
+    for (const mode of ["guided", "review", "exam"]) assert.equal(selectAiModel({ mode, message: text }, models), models.complexModel, `${mode}: ${text}`);
+    assert.equal(selectStudyBatchModel({ questions: [{ text, parts: ["answer"] }] }, models), models.complexModel, text);
+  }
+});
+
+test("correction and verification requests always upgrade a previous Luna answer", () => {
+  const history = [{ role: "user", mode: "review", content: "判断题：2 + 2 = 4。" }, { role: "assistant", content: "An earlier answer" }];
+  for (const message of ["你确定吗？", "不对", "错了", "答案不对，请重新检查", "再核对一下", "Are you sure?", "Double check your answer", "Recalculate", "为什么所有选项都成立？"]) {
+    for (const mode of ["guided", "review"]) assert.equal(selectAiModel({ mode, message, history }, models), models.complexModel, message);
+    assert.equal(selectStudyBatchModel({ message, questions: [{ text: "True or false: resources are scarce.", parts: ["answer"] }] }, models), models.complexModel, message);
+  }
 });

@@ -759,6 +759,21 @@ label cannot downgrade a complex or unreadable attached question. These are loca
 heuristics; routing adds no AI classification request and does not guarantee a fixed
 overall Luna/Sol percentage or a particular cost reduction.
 
+Accuracy takes priority over cost: a choice/true-or-false label alone is never
+enough to qualify for Luna. Choice questions require a readable stem and at least
+two actual options. Negation/exception traps, multiple-answer selection,
+quantifiers, conditional reasoning, advanced topics/symbolic mathematics and vague
+chapter-wide review retain Sol. Requests to verify or correct an answer explicitly
+upgrade to Sol rather than inheriting a prior Luna route. Single-turn and background
+answers receive the same instruction to check working, units, conditions and
+alternatives, identify evidence gaps and avoid unsupported verification claims.
+These conservative heuristics and prompt instructions reduce routing risk; they
+are not an answer verifier or proof of equal model accuracy. Automated fixture
+tests do not measure real answer correctness. Before deployment, compare both
+models on representative course questions with independently checked answer keys,
+including traps, figures and numerical problems, and review disagreements. No
+fixed usage quota should override a failed quality evaluation.
+
 Background problem sets use the same question criteria and split simple questions
 from complex questions before batching. A Luna batch requires every question to
 be short (at most 900 characters), readable, independent and single-part, with

@@ -36,10 +36,11 @@ test("HTTP problem sets persist through restart, restore progress and isolate ac
   await request(otherRoute + "/documents", "POST", { title: "Other.txt", text: "opportunity cost FOREIGN_COURSE" }, alice.cookie);
   const conversation = await request(route + "/conversations", "POST", { title: "Separate chat" }, alice.cookie);
   await request(route + "/chat", "POST", { conversationId: conversation.data.conversation.id, message: "Save these notes", attachments: [{ name: "Other-chat.txt", text: "opportunity cost FOREIGN_CHAT", kind: "text" }] }, alice.cookie);
-  for (const [message, model] of [["True or false: opportunity cost is the best alternative forgone.", "routing-test-luna"], ["Review: derive the equilibrium equation.", "routing-test-sol"]]) {
+  for (const [message, model] of [["True or false: opportunity cost is the best alternative forgone.", "routing-test-luna"], ["Are you sure? Please check your answer.", "routing-test-sol"], ["Review: derive the equilibrium equation.", "routing-test-sol"]]) {
     const reply = await request(route + "/chat", "POST", { conversationId: conversation.data.conversation.id, mode: "review", message }, alice.cookie);
     assert.equal(reply.status, 201);
     assert.equal(reply.data.model, model);
+    assert.ok(JSON.parse(reply.data.messages[1].content).messages[0].content.includes("check all alternatives"));
   }
   const body = { background: true, stream: true, requestId: "http-request-0001", mode: "guided", message: "请解答整套题，保留过程和出处", attachments: [{ name: "20-questions.txt", kind: "text", text: Array.from({ length: 20 }, (_, n) => `${n + 1}. Explain opportunity cost.\n(a) State the idea.\n(b) Calculate the result.`).join("\n") }] };
   const accepted = await request(route + "/chat", "POST", body, alice.cookie);

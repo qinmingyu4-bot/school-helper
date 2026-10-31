@@ -1,0 +1,12 @@
+.billing-plan .billing-test-label { margin: 0 0 14px; color: var(--muted); font-size: 11px; letter-spacing: .04em; }
+.billing-plan h4 { margin-bottom: 12px; }
+.billing-price { margin: 0; font-size: 30px; font-weight: 600; letter-spacing: -.6px; color: var(--ink); }
+.billing-price span { font-size: 12px; font-weight: 400; letter-spacing: 0; color: var(--muted); }
+.billing-subscription-state { font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
+.billing-consent { display: flex; align-items: flex-start; gap: 9px; margin: 18px 0; font-size: 12px; line-height: 1.8; color: var(--muted); }
+.billing-consent input { width: 16px; min-width: 16px; height: 16px; margin: 3px 0 0; }
+.billing-consent[hidden] { display: none; }
+.billing-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
+.billing-actions button { max-width: 100%; white-space: normal; font-size: 12px; }
+.billing-status.is-error { color: var(--danger, #b42318); }
+@media (max-width: 450px) { .billing-actions button { flex: 1 1 100%; min-height: 40px; } }

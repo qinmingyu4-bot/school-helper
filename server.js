@@ -25,6 +25,7 @@ const { StudyBridgeDatabase } = require("./lib/database");
 const mailboxProviders = require("./lib/mailbox-providers");
 const { createMailboxService } = require("./lib/mailbox-service");
 const { membershipTier } = require("./lib/membership");
+const { createBillingService } = require("./lib/billing-service");
 const studyModes = require("./public/study-modes");
 const learningStyle = require("./public/learning-style");
 const appearance = require("./public/appearance");
@@ -147,6 +148,7 @@ const creative = createCreativeService({
   contextFor: (userId, courseId, message, cheatsheet) => courseContext(db, userId, courseId, message, cheatsheet)
 });
 const studyIndex = createStudyIndex({ db });
+const billing = createBillingService({ db });
 async function studySources({ userId, courseId, conversationId }) {
   const [documents, groups] = await Promise.all([db.listDocuments(userId, courseId), db.listChatAttachmentSources(userId, courseId, conversationId)]);
   return [...documents.filter((doc) => doc.type !== "Schedule").map((doc) => ({ id: `doc:${doc.id}`, name: doc.title, text: doc.text || "", sourcePages: doc.sourcePages || [],
@@ -1941,6 +1943,37 @@ async function signInWithGoogle(req, res, url) {
 async function routeApi(req, res) {
   const url = new URL(req.url, "http://localhost");
   const method = req.method || "GET";
+
+  if (url.pathname === "/api/billing/webhook" && method === "POST") {
+    const chunks = []; let size = 0;
+    for await (const chunk of req) {
+      size += chunk.length;
+      if (size > 256 * 1024) return sendError(res, 413, "订阅通知过大。");
+      chunks.push(chunk);
+    }
+    return sendJson(res, 200, await billing.webhook(Buffer.concat(chunks), req.headers["stripe-signature"]), { "cache-control": "no-store" });
+  }
+  if (url.pathname === "/api/billing" || url.pathname.startsWith("/api/billing/")) {
+    const auth = await currentUser(req);
+    if (!auth) return sendError(res, 401, "登录已过期，请重新登录。");
+    const csrfToken = hashToken(`billing:${auth.tokenHash}`);
+    const respond = (value) => sendJson(res, 200, value, { "cache-control": "private, no-store" });
+    if (url.pathname === "/api/billing" && method === "GET") return respond({ billing: { ...await billing.status(auth.user.id), csrfToken } });
+    const action = url.pathname.slice("/api/billing/".length);
+    if (method !== "POST" || !["checkout", "portal", "refresh", "cancel", "resume"].includes(action)) return sendError(res, 404, "订阅操作不存在。");
+    const supplied = String(req.headers["x-csrf-token"] || "");
+    if (!/^application\/json(?:;|$)/i.test(req.headers["content-type"] || "") || !/^[a-f0-9]{64}$/.test(supplied) ||
+        !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(csrfToken))) return sendError(res, 403, "请重新打开订阅设置后再试。");
+    const origin = req.headers.origin;
+    if (origin && origin !== billing.origin) return sendError(res, 403, "请在当前网站操作订阅。");
+    const body = await readJson(req, 4096);
+    if (body.userId !== auth.user.id) return sendError(res, 409, "登录账号已变更，请重新打开设置。");
+    if (action === "checkout") return respond(await billing.checkout(auth.user, body));
+    if (Object.keys(body).some((key) => key !== "userId")) return sendError(res, 400, "订阅操作格式无效。");
+    if (action === "portal") return respond(await billing.portal(auth.user.id));
+    const value = action === "refresh" ? await billing.refresh(auth.user.id) : await billing.changeRenewal(auth.user.id, action === "cancel");
+    return respond({ billing: { ...value, csrfToken } });
+  }
 
   if (url.pathname === "/api/office" || url.pathname.startsWith("/api/office/")) {
     const user = await requireUser(req, res);

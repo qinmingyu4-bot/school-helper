@@ -740,6 +740,20 @@ local tier. Admin-list polling updates visible classifications and counts as wel
 Each invitation permits one successful registration. Previously used codes cannot
 be reused, even if their old usage limit was higher or they are re-enabled.
 
+### Subscription and payment testing
+
+Settings → **订阅与账单 / Subscription & billing** prepares a configurable CAD
+monthly plan, hosted Stripe Checkout/invoice portal, period-end cancellation,
+resumption and signed status updates. `BILLING_MODE=disabled` is the default;
+only test keys and test events are accepted when explicitly configured. No real
+charges, paid feature restrictions or changes to existing invitation/manual Plus
+classification are enabled. The initial CAD 19.99/month is a test price.
+See [billing setup, behavior and validation](docs/billing.md). Owner-controlled
+Stripe test-account verification and separately authorized live billing remain
+required before a charging launch.
+
+### Server configuration
+
 ```text
 SESSION_SECRET=replace-with-a-long-random-secret
 ADMIN_EMAILS=your-real-email@example.com

@@ -6,6 +6,11 @@ const fixture = billingStripeFixture(), verify = fixture.stripe.webhooks.constru
 fixture.stripe.webhooks = { constructEvent(...args) {
   const event = verify(...args), object = event.data?.object;
   if (event.livemode === false && object?.object === "subscription") fixture.subscriptions.set(object.id, structuredClone(object));
+  if (event.livemode === false && object?.object === "checkout.session" && fixture.sessions.has(object.id)) {
+    const session = fixture.sessions.get(object.id);
+    if (object.payment_status === "paid") fixture.pay(object.id, "wechat_pay", object.created || Math.floor(Date.now() / 1000));
+    else if (object.status) session.status = object.status;
+  }
   return event;
 } };
 function FixtureStripe() { return fixture.stripe; }

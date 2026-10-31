@@ -1960,7 +1960,7 @@ async function routeApi(req, res) {
     const respond = (value) => sendJson(res, 200, value, { "cache-control": "private, no-store" });
     if (url.pathname === "/api/billing" && method === "GET") return respond({ billing: { ...await billing.status(auth.user.id), csrfToken } });
     const action = url.pathname.slice("/api/billing/".length);
-    if (method !== "POST" || !["checkout", "portal", "refresh", "cancel", "resume"].includes(action)) return sendError(res, 404, "订阅操作不存在。");
+    if (method !== "POST" || !["checkout", "pass-checkout", "pass-cancel", "portal", "refresh", "cancel", "resume"].includes(action)) return sendError(res, 404, "订阅操作不存在。");
     const supplied = String(req.headers["x-csrf-token"] || "");
     if (!/^application\/json(?:;|$)/i.test(req.headers["content-type"] || "") || !/^[a-f0-9]{64}$/.test(supplied) ||
         !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(csrfToken))) return sendError(res, 403, "请重新打开订阅设置后再试。");
@@ -1969,9 +1969,10 @@ async function routeApi(req, res) {
     const body = await readJson(req, 4096);
     if (body.userId !== auth.user.id) return sendError(res, 409, "登录账号已变更，请重新打开设置。");
     if (action === "checkout") return respond(await billing.checkout(auth.user, body));
+    if (action === "pass-checkout") return respond(await billing.passCheckout(auth.user, body));
     if (Object.keys(body).some((key) => key !== "userId")) return sendError(res, 400, "订阅操作格式无效。");
     if (action === "portal") return respond(await billing.portal(auth.user.id));
-    const value = action === "refresh" ? await billing.refresh(auth.user.id) : await billing.changeRenewal(auth.user.id, action === "cancel");
+    const value = action === "pass-cancel" ? await billing.passCancel(auth.user.id) : action === "refresh" ? await billing.refresh(auth.user.id) : await billing.changeRenewal(auth.user.id, action === "cancel");
     return respond({ billing: { ...value, csrfToken } });
   }
 

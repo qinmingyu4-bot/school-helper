@@ -748,6 +748,11 @@ resumption and signed status updates. `BILLING_MODE=disabled` is the default;
 only test keys and test events are accepted when explicitly configured. No real
 charges, paid feature restrictions or changes to existing invitation/manual Plus
 classification are enabled. The initial CAD 19.99/month is a test price.
+Optional WeChat Pay/Alipay passes offer 30-day monthly and 120-day semester
+access records with manual renewal, using one-time Checkout. Provisional test
+prices are CAD 19.99/69.99 and are configurable. The separate wallet switch is
+off by default. Verified payments extend remaining test validity exactly once;
+successful refunds adjust only the corresponding purchased time.
 See [billing setup, behavior and validation](docs/billing.md). Owner-controlled
 Stripe test-account verification and separately authorized live billing remain
 required before a charging launch.

@@ -1,7 +1,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { createController, redirectAllowed } = require("../public/billing");
-const state = { userId: "alice", configured: true, csrfToken: "session-csrf", canCheckout: true, subscription: { status: "none" } };
+const state = { userId: "alice", configured: true, csrfToken: "session-csrf", canCheckout: true, subscription: { status: "none" }, passes: { configured: true } };
 const deferred = () => { let resolve; const promise = new Promise((done) => { resolve = done; }); return { promise, resolve }; };
 test("billing UI requires consent, sends server-owned identity/CSRF and prevents duplicate checkout clicks", async () => {
   const pending = deferred(), calls = [], redirects = [];
@@ -40,4 +40,26 @@ test("billing UI preserves failures for retry and rejects missing, foreign or un
   let calls = 0;
   const disabled = createController({ getUser: () => ({ id: "alice" }), request: async () => { calls++; return { billing: { ...state, configured: false } }; } });
   await disabled.activate(); await disabled.act("checkout", true); assert.equal(calls, 1);
+});
+test("wallet UI requires separate consent, restricts plan choices and sends only the selected server-owned plan", async () => {
+  const calls = [], redirects = [];
+  const controller = createController({ getUser: () => ({ id: "alice" }), makeId: () => "request-wallet-1", redirect: (url) => redirects.push(url), request: async (path, options) => {
+    calls.push({ path, options }); return path === "/api/billing" ? { billing: state } : { url: "https://checkout.stripe.com/c/pay/wallet" };
+  } });
+  await controller.activate(); await controller.act("pass-checkout", false, "month"); assert.equal(calls.length, 1); assert.ok(controller.snapshot().error);
+  await controller.act("pass-checkout", true, "lifetime"); assert.equal(calls.length, 1);
+  await controller.act("pass-checkout", true, "semester");
+  assert.equal(calls[1].path, "/api/billing/pass-checkout");
+  assert.deepEqual(calls[1].options.body, { userId: "alice", plan: "semester", consent: true, requestId: "request-wallet-1" });
+  assert.equal(calls[1].options.headers["x-csrf-token"], "session-csrf"); assert.equal(redirects.length, 1);
+  assert.equal(redirectAllowed("https://billing.stripe.com/p/test", "pass-checkout"), false);
+});
+test("wallet checkout discards late redirects after closing settings or switching accounts", async () => {
+  for (const action of ["close", "switch"]) {
+    let user = { id: "alice" }; const pending = deferred(), redirects = [];
+    const controller = createController({ getUser: () => user, makeId: () => "wallet-request-2", redirect: (url) => redirects.push(url), request: (path) => path === "/api/billing" ? { billing: state } : pending.promise });
+    await controller.activate(); const work = controller.act("pass-checkout", true, "month");
+    if (action === "close") controller.suspend(); else user = { id: "bob" };
+    pending.resolve({ url: "https://checkout.stripe.com/c/pay/wallet" }); await work; assert.equal(redirects.length, 0);
+  }
 });

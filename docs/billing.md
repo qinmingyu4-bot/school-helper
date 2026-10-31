@@ -4,6 +4,90 @@ Settings → **订阅与账单 / Subscription & billing** provides a monthly tes
 Stripe-hosted Checkout, a hosted portal for invoices/payment methods, status
 refresh, cancellation at period end and resuming renewal. The initial test price
 is CAD 19.99/month and is configurable; it is not an approved launch price.
+The same panel also prepares WeChat Pay/Alipay monthly and semester passes: one-time
+payments with manual renewal, separate from card automatic renewal.
+
+## WeChat Pay and Alipay passes
+
+Passes use Stripe Checkout **payment** mode, not subscription mode. The hosted
+page offers `alipay` and `wechat_pay` (web client). A monthly pass adds exactly
+30 × 24 hours and a semester pass adds 120 × 24 hours; neither automatically
+renews. Initial test amounts are CAD 19.99 and CAD 69.99, respectively. These
+are configurable placeholders, not approved launch prices. Keep the wallet
+switch off until the intended Stripe test account is configured and verified.
+
+| Additional variable | Test configuration |
+| --- | --- |
+| `BILLING_WALLET_PASSES_ENABLED` | `false` by default; set exactly `true` to offer wallet test checkout |
+| `BILLING_MONTH_PASS_AMOUNT_CENTS` | `1999` by default; integer 100–100000 |
+| `BILLING_SEMESTER_PASS_AMOUNT_CENTS` | `6999` by default; integer 100–100000 |
+| `STRIPE_MONTH_PASS_PRICE_ID` | Active **one-time** CAD test Price matching the month-pass amount |
+| `STRIPE_SEMESTER_PASS_PRICE_ID` | A different active **one-time** CAD test Price matching the semester-pass amount |
+
+All existing test billing configuration below is also required. Missing/invalid
+wallet settings disable wallet checkout without disabling card subscriptions.
+The two pass Prices and recurring card Price must be distinct. Enable both wallet
+methods in the owner-controlled Stripe account; CAD acceptance depends on account
+country/capability (Canada is supported in the referenced documentation). Actual
+availability still requires the account's eligibility/activation checks. This
+implementation does not connect a personal WeChat or Alipay receiving account.
+For a future authorized live launch, payments would settle to the configured
+merchant's Stripe balance and its linked payout bank account.
+
+The server snapshots each order's Price, amount and duration. It verifies the
+current Checkout Session, one line item with quantity one, CAD amount, owner,
+metadata, successful PaymentIntent, paid/captured charge and actual wallet type
+before recording test validity. A redirect or a notification snapshot alone grants
+nothing. A new pass extends from the later of its verified payment timestamp and
+the previous pass's expiry, including early renewals. Expired passes display as
+expired; there are no automatic payment attempts or renewal jobs.
+
+Private purchase records live atomically in the existing billing row, under the
+same account lease/CAS protection in local JSON and DynamoDB. Each payment remains
+recorded permanently, so duplicates still cannot add time even after the bounded
+webhook-event cache rotates. Deterministic payment-time/order-ID ordering handles
+out-of-order delivery. Account membership, invitations, manual Plus, quotas and
+administrator permissions remain unchanged in test mode.
+
+Only one unpaid wallet order is allowed per account. Repeated clicks reuse it;
+the user can close an open unpaid order before choosing another pass. A processing
+payment cannot be closed through this action. A completed unpaid session whose
+current PaymentIntent is failed or canceled permits a new purchase; a
+still-processing payment remains pending. Session creation uses a durable
+idempotency key; a lost response retries the original order, and signed Checkout
+or PaymentIntent notifications can recover its Session ID. An unresolved creation
+older than its one-hour window fails closed for owner review, instead of silently
+creating a second payment. Configuration changes cannot reuse an old price.
+
+Refund notifications re-read current provider state and paginate all refunds for
+the payment. Only successful refunds reduce that purchase's duration, pro rata by
+refunded amount (rounded down to milliseconds); pending/failed refunds do not.
+A full refund removes that purchase's contribution. Later purchases are rebuilt
+in payment order, each starting no earlier than its own payment timestamp. Other
+purchases and account membership are preserved. No refund is initiated by the app;
+refunds must be performed in Stripe. This is test reconciliation, not published
+commercial refund terms.
+
+Add these endpoint events alongside the events below:
+
+- `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`
+- `refund.created`, `refund.updated`, `refund.failed`, `charge.refunded`
+
+Refresh reconciles pending orders and purchases from the preceding 181 days;
+individual signed events can reconcile older known purchases. A test account is
+limited to 100 retained pass orders, including closed orders, to keep the single
+DynamoDB row bounded. Do not silently delete history to reset this limit; a larger
+production ledger/queue is a later change. Provider/storage errors return non-2xx
+for webhook retry, and expired workers cannot overwrite another worker's state.
+
+Before owner testing, use Stripe's documented wallet **test** authorization pages
+for both methods. Verify paid/abandoned/expired flows, signed webhook delivery,
+duplicate/reordered events, restart recovery, early manual renewal and successful,
+pending and failed refunds in the intended account. Automated tests in this repo
+simulate the provider; they do not prove account eligibility, a working real QR
+code, wallet app handoff or a completed official Stripe test transaction. No account
+credentials were configured, no real payments were enabled, and no deployment
+is authorized by this preparation work.
 
 ## Closed by default
 
@@ -129,3 +213,7 @@ Keep changes on a task branch; do not deploy or enable fees through `main` yet.
 - [Webhook signatures, delivery order and retries](https://docs.stripe.com/webhooks)
 - [Period-end cancellation](https://docs.stripe.com/billing/subscriptions/cancel)
 - [Test cards and test environments](https://docs.stripe.com/testing)
+- [WeChat Pay availability, one-time payments and refunds](https://docs.stripe.com/payments/wechat-pay)
+- [Alipay availability and one-time payments](https://docs.stripe.com/payments/alipay)
+- [Checkout fulfillment and payment verification](https://docs.stripe.com/checkout/fulfillment?ui=full-page)
+- [Refund events and states](https://docs.stripe.com/refunds)

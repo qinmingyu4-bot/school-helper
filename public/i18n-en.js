@@ -6,6 +6,38 @@
   "use strict";
   return Object.freeze(Object.fromEntries(`
 界面语言|Interface language
+微信／支付宝会员卡|WeChat Pay / Alipay passes
+一次性购买，到期手动续费，不会自动扣款。续费从剩余有效期结束后接续。|Pay once and renew manually. No automatic charges. Renewals extend your remaining validity.
+尚未购买测试会员卡|No test pass purchased
+测试会员卡有效|Test pass active
+测试会员卡已到期|Test pass expired
+会员卡到期时间|Pass expires
+最近订单|Latest order
+正在建立测试订单|Creating test order
+测试订单待付款|Test order awaiting payment
+测试付款确认中|Confirming test payment
+测试会员卡付款失败，可重新购买|Test pass payment failed. You can try a new purchase.
+测试订单已关闭或过期|Test order closed or expired
+测试会员卡已付款|Test pass paid
+测试会员卡已退款|Test pass refunded
+测试会员卡已部分退款|Test pass partially refunded
+月卡 · 30 天|Monthly pass · 30 days
+学期卡 · 120 天|Semester pass · 120 days
+微信／支付宝测试购买|Test purchase with WeChat Pay / Alipay
+继续测试付款|Continue test payment
+关闭待付款会员卡订单|Close unpaid pass order
+我确认所选会员卡的测试价格与天数，到期手动续费；此次不会真实扣款。|I confirm the selected test price and duration. I will renew manually. No real charge will be made.
+会员卡价格仅供测试，付款确认后记录测试有效期，暂不改变账号功能权限。|Prices are for testing. Verified payments record test validity without changing account access.
+银行卡按月自动续订|Card subscription with monthly renewal
+请先确认会员卡测试价格和手动续费说明。|Please confirm the pass test price and manual renewal terms first.
+微信和支付宝测试付款尚未配置，请联系管理员。|WeChat Pay and Alipay test payments are not configured. Contact the administrator.
+测试会员卡请求无效，请刷新后重试。|Invalid test pass request. Refresh and try again.
+测试会员卡付款信息无法确认，请联系管理员。|Test pass payment details could not be verified. Contact the administrator.
+请先完成或关闭待付款会员卡订单，再选择其他套餐。|Complete or close the unpaid pass order before choosing another plan.
+此会员卡订单已处理，请刷新状态后重试。|This pass order was already processed. Refresh before trying again.
+测试会员卡订单已达上限，请联系管理员。|The test pass order limit was reached. Contact the administrator.
+待付款订单需要核对，请联系管理员后重试。|The unpaid order needs review. Contact the administrator before retrying.
+当前会员卡订单无法关闭，请先刷新付款状态。|This pass order cannot be closed. Refresh its payment status first.
 订阅与账单|Subscription & billing
 测试订阅与付款管理|Test subscriptions and payments
 查看测试套餐、订阅状态与账单。目前不会真实收费。|View the test plan, subscription status and invoices. No real payments are collected.

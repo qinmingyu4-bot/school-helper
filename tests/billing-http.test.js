@@ -17,7 +17,8 @@ test("test-only billing HTTP lifecycle enforces auth/CSRF, verifies raw signed e
     child = spawn(process.execPath, ["--require", "./tests/fixtures/billing-provider.js", "server.js"], { cwd: path.resolve(__dirname, ".."), env: {
       ...process.env, NODE_ENV: "test", PORT: "0", STUDYBRIDGE_DB: "local", LOCAL_DB_FILE: database, LOCAL_DB_BACKUP_DISABLED: "true", SESSION_SECRET: "billing-http-test-only",
       REQUIRE_EMAIL_VERIFICATION: "false", OPENAI_API_KEY: "", SMTP_HOST: "", SMTP_USER: "", SMTP_PASS: "", BILLING_MODE: mode,
-      STRIPE_SECRET_KEY: "sk_test_fixture", STRIPE_WEBHOOK_SECRET: "whsec_fixture", STRIPE_PLUS_MONTHLY_PRICE_ID: "price_test_monthly", BILLING_PUBLIC_BASE_URL: "https://studybridge.example"
+      STRIPE_SECRET_KEY: "sk_test_fixture", STRIPE_WEBHOOK_SECRET: "whsec_fixture", STRIPE_PLUS_MONTHLY_PRICE_ID: "price_test_monthly", BILLING_PUBLIC_BASE_URL: "https://studybridge.example",
+      BILLING_WALLET_PASSES_ENABLED: "true", STRIPE_MONTH_PASS_PRICE_ID: "price_test_month_pass", STRIPE_SEMESTER_PASS_PRICE_ID: "price_test_semester_pass"
     }, stdio: ["ignore", "pipe", "pipe"] });
     base = await new Promise((resolve, reject) => {
       let output = "", errors = ""; const timer = setTimeout(() => reject(Error("Billing server startup timed out")), 10000);
@@ -73,8 +74,26 @@ test("test-only billing HTTP lifecycle enforces auth/CSRF, verifies raw signed e
   assert.match((await act("portal")).data.url, /^https:\/\/billing\.stripe\.com\//);
   await notify({ ...subscription, status: "past_due", latest_invoice: { ...subscription.latest_invoice, status: "open" } }, "evt_failed");
   assert.equal((await act("refresh")).data.billing.subscription.status, "past_due");
+  for (const action of ["pass-checkout", "pass-cancel"]) {
+    assert.equal((await act(action, {}, alice.cookie, { "x-csrf-token": "0".repeat(64) })).status, 403);
+    assert.equal((await act(action, { userId: bob.data.user.id })).status, 409);
+  }
+  assert.equal((await act("pass-checkout", { plan: "month", consent: true, requestId: "request-pass-1", amount: 1 })).status, 400);
+  const wallet = await act("pass-checkout", { plan: "month", consent: true, requestId: "request-pass-1" }); assert.equal(wallet.status, 200);
+  const walletState = JSON.parse(await fs.readFile(database, "utf8")).billing[userId], order = walletState.passOrders[0];
+  assert.equal((await act("refresh")).data.billing.passes.status, "none");
+  assert.equal((await act("pass-cancel")).status, 200);
+  const semester = await act("pass-checkout", { plan: "semester", consent: true, requestId: "request-pass-2" }); assert.equal(semester.status, 200);
+  const semesterOrder = JSON.parse(await fs.readFile(database, "utf8")).billing[userId].passOrders.at(-1);
+  const walletEvent = { id: semesterOrder.sessionId, object: "checkout.session", mode: "payment", customer: stored.customerId, status: "complete", payment_status: "paid" };
+  assert.equal((await notify(walletEvent, "evt_wallet_paid", "checkout.session.completed")).status, 200);
+  const passView = (await act("refresh")).data.billing.passes; assert.equal(passView.status, "active"); assert.equal(passView.latest.plan, "semester");
+  assert.equal((await request("/api/billing", "GET", undefined, bob.cookie)).data.billing.passes.status, "none");
+  assert.deepEqual((await request("/api/me", "GET", undefined, alice.cookie)).data.user, before);
+  assert.ok(order.sessionId);
   await stop(); await start("test");
   view = (await request("/api/billing", "GET", undefined, alice.cookie)).data.billing;
   assert.equal(view.subscription.status, "past_due"); assert.equal(view.subscription.paid, false);
+  assert.equal(view.passes.expiresAt, passView.expiresAt);
   assert.doesNotMatch(JSON.stringify(view), /sk_test|whsec|customerId|checkoutSessionId|lease|events/);
 });

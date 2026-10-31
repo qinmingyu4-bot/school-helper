@@ -6,6 +6,100 @@
   "use strict";
   return Object.freeze(Object.fromEntries(`
 界面语言|Interface language
+微信／支付宝会员卡|WeChat Pay / Alipay passes
+一次性购买，到期手动续费，不会自动扣款。续费从剩余有效期结束后接续。|Pay once and renew manually. No automatic charges. Renewals extend your remaining validity.
+尚未购买测试会员卡|No test pass purchased
+测试会员卡有效|Test pass active
+测试会员卡已到期|Test pass expired
+会员卡到期时间|Pass expires
+最近订单|Latest order
+正在建立测试订单|Creating test order
+测试订单待付款|Test order awaiting payment
+测试付款确认中|Confirming test payment
+测试会员卡付款失败，可重新购买|Test pass payment failed. You can try a new purchase.
+测试订单已关闭或过期|Test order closed or expired
+测试会员卡已付款|Test pass paid
+测试会员卡已退款|Test pass refunded
+测试会员卡已部分退款|Test pass partially refunded
+月卡 · 30 天|Monthly pass · 30 days
+学期卡 · 120 天|Semester pass · 120 days
+微信／支付宝测试购买|Test purchase with WeChat Pay / Alipay
+继续测试付款|Continue test payment
+关闭待付款会员卡订单|Close unpaid pass order
+我确认所选会员卡的测试价格与天数，到期手动续费；此次不会真实扣款。|I confirm the selected test price and duration. I will renew manually. No real charge will be made.
+会员卡价格仅供测试，付款确认后记录测试有效期，暂不改变账号功能权限。|Prices are for testing. Verified payments record test validity without changing account access.
+银行卡按月自动续订|Card subscription with monthly renewal
+请先确认会员卡测试价格和手动续费说明。|Please confirm the pass test price and manual renewal terms first.
+微信和支付宝测试付款尚未配置，请联系管理员。|WeChat Pay and Alipay test payments are not configured. Contact the administrator.
+测试会员卡请求无效，请刷新后重试。|Invalid test pass request. Refresh and try again.
+测试会员卡付款信息无法确认，请联系管理员。|Test pass payment details could not be verified. Contact the administrator.
+请先完成或关闭待付款会员卡订单，再选择其他套餐。|Complete or close the unpaid pass order before choosing another plan.
+此会员卡订单已处理，请刷新状态后重试。|This pass order was already processed. Refresh before trying again.
+测试会员卡订单已达上限，请联系管理员。|The test pass order limit was reached. Contact the administrator.
+待付款订单需要核对，请联系管理员后重试。|The unpaid order needs review. Contact the administrator before retrying.
+当前会员卡订单无法关闭，请先刷新付款状态。|This pass order cannot be closed. Refresh its payment status first.
+订阅与账单|Subscription & billing
+测试订阅与付款管理|Test subscriptions and payments
+查看测试套餐、订阅状态与账单。目前不会真实收费。|View the test plan, subscription status and invoices. No real payments are collected.
+测试付款 · 不会真实扣款|Test payments · No real charges
+月|month
+我的测试订阅|My test subscription
+开通测试订阅|Start test subscription
+管理测试账单与付款方式|Manage test invoices and payment methods
+到期取消测试订阅|Cancel test subscription at period end
+恢复测试续订|Resume test renewal
+刷新订阅状态|Refresh subscription status
+尚未订阅|No subscription
+测试订阅有效|Test subscription active
+测试试用中|Test trial active
+测试付款失败，请更新付款方式|Test payment failed. Update your payment method.
+测试账单未付款|Test invoice unpaid
+测试订阅已结束|Test subscription ended
+测试付款尚未完成|Test payment incomplete
+测试付款已过期|Test payment expired
+测试订阅已暂停|Test subscription paused
+本期结束日期|Current period ends
+下次续订日期|Next renewal date
+测试账单已付款。|Test invoice paid.
+测试账单付款仍待确认。|Test invoice payment is awaiting confirmation.
+测试模式：不会产生真实扣款，现有账号权益保持不变。|Test mode: no real charges. Existing account access stays unchanged.
+月费为测试价格；测试订阅与邀请码、现有 Plus 分类分开保存，暂不改变功能权限。|This is a test price. Test subscriptions are stored separately from invitation and existing Plus status, with no changes to feature access.
+我确认以上测试价格，按月自动续订，可在下次续订前取消；此次不会真实扣款。|I confirm the test price and monthly automatic renewal. I can cancel before the next renewal. No real charge will be made.
+请先确认测试订阅的价格和按月续订说明。|Please confirm the test price and monthly renewal terms first.
+确认在本期结束时取消测试订阅？此次不会扣款，也不会产生退款。|Cancel the test subscription at the end of this period? No real charge or refund will be made.
+订阅付款尚未开放，目前不会收费。|Subscription payments are not open. No charges will be made.
+测试订阅尚未配置，请联系管理员。|Test subscriptions are not configured. Contact the administrator.
+正在读取订阅状态…|Loading subscription status…
+正在处理测试订阅…|Processing test subscription…
+已取消测试续订，当前周期结束前仍可查看订阅。|Test renewal canceled. The subscription remains available until this period ends.
+已恢复测试续订。|Test renewal resumed.
+订阅状态已更新。|Subscription status updated.
+付款页面地址无效，请重试。|Invalid payment page address. Please try again.
+请重新打开订阅设置后再试。|Please reopen Subscription settings and try again.
+请在当前网站操作订阅。|Please manage your subscription on this website.
+订阅操作正在处理中，请稍后重试。|A subscription action is in progress. Please try again shortly.
+订阅信息正在更新，请稍后重试。|Subscription details are being updated. Please try again shortly.
+订阅操作已过期，请刷新状态后重试。|This subscription action expired. Refresh the status and try again.
+订阅账号信息冲突，请刷新后重试。|Subscription account details conflict. Refresh and try again.
+测试订阅服务暂时不可用，请稍后重试。|The test subscription service is temporarily unavailable. Please try again later.
+测试付款页面暂时无法打开，请重试。|The test payment page could not be opened. Please try again.
+测试套餐配置不一致，请联系管理员。|The test plan configuration does not match. Contact the administrator.
+测试订阅状态暂时无法确认，请重试。|Test subscription status could not be confirmed. Please try again.
+测试订阅信息与套餐不一致，请联系管理员。|The test subscription does not match the plan. Contact the administrator.
+测试账单信息无法确认，请重试。|Test invoice details could not be confirmed. Please try again.
+检测到重复测试订阅，请联系管理员核对。|Duplicate test subscriptions were detected. Contact the administrator.
+测试订阅归属无法确认，请联系管理员核对。|Test subscription ownership could not be confirmed. Contact the administrator.
+测试套餐已更新，请联系管理员关闭旧的结账会话后重试。|The test plan changed. Ask the administrator to close the old Checkout session before retrying.
+测试订阅账号暂时无法建立，请重试。|The test billing account could not be created. Please try again.
+测试订阅请求无效，请刷新后重试。|Invalid test subscription request. Refresh and try again.
+已有测试订阅，请查看或管理当前订阅。|A test subscription already exists. View or manage the current subscription.
+测试付款状态无法确认，请重试。|Test payment status could not be confirmed. Please try again.
+正在确认测试付款，请刷新订阅状态。|Confirming test payment. Please refresh subscription status.
+尚未建立测试订阅，请先开通测试订阅。|No test billing account exists. Start a test subscription first.
+测试账单管理尚未配置，请联系管理员。|Test billing management is not configured. Contact the administrator.
+当前测试订阅无法调整续订，请先刷新状态。|Renewal cannot be changed for this test subscription. Refresh the status first.
+订阅操作格式无效。|Invalid subscription action format.
+订阅操作不存在。|Subscription action not found.
 首次使用跟随浏览器语言，选择后保存在当前浏览器。|Your browser language is used initially. Your choice is saved in this browser.
 登录状态已变更，请重新登录。|Your session has changed. Please sign in again.
 登录账号已变更，请重新打开设置。|Your account has changed. Please reopen Settings.

@@ -10,6 +10,19 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.2.8 - 2026-10-31
+
+Purpose:
+- Publish owner-approved payment preparation from `32f5625` and `b62ce7e`: Settings billing, monthly card test subscriptions and one-time WeChat Pay/Alipay 30-day/120-day test passes with manual renewal.
+- Keep disabled/test-only billing, reject live objects/keys/events, and preserve current accounts, invitations, manual Plus status, feature access and private server configuration. AI routing sources match the `c5e27ea` baseline.
+
+Validation:
+- All 467 regression tests, 259-file source/assets/package checks, deployment script syntax and the high-severity production dependency audit gate pass. Nine moderate advisories remain in existing dependencies. Isolated Chrome verifies the final release's disabled/test-only billing and simulated hosted-payment flows.
+- Use the existing verified private-backup and unchanged configuration/data gates. Verify the exact deployed revision, 1.2.8 assets, billing resources and authenticated API boundaries without creating production test accounts or payments.
+
+Rollback target:
+- `c5e27ea` (1.2.7). Restore application code only; retain current user data and private backups.
+
 ### 1.2.7 - 2026-10-30
 
 Purpose:

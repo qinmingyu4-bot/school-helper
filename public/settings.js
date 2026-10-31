@@ -10,6 +10,7 @@
   const sections = Object.freeze([
     { id: "account", name: "账号与资料", hint: "个人信息与登录", icon: "◎", group: "你的账号" },
     { id: "security", name: "账号安全", hint: "设置或修改网站密码", icon: "◇", group: "你的账号" },
+    { id: "billing", name: "订阅与账单", hint: "测试订阅与付款管理", icon: "▣", group: "你的账号" },
     { id: "mailbox", name: "邮箱授权", hint: "绑定 Gmail 与 Outlook", icon: "✉", group: "你的账号" },
     { id: "learning", name: "学习与 AI", hint: "回答语言与学习方式", icon: "✦", group: "偏好设置" },
     { id: "appearance", name: "个性化", hint: "Logo、界面色调与显示", icon: "◐", group: "偏好设置" },
@@ -26,7 +27,7 @@
   }
 
   function createView({ document: doc = document, themes, logos, version, getUser, getContext, getAppearance, flushAppearance,
-    learning, saveProfile, loadMembership, redeemMembershipInvite, loadSecurity, savePassword, requestPasswordReset, loadMailboxes, changeMailbox, navigate, logout }) {
+    learning, saveProfile, loadMembership, redeemMembershipInvite, loadSecurity, savePassword, requestPasswordReset, loadMailboxes, changeMailbox, billingRequest, navigate, logout }) {
     const dialog = doc.createElement("dialog");
     dialog.className = "settings-dialog";
     dialog.setAttribute("aria-labelledby", "settings-title");
@@ -47,6 +48,7 @@
           </div>
           <div class="settings-block"><h4>登录与资料</h4><div class="settings-row"><div><strong>登录邮箱</strong><small class="settings-login-email"></small></div><span class="settings-static-value">当前账号</span></div><div class="settings-row"><div><strong>头像与封面</strong><small>在个人资料页上传或替换图片。</small></div><button type="button" data-settings-route="profile">管理图片 ↗</button></div><div class="settings-row"><div><strong>网站密码</strong><small>在「账号安全」中设置或修改密码。</small></div><button type="button" data-settings-open="security">管理密码 ›</button></div></div>
         </section>
+        <section id="settings-panel-billing" class="settings-panel" aria-labelledby="settings-billing-heading" hidden>${heading("billing", ui.text("查看测试套餐、订阅状态与账单。目前不会真实收费。"))}<div class="settings-billing"></div></section>
         <section id="settings-panel-security" class="settings-panel" aria-labelledby="settings-security-heading" hidden>${heading("security", ui.text("管理网站密码；Google 与邮箱密码登录使用同一个账号。"))}
           <div class="settings-block"><h4>登录方式</h4><div class="settings-row"><div><strong>登录邮箱</strong><small class="settings-security-email"></small></div><span class="settings-static-value">同一个账号</span></div><div class="settings-row"><div><strong>Google 登录</strong><small class="settings-google-status">正在读取…</small></div></div><div class="settings-row"><div><strong>网站密码</strong><small class="settings-password-state">正在读取…</small></div></div></div>
           <div class="settings-block"><h4 class="settings-password-title">网站密码</h4><p class="settings-security-status settings-caption" role="status" aria-live="polite"></p><button type="button" class="settings-security-retry" hidden>重新读取</button><a class="settings-google-reauth" href="/api/auth/google/start" hidden>重新用 Google 验证</a>
@@ -84,6 +86,10 @@
     let membership = null, membershipGeneration = 0, invitePending = false;
     const currentUserId = String(getUser().id);
     const active = () => !disposed && String(getUser()?.id || "") === currentUserId;
+    const billingPanel = globalThis.StudyBridgeBilling?.mount({ container: dialog.querySelector(".settings-billing"), request: billingRequest, getUser });
+    dialog.addEventListener("close", () => billingPanel?.suspend());
+    dialog.addEventListener("cancel", () => billingPanel?.suspend());
+    dialog.querySelector(".settings-close").addEventListener("click", () => billingPanel?.suspend());
     let mailboxData = null, mailboxGeneration = 0, mailboxPending = false;
     function renderMailboxes() {
       if (!active()) return;
@@ -256,6 +262,7 @@
       finally { if (active()) button.disabled = false; }
     });
     dialog.querySelectorAll("[data-settings-section]").forEach((button) => button.addEventListener("click", () => {
+      billingPanel?.suspend();
       clearPasswords(); setStatus(".settings-password-save-status", "");
       dialog.querySelectorAll("[data-settings-section]").forEach((item) => { if (item === button) item.setAttribute("aria-current", "page"); else item.removeAttribute("aria-current"); });
       dialog.querySelectorAll(".settings-panel").forEach((panel) => { panel.hidden = panel.id !== button.getAttribute("aria-controls"); });
@@ -264,9 +271,10 @@
       if (button.dataset.settingsSection === "security" && !passwordPending) void readSecurity();
       if (button.dataset.settingsSection === "account" && !invitePending) void readMembership();
       if (button.dataset.settingsSection === "mailbox" && !mailboxPending) void readMailboxes();
+      if (button.dataset.settingsSection === "billing") void billingPanel?.activate();
     }));
     dialog.querySelectorAll("[data-settings-open]").forEach((button) => button.addEventListener("click", () => dialog.querySelector(`[data-settings-section="${button.dataset.settingsOpen}"]`).click()));
-    dialog.querySelector(".settings-back").addEventListener("click", () => { clearPasswords(); delete dialog.dataset.detail; dialog.querySelector('[aria-current="page"]').focus(); });
+    dialog.querySelector(".settings-back").addEventListener("click", () => { billingPanel?.suspend(); clearPasswords(); delete dialog.dataset.detail; dialog.querySelector('[aria-current="page"]').focus(); });
     dialog.querySelector(".settings-mailbox-retry").addEventListener("click", () => { if (!mailboxPending) void readMailboxes(); });
     dialog.querySelector(".settings-mailbox-list").addEventListener("click", async (event) => {
       const button = event.target.closest("[data-mailbox-connect], [data-mailbox-unlink]");
@@ -296,7 +304,7 @@
       setTimeout(() => doc.defaultView.URL.revokeObjectURL(url), 1000);
       setStatus(".settings-export-status", ui.text("已导出当前选择的偏好副本。"));
     });
-    dialog.refreshSettings = () => { refreshUser(); refreshLearning(); if (dialog.querySelector('[data-settings-section="account"]').hasAttribute("aria-current") && !invitePending) void readMembership(); if (dialog.querySelector('[data-settings-section="security"]').hasAttribute("aria-current") && !passwordPending) void readSecurity(); };
+    dialog.refreshSettings = () => { refreshUser(); refreshLearning(); if (dialog.querySelector('[data-settings-section="account"]').hasAttribute("aria-current") && !invitePending) void readMembership(); if (dialog.querySelector('[data-settings-section="security"]').hasAttribute("aria-current") && !passwordPending) void readSecurity(); if (dialog.querySelector('[data-settings-section="billing"]').hasAttribute("aria-current")) void billingPanel?.activate(); };
     dialog.refreshMembership = (tier) => {
       if (!active()) return;
       if (membership) membership = { ...membership, tier };
@@ -304,7 +312,7 @@
       if (!invitePending) setStatus(".settings-membership-status", tier === "plus" ? ui.text("你已是 Plus 用户，无需重复兑换邀请码。") : ui.text("可以补填有效邀请码，升级为 Plus 用户。"));
     };
     dialog.refreshLearning = refreshLearning;
-    dialog.disposeSettings = () => { unbindLanguage(); disposed = true; ++securityGeneration; ++membershipGeneration; inviteForm.reset(); clearPasswords(); clearTimeout(learningTimer); };
+    dialog.disposeSettings = () => { billingPanel?.dispose(); unbindLanguage(); disposed = true; ++securityGeneration; ++membershipGeneration; inviteForm.reset(); clearPasswords(); clearTimeout(learningTimer); };
     refreshUser(); refreshLearning();
     return dialog;
   }

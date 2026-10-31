@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.2.7";
+  const VERSION = "1.2.8";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -87,6 +87,7 @@
         return operation;
       },
       loadSecurity: async () => (await api("/api/me/security")).security,
+      billingRequest: (path, options) => api(path, options),
       loadMailboxes: () => api("/api/mailbox"),
       changeMailbox: async (provider, action, values) => {
         const { csrfToken, ...body } = values;
@@ -3297,11 +3298,17 @@
       state.tool = ["docs", "sheets", "slides", "images", "cheatsheet", "email"].includes(savedTool) ? savedTool : "docs";
       state.mode = isAdmin() && localStorage.getItem("studybridge.mode") === "admin" ? "admin" : "student";
       const urlPage = new URL(location.href).searchParams.get("page");
+      const billingResult = new URL(location.href).searchParams.get("billing");
       const mailboxResult = new URL(location.href).searchParams.get("mailbox");
       if (mailboxResult) mailboxView.setBanner(({ connected: ui.text("邮箱已绑定，正在整理学习通知。"), denied: ui.text("此次邮箱授权未完成，你仍可以粘贴邮件生成回复。"), failed: ui.text("邮箱绑定未成功，请在设置中重试。") })[mailboxResult] || ui.text("请在设置中查看邮箱连接状态。"), { showInbox: mailboxResult === "connected" });
       const savedPage = localStorage.getItem("studybridge.page");
       const page = urlPage || savedPage || "study";
       await loadPage(page);
+      if (["return", "cancelled"].includes(billingResult)) {
+        appearanceController.open();
+        document.querySelector('[data-settings-section="billing"]')?.click();
+        const clean = new URL(location.href); clean.searchParams.delete("billing"); history.replaceState(null, "", clean.pathname + clean.search + clean.hash);
+      }
     } catch (error) {
       root.innerHTML = ui.html`<main class="auth-shell"><section class="auth-card"><h1>StudyBridge</h1><p class="notice">${esc(error.message)}</p><button onclick="location.reload()">刷新</button></section></main>`;
     }

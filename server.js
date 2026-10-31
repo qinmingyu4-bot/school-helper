@@ -43,7 +43,7 @@ const { pptxSourceParts } = require("./lib/study-office-locations");
 const { createStudyIndex } = require("./lib/study-index");
 const { createStudyJobs } = require("./lib/study-jobs");
 const { buildExerciseCoverage, coverageInstruction } = require("./lib/study-coverage");
-const { selectAiModel } = require("./lib/ai-routing");
+const { selectAiModel, selectStudyBatchModel } = require("./lib/ai-routing");
 const scheduleImport = require("./public/schedule-import");
 const scheduleBatch = require("./lib/schedule-batch");
 const courseConversations = require("./public/course-conversations");
@@ -165,7 +165,9 @@ function studyProvider(model) {
   };
 }
 const studyJobs = createStudyJobs({ db, index: studyIndex, loadSources: studySources, loadVisual: studyVisual,
-  plan: studyProvider(simpleAiModel), answer: studyProvider(complexAiModel), saveQuestion: saveChatQuestion,
+  plan: studyProvider(simpleAiModel),
+  answer: (messages, visuals, signal, context) => studyProvider(selectStudyBatchModel(context, { simpleModel: simpleAiModel, complexModel: complexAiModel }))(messages, visuals, signal),
+  saveQuestion: saveChatQuestion,
   learningInstruction: (preferences) => learningStyle.buildInstruction(preferences),
   modeInstruction: (mode) => studyModes.buildInstruction(mode),
   finalize: (job, content, interrupted) => db.saveStudyMessage({ id: job.assistantId, userId: job.userId, courseId: job.courseId, conversationId: job.conversationId,

@@ -23,7 +23,7 @@ globalThis.fetch = async (url, options) => {
     const answers = input.questions.map((question) => ({ id: question.id, parts: question.parts.map((id) => {
       const evidence = input.evidence[question.id];
       if (evidence.some((source) => /FOREIGN_(?:COURSE|CHAT)/.test(source.text))) throw new Error("Cross-scope evidence leaked.");
-      return { id, status: "done", basis: evidence.length ? "derived" : "general", sources: evidence.length ? [evidence[0].ref] : [], text: `Method and working for ${question.id}(${id}). Final answer: opportunity cost. MATH_TASK_FIXTURE` };
+      return { id, status: "done", basis: evidence.length ? "derived" : "general", sources: evidence.length ? [evidence[0].ref] : [], text: `Method and working for ${question.id}(${id}). Final answer: opportunity cost. MATH_TASK_FIXTURE${process.env.TEST_STUDY_REPORT_MODEL === "true" ? ` MODEL=${body.model}` : ""}` };
     }) }));
     return Response.json({ choices: [{ message: { content: JSON.stringify({ answers }) } }] });
   }

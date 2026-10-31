@@ -14,7 +14,8 @@ test("HTTP problem sets persist through restart, restore progress and isolate ac
   async function start() {
     child = spawn(process.execPath, ["--require", "./tests/fixtures/echo-ai.js", "server.js"], { cwd: root, env: {
       ...process.env, NODE_ENV: "test", PORT: "0", STUDYBRIDGE_DB: "local", LOCAL_DB_FILE: database, LOCAL_DB_BACKUP_DISABLED: "true",
-      SESSION_SECRET: "task-http-test-only", REQUIRE_INVITE_CODE: "false", REQUIRE_EMAIL_VERIFICATION: "false", OPENAI_API_KEY: "fixture", OPENAI_WEB_SEARCH: "false", SMTP_HOST: "", SMTP_USER: "", SMTP_PASS: ""
+      SESSION_SECRET: "task-http-test-only", REQUIRE_INVITE_CODE: "false", REQUIRE_EMAIL_VERIFICATION: "false", OPENAI_API_KEY: "fixture", OPENAI_WEB_SEARCH: "false", SMTP_HOST: "", SMTP_USER: "", SMTP_PASS: "",
+      OPENAI_SIMPLE_MODEL: "routing-test-luna", OPENAI_COMPLEX_MODEL: "routing-test-sol", TEST_STUDY_REPORT_MODEL: "true"
     }, stdio: ["ignore", "pipe", "pipe"] });
     base = await new Promise((resolve, reject) => {
       let output = ""; const timer = setTimeout(() => reject(Error("Startup timed out")), 10000);
@@ -35,6 +36,11 @@ test("HTTP problem sets persist through restart, restore progress and isolate ac
   await request(otherRoute + "/documents", "POST", { title: "Other.txt", text: "opportunity cost FOREIGN_COURSE" }, alice.cookie);
   const conversation = await request(route + "/conversations", "POST", { title: "Separate chat" }, alice.cookie);
   await request(route + "/chat", "POST", { conversationId: conversation.data.conversation.id, message: "Save these notes", attachments: [{ name: "Other-chat.txt", text: "opportunity cost FOREIGN_CHAT", kind: "text" }] }, alice.cookie);
+  for (const [message, model] of [["True or false: opportunity cost is the best alternative forgone.", "routing-test-luna"], ["Review: derive the equilibrium equation.", "routing-test-sol"]]) {
+    const reply = await request(route + "/chat", "POST", { conversationId: conversation.data.conversation.id, mode: "review", message }, alice.cookie);
+    assert.equal(reply.status, 201);
+    assert.equal(reply.data.model, model);
+  }
   const body = { background: true, stream: true, requestId: "http-request-0001", mode: "guided", message: "请解答整套题，保留过程和出处", attachments: [{ name: "20-questions.txt", kind: "text", text: Array.from({ length: 20 }, (_, n) => `${n + 1}. Explain opportunity cost.\n(a) State the idea.\n(b) Calculate the result.`).join("\n") }] };
   const accepted = await request(route + "/chat", "POST", body, alice.cookie);
   assert.equal(accepted.status, 202, JSON.stringify(accepted.data));
@@ -44,9 +50,9 @@ test("HTTP problem sets persist through restart, restore progress and isolate ac
   assert.equal((await request(otherRoute + "/study-jobs/" + accepted.data.job.id, "GET", null, alice.cookie)).status, 404);
   assert.deepEqual((await request(route + `/study-jobs?conversationId=${conversation.data.conversation.id}`, "GET", null, alice.cookie)).data.jobs, []);
   let view;
-  async function until(check) {
+  async function until(check, jobRoute = taskRoute) {
     const deadline = Date.now() + 15000;
-    do { view = (await request(taskRoute, "GET", null, alice.cookie)).data.job; if (check(view)) return; await delay(50); } while (Date.now() < deadline);
+    do { view = (await request(jobRoute, "GET", null, alice.cookie)).data.job; if (check(view)) return; await delay(50); } while (Date.now() < deadline);
     assert.fail(`Task state timed out: ${JSON.stringify(view)}`);
   }
   await until((job) => job.completed > 0 && job.completed < 20);
@@ -63,6 +69,15 @@ test("HTTP problem sets persist through restart, restore progress and isolate ac
   const messages = (await request(route + "/messages", "GET", null, alice.cookie)).data.messages;
   assert.equal(messages.length, 2); assert.match(messages[1].content, /已完成 20\/20/);
   const state = JSON.parse(await fs.readFile(database, "utf8")); assert.ok(!JSON.stringify(state.materials).includes("MATH_TASK_FIXTURE"), "Task result payloads are persisted outside the resident material manifest");
+  const mixed = await request(route + "/chat", "POST", { background: true, mode: "review", requestId: "http-mixed-0001", message: "请解答整套复习题，保留过程和出处", attachments: [{ name: "mixed.txt", kind: "text", text: Array.from({ length: 8 }, (_, n) => `${n + 1}. ${n === 3 || n === 4 ? "Derive the equilibrium opportunity cost equation." : "True or false: opportunity cost is the best alternative forgone."}`).join("\n") }] }, alice.cookie);
+  assert.equal(mixed.status, 202);
+  const mixedRoute = route + "/study-jobs/" + mixed.data.job.id;
+  await until((job) => job.status === "completed", mixedRoute);
+  assert.equal(view.completed, 8);
+  const sections = view.content.split(/### /).slice(1);
+  assert.equal(sections.length, 8);
+  for (let n = 0; n < sections.length; n++) assert.ok(sections[n].includes(`MODEL=routing-test-${n === 3 || n === 4 ? "sol" : "luna"}`), sections[n]);
+  assert.equal(sections.filter((section) => section.includes("MODEL=routing-test-luna")).length, 6);
   await request(route + "/conversations/default", "DELETE", null, alice.cookie);
   assert.equal((await request(taskRoute, "GET", null, alice.cookie)).status, 404);
 });

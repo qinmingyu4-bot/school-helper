@@ -25,6 +25,19 @@ test("dependencies are topologically grouped, complex problems split and cycles 
   assert.throws(() => groupQuestions(questions), /cycle/);
   assert.ok(groupQuestions([{ ...questions[1], text: "Prove the theorem." }, questions[2]]).length === 2);
 });
+test("simple review questions are grouped separately from complex questions without dropping dependencies", () => {
+  const questions = [
+    { id: "q1", text: "Define opportunity cost.", parts: ["answer"] },
+    { id: "q2", text: "True or false: resources are scarce.", parts: ["answer"] },
+    { id: "q3", text: "Derive the equilibrium.", parts: ["answer"] },
+    { id: "q4", text: "Multiple-choice: which option is correct?", parts: ["answer"], dependsOn: ["q3"] },
+    { id: "q5", text: "Define scarcity.", parts: ["answer"] }
+  ];
+  const groups = groupQuestions(questions);
+  assert.deepEqual(groups.map((group) => group.questionIds), [["q1", "q2"], ["q3", "q4"], ["q5"]]);
+  assert.deepEqual(groups.flatMap((group) => group.questionIds), questions.map((question) => question.id));
+  assert.deepEqual(groupQuestions(questions, "请深入分析每题").map((group) => group.questionIds), [["q1", "q2", "q3", "q4", "q5"]]);
+});
 test("planning cannot replace detected questions and invalid citation ids or missing subparts fail only the affected question", () => {
   const detected = detectSet({ sources: [source] }), questions = enrichPlan(detected, { questions: [{ id: "q1", text: "fabricated", queries: ["opportunity cost", "机会成本"], dependsOn: ["other-user-id"] }] }, [source]);
   assert.notEqual(questions[0].text, "fabricated");

@@ -2,6 +2,9 @@
 
 ## 2026-10-30
 
+- Reduce Study AI cost through question-based routing: use Luna for basic review, definitions and short readable objective questions across study modes, while retaining Sol for demanding, multipart, dependent, visual or unclassified work. Separate simple and complex background question batches, preserve task routing on continuations and re-evaluate remaining retry questions without another classification API call. Keep existing learning instructions, citations, progress/cancellation/recovery and concurrency limits. Prepared on a task branch without AWS deployment; actual savings depend on question mix and real provider usage.
+- Validate 444 automated tests, 11 final routing checks and 249-file source/assets/package checks. An isolated HTTP test verifies configured model names on real outgoing mock requests: six simple questions use Luna and two derivations use Sol in one eight-question task, while all answers remain ordered and complete. These fixtures verify routing and persistence, not real model answer quality or billed savings.
+
 - Release `1.2.7`: publish owner-approved persistent problem-set solving and private course-index/storage optimizations from `fd09cc5`. Preserve existing learning preferences, citations, classmate notifications, accounts and courses; refresh frontend/package versions. Do not add PDF parsing concurrency or upload restrictions. Use verified private-file/database backups and compatibility-aware code rollback. Previous production code: `72739ac` (`1.2.6`).
 - Release checks: all 438 automated tests, 249-file source/assets/package checks, deployment script syntax and the high-severity production dependency gate pass.
 

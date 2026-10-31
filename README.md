@@ -749,10 +749,26 @@ OPENAI_SIMPLE_MODEL=gpt-6-luna
 OPENAI_COMPLEX_MODEL=gpt-6.1-sol
 ```
 
-AI routing is deterministic: ordinary questions use Luna; complex academic modes,
-reasoning/coding tasks, long questions, and newly uploaded long attachments use
-Sol. Brief follow-ups inherit the earlier task. The amount of saved course text or
-old assistant output does not independently escalate a new ordinary question.
+AI routing is deterministic and favors Luna for ordinary questions, basic review,
+definitions, and short readable multiple-choice/true-or-false questions, including
+those asked in exam or assignment mode. Subject names alone do not escalate these
+simple questions. Review/cram mode no longer automatically requires Sol. Explicit
+proofs, derivations, coding, advanced mathematics, demanding analysis, long questions,
+new long attachments and ambiguous/unreadable question images retain Sol. A simple
+label cannot downgrade a complex or unreadable attached question. These are local
+heuristics; routing adds no AI classification request and does not guarantee a fixed
+overall Luna/Sol percentage or a particular cost reduction.
+
+Background problem sets use the same question criteria and split simple questions
+from complex questions before batching. A Luna batch requires every question to
+be short (at most 900 characters), readable, independent and single-part, with
+bounded shared givens; multipart, dependent, visual and unclassified questions
+retain Sol. Planning still uses Luna. Existing concurrency, source verification,
+learning preferences, progress/restart/cancellation and selective retry behavior
+remain in place. A retry re-evaluates its remaining questions using the same policy.
+Brief follow-ups inherit the earlier task before applying review-mode defaults.
+The amount of saved course text or old assistant output does not independently
+escalate a new ordinary question.
 Responses web search, its preview compatibility retry, and Chat Completions
 fallback all use the selected task model. Legacy `OPENAI_SOL_ROUTE_PERCENT`,
 `STUDYBRIDGE_SOL_ROUTE_PERCENT`, `OPENAI_WEB_MODEL`, and `STUDYBRIDGE_WEB_MODEL`

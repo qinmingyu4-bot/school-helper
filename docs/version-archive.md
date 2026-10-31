@@ -10,6 +10,19 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.2.7 - 2026-10-30
+
+Purpose:
+- Publish owner-approved background problem-set solving and reusable course indexes from `fd09cc5`, including per-question evidence, incremental results, selective retries and persisted progress.
+- Move large local material payloads to integrity-checked private files and extend backups/rollback compatibility. Keep existing accounts, course boundaries and learning preferences. Add no PDF parsing concurrency limit or upload restriction.
+
+Validation:
+- All 438 regression tests, 249-file source/assets/package checks, deployment script syntax and the high-severity production dependency audit gate pass before AWS deployment.
+- Verify the exact deployment commit, private backup completion, unchanged pre-install configuration/data and live 1.2.7 frontend resources. Keep production checks read-only; actual AI latency and capacity require separate measurement.
+
+Rollback target:
+- `72739ac` (1.2.6). Stop the application and rehydrate the **current** JSON database with the new `scripts/material-compat.js` before running older code; retain private files/backups and new user data. See [AWS deployment](aws-deploy.md).
+
 ### 1.2.2 - 2026-10-29
 
 Purpose:

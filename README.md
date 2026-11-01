@@ -41,6 +41,12 @@ The homepage explains course-based AI study, source references and saved problem
 progress, and makes invitation-free Google/email registration explicit. Chinese and
 English copy (including the description metadata) follow the language selector;
 brand punctuation stays fixed. Phone previews prioritize the readable study example.
+Small scroll-linked offsets give preview surfaces, document samples and the closing
+bridge mark depth while headings, body copy and actions stay stationary. Motion is
+reduced on widths up to 800 px and disabled for `prefers-reduced-motion`. The separate
+`landing-motion.js` uses bounded transforms, passive scroll events and one requested
+frame per update; offscreen and hidden-page work is skipped. The static page remains
+readable if JavaScript or optional observers are unavailable.
 Login and registration use the same neutral style through scoped `public/auth.css`,
 with the shared bridge wordmark, visible field focus, status messages and a homepage
 link. Existing authentication actions, invitation/email-code fields and Google

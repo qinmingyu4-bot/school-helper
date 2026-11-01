@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-01 — Restrained homepage parallax
+
+- Add subtle, scroll-linked depth to the study preview, its schedule note, feature demonstrations and closing bridge mark. Keep the existing monochrome palette, layout and stationary reading/action areas.
+- Reduce movement on phones/tablets, honor reduced-motion preferences (including live changes), limit transform distances and pause hidden/offscreen updates without an animation loop. Keep all content visible without JavaScript. Prepared on the task branch without AWS deployment.
+- Validate 15 focused motion/language/page-entry checks and 267-file source/assets/package checks. Browser checks verify opposing hero layers, layered document previews, clean console output and Chinese/English layouts at 320, 390, 768, 900, 1100 and 1440 px without horizontal overflow.
+
 ## 2026-11-01 — Homepage clarity and readability
 
 - Explain course-based AI learning in the first screen, clarify invitation-free Google/email registration and add source-reference, full problem-set and saved-progress highlights in Chinese and English.

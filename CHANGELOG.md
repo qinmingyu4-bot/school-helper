@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-01 — Homepage clarity and readability
+
+- Explain course-based AI learning in the first screen, clarify invitation-free Google/email registration and add source-reference, full problem-set and saved-progress highlights in Chinese and English.
+- Increase supporting text sizes, simplify the phone study preview, allow the header/actions to wrap and keep brand punctuation fixed during language switching. Translate homepage description metadata with the selected language. Prepared on a task branch without AWS deployment.
+- Validate 10 focused language/page-entry regression checks and 265-file source/assets/package checks. Browser checks cover Chinese and English at 320, 390, 768, 900, 1100 and 1440 px without horizontal overflow, plus language switching, metadata and fixed brand punctuation.
+
 ## 1.2.9 — Alipay live integration preparation (2026-11-01)
 
 - Owner authorized the closed-sales AWS deployment and live webhook destination on 2026-11-01. Deployment at `e8f2d78` succeeded; the separate Stripe destination was created. Credentials and signed-delivery/real-payment acceptance remain outstanding. Prepare an optional private GitHub Actions credential installation path; adding credentials requires separate specific owner consent and cannot open checkout.

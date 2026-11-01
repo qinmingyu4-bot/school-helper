@@ -37,6 +37,10 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, op
 The bare domain serves `public/landing.html` with its own responsive styles and
 no application scripts or account requests. Its neutral white/light-gray surfaces,
 charcoal text and thin frames are independent of saved learning-space themes.
+The homepage explains course-based AI study, source references and saved problem-set
+progress, and makes invitation-free Google/email registration explicit. Chinese and
+English copy (including the description metadata) follow the language selector;
+brand punctuation stays fixed. Phone previews prioritize the readable study example.
 Login and registration use the same neutral style through scoped `public/auth.css`,
 with the shared bridge wordmark, visible field focus, status messages and a homepage
 link. Existing authentication actions, invitation/email-code fields and Google

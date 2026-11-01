@@ -1428,6 +1428,23 @@ AI 只在你点击后参与；预览不会改动内容，应用后可撤销。|A
 至少保留一个工作表。|Keep at least one sheet.
 删除当前工作表？引用此表的公式会显示错误。|Delete this sheet? Formulas referencing it will show errors.
 StudyBridge · 连接学习的每一步|StudyBridge · Connect every step of learning
+上传课程资料，让 AI 帮你理解知识、复习备考，并核对课程来源。用 StudyBridge 连接课程学习、日程安排与创作工具，无需邀请码即可注册。|Upload course materials to understand concepts, prepare for exams and check course sources with AI. Connect study, schedules and creative tools in StudyBridge. No invitation required.
+上传课程资料，|Upload course notes.
+让 AI 帮你|Let AI help you\u0020
+学明白|understand
+结合讲义理解知识、复习备考，再把学习安排放进日程。|Understand your notes, prepare for exams and plan your study schedule.
+课程、对话与创作工具，都在一个学习空间。|Your courses, conversations and creative tools in one study space.
+支持 Google 或邮箱注册，无需邀请码。已有账号可直接登录。|Sign up with Google or email. No invitation required. Already registered? Sign in.
+学习功能亮点|Study highlights
+对照资料，核对来源|Check the course sources
+基于课程资料的回答可附来源标注，方便回到原文核对。|Answers based on course materials can include source references, so you can check the original.
+整套题，逐步完成|Work through a problem set
+支持整套题持续解答，边完成边查看进度与结果。|Work through a full problem set and see progress and answers as they become ready.
+刷新后，接着看进度|Keep track after a refresh
+解题任务保存进度，刷新后仍可查看；失败的题目可单独重试。|Problem-set progress is saved. Check it after a refresh and retry individual questions that failed.
+使用 Google 或邮箱注册，无需邀请码；已有账号可直接登录。|Sign up with Google or email, with no invitation required. Existing users can sign in directly.
+注册需要邀请码吗？|Do I need an invitation to register?
+不需要。支持 Google 或邮箱注册，Google 首次授权会创建账号。邀请码是可选项，可在注册时填写或登录后在设置中兑换为 Plus；普通用户与 Plus 目前功能相同。|No. Sign up with Google or email; your first Google sign-in creates an account. Invitations are optional: redeem one during registration or later in Settings for Plus. Standard and Plus accounts currently have the same features.
 跳转到主要内容|Skip to main content
 主导航|Main navigation
 探索功能|Explore features

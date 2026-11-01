@@ -2,13 +2,15 @@
 
 ## 1.2.9 — Alipay live integration preparation (2026-11-01)
 
-- Owner authorized the closed-sales AWS deployment and live webhook destination on 2026-11-01. Deployment at `e8f2d78` succeeded; the separate Stripe destination was created. Credentials and signed-delivery/real-payment acceptance remain outstanding. Prepare an optional private GitHub Actions credential installation path; adding credentials requires separate specific owner consent and cannot open checkout.
+- Completed the separately authorized private credential setup at production commit `7979a53`: create a dedicated limited live key (7 read / 2 write permissions), save it and the webhook signing secret in encrypted deployment configuration, and verify the AWS installer succeeds with checkout closed and draft prices unapproved. Alipay now shows Enabled in Stripe. Online status confirms live configuration is ready while purchase controls remain disabled; unsigned webhooks are rejected. No orders or real payments were created, and signed Stripe-origin delivery / real-payment acceptance remain untested. No credential values are recorded in source or chat.
+
+- Owner authorized the initial closed-sales AWS deployment and live webhook destination on 2026-11-01. Deployment at `e8f2d78` succeeded and the separate Stripe destination was created. At that stage, credentials and signed-delivery/real-payment acceptance were outstanding. The optional private GitHub Actions credential installation path required separate specific owner consent and cannot open checkout; the later credential setup is recorded above.
 
 - Add a separate Alipay-only 30-day/month and 120-day/semester payment integration, with isolated sandbox/live records and a pinned merchant account. Draft prices stay CAD 19.99 / 69.99; no owner approval of final pricing or public charging is implied.
 - Keep all new checkout access closed by default. Support a separately configured owner-only verification stage; require explicit approved pricing and a current consent version before any Checkout can be created.
 - Verify signed notifications, current provider payment/capture details, exclusive CAD price, automatic tax and successful refunds before committing expiring paid membership. Closing sales preserves purchased validity; invitations and manual Plus remain separate.
 - Add bilingual Alipay preparation/consent UI, a private server configuration installer that always retains closed sales and draft prices, and local/DynamoDB/HTTP/UI/configuration checks. No live credentials or real payments are included.
-- External status on 2026-11-01: Alipay remains pending approval in Stripe. Official sandbox, signed live delivery and owner-completed real payment verification remain outstanding; existing AI usage/feature limits have not been changed.
+- Initial external status on 2026-11-01 was Pending approval; the later Enabled/configuration verification is recorded above. Official sandbox, signed live delivery and owner-completed real payment verification remain outstanding; existing AI usage/feature limits have not been changed.
 
 
 ## 2026-10-31

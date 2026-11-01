@@ -6,9 +6,23 @@ The owner requested starting Alipay first and explicitly retained CAD 19.99 / 69
 as **draft** prices, with real charging closed. This new service is separate from
 legacy test card subscriptions and combined wallet tests. It offers 30-day and
 120-day one-time passes and only `alipay`; it does not depend on WeChat Pay eligibility.
-The Stripe Dashboard still showed Alipay **Pending approval** on 2026-11-01.
-No live credentials, official provider transactions or signed live delivery were
-configured/verified by the implementation itself. Do not call it launch-ready.
+The Stripe Dashboard initially showed Alipay **Pending approval**; the latest
+check on 2026-11-01 shows **Enabled**. After explicit owner authorization and
+owner-completed Stripe identity verification, a dedicated restricted live key
+(seven read permissions and two write permissions) and the webhook signing secret
+were saved in an encrypted GitHub Actions secret and installed in AWS private
+configuration. The authorized deployment at `7979a53` completed successfully.
+The installer verified merchant, draft Prices, webhook settings and Tax setup;
+the authenticated production view reports `configured=true`, `mode=live`,
+`canCheckout=false` and `pricesApproved=false`. All purchase controls remain disabled.
+Public checks confirm version 1.2.9, healthy service, authenticated billing routes
+and rejection of unsigned webhook requests before persistence. No order or real
+payment was created. Stripe-origin signed delivery, official sandbox/payment flows
+and real-payment acceptance still require verification. Do not call it launch-ready.
+
+This is Stripe-mediated Alipay acceptance. Customers pay using **their** Alipay;
+settlement goes to the merchant's Stripe balance and linked payout bank account.
+It does not bind the owner's personal Alipay wallet or settle to that wallet.
 
 Private settings (all secrets stay on the server):
 

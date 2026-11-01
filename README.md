@@ -742,6 +742,15 @@ be reused, even if their old usage limit was higher or they are re-enabled.
 
 ### Subscription and payment testing
 
+Alipay also has a separate live-account preparation path. On 2026-11-01, the owner
+authorized its restricted credentials and signing secret to be installed through
+encrypted GitHub deployment secrets into AWS private configuration. Alipay shows
+Enabled in Stripe, but prices remain drafts and **all live checkout is closed**.
+No real payment has been tested. Customer Alipay payments would settle through
+Stripe to the linked payout bank, not the owner's personal Alipay wallet.
+See [Alipay configuration and remaining acceptance](docs/billing.md).
+The card and combined-wallet foundation below remains test-only.
+
 Settings → **订阅与账单 / Subscription & billing** prepares a configurable CAD
 monthly plan, hosted Stripe Checkout/invoice portal, period-end cancellation,
 resumption and signed status updates. `BILLING_MODE=disabled` is the default;

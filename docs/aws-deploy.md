@@ -448,3 +448,12 @@ checkout and unapproved draft prices; it never creates a transaction. This
 preparation step reasserts those closed settings on every deployment while the
 secret exists. Replace/remove this step as part of a later separately authorized
 public charging launch. A GitHub deployment secret is not a committed `.env` file.
+
+On 2026-11-01, the owner explicitly authorized restricted-key creation and storage
+in the encrypted GitHub deployment secret and AWS private configuration. Deployment
+[`7979a53`](https://github.com/qinmingyu4-bot/school-helper/actions/runs/41328483334)
+verified and installed the Alipay configuration successfully. The installer
+reported closed sales, unapproved draft prices and no payment creation. The
+authenticated production billing view independently confirmed the same closed
+state; unsigned webhook notifications are rejected. Alipay now shows Enabled in
+Stripe. Signed Stripe-origin delivery and actual payment acceptance remain untested.

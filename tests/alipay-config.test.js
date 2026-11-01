@@ -14,6 +14,7 @@ test("private Alipay installer pins the intended account and webhook, preserves 
   const values = await prepare(payload, fixture(), { findUserByEmail: async () => ({ id: "owner-id" }) });
   assert.equal(values.ALIPAY_CHECKOUT_ACCESS, "closed"); assert.equal(values.ALIPAY_PRICES_APPROVED, "false"); assert.equal(values.ALIPAY_TERMS_VERSION, "");
   assert.equal(values.ALIPAY_OWNER_USER_ID, "owner-id"); assert.equal(values.STRIPE_ALIPAY_ACCOUNT_ID, ACCOUNT);
+  assert.equal((await prepare({ ...payload, secretKey: "rk_live_fixture" }, fixture(), { findUserByEmail: async () => ({ id: "owner-id" }) })).STRIPE_ALIPAY_SECRET_KEY, "rk_live_fixture");
   const original = "# keep\nSESSION_SECRET=existing\nALIPAY_CHECKOUT_ACCESS=public\nUNRELATED='kept'\n";
   const rendered = renderEnv(original, values), parsed = parseEnv(rendered);
   assert.equal(parsed.SESSION_SECRET, "existing"); assert.equal(parsed.UNRELATED, "kept"); assert.equal(parsed.ALIPAY_CHECKOUT_ACCESS, "closed");

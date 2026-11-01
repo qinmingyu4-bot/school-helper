@@ -17,7 +17,7 @@ function renderEnv(source, values) {
   return source.split(/\r?\n/).filter((line) => !Object.hasOwn(values, line.split("=", 1)[0])).join("\n").trimEnd() + "\n" + Object.entries(values).map(([key, value]) => `${key}=${value}`).join("\n") + "\n";
 }
 async function prepare(payload, stripe, db) {
-  if (!/^sk_live_[A-Za-z0-9_]+$/.test(payload.secretKey || "") || !/^whsec_[A-Za-z0-9_]+$/.test(payload.webhookSecret || "") || !/^we_[A-Za-z0-9_]+$/.test(payload.webhookId || "") ||
+  if (!/^(?:sk|rk)_live_[A-Za-z0-9_]+$/.test(payload.secretKey || "") || !/^whsec_[A-Za-z0-9_]+$/.test(payload.webhookSecret || "") || !/^we_[A-Za-z0-9_]+$/.test(payload.webhookId || "") ||
       !/^acct_[A-Za-z0-9]+$/.test(payload.accountId || "") || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.ownerEmail || "") ||
       ![payload.monthPriceId, payload.semesterPriceId].every((id) => /^price_[A-Za-z0-9_]+$/.test(id || "")) || payload.monthPriceId === payload.semesterPriceId) throw fail("Invalid private Alipay configuration.");
   const account = await stripe.accounts.retrieve();

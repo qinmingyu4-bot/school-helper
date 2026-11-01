@@ -21,7 +21,7 @@ Private settings (all secrets stay on the server):
 | `ALIPAY_OWNER_USER_ID` | Trusted existing account ID, never taken from the browser's claimed role |
 | `ALIPAY_MONTH_AMOUNT_CENTS`, `ALIPAY_SEMESTER_AMOUNT_CENTS` | Draft defaults 1999 / 6999; not approved launch prices |
 | `STRIPE_ALIPAY_ACCOUNT_ID` | Expected CA merchant account ID, checked against the API key's account |
-| `STRIPE_ALIPAY_SECRET_KEY` | Matching private `sk_test_…` / `sk_live_…` key |
+| `STRIPE_ALIPAY_SECRET_KEY` | Matching private `rk_test_…` / `rk_live_…` restricted key (preferred), or a standard secret key in that environment |
 | `STRIPE_ALIPAY_WEBHOOK_SECRET` | Signing secret for this separate endpoint |
 | `STRIPE_ALIPAY_MONTH_PRICE_ID`, `STRIPE_ALIPAY_SEMESTER_PRICE_ID` | Distinct active one-time CAD Prices with exclusive tax behavior and active products using AIaaS personal-use tax code `txcd_10105001` |
 | `BILLING_PUBLIC_BASE_URL` | Trusted HTTPS return origin, shared with the legacy service |
@@ -54,6 +54,11 @@ It always writes `ALIPAY_CHECKOUT_ACCESS=closed`, `ALIPAY_PRICES_APPROVED=false`
 an empty terms version. It cannot open sales. Pass secrets through an encrypted
 server session, never command arguments, chat, source files, public logs or GitHub.
 The installer does not create API keys, webhooks, Prices, orders or payments.
+For restricted keys, grant only Customer and Checkout Session write access and
+the reads required for Account, Product/Price, PaymentIntent/Charge/Refund,
+Tax settings and webhook endpoint verification. Do not grant payout, transfer,
+refund creation or account-management write access. Verify the exact available
+Dashboard scopes in the intended account before creating the key.
 It cannot verify that the supplied signing secret actually matches without receiving
 a signed event. That event and a real transaction remain separate acceptance steps.
 

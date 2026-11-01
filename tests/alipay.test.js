@@ -32,6 +32,8 @@ async function fixture(t, storage = "local", changes = {}) {
 }
 test("Alipay defaults closed; draft prices, owner isolation and explicit live/test credentials fail before provider or persistence", async (t) => {
   assert.equal(alipayConfig().configured, false);
+  assert.equal(alipayConfig({ ...env, STRIPE_ALIPAY_SECRET_KEY: "rk_live_fixture" }).configured, true);
+  assert.equal(alipayConfig({ ...env, STRIPE_ALIPAY_SECRET_KEY: "rk_test_wrong" }).configured, false);
   for (const change of [{ ALIPAY_MODE: "disabled" }, { STRIPE_ALIPAY_SECRET_KEY: "sk_test_wrong" }, { STRIPE_ALIPAY_WEBHOOK_SECRET: "" }, { ALIPAY_CHECKOUT_ACCESS: "closed" },
     { ALIPAY_PRICES_APPROVED: "false" }, { ALIPAY_TERMS_VERSION: "" }, { STRIPE_ALIPAY_SEMESTER_PRICE_ID: env.STRIPE_ALIPAY_MONTH_PRICE_ID }, { ALIPAY_OWNER_USER_ID: "bob" }]) {
     const f = await fixture(t, "local", change);

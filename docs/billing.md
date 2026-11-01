@@ -52,8 +52,15 @@ owner account; preserves unrelated private configuration; makes a private backup
 restarts and verifies the app; and rolls back configuration on failed verification.
 It always writes `ALIPAY_CHECKOUT_ACCESS=closed`, `ALIPAY_PRICES_APPROVED=false` and
 an empty terms version. It cannot open sales. Pass secrets through an encrypted
-server session, never command arguments, chat, source files, public logs or GitHub.
+server session, never command arguments, chat, source files, public logs or GitHub
+repository files. An explicitly approved encrypted deployment secret is separate.
 The installer does not create API keys, webhooks, Prices, orders or payments.
+The optional `ALIPAY_CONFIG_JSON` GitHub Actions secret can supply this payload
+through the existing encrypted deployment connection, with explicit owner consent
+to storing the Stripe credentials in GitHub's encrypted repository deployment
+secrets as well as the AWS server's private configuration. An absent secret skips
+installation. This preparation step deliberately re-closes sales on every deploy;
+replace/remove it before a separately authorized public charging launch.
 For restricted keys, grant only Customer and Checkout Session write access and
 the reads required for Account, Product/Price, PaymentIntent/Charge/Refund,
 Tax settings and webhook endpoint verification. Do not grant payout, transfer,

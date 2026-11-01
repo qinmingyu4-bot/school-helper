@@ -2,6 +2,8 @@
 
 ## 1.2.9 — Alipay live integration preparation (2026-11-01)
 
+- Owner authorized the closed-sales AWS deployment and live webhook destination on 2026-11-01. Deployment at `e8f2d78` succeeded; the separate Stripe destination was created. Credentials and signed-delivery/real-payment acceptance remain outstanding. Prepare an optional private GitHub Actions credential installation path; adding credentials requires separate specific owner consent and cannot open checkout.
+
 - Add a separate Alipay-only 30-day/month and 120-day/semester payment integration, with isolated sandbox/live records and a pinned merchant account. Draft prices stay CAD 19.99 / 69.99; no owner approval of final pricing or public charging is implied.
 - Keep all new checkout access closed by default. Support a separately configured owner-only verification stage; require explicit approved pricing and a current consent version before any Checkout can be created.
 - Verify signed notifications, current provider payment/capture details, exclusive CAD price, automatic tax and successful refunds before committing expiring paid membership. Closing sales preserves purchased validity; invitations and manual Plus remain separate.

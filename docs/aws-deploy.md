@@ -437,3 +437,14 @@ successful payment. The owner retained draft prices on 2026-11-01. Keep
 `ALIPAY_CHECKOUT_ACCESS=closed` and `ALIPAY_PRICES_APPROVED=false`; the optional
 `aws/configure-alipay.js` installer enforces both. Never put its private stdin
 payload in source, command arguments or workflow logs.
+
+The prepared workflow accepts an optional repository **Actions secret** named
+`ALIPAY_CONFIG_JSON`. It sends the private JSON payload to the server over the
+existing encrypted SSH connection through stdin, then invokes the installer for
+the exact deployed SHA. With no secret present, the step does nothing. Saving
+Stripe credentials to this additional destination requires the owner's specific
+approval. The installer backs up private configuration and always writes closed
+checkout and unapproved draft prices; it never creates a transaction. This
+preparation step reasserts those closed settings on every deployment while the
+secret exists. Replace/remove this step as part of a later separately authorized
+public charging launch. A GitHub deployment secret is not a committed `.env` file.

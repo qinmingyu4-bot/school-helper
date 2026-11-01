@@ -1,5 +1,86 @@
 # Subscription and payment preparation
 
+## Alipay-only preparation (1.2.9, 2026-11-01)
+
+The owner requested starting Alipay first and explicitly retained CAD 19.99 / 69.99
+as **draft** prices, with real charging closed. This new service is separate from
+legacy test card subscriptions and combined wallet tests. It offers 30-day and
+120-day one-time passes and only `alipay`; it does not depend on WeChat Pay eligibility.
+The Stripe Dashboard still showed Alipay **Pending approval** on 2026-11-01.
+No live credentials, official provider transactions or signed live delivery were
+configured/verified by the implementation itself. Do not call it launch-ready.
+
+Private settings (all secrets stay on the server):
+
+| Setting | Purpose |
+| --- | --- |
+| `ALIPAY_MODE` | `disabled` default, or explicitly `test` / `live` |
+| `ALIPAY_CHECKOUT_ACCESS` | `closed` default; `owner` permits only `ALIPAY_OWNER_USER_ID`; `public` needs later owner authorization |
+| `ALIPAY_PRICES_APPROVED` | `false` default. Both owner/public checkout fail while prices are drafts |
+| `ALIPAY_TERMS_VERSION` | Agreed price/renewal terms version; required for checkout and saved on the order |
+| `ALIPAY_OWNER_USER_ID` | Trusted existing account ID, never taken from the browser's claimed role |
+| `ALIPAY_MONTH_AMOUNT_CENTS`, `ALIPAY_SEMESTER_AMOUNT_CENTS` | Draft defaults 1999 / 6999; not approved launch prices |
+| `STRIPE_ALIPAY_ACCOUNT_ID` | Expected CA merchant account ID, checked against the API key's account |
+| `STRIPE_ALIPAY_SECRET_KEY` | Matching private `sk_test_…` / `sk_live_…` key |
+| `STRIPE_ALIPAY_WEBHOOK_SECRET` | Signing secret for this separate endpoint |
+| `STRIPE_ALIPAY_MONTH_PRICE_ID`, `STRIPE_ALIPAY_SEMESTER_PRICE_ID` | Distinct active one-time CAD Prices with exclusive tax behavior and active products using AIaaS personal-use tax code `txcd_10105001` |
+| `BILLING_PUBLIC_BASE_URL` | Trusted HTTPS return origin, shared with the legacy service |
+
+Live/test keys, Prices, Customers, Sessions, intents, captured charges and events
+must match their configured environment. Each checkout re-checks the pinned CA
+account, active Alipay capability, payments and payouts, and active Tax settings.
+A pending capability prevents payment creation even if a gate is misconfigured.
+Checkout uses automatic tax, fresh billing-address collection and customer address
+updates. Tax may be zero when no applicable active registration exists; **Tax
+settings are not government registration**. The owner reported no GST/HST registration;
+do not invent a tax number, add an unregistered tax collection jurisdiction, or
+claim that Canadian taxes are already being collected.
+
+Configure an independent endpoint at:
+`POST https://studybridge.ink/api/billing/alipay/webhook`, API version
+`2026-10-28.endive`, with the Checkout, PaymentIntent and refund events listed in
+`aws/configure-alipay.js` (`EVENTS`). Test and live endpoints need separate signing
+secrets. Keep legacy `/api/billing/webhook` for legacy tests only.
+
+`aws/configure-alipay.js` is an operator-only installer run **on the deployed
+application server**, with the exact deployed Git SHA as its argument and a private
+JSON stdin payload containing `secretKey`, `webhookSecret`, `webhookId`,
+`monthPriceId`, `semesterPriceId`, the expected `accountId` and existing `ownerEmail`.
+It verifies the intended StudyBridge merchant,
+webhook destination/version/events, draft Prices and Tax settings; finds the existing
+owner account; preserves unrelated private configuration; makes a private backup;
+restarts and verifies the app; and rolls back configuration on failed verification.
+It always writes `ALIPAY_CHECKOUT_ACCESS=closed`, `ALIPAY_PRICES_APPROVED=false` and
+an empty terms version. It cannot open sales. Pass secrets through an encrypted
+server session, never command arguments, chat, source files, public logs or GitHub.
+The installer does not create API keys, webhooks, Prices, orders or payments.
+It cannot verify that the supplied signing secret actually matches without receiving
+a signed event. That event and a real transaction remain separate acceptance steps.
+
+The owner preparation panel appears only for the configured owner or an account
+with its own existing Alipay payment record. It distinguishes live charges from
+sandbox tests and disables draft/closed purchases. Server-side gates apply even
+to direct requests. Closing checkout does **not** disable refund notifications,
+reconciliation or already-purchased membership.
+
+Verified live pass purchases and `entitlementExpiresAt` commit atomically in the
+separate `BILLING#alipay-live` / local `alipayLive` ledger. Sandbox records use
+`alipay-test`; neither can reinterpret old test records as live. Authenticated
+account responses overlay valid paid membership without rewriting profile,
+invitation, password or administrator role. Expiry/refunds remove only this paid
+overlay. Existing manual/invitation Plus remains in force. Administrative manual
+membership records remain the underlying classification; paid validity is visible
+in billing. **AI quotas, usage credits and paid-only feature gates are not implemented
+by this change** and must be agreed and implemented before public charging.
+The current bounded ledger allows at most 100 orders and 250 KB; it blocks new
+purchases for operator review at its limit. Do not remove purchase history to reset it.
+
+Required remaining acceptance: official Alipay sandbox success/abandonment/failure,
+webhook retries and restart recovery, current paid account display, expiration,
+partial/full refunds including tax, then owner-authorized and owner-completed real
+payment. Keep draft/closed settings until actual prices, usage policy and commercial
+terms are agreed. Public charging requires explicit owner authorization.
+
 ## AWS release 1.2.8
 
 On 2026-10-31, the owner authorized deployment of this payment preparation to AWS
@@ -9,7 +90,7 @@ unavailable. No live credentials are installed or copied into source by this rel
 The existing verified private-backup, unchanged-data/configuration and code-rollback
 deployment checks apply.
 
-Live charging remains unsupported in this version. Merchant account activation and
+Live charging remains unsupported by the legacy billing service described below. Merchant account activation and
 wallet approval in Stripe are separate from connecting the website to live keys,
 matching webhooks, final prices and verified paid access. Stripe Tax settings in
 the Dashboard also require corresponding automatic-tax integration in server-created
@@ -108,7 +189,7 @@ The subsequent 1.2.8 AWS deployment is authorized only with real charging closed
 ## Closed by default
 
 `BILLING_MODE=disabled` makes payment actions unavailable and never calls Stripe.
-This release supports **only disabled and test modes**. `live`, live secret keys,
+The legacy `/api/billing` service supports **only disabled and test modes**. `live`, live secret keys,
 live API objects and live webhook events are rejected. Setting an environment
 variable alone cannot turn this implementation into a live charging service.
 No existing access, quota, invitation, manual Plus classification or administrator

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.9 — Alipay live integration preparation (2026-11-01)
+
+- Add a separate Alipay-only 30-day/month and 120-day/semester payment integration, with isolated sandbox/live records and a pinned merchant account. Draft prices stay CAD 19.99 / 69.99; no owner approval of final pricing or public charging is implied.
+- Keep all new checkout access closed by default. Support a separately configured owner-only verification stage; require explicit approved pricing and a current consent version before any Checkout can be created.
+- Verify signed notifications, current provider payment/capture details, exclusive CAD price, automatic tax and successful refunds before committing expiring paid membership. Closing sales preserves purchased validity; invitations and manual Plus remain separate.
+- Add bilingual Alipay preparation/consent UI, a private server configuration installer that always retains closed sales and draft prices, and local/DynamoDB/HTTP/UI/configuration checks. No live credentials or real payments are included.
+- External status on 2026-11-01: Alipay remains pending approval in Stripe. Official sandbox, signed live delivery and owner-completed real payment verification remain outstanding; existing AI usage/feature limits have not been changed.
+
+
 ## 2026-10-31
 
 - Release `1.2.8`: publish the owner-authorized payment preparation from `32f5625` and `b62ce7e` to AWS. Add Settings → Subscription & billing, card monthly test subscriptions and WeChat Pay/Alipay 30-day/120-day test passes with manual renewal, verified payment status and refund reconciliation. Refresh release/frontend cache versions. Billing stays disabled by default, live keys and live events remain rejected, existing membership/access stays unchanged, and no production Stripe credentials are installed by this release. AI routing source files retain the `c5e27ea` baseline. Use verified private backups, configuration/data checks and automatic code rollback. Previous production code: `c5e27ea` (`1.2.7`).

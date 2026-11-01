@@ -1,12 +1,14 @@
 "use strict";
 const Stripe = require("stripe");
 const clone = (value) => structuredClone(value);
-function billingStripeFixture() {
+function billingStripeFixture({ livemode = false, automaticTax = false } = {}) {
   const customers = new Map(), sessions = new Map(), subscriptions = new Map(), invoices = new Map(), intents = new Map(), refunds = new Map(), idem = new Map();
   const calls = []; let index = 0;
   const price = { id: "price_test_monthly", active: true, livemode: false, currency: "cad", unit_amount: 1999,
     type: "recurring", recurring: { interval: "month", interval_count: 1, usage_type: "licensed" } };
-  const passPrices = new Map(["month", "semester"].map((plan) => [`price_test_${plan}_pass`, { id: `price_test_${plan}_pass`, active: true, livemode: false, currency: "cad", unit_amount: plan === "month" ? 1999 : 6999, type: "one_time" }]));
+  const passPrices = new Map(["month", "semester"].map((plan) => [`price_test_${plan}_pass`, { id: `price_test_${plan}_pass`, active: true, livemode, currency: "cad", unit_amount: plan === "month" ? 1999 : 6999, type: "one_time",
+    ...(automaticTax ? { tax_behavior: "exclusive", product: { active: true, tax_code: "txcd_10105001" } } : {}) }]));
+  const account = { id: "acct_fixture", country: "CA", charges_enabled: true, payouts_enabled: true, capabilities: { alipay_payments: "active" } };
   const request = async (name, values, options, work) => {
     calls.push({ name, values: clone(values), options: clone(options) });
     const key = options?.idempotencyKey;
@@ -15,11 +17,14 @@ function billingStripeFixture() {
   };
   const stripe = {
     webhooks: new Stripe("sk_test_fixture").webhooks,
+    accounts: { retrieve: () => request("account", null, null, () => account) },
+    tax: { settings: { retrieve: () => request("tax.settings", null, null, () => ({ status: "active" })) } },
     prices: { retrieve: (id) => request("price", id, null, () => passPrices.get(id) || ({ ...price, id })) },
-    customers: { create: (values, options) => request("customer", values, options, () => { const value = { id: `cus_test_${++index}`, livemode: false, ...values }; customers.set(value.id, value); return value; }) },
+    customers: { create: (values, options) => request("customer", values, options, () => { const value = { id: `cus_test_${++index}`, livemode, ...values }; customers.set(value.id, value); return value; }) },
     checkout: { sessions: {
-      create: (values, options) => request("checkout", values, options, () => { const id = `cs_test_${++index}`, value = { id, livemode: false, status: "open", expires_at: values.expires_at,
-        url: `https://checkout.stripe.com/c/pay/${id}`, payment_status: "unpaid", amount_total: passPrices.get(values.line_items[0].price)?.unit_amount, currency: "cad", ...values }; sessions.set(id, value); return value; }),
+      create: (values, options) => request("checkout", values, options, () => { const id = `cs_test_${++index}`, value = { id, livemode, status: "open", expires_at: values.expires_at,
+        url: `https://checkout.stripe.com/c/pay/${id}`, payment_status: "unpaid", amount_total: passPrices.get(values.line_items[0].price)?.unit_amount, currency: "cad", ...values,
+        ...(automaticTax ? { amount_subtotal: passPrices.get(values.line_items[0].price).unit_amount, total_details: { amount_tax: 0, amount_shipping: 0, amount_discount: 0 }, automatic_tax: { enabled: true, status: "complete" } } : {}) }; sessions.set(id, value); return value; }),
       retrieve: (id) => request("checkout.read", id, null, () => { if (!sessions.has(id)) throw Error("Missing session"); return sessions.get(id); }),
       list: (values) => request("checkout.list", values, null, () => ({ data: [...sessions.values()].filter((session) => session.payment_intent === values.payment_intent), has_more: false })),
       listLineItems: (id) => request("checkout.lines", id, null, () => ({ data: sessions.get(id).line_items.map((line) => ({ ...line, price: clone(passPrices.get(line.price) || price) })), has_more: false })),
@@ -43,10 +48,10 @@ function billingStripeFixture() {
   function pay(id, method = "wechat_pay", created = Math.floor(Date.now() / 1000)) {
     const session = sessions.get(id), intentId = `pi_test_${++index}`;
     Object.assign(session, { status: "complete", payment_status: "paid", payment_intent: intentId });
-    const intent = { id: intentId, livemode: false, customer: session.customer, metadata: clone(session.metadata), currency: "cad", amount: session.amount_total, amount_received: session.amount_total, status: "succeeded",
-      latest_charge: { id: `ch_test_${index}`, livemode: false, customer: session.customer, payment_intent: intentId, paid: true, captured: true, amount: session.amount_total, currency: "cad", created, payment_method_details: { type: method } } };
+    const intent = { id: intentId, livemode, customer: session.customer, metadata: clone(session.metadata), currency: "cad", amount: session.amount_total, amount_received: session.amount_total, status: "succeeded",
+      latest_charge: { id: `ch_test_${index}`, livemode, customer: session.customer, payment_intent: intentId, paid: true, captured: true, amount: session.amount_total, currency: "cad", created, payment_method_details: { type: method } } };
     intents.set(intent.id, intent); return intent;
   }
-  return { stripe, calls, price, passPrices, customers, sessions, subscriptions, invoices, intents, refunds, subscription, pay };
+  return { stripe, account, calls, price, passPrices, customers, sessions, subscriptions, invoices, intents, refunds, subscription, pay };
 }
 module.exports = { billingStripeFixture };

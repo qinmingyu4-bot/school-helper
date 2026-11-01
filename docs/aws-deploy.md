@@ -427,3 +427,13 @@ https://studybridge.example.com
 - 不要把 `.env`、`OPENAI_API_KEY`、AWS 密钥提交到 GitHub。
 - 学生数据属于敏感数据，正式给别人用之前建议加上隐私政策、数据删除入口、备份策略和更严格的访问日志。
 - 如果是学校/机构用途，可能还需要按所在地要求处理 FERPA、PIPEDA、GDPR 或校内隐私规则。
+
+## Alipay preparation 1.2.9
+
+Alipay has a separate closed-by-default live/sandbox integration. Follow
+[the Alipay section in billing.md](billing.md) for private server configuration.
+Deploying code does not install credentials, approve prices, open sales or prove a
+successful payment. The owner retained draft prices on 2026-11-01. Keep
+`ALIPAY_CHECKOUT_ACCESS=closed` and `ALIPAY_PRICES_APPROVED=false`; the optional
+`aws/configure-alipay.js` installer enforces both. Never put its private stdin
+payload in source, command arguments or workflow logs.

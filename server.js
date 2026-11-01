@@ -26,6 +26,7 @@ const mailboxProviders = require("./lib/mailbox-providers");
 const { createMailboxService } = require("./lib/mailbox-service");
 const { membershipTier } = require("./lib/membership");
 const { createBillingService } = require("./lib/billing-service");
+const { createAlipayService } = require("./lib/alipay-service");
 const studyModes = require("./public/study-modes");
 const learningStyle = require("./public/learning-style");
 const appearance = require("./public/appearance");
@@ -148,6 +149,7 @@ const creative = createCreativeService({
 });
 const studyIndex = createStudyIndex({ db });
 const billing = createBillingService({ db });
+const alipay = createAlipayService({ db });
 async function studySources({ userId, courseId, conversationId }) {
   const [documents, groups] = await Promise.all([db.listDocuments(userId, courseId), db.listChatAttachmentSources(userId, courseId, conversationId)]);
   return [...documents.filter((doc) => doc.type !== "Schedule").map((doc) => ({ id: `doc:${doc.id}`, name: doc.title, text: doc.text || "", sourcePages: doc.sourcePages || [],
@@ -484,7 +486,8 @@ async function currentUser(req) {
   }
   const user = await db.getUser(session.userId, { consistent: true });
   if (!user || Number(session.passwordVersion || 0) !== Number(user.passwordVersion || 0)) return null;
-  return { user: withEffectiveRole(user), tokenHash, session };
+  const paidMembershipExpiresAt = await alipay.entitlement(user.id);
+  return { user: withEffectiveRole({ ...user, paidMembershipExpiresAt }), tokenHash, session };
 }
 
 async function requireUser(req, res) {
@@ -1941,20 +1944,35 @@ async function routeApi(req, res) {
   const url = new URL(req.url, "http://localhost");
   const method = req.method || "GET";
 
-  if (url.pathname === "/api/billing/webhook" && method === "POST") {
+  if (["/api/billing/webhook", "/api/billing/alipay/webhook"].includes(url.pathname) && method === "POST") {
     const chunks = []; let size = 0;
     for await (const chunk of req) {
       size += chunk.length;
       if (size > 256 * 1024) return sendError(res, 413, "订阅通知过大。");
       chunks.push(chunk);
     }
-    return sendJson(res, 200, await billing.webhook(Buffer.concat(chunks), req.headers["stripe-signature"]), { "cache-control": "no-store" });
+    const provider = url.pathname === "/api/billing/alipay/webhook" ? alipay : billing;
+    return sendJson(res, 200, await provider.webhook(Buffer.concat(chunks), req.headers["stripe-signature"]), { "cache-control": "no-store" });
   }
   if (url.pathname === "/api/billing" || url.pathname.startsWith("/api/billing/")) {
     const auth = await currentUser(req);
     if (!auth) return sendError(res, 401, "登录已过期，请重新登录。");
     const csrfToken = hashToken(`billing:${auth.tokenHash}`);
     const respond = (value) => sendJson(res, 200, value, { "cache-control": "private, no-store" });
+    if (url.pathname === "/api/billing/alipay" && method === "GET") return respond({ alipay: { ...await alipay.status(auth.user.id), csrfToken } });
+    if (url.pathname.startsWith("/api/billing/alipay/")) {
+      const action = url.pathname.slice("/api/billing/alipay/".length);
+      if (method !== "POST" || !["checkout", "refresh", "cancel"].includes(action)) return sendError(res, 404, "支付宝操作不存在。");
+      const supplied = String(req.headers["x-csrf-token"] || "");
+      if (!/^application\/json(?:;|$)/i.test(req.headers["content-type"] || "") || !/^[a-f0-9]{64}$/.test(supplied) ||
+          !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(csrfToken)) || req.headers.origin && req.headers.origin !== alipay.origin) return sendError(res, 403, "请重新打开当前网站的付款设置。");
+      const body = await readJson(req, 4096);
+      if (body.userId !== auth.user.id) return sendError(res, 409, "登录账号已变更，请重新打开设置。");
+      if (action === "checkout") return respond(await alipay.checkout(auth.user, body));
+      if (Object.keys(body).some((key) => key !== "userId")) return sendError(res, 400, "支付宝操作格式无效。");
+      const value = action === "refresh" ? await alipay.refresh(auth.user.id) : await alipay.cancel(auth.user.id);
+      return respond({ alipay: { ...value, csrfToken } });
+    }
     if (url.pathname === "/api/billing" && method === "GET") return respond({ billing: { ...await billing.status(auth.user.id), csrfToken } });
     const action = url.pathname.slice("/api/billing/".length);
     if (method !== "POST" || !["checkout", "pass-checkout", "pass-cancel", "portal", "refresh", "cancel", "resume"].includes(action)) return sendError(res, 404, "订阅操作不存在。");

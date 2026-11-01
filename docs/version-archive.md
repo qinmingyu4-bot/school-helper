@@ -691,3 +691,10 @@ Validation:
 
 Rollback target:
 - If `1.1.4` fails after deployment, roll back to the last working version before the broken `index.html` shell was introduced, then reapply only the clean cache-bust and router changes.
+
+## 1.2.9 (2026-11-01) — Alipay preparation
+
+Separate Alipay-only integration, private configuration installer, verified paid
+validity and bilingual owner preparation UI. Draft prices retained; checkout stays
+closed. This development version does not itself install live credentials or prove
+a real payment, and is not permission to enable public charging.

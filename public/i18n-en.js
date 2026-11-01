@@ -6,6 +6,51 @@
   "use strict";
   return Object.freeze(Object.fromEntries(`
 界面语言|Interface language
+会员卡、订阅与账单|Passes, subscriptions and billing
+查看会员卡、订阅状态与账单。付款前会显示金额及续费方式。|View passes, subscription status and invoices. Prices and renewal terms are shown before payment.
+支付宝会员卡|Alipay passes
+正式收款配置|Live payment configuration
+支付宝测试配置|Alipay test configuration
+尚未购买会员卡|No pass purchased
+会员卡有效|Pass active
+会员卡已到期|Pass expired
+正在建立订单|Creating order
+订单待付款|Awaiting payment
+付款确认中|Confirming payment
+付款失败，可重新购买|Payment failed. You can try again.
+订单已关闭或过期|Order closed or expired
+已付款|Paid
+已退款|Refunded
+已部分退款|Partially refunded
+适用税费将在付款页显示。|Applicable taxes are shown at checkout.
+草案价格 · 尚未开放购买|Draft prices · Purchases closed
+前往支付宝付款|Continue to Alipay payment
+前往支付宝测试付款|Continue to Alipay test payment
+我确认所选价格、天数及付款页显示的税费；本次会真实付款，到期手动续费。|I confirm the selected price, duration and taxes shown at checkout. This is a real payment with manual renewal.
+我确认所选测试价格与天数；本次不会真实扣款，到期手动续费。|I confirm the test price and duration. No real charge will be made. Renewal is manual.
+刷新付款状态|Refresh payment status
+付款状态已更新。|Payment status updated.
+请先确认支付宝价格、天数和手动续费说明。|Please confirm the Alipay price, duration and manual renewal terms.
+正在处理支付宝付款…|Processing Alipay payment…
+支付宝价格仍为草案，付款尚未开放。|Alipay prices are still drafts. Payments are closed.
+支付宝付款尚未对当前账号开放。|Alipay payments are not open for this account.
+支付宝正式付款：一次性购买，不会自动续费。|Live Alipay payment: one-time purchase, with no automatic renewal.
+支付宝测试付款：不会真实扣款。|Alipay test payment: no real charge.
+支付宝正式接入尚未完成，目前不会收费。|Alipay setup is incomplete. No charges will be made.
+支付宝付款尚未开放，目前不会收费。|Alipay payments are closed. No charges will be made.
+支付宝付款状态暂时无法确认，请稍后重试。|Alipay payment status is temporarily unavailable. Please try again later.
+请确认当前价格、天数和手动续费说明后再付款。|Confirm the current price, duration and manual renewal terms before paying.
+支付宝尚未通过收款审核，暂时无法付款。|Alipay approval is pending. Payments are unavailable.
+支付宝收款账户无法确认。|The Alipay merchant account could not be verified.
+自动算税配置尚未完成，暂时无法付款。|Tax setup is incomplete. Payments are unavailable.
+付款状态正在更新，请稍后重试。|Payment status is being updated. Please try again later.
+付款操作已过期，请刷新状态。|The payment operation expired. Refresh the status.
+付款记录需要管理员归档，请联系支持后再购买。|Payment records need administrator review. Contact support before purchasing.
+支付宝收款账户配置已变更，请联系管理员核对。|The Alipay merchant configuration changed. Contact the administrator.
+收款账号建立结果需要核对，请联系管理员。|Payment account creation needs review. Contact the administrator.
+支付宝付款账号无法确认。|The Alipay payment account could not be verified.
+请重新打开当前网站的付款设置。|Reopen the payment settings on this website.
+支付宝操作格式无效。|Invalid Alipay request.
 微信／支付宝会员卡|WeChat Pay / Alipay passes
 一次性购买，到期手动续费，不会自动扣款。续费从剩余有效期结束后接续。|Pay once and renew manually. No automatic charges. Renewals extend your remaining validity.
 尚未购买测试会员卡|No test pass purchased

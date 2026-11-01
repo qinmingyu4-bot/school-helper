@@ -10,7 +10,7 @@
   const sections = Object.freeze([
     { id: "account", name: "账号与资料", hint: "个人信息与登录", icon: "◎", group: "你的账号" },
     { id: "security", name: "账号安全", hint: "设置或修改网站密码", icon: "◇", group: "你的账号" },
-    { id: "billing", name: "订阅与账单", hint: "测试订阅与付款管理", icon: "▣", group: "你的账号" },
+    { id: "billing", name: "订阅与账单", hint: "会员卡、订阅与账单", icon: "▣", group: "你的账号" },
     { id: "mailbox", name: "邮箱授权", hint: "绑定 Gmail 与 Outlook", icon: "✉", group: "你的账号" },
     { id: "learning", name: "学习与 AI", hint: "回答语言与学习方式", icon: "✦", group: "偏好设置" },
     { id: "appearance", name: "个性化", hint: "Logo、界面色调与显示", icon: "◐", group: "偏好设置" },
@@ -48,7 +48,7 @@
           </div>
           <div class="settings-block"><h4>登录与资料</h4><div class="settings-row"><div><strong>登录邮箱</strong><small class="settings-login-email"></small></div><span class="settings-static-value">当前账号</span></div><div class="settings-row"><div><strong>头像与封面</strong><small>在个人资料页上传或替换图片。</small></div><button type="button" data-settings-route="profile">管理图片 ↗</button></div><div class="settings-row"><div><strong>网站密码</strong><small>在「账号安全」中设置或修改密码。</small></div><button type="button" data-settings-open="security">管理密码 ›</button></div></div>
         </section>
-        <section id="settings-panel-billing" class="settings-panel" aria-labelledby="settings-billing-heading" hidden>${heading("billing", ui.text("查看测试套餐、订阅状态与账单。目前不会真实收费。"))}<div class="settings-billing"></div></section>
+        <section id="settings-panel-billing" class="settings-panel" aria-labelledby="settings-billing-heading" hidden>${heading("billing", ui.text("查看会员卡、订阅状态与账单。付款前会显示金额及续费方式。"))}<div class="settings-billing"></div></section>
         <section id="settings-panel-security" class="settings-panel" aria-labelledby="settings-security-heading" hidden>${heading("security", ui.text("管理网站密码；Google 与邮箱密码登录使用同一个账号。"))}
           <div class="settings-block"><h4>登录方式</h4><div class="settings-row"><div><strong>登录邮箱</strong><small class="settings-security-email"></small></div><span class="settings-static-value">同一个账号</span></div><div class="settings-row"><div><strong>Google 登录</strong><small class="settings-google-status">正在读取…</small></div></div><div class="settings-row"><div><strong>网站密码</strong><small class="settings-password-state">正在读取…</small></div></div></div>
           <div class="settings-block"><h4 class="settings-password-title">网站密码</h4><p class="settings-security-status settings-caption" role="status" aria-live="polite"></p><button type="button" class="settings-security-retry" hidden>重新读取</button><a class="settings-google-reauth" href="/api/auth/google/start" hidden>重新用 Google 验证</a>

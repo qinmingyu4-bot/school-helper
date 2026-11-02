@@ -2,6 +2,8 @@
 
 ## 2026-11-02 — Course learning loop (review branch)
 
+- Fix the course header overflowing its former 54 px height when learning actions wrap. Let it size to its contents, give narrow screens a separate full-width action row with touch-sized controls, and compact course countdown reminders so navigation, actions, reminders and chat no longer overlap.
+
 - Add a permanent course learning entry with reviewed, editable topic drafts from selected materials; manual topics and verified source links; optional teaching prompts that preserve existing chat drafts; private three-question practice, saved mistakes and assisted/independent results; confirmed calendar review tasks and new-question retests that update the next suggested review.
 - Keep student choice at every step. Offer nonmodal automatic suggestions after relevant study activity or when a topic is due, without stealing focus or making automatic AI calls. Support dismissal, a one-day snooze and account-saved per-course disabling while preserving the manual entry. Keep learning records private and Community sharing separate.
 - Persist course state and quizzes in local/DynamoDB storage with conditional updates, hidden pre-submission answer keys, server grading, source-version guards and atomic linked-task completion. Preserve existing course/chat/calendar data; no migration or AWS deployment is included. Document the initial single-choice quiz format and review rules in `docs/learning-loop.md`.

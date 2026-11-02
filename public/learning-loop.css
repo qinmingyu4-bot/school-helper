@@ -45,8 +45,10 @@
 .learning-prompt p { line-height:1.6; margin:8px 0; }
 .learning-prompt small { color:var(--muted, #666); }
 .learning-prompt .learning-prompt-close { position:absolute; top:8px; right:8px; border:0; min-height:32px; padding:3px 9px; }
-.course-chat-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
-.course-chat-actions button { white-space:nowrap; }
+:root .study-workspace > .page-header { height:auto; min-height:64px; padding-block:12px; }
+.course-chat-heading { flex:1; min-width:0; }
+.course-chat-actions { display:flex; flex:0 0 auto; align-items:center; gap:8px; }
+.course-chat-actions button { min-height:36px; padding:7px 12px; font-size:13px; line-height:20px; white-space:nowrap; }
 @media(max-width:700px) {
   .learning-dialog { width:calc(100vw - 16px); max-height:calc(100dvh - 16px); border-radius:12px; }
   .learning-dialog :is(header, footer, .learning-body) { padding:16px; }
@@ -54,5 +56,16 @@
   .learning-dialog button, .learning-prompt button { min-height:44px; }
   .learning-dialog :is(input, textarea, select) { font-size:16px; }
   .learning-prompt { right:16px; bottom:16px; }
-  .course-chat-actions { max-width:160px; }
+  :root .app-shell:not(.admin-shell) > .study-workspace > .page-header { display:flex; flex-direction:column; align-items:stretch; gap:10px; height:auto; min-height:0; padding:12px 16px; }
+  .course-chat-heading small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; line-height:16px; }
+  .course-chat-heading h1 { font-size:18px; line-height:24px; }
+  .course-chat-actions { display:grid; grid-template-columns:minmax(0, 1fr) auto; width:100%; max-width:none; gap:8px; }
+  .course-chat-actions button { min-width:0; min-height:44px; padding:9px 12px; }
+  :root .app-shell:not(.admin-shell) > .study-workspace .deadline-banner { gap:10px; margin:8px 12px 0; padding:10px 12px; }
+  :root .study-workspace .deadline-banner > div { display:block; flex:1; min-width:0; }
+  :root .study-workspace .deadline-banner > div > span { display:none; }
+  :root .study-workspace .deadline-banner b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; line-height:20px; }
+  :root .study-workspace .deadline-banner p { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; line-height:18px; }
+  :root .study-workspace .deadline-banner > strong { padding:6px 8px; font-size:13px; line-height:18px; white-space:nowrap; }
+  :root .study-workspace .deadline-banner small { margin-left:3px; font-size:10px; }
 }

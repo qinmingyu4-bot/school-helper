@@ -54,12 +54,15 @@ reduced on widths up to 800 px and disabled for `prefers-reduced-motion`. The se
 `landing-motion.js` uses bounded transforms, passive scroll events and one requested
 frame per update; offscreen and hidden-page work is skipped. The static page remains
 readable if JavaScript or optional observers are unavailable.
-A dedicated scroll-driven product scene pins briefly in the viewport: monochrome
-icons rise and rotate, course/AI/schedule panels separate into layers, then assemble
-into one workspace. Native scrolling controls and reverses the scene; there is no
+A dedicated scroll-driven product scene pins briefly in the viewport: Lecture Slides,
+Syllabus, Problem Set and Lecture Notes cards gather into one Calculus course. Its
+stored file list fills before guided study, a review outline and assignment reasoning
+emerge from that course, with connecting lines showing their shared basis. Native
+scrolling controls and reverses the scene; there is no
 wheel interception or autoplay loop. `landing-story.js` and `landing-story.css` keep
-the choreography separate from the application. Phones use smaller displacement;
-reduced-motion and viewports at most 600 px tall show the complete static workspace
+the choreography separate from the application. Percentage-based paths keep the
+files converging on the course center at every size; phones use less 3D depth.
+Reduced-motion and viewports at most 600 px tall show the complete static course flow
 without a long pinned section. All three explanatory steps remain in the document.
 Login and registration use the same neutral style through scoped `public/auth.css`,
 with the shared bridge wordmark, visible field focus, status messages and a homepage

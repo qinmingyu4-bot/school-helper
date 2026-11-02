@@ -1428,6 +1428,28 @@ AI 只在你点击后参与；预览不会改动内容，应用后可撤销。|A
 至少保留一个工作表。|Keep at least one sheet.
 删除当前工作表？引用此表的公式会显示错误。|Delete this sheet? Formulas referencing it will show errors.
 StudyBridge · 连接学习的每一步|StudyBridge · Connect every step of learning
+资料归入课程，|One course.
+学习由此展开。|Learning unfolds.
+汇入课程资料|Bring your materials
+Lecture Slides、Syllabus 和习题，都放进同一门课。|Lecture slides, a syllabus and problem sets come together in one course.
+归到同一门课|Keep one course together
+以课程为单位，把讲义、课程要求与问题连在一起。|Keep the notes, requirements and questions for a course together.
+从课程展开学习|Learn from your course
+AI 以这些资料为依据，带你学习、复习和推敲作业。|AI uses these materials to guide your study, review and assignment work.
+课程课件|Lecture slides
+课程习题|Problem set
+课堂笔记|Class notes
+沿着课程概念，理解每一步。|Follow the concepts, step by step.
+课程依据 · 第 3 页|Course source · Page 3
+复习提纲|Review outline
+重点概念|Key concepts
+易混知识|Tricky concepts
+自测问题|Self-checks
+作业推导|Assignment reasoning
+理解题意|Understand
+找到依据|Find evidence
+逐步推导|Reason it out
+课程资料与学习成果示意|Course materials and learning outcomes · Illustration
 StudyBridge 以你上传的课程资料为主要依据，结合讲义、课件和习题带你学习、复习与推敲作业，并通过课程引用帮助你核对依据、理解过程。|StudyBridge grounds learning in the course materials you upload. Study, review and work through assignments with guidance based on your notes, slides and problem sets, with course references to check the reasoning.
 以你的资料为依据，|Grounded in your materials.
 AI 结合你上传的讲义、课件与习题，|AI works with the notes, slides and problem sets you upload.

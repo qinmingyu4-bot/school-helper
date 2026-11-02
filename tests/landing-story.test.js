@@ -2,24 +2,30 @@ const assert = require("node:assert/strict");
 const { test } = require("node:test");
 const { buildFrame, mount } = require("../public/landing-story");
 
-test("the product scene rises, separates into rotating layers and assembles into a complete workspace", () => {
-  const start = buildFrame(0), open = buildFrame(.46), end = buildFrame(1);
-  assert.deepEqual([start.phase, open.phase, end.phase], [0, 1, 2]);
-  assert.equal(start.layers.doc.opacity, 0);
-  assert.equal(open.layers.doc.opacity, 1);
-  assert.ok(open.layers.material.x < 0 && open.layers.study.x > 0);
-  assert.ok(open.layers.material.rotate < 0 && open.layers.study.rotate > 0);
-  assert.ok(open.layers.doc.z > 0 && open.shell < .2);
-  assert.equal(end.shell, 1);
-  for (const name of ["material", "study", "schedule", "tools"]) {
+test("files gather into one course before guided study, review and assignment outputs emerge", () => {
+  const start = buildFrame(0), stored = buildFrame(.54), emerging = buildFrame(.72), end = buildFrame(1);
+  assert.deepEqual([start.phase, stored.phase, end.phase], [0, 1, 2]);
+  const centers = { slides: [15, 15], syllabus: [85, 17], problems: [15, 52], notes: [85, 54] };
+  for (const [name, center] of Object.entries(centers)) {
+    assert.equal(start.layers[name].opacity, 1);
+    assert.notEqual(start.layers[name].rotate, 0);
+    assert.equal(stored.layers[name].opacity, 0);
+    assert.deepEqual([center[0] + stored.layers[name].x, center[1] + stored.layers[name].y], [50, 35]);
+    assert.equal(stored.layers[`stored-${name}`].opacity, 1);
+  }
+  assert.equal(stored.fill, 1);
+  assert.equal(stored.layers.study.opacity, 0);
+  assert.ok(emerging.layers.study.opacity > 0 && emerging.layers.study.y < 0);
+  assert.ok(emerging.layers.study.x > 0 && emerging.layers.assignment.x < 0);
+  assert.equal(end.links, 1);
+  for (const name of ["study", "review", "assignment"]) {
     assert.deepEqual(end.layers[name], { x: 0, y: 0, z: 0, rotate: 0, tilt: 0, scale: 1, opacity: 1 });
   }
-  assert.equal(end.layers.doc.opacity, 0);
   const forward = [0, .2, .46, .65, 1].map((p) => buildFrame(p));
   assert.deepEqual([1, .65, .46, .2, 0].map((p) => buildFrame(p)).reverse(), forward);
 });
 
-test("scene frames stay continuous and bounded, with smaller translations on phones", () => {
+test("scene frames stay continuous and bounded, with less depth on phones", () => {
   assert.deepEqual(buildFrame(-100), buildFrame(0));
   assert.deepEqual(buildFrame(100), buildFrame(1));
   assert.deepEqual(buildFrame(NaN), buildFrame(0));
@@ -30,14 +36,15 @@ test("scene frames stay continuous and bounded, with smaller translations on pho
       assert.ok(pose.opacity >= 0 && pose.opacity <= 1);
     }
   }
-  for (const boundary of [.46, .86]) {
+  for (const boundary of [.27, .54, .56, .6, .94]) {
     const a = buildFrame(boundary - .0001), b = buildFrame(boundary + .0001);
-    assert.ok(Math.abs(a.layers.material.x - b.layers.material.x) < .01);
-    assert.ok(Math.abs(a.layers.doc.opacity - b.layers.doc.opacity) < .001);
+    assert.ok(Math.abs(a.layers.slides.x - b.layers.slides.x) < .05);
+    assert.ok(Math.abs(a.layers.study.opacity - b.layers.study.opacity) < .01);
   }
-  const desktop = buildFrame(.46), phone = buildFrame(.46, 390);
-  assert.ok(Math.abs(phone.layers.material.x) < Math.abs(desktop.layers.material.x) / 2);
-  assert.ok(phone.layers.doc.z < desktop.layers.doc.z / 2);
+  const desktop = buildFrame(.2), phone = buildFrame(.2, 390);
+  assert.equal(phone.layers.slides.x, desktop.layers.slides.x);
+  assert.equal(phone.layers.slides.y, desktop.layers.slides.y);
+  assert.ok(phone.layers.slides.z < desktop.layers.slides.z / 2);
 });
 
 function preview({ reduced = false, height = 800 } = {}) {
@@ -49,9 +56,10 @@ function preview({ reduced = false, height = 800 } = {}) {
       setProperty: (key, value) => properties.set(key, value), removeProperty: (key) => properties.delete(key) },
       classList: { toggle: (name, on) => on ? classes.add(name) : classes.delete(name), remove: (name) => classes.delete(name) } };
   }
-  const layers = ["material", "study", "doc"].map((name) => element({ storyLayer: name }));
+  const layers = ["course", "slides", "stored-slides", "study"].map((name) => element({ storyLayer: name }));
   const steps = [element(), element(), element()];
   const section = element();
+  section.querySelector = () => ({ getBoundingClientRect: () => ({ width: browser.innerWidth <= 800 ? browser.innerWidth - 36 : browser.innerWidth * .6, height: 500 }) });
   section.querySelectorAll = (selector) => selector === "[data-story-layer]" ? layers : steps;
   section.getBoundingClientRect = () => {
     const top = 1200 - browser.scrollY, height = section.classes.has("story-enabled") ? browser.innerHeight * 3 : 500;

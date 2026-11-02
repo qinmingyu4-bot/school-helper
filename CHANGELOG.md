@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Materials into one course, learning from that course
+
+- Replace the generic interface assembly with a course-centered scroll story: Lecture Slides, Syllabus, Problem Set and Lecture Notes converge into one Calculus course, populate its stored file list, then give rise to guided learning, a review outline and assignment reasoning connected back to the course.
+- Use responsive normalized paths, staggered file intake and output emergence, reversible native scrolling, monochrome cards and the existing static/reduced-motion fallback. Update bilingual scene copy and choreography regressions. Prepared on the task branch without AWS deployment.
+- Validate 20 focused regressions and the 269-file source/assets/package checks. Browser checks cover file intake, the populated course and emerging outputs in Chinese/English, including 320 × 640, 390 px phones, 900 × 640 compact desktop, 1440 px desktop and the 580 px static fallback, with no card clipping or horizontal overflow.
+
 ## Unreleased — Course-grounded AI guidance
 
 - Lead the Chinese/English homepage with AI-guided learning, review and assignment help grounded in uploaded course materials. Strengthen the course-first story, learning feature, description metadata and materials FAQ; show a course-source marker in the illustrative answer.

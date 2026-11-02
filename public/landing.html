@@ -2,11 +2,11 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <script src="/i18n-en.js?v=1.2.9-course-guide"></script>
+    <script src="/i18n-en.js?v=1.2.9-course-flow"></script>
     <script src="/i18n.js?v=1.2.9"></script>
     <script src="/i18n-landing.js?v=1.2.9-homepage-clarity" defer></script>
     <script src="/landing-motion.js?v=1.2.9-parallax" defer></script>
-    <script src="/landing-story.js?v=1.2.9-product-story" defer></script>
+    <script src="/landing-story.js?v=1.2.9-course-flow" defer></script>
     <link rel="stylesheet" href="/i18n.css?v=1.2.9" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="StudyBridge 以你上传的课程资料为主要依据，结合讲义、课件和习题带你学习、复习与推敲作业，并通过课程引用帮助你核对依据、理解过程。" />
@@ -17,7 +17,7 @@
     <link rel="preload" href="/fonts/noto-sans-sc-gb2312-v2.004.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/typography.css?v=1.1.111" />
     <link rel="stylesheet" href="/landing.css?v=1.2.9-course-guide" />
-    <link rel="stylesheet" href="/landing-story.css?v=1.2.9-product-story" />
+    <link rel="stylesheet" href="/landing-story.css?v=1.2.9-course-flow" />
     <link rel="stylesheet" href="/brand.css?v=1.1.119-logo-1" />
   </head>
   <body>
@@ -66,33 +66,43 @@
       <section class="product-story" id="product-story" data-product-story aria-labelledby="story-title">
         <svg class="story-svg-library" aria-hidden="true"><defs>
           <symbol id="story-doc" viewBox="0 0 24 24"><path d="M14 3H6v18h12V7zM14 3v5h4M9 12h6M9 16h5" /></symbol>
+          <symbol id="story-folder" viewBox="0 0 24 24"><path d="M3 6h7l2 3h9v11H3zM3 9V4h7l2 2h7v3" /></symbol>
+          <symbol id="story-slides" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="1" /><path d="M8 21l4-4 4 4M7 9h5M7 12h9" /></symbol>
           <symbol id="story-chat" viewBox="0 0 24 24"><path d="M5 4h14v12H9l-4 4zM9 8h6M9 12h4" /></symbol>
-          <symbol id="story-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M7 3v4M17 3v4M3 10h18M8 14h2M14 14h2M8 18h2" /></symbol>
-          <symbol id="story-create" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h7v7h-7z" /></symbol>
+          <symbol id="story-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M3 6l1 1 2-3M3 12l1 1 2-3M3 18l1 1 2-3" /></symbol>
+          <symbol id="story-pencil" viewBox="0 0 24 24"><path d="M4 16L16 4l4 4L8 20H4zM13 7l4 4M4 16l4 4" /></symbol>
         </defs></svg>
         <div class="story-pin"><div class="story-layout wrap">
           <div class="story-copy">
-            <p class="eyebrow">ONE SPACE. MANY CONNECTIONS.</p>
-            <h2 id="story-title">从一份讲义，<br />到自己的理解。</h2>
+            <p class="eyebrow">ONE COURSE. ALL YOUR MATERIALS.</p>
+            <h2 id="story-title">资料归入课程，<br />学习由此展开。</h2>
             <p class="story-hint"><span>滚动探索</span><span aria-hidden="true">↓</span></p>
             <ol class="story-steps">
-              <li class="story-step"><h3><span>01</span>从课程出发</h3><p>从上传的资料中，找到问题对应的课程内容。</p></li>
-              <li class="story-step"><h3><span>02</span>把问题想清楚</h3><p>结合课程中的概念与方法，带你学习、复习和推敲作业。</p></li>
-              <li class="story-step"><h3><span>03</span>留下自己的理解</h3><p>对照原文核对依据，把学习过程整理成自己的理解。</p></li>
+              <li class="story-step"><h3><span>01</span>汇入课程资料</h3><p>Lecture Slides、Syllabus 和习题，都放进同一门课。</p></li>
+              <li class="story-step"><h3><span>02</span>归到同一门课</h3><p>以课程为单位，把讲义、课程要求与问题连在一起。</p></li>
+              <li class="story-step"><h3><span>03</span>从课程展开学习</h3><p>AI 以这些资料为依据，带你学习、复习和推敲作业。</p></li>
             </ol>
           </div>
           <figure class="story-visual" aria-hidden="true">
-            <svg class="story-guides" viewBox="0 0 720 500" preserveAspectRatio="none"><path d="M110 160L430 250L130 360M430 250L610 90M430 250L600 410" /></svg>
-            <div class="story-window"><div class="story-window-top"><strong data-i18n-skip>StudyBridge.</strong><span>我的学习空间</span></div><div class="story-window-nav"><span>日程</span><strong>学习</strong><span>工具</span></div></div>
-            <div class="story-card story-material" data-story-layer="material"><svg><use href="#story-doc" /></svg><strong>第一章 · 课程讲义.pdf</strong><small>导数与变化率</small></div>
-            <div class="story-card story-study" data-story-layer="study"><span class="story-card-kicker">课程学习</span><strong>瞬时变化率</strong><div class="story-question">为什么说导数是「瞬时变化率」？</div><p>从平均速度想起，再把时间间隔不断缩短。</p><div class="story-citation">课程来源 · 第 3 页</div></div>
-            <div class="story-card story-schedule" data-story-layer="schedule"><span class="story-card-kicker">今天的安排</span><div><time>09:00</time><span>微积分</span></div><div><time>14:00</time><span>复习</span></div></div>
-            <div class="story-card story-tools" data-story-layer="tools"><span><svg><use href="#story-doc" /></svg>SB Docs</span><span><svg><use href="#story-create" /></svg>SB Sheets</span><span><svg><use href="#story-create" /></svg>SB Slides</span></div>
-            <div class="story-icon story-icon-doc" data-story-layer="doc"><svg><use href="#story-doc" /></svg><span>PDF</span></div>
-            <div class="story-icon story-icon-chat" data-story-layer="chat"><svg><use href="#story-chat" /></svg><span>AI</span></div>
-            <div class="story-icon story-icon-calendar" data-story-layer="calendar"><svg><use href="#story-calendar" /></svg><span>PLAN</span></div>
-            <div class="story-icon story-icon-create" data-story-layer="create"><svg><use href="#story-create" /></svg><span>CREATE</span></div>
-            <figcaption>界面示意</figcaption>
+            <svg class="story-input-tracks" viewBox="0 0 720 500" preserveAspectRatio="none"><path d="M108 75L360 175M612 85L360 175M108 260L360 175M612 270L360 175" /></svg>
+            <svg class="story-output-tracks" viewBox="0 0 720 500" preserveAspectRatio="none"><path pathLength="1" d="M360 280V310H122V330M360 280V330M360 280V310H598V330" /></svg>
+            <div class="story-course" data-story-layer="course">
+              <div class="story-course-heading"><svg><use href="#story-folder" /></svg><div><span>COURSE / 01</span><strong>微积分</strong></div></div>
+              <div class="story-inventory">
+                <div class="story-stored" data-story-layer="stored-slides"><svg><use href="#story-slides" /></svg><span data-i18n-skip>Lecture Slides.pdf</span></div>
+                <div class="story-stored" data-story-layer="stored-syllabus"><svg><use href="#story-doc" /></svg><span data-i18n-skip>Syllabus.pdf</span></div>
+                <div class="story-stored" data-story-layer="stored-problems"><svg><use href="#story-pencil" /></svg><span data-i18n-skip>Problem Set.pdf</span></div>
+                <div class="story-stored" data-story-layer="stored-notes"><svg><use href="#story-doc" /></svg><span data-i18n-skip>Lecture Notes.docx</span></div>
+              </div>
+            </div>
+            <div class="story-input story-input-slides" data-story-layer="slides"><svg><use href="#story-slides" /></svg><strong data-i18n-skip>Lecture Slides.pdf</strong><span>课程课件</span></div>
+            <div class="story-input story-input-syllabus" data-story-layer="syllabus"><svg><use href="#story-doc" /></svg><strong data-i18n-skip>Syllabus.pdf</strong><span>课程大纲</span></div>
+            <div class="story-input story-input-problems" data-story-layer="problems"><svg><use href="#story-pencil" /></svg><strong data-i18n-skip>Problem Set.pdf</strong><span>课程习题</span></div>
+            <div class="story-input story-input-notes" data-story-layer="notes"><svg><use href="#story-doc" /></svg><strong data-i18n-skip>Lecture Notes.docx</strong><span>课堂笔记</span></div>
+            <div class="story-output story-output-study" data-story-layer="study"><div class="story-output-heading"><svg><use href="#story-chat" /></svg><strong>引导学习</strong></div><p>沿着课程概念，理解每一步。</p><span class="story-output-source">课程依据 · 第 3 页</span></div>
+            <div class="story-output story-output-review" data-story-layer="review"><div class="story-output-heading"><svg><use href="#story-list" /></svg><strong>复习提纲</strong></div><ul><li>重点概念</li><li>易混知识</li><li>自测问题</li></ul></div>
+            <div class="story-output story-output-assignment" data-story-layer="assignment"><div class="story-output-heading"><svg><use href="#story-pencil" /></svg><strong>作业推导</strong></div><ol><li>理解题意</li><li>找到依据</li><li>逐步推导</li></ol></div>
+            <figcaption>课程资料与学习成果示意</figcaption>
           </figure>
         </div></div>
       </section>

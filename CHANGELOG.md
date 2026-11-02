@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Homepage editorial pass
+
+- Rewrite the Chinese/English introduction around course understanding, problem solving, revision, planning and expression. Remove registration/invitation/login explanations, membership categories, refresh/retry selling points and repetitive filler; replace setup-oriented steps and FAQs with useful learning starting points and calendar-control information.
+- Make sample interfaces concrete, simplify calls to action and update description metadata. Retain optional read-only mailbox access, calendar confirmation and the privacy-policy link beside the relevant feature. Preserve the monochrome layout and scroll presentation. Prepared on the task branch without AWS deployment.
+- Validate 20 focused regression checks and 269-file source/assets/package checks. Browser verification confirms the removed setup/recovery text is absent, English translations and metadata are complete, the new FAQ expands, and both languages fit 320/390/768/900/1100/1440 px layouts including the compact 900 × 640 scene.
+
 ## 2026-11-01 — Scroll-driven product presentation
 
 - Add a pinned monochrome product scene with rising/rotating icons, an exploded course/AI/schedule interface and a final assembled workspace. Tie translation, 3D rotation, depth, scale and opacity to native scroll progress, including reverse scrolling; link the hero's feature preview to the scene.

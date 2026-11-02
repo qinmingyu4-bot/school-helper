@@ -222,29 +222,6 @@ a:focus-visible,summary:focus-visible {
   line-height: 1.7;
 }
 
-.entry-note {
-  font-size: 13px;
-  line-height: 1.9;
-  color: var(--muted);
-  margin: 17px 0 0;
-}
-
-.hero-footnote {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  font-size: 13px;
-  color: var(--muted);
-  margin-top: 48px;
-}
-
-.line-mark {
-  display: inline-block;
-  width: 32px;
-  height: 1px;
-  background: #a9a9a9;
-}
-
 .workspace-figure {
   margin: 0;
   position: relative;
@@ -562,38 +539,6 @@ a:focus-visible,summary:focus-visible {
   color: var(--muted);
 }
 
-.connection-strip {
-  border-block: 1px solid var(--line);
-}
-
-.connection-strip>.wrap {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-block: 24px;
-  gap: 28px;
-}
-
-.connection-strip p {
-  font-size: 11px;
-  color: var(--muted);
-  margin: 0;
-}
-
-.connection-strip .wrap>div {
-  display: flex;
-  align-items: center;
-  gap: 38px;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.connection-strip b {
-  font-size: 15px;
-  font-weight: 400;
-  color: #888888;
-}
-
 .section-space {
   padding-block: 96px;
 }
@@ -762,12 +707,6 @@ a:focus-visible,summary:focus-visible {
 
 .course-folder.secondary {
   background: transparent;
-}
-
-.course-demo>p {
-  color: #7e7e7e;
-  font-size: 9px;
-  margin: 22px 0 0;
 }
 
 .feature-pair {
@@ -1211,9 +1150,6 @@ a:focus-visible,summary:focus-visible {
   .feature-pair article {
     padding: 32px;
   }
-  .connection-strip .wrap>div {
-    gap: 25px;
-  }
   .faq {
     gap: 40px;
   }
@@ -1257,9 +1193,6 @@ a:focus-visible,summary:focus-visible {
   .hero-actions .text-link {
     font-size: 12px;
   }
-  .hero-footnote {
-    margin-top: 25px;
-  }
   .workspace-figure {
     width: min(560px,100%);
     margin: 0 auto;
@@ -1293,18 +1226,6 @@ a:focus-visible,summary:focus-visible {
   }
   .schedule-note {
     right: 0;
-  }
-  .connection-strip>.wrap {
-    display: block;
-    padding-block: 22px;
-  }
-  .connection-strip p {
-    margin-bottom: 17px;
-  }
-  .connection-strip .wrap>div {
-    justify-content: space-between;
-    gap: 10px;
-    font-size: 12px;
   }
   .section-space {
     padding-block: 64px;
@@ -1450,13 +1371,6 @@ a:focus-visible,summary:focus-visible {
     font-size: 13px;
     gap: 7px;
   }
-  .entry-note {
-    font-size: 13px;
-  }
-  .hero-footnote {
-    font-size: 12px;
-    margin-top: 26px;
-  }
   .workspace-figure {
     padding-right: 0;
     padding-bottom: 0;
@@ -1583,16 +1497,6 @@ a:focus-visible,summary:focus-visible {
     position: static;
     margin-top: 12px;
     font-size: 11px;
-  }
-  .connection-strip p {
-    font-size: 10px;
-  }
-  .connection-strip .wrap>div {
-    font-size: 10px;
-    gap: 5px;
-  }
-  .connection-strip b {
-    font-size: 12px;
   }
   .section-space {
     padding-block: 53px;

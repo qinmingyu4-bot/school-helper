@@ -19,7 +19,7 @@ test("files gather into one course before guided study, review and assignment ou
   assert.ok(emerging.layers.study.x > 0 && emerging.layers.assignment.x < 0);
   assert.equal(end.links, 1);
   for (const name of ["study", "review", "assignment"]) {
-    assert.deepEqual(end.layers[name], { x: 0, y: 0, z: 0, rotate: 0, tilt: 0, pitch: 0, scale: 1, opacity: 1 });
+    assert.deepEqual(end.layers[name], { x: 0, y: 0, z: 0, rotate: 0, tilt: 0, scale: 1, opacity: 1 });
   }
   const forward = [0, .2, .46, .65, 1].map((p) => buildFrame(p));
   assert.deepEqual([1, .65, .46, .2, 0].map((p) => buildFrame(p)).reverse(), forward);
@@ -45,11 +45,6 @@ test("scene frames stay continuous and bounded, with less depth on phones", () =
   assert.equal(phone.layers.slides.x, desktop.layers.slides.x);
   assert.equal(phone.layers.slides.y, desktop.layers.slides.y);
   assert.ok(phone.layers.slides.z < desktop.layers.slides.z / 2);
-  assert.ok(Math.abs(phone.layers.world.pitch) < Math.abs(desktop.layers.world.pitch));
-  assert.ok(buildFrame(0).layers.world.tilt < 0 && buildFrame(.54).layers.world.tilt > 0);
-  assert.ok(new Set(Object.values(buildFrame(0).layers).map((pose) => pose.z)).size >= 4);
-  assert.notEqual(desktop.layers.slides.pitch, desktop.layers.syllabus.pitch);
-  assert.ok(buildFrame(.72).layers.study.z > 60);
 });
 
 function preview({ reduced = false, height = 800 } = {}) {
@@ -61,7 +56,7 @@ function preview({ reduced = false, height = 800 } = {}) {
       setProperty: (key, value) => properties.set(key, value), removeProperty: (key) => properties.delete(key) },
       classList: { toggle: (name, on) => on ? classes.add(name) : classes.delete(name), remove: (name) => classes.delete(name) } };
   }
-  const layers = ["world", "course", "slides", "stored-slides", "study"].map((name) => element({ storyLayer: name }));
+  const layers = ["course", "slides", "stored-slides", "study"].map((name) => element({ storyLayer: name }));
   const steps = [element(), element(), element()];
   const section = element();
   section.querySelector = () => ({ getBoundingClientRect: () => ({ width: browser.innerWidth <= 800 ? browser.innerWidth - 36 : browser.innerWidth * .6, height: 500 }) });
@@ -110,8 +105,6 @@ test("short viewports get a static layout and recover when the viewport grows", 
 test("native scroll changes the scene in both directions without an idle loop or hidden-page work", () => {
   const page = preview(); page.flush();
   const initial = page.layers[0].style.transform;
-  assert.match(initial, /rotateX\(-18\.00deg\)/);
-  assert.match(initial, /rotateY\(-22\.00deg\)/);
   page.browser.scrollY = 1936;
   for (let n = 0; n < 20; n++) page.emit("scroll");
   assert.equal(page.frames.size, 1);

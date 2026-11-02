@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Restore the clear 2D course flow
+
+- Restore the earlier materials-to-course-to-learning composition with restrained scroll-driven card movement and simple source connections. Keep the blended brand copy and aligned vector arrows; remove the experimental spatial volumes and knowledge-space narrative from the preview. Preserve the existing reduced-motion and short-viewport static flow.
+- Prepared on the preview branch without deployment.
+- Validate 20 focused regressions and the 269-file source/assets/package checks. Browser verification confirms the restored course card, four materials and three outcomes, with no experimental canvas/solid faces or horizontal overflow.
+
 ## Unreleased — Spatial course-flow preview
 
 - Give the course story a shared perspective camera and actual CSS 3D solids, including front/back/top/bottom/side faces, a folder tab, material thickness and a restrained spatial shadow. Rotate the view with native scroll while materials approach from different depths and learning outputs rise from the course into separate volumes.

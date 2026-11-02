@@ -60,11 +60,16 @@ readable if JavaScript or optional observers are unavailable.
 A dedicated scroll-driven product scene pins briefly in the viewport: Lecture Slides,
 Syllabus, Problem Set and Lecture Notes cards gather into one Calculus course. Its
 stored file list fills before guided study, a review outline and assignment reasoning
-emerge from that course, with connecting lines showing their shared basis. Native
+emerge from that course, with connecting lines showing their shared basis. The scene
+uses CSS 3D solids with front/back/side faces: the course has a thicker folder body,
+papers and output cards have thinner edges, and a shared scroll-driven camera changes
+pitch and yaw while materials travel through different depths. Keep the reading copy
+outside the camera, use monochrome face shading and avoid an autoplay loop. Native
 scrolling controls and reverses the scene; there is no
 wheel interception or autoplay loop. `landing-story.js` and `landing-story.css` keep
 the choreography separate from the application. Percentage-based paths keep the
-files converging on the course center at every size; phones use less 3D depth.
+files converging on the course center at every size; phones use less 3D depth,
+thinner solids and a gentler camera angle. No additional rendering dependency is needed.
 Reduced-motion and viewports at most 600 px tall show the complete static course flow
 without a long pinned section. All three explanatory steps remain in the document.
 Login and registration use the same neutral style through scoped `public/auth.css`,

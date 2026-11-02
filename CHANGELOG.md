@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Spatial course-flow preview
+
+- Give the course story a shared perspective camera and actual CSS 3D solids, including front/back/top/bottom/side faces, a folder tab, material thickness and a restrained spatial shadow. Rotate the view with native scroll while materials approach from different depths and learning outputs rise from the course into separate volumes.
+- Keep the monochrome palette, copy, intake-to-output sequence and reversible scrolling. Reduce depth, solid thickness and camera angles on phones; preserve a complete flat static flow for reduced motion and short viewports. Add no rendering dependency. Prepared on the preview branch without deployment.
+- Validate 20 focused regressions and the 269-file source/assets/package checks. Browser review confirms visible solid faces and different object depths, all three phases and reverse scrolling, Chinese/English at 320 × 640, 689 px, 900 × 640 and 1440 px, and the 580 px static fallback without clipped content or horizontal overflow.
+
 ## Unreleased — Aligned landing-page arrows
 
 - Replace the homepage's native language-select chevron with a symmetric vector chevron and its action/scroll arrow characters with consistently sized, rounded-stroke SVG icons. Center icons within their controls and preserve native select behavior, accessible link names and the system high-contrast fallback. Prepared on the preview branch without deployment.

@@ -7,39 +7,52 @@
   const clamp = (value) => Math.max(0, Math.min(1, value));
   const smooth = (value) => { const t = clamp(value); return t * t * (3 - 2 * t); };
   // Translations use a percentage of the visual, so files converge into the
-  // same course center at every screen size. Depth alone is reduced on phones.
+  // same course center at every screen size. Phones use a shallower 3D volume.
   const files = {
-    slides: { x: 35, y: 20, rotate: -12, tilt: -12, start: .02 },
-    syllabus: { x: -35, y: 18, rotate: 11, tilt: 10, start: .08 },
-    problems: { x: 35, y: -17, rotate: -8, tilt: -9, start: .14 },
-    notes: { x: -35, y: -19, rotate: 9, tilt: 12, start: .2 }
+    slides: { x: 35, y: 20, rotate: -12, tilt: -16, pitch: 12, depth: 120, start: .02 },
+    syllabus: { x: -35, y: 18, rotate: 11, tilt: 6, pitch: -10, depth: 60, start: .08 },
+    problems: { x: 35, y: -17, rotate: -8, tilt: 28, pitch: 18, depth: 35, start: .14 },
+    notes: { x: -35, y: -19, rotate: 9, tilt: 32, pitch: -12, depth: 150, start: .2 }
   };
 
   function buildFrame(value, viewportWidth = 1440) {
     const progress = clamp(Number(value) || 0);
     const depth = viewportWidth <= 800 ? .4 : viewportWidth <= 1100 ? .7 : 1;
+    const orbit = smooth(progress / .6), reveal = smooth((progress - .56) / .38);
+    const angle = viewportWidth <= 800 ? .85 : 1;
     const layers = {};
+    // A shared camera keeps the extruded objects in one coherent 3D space.
+    layers.world = { x: 0, y: 0, z: 0, rotate: 0,
+      pitch: (-18 + 10 * orbit - 6 * reveal) * angle,
+      tilt: (-22 + 34 * orbit - 22 * reveal) * angle,
+      scale: viewportWidth <= 800 ? .9 : .86, opacity: 1 };
     for (const [name, file] of Object.entries(files)) {
       const t = smooth((progress - file.start) / .32);
-      layers[name] = { x: file.x * t, y: file.y * t, z: 65 * depth * (1 - t),
+      layers[name] = { x: file.x * t, y: file.y * t,
+        z: (file.depth * (1 - t) - 40 * t) * depth,
         rotate: file.rotate * (1 - t), tilt: file.tilt * (1 - t),
+        pitch: file.pitch * (1 - t) - 16 * Math.sin(t * Math.PI),
         scale: 1 - .82 * t, opacity: 1 - smooth((t - .6) / .4) };
       const stored = smooth((progress - file.start - .23) / .09);
       layers[`stored-${name}`] = { x: 0, y: 1.4 * (1 - stored), z: 0,
-        rotate: 0, tilt: 0, scale: 1, opacity: stored };
+        rotate: 0, tilt: 0, pitch: 0, scale: 1, opacity: stored };
     }
     const fill = smooth((progress - .18) / .36);
-    layers.course = { x: 0, y: 0, z: 0, rotate: fill === 1 ? 0 : -2 * (1 - fill), tilt: 0,
+    layers.course = { x: 0, y: 0, z: -20 * depth * (1 - fill),
+      rotate: fill === 1 ? 0 : -2 * (1 - fill),
+      tilt: -10 * (1 - fill), pitch: -8 * (1 - fill),
       scale: 1 + .035 * Math.sin(fill * Math.PI), opacity: 1 };
     for (const [index, name] of ["study", "review", "assignment"].entries()) {
       const t = smooth((progress - .56 - index * .05) / .28);
       if (t === 1) {
-        layers[name] = { x: 0, y: 0, z: 0, rotate: 0, tilt: 0, scale: 1, opacity: 1 };
+        layers[name] = { x: 0, y: 0, z: 0, rotate: 0, tilt: 0, pitch: 0, scale: 1, opacity: 1 };
         continue;
       }
       layers[name] = { x: (1 - index) * 33 * (1 - t), y: -45 * (1 - t),
-        z: t > 0 && t < 1 ? 30 * depth * Math.sin(t * Math.PI) : 0, rotate: (index - 1) * 8 * (1 - t),
-        tilt: 0, scale: .18 + .82 * t, opacity: smooth(t / .45) };
+        z: t > 0 && t < 1 ? 130 * depth * Math.sin(t * Math.PI) : 0,
+        rotate: (index - 1) * 8 * (1 - t),
+        tilt: (index - 1) * 32 * (1 - t), pitch: -28 * (1 - t),
+        scale: .18 + .82 * t, opacity: smooth(t / .45) };
     }
     return { progress, phase: progress < .27 ? 0 : progress < .6 ? 1 : 2,
       layers, fill, links: smooth((progress - .55) / .3), inputs: 1 - fill };
@@ -72,7 +85,7 @@
       for (const element of layers) {
         const pose = state.layers[element.dataset.storyLayer];
         if (!pose) continue;
-        element.style.transform = `translate3d(${(pose.x * bounds.width / 100).toFixed(2)}px,${(pose.y * bounds.height / 100).toFixed(2)}px,${pose.z.toFixed(2)}px) rotateZ(${pose.rotate.toFixed(2)}deg) rotateY(${pose.tilt.toFixed(2)}deg) scale(${pose.scale.toFixed(3)})`;
+        element.style.transform = `translate3d(${(pose.x * bounds.width / 100).toFixed(2)}px,${(pose.y * bounds.height / 100).toFixed(2)}px,${pose.z.toFixed(2)}px) rotateZ(${pose.rotate.toFixed(2)}deg) rotateY(${pose.tilt.toFixed(2)}deg) rotateX(${pose.pitch.toFixed(2)}deg) scale(${pose.scale.toFixed(3)})`;
         element.style.opacity = String(pose.opacity);
       }
       section.style.setProperty("--story-fill", state.fill.toFixed(3));

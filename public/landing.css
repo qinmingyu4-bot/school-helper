@@ -106,6 +106,25 @@ a:focus-visible,summary:focus-visible {
   white-space: nowrap;
 }
 
+.site-header .interface-language select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 34px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23202020' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  background-size: 18px 18px;
+}
+
+@media (forced-colors: active) {
+  .site-header .interface-language select {
+    appearance: auto;
+    -webkit-appearance: auto;
+    background-image: none;
+    padding-right: 9px;
+  }
+}
+
 .header-nav a:hover,.text-link:hover,.site-footer>a:last-child:hover {
   color: #555555;
 }
@@ -151,8 +170,16 @@ a:focus-visible,summary:focus-visible {
   font-size: 15px;
 }
 
-.button>span {
-  font-size: 19px;
+.action-icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .hero {
@@ -1096,6 +1123,9 @@ a:focus-visible,summary:focus-visible {
 }
 
 .site-footer>a:last-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 11px;
   margin-left: auto;
 }
@@ -1347,8 +1377,9 @@ a:focus-visible,summary:focus-visible {
     gap: 9px;
     border-radius: 6px;
   }
-  .header-entry>span {
-    font-size: 15px;
+  .header-entry .action-icon {
+    width: 18px;
+    height: 18px;
   }
   .hero {
     padding-block: 34px 40px;

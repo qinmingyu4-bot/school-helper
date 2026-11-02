@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — Aligned landing-page arrows
+
+- Replace the homepage's native language-select chevron with a symmetric vector chevron and its action/scroll arrow characters with consistently sized, rounded-stroke SVG icons. Center icons within their controls and preserve native select behavior, accessible link names and the system high-contrast fallback. Prepared on the preview branch without deployment.
+- Validate 10 language/page-entry regressions and the 269-file source/assets/package checks. Browser checks confirm centered 20 px entry arrows, a symmetric dropdown chevron, keyboard language selection, unchanged link labels and Chinese/English layouts at 320 and 689 px without horizontal overflow.
+
 ## Unreleased — Learning rhythm and grounded understanding
 
 - Blend the original connection-and-rhythm brand voice with course-grounded AI guidance. Restore the broader hero and feature headings, give the course animation a connection-to-understanding narrative, and carry curiosity and insight through the learning and closing sections.

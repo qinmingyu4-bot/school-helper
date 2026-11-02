@@ -40,6 +40,7 @@
   const root = document.getElementById("root");
   const learningLoop = window.StudyBridgeLearningLoop.create({ request: api, ui,
     getContext: () => ({ userId: state.user?.id, courseId: isGeneralChat() ? "" : state.activeCourseId,
+      courseName: state.courses.find((course) => course.id === state.activeCourseId)?.name || "",
       visible: Boolean(state.user && state.mode === "student" && state.page === "study"),
       quiet: !state.busy && !activeStudyReply() && !activeStudyTask() }),
     onStudy: (topic, sources) => {

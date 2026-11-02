@@ -7,9 +7,18 @@
   return Object.freeze(Object.fromEntries(`
 界面语言|Interface language
 学习清单 · 练习|Study topics · Practice
+选择想学的内容，由你决定下一步。|Choose what to study. The next step is yours.
+{0} 个主题|{0} topics
+{0} 项需要再练|{0} to revisit
+上次练习|Last practice
+从一段讲解，或三道练习开始。|Start with an explanation or three questions.
+回看资料|Read source
+上次作答|Last attempt
+仅自己可见|Private to you
+展开上下文|Read surrounding context
 学习清单|Study topics
-整理资料|Organize materials
-练习记录|Practice history
+整理资料|Materials
+练习记录|History
 短测与反馈|Practice & feedback
 资料与讲解|Sources & teaching
 安排复习|Plan a review

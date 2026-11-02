@@ -6,6 +6,8 @@
   "use strict";
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
   const key = (context) => JSON.stringify([context?.userId, context?.courseId]);
+  const paths = { arrow: "M4 8h9m-4-4 4 4-4 4", book: "M8 4v10M2 2h2a5 5 0 0 1 4 2 5 5 0 0 1 4-2h2v10h-2a5 5 0 0 0-4 2 5 5 0 0 0-4-2H2z", close: "m4 4 8 8M12 4l-8 8", lock: "M5 7V5a3 3 0 0 1 6 0v2M3 7h10v7H3z", plus: "M8 3v10M3 8h10" };
+  const icon = (name) => `<svg aria-hidden="true" focusable="false" viewBox="0 0 16 16"><path d="${paths[name] || paths.arrow}"/></svg>`;
   function suggestion(data, reason, time = Date.now()) {
     if (!data || data.prompts === false || Date.parse(data.snoozedUntil) > time) return null;
     const due = data.topics.find((topic) => !topic.sourceStale && topic.nextReviewAt && Date.parse(topic.nextReviewAt) <= time);
@@ -30,6 +32,8 @@
       panel.querySelectorAll("[data-answer]").forEach((input) => { if (input.checked) state.answers[Number(input.dataset.answer)] = Number(input.value); });
       panel.querySelectorAll("[data-doc]").forEach((input) => { state.selectedDocs[input.dataset.doc] = input.checked; });
       panel.querySelectorAll("[data-draft-id]").forEach((input) => { state.keep[input.dataset.draftId] = input.checked; });
+      state.disclosures ||= {};
+      panel.querySelectorAll("details[data-disclosure]").forEach((element) => { state.disclosures[element.dataset.disclosure] = element.open; });
     }
     function closePrompt() { prompt?.remove(); prompt = null; clearTimeout(timer); }
     function close() {
@@ -103,16 +107,25 @@
     }
     function sourceHtml(ref) {
       const locator = ref.pages?.length ? `${t("PDF 页码")} ${ref.pages.join(", ")}` : `${t("提取文字位置")} ${ref.start + 1}–${ref.end}`;
-      return `<div class="learning-source"><b>${esc(ref.name)}</b><small>${esc(locator)}</small><blockquote>${esc(ref.quote)}</blockquote>${ref.excerpt ? `<pre>${esc(ref.excerpt)}</pre>` : ""}</div>`;
+      return `<div class="learning-source"><b>${esc(ref.name)}</b><small>${esc(locator)}</small><blockquote>${esc(ref.quote)}</blockquote>${ref.excerpt ? `<details class="learning-source-context" data-disclosure="source-${esc(ref.documentId)}-${ref.start}"><summary>${safe("展开上下文")}</summary><pre>${esc(ref.excerpt)}</pre></details>` : ""}</div>`;
     }
-    const button = (action, label, attributes = "") => `<button type="button" data-learning="${action}" ${attributes}>${safe(label)}</button>`;
+    const button = (action, label, attributes = "", variant = "") => `<button type="button" class="learning-button ${["extract", "confirm", "submit", "save-plan", "save-bind", "lesson", "add"].includes(action) ? "is-primary" : ""} ${variant}" data-learning="${action}" ${attributes}>${safe(label)}${variant.includes("has-arrow") ? icon("arrow") : ""}</button>`;
     function materialsHtml(state) {
       return `<p>${safe("选择资料后生成主题草稿，你可以修改名称、取消勾选，再确认加入。长资料会抽样整理，清单不代表完整覆盖或考试范围。")}</p><div class="learning-docs">${state.data.documents.map((item) => `<label><input type="checkbox" data-doc="${esc(item.id)}" ${state.selectedDocs[item.id] ? "checked" : ""}><span>${esc(item.name)}</span></label>`).join("") || `<p>${safe("先在课程资料中上传讲义或保存笔记。")}</p>`}</div>${button("extract", "生成学习清单草稿")}${state.data.draft ? `<section class="learning-draft"><h3>${safe("核对学习清单")}</h3>${state.data.draft.topics.map((topic) => `<article><label><input type="checkbox" data-draft-id="${esc(topic.id)}" ${state.keep[topic.id] !== false ? "checked" : ""}><input aria-label="${safe("主题名称")}" data-field="draft-${esc(topic.id)}" value="${esc(state.fields[`draft-${topic.id}`] ?? topic.title)}" maxlength="160"></label>${topic.sources.map(sourceHtml).join("")}</article>`).join("")}<div class="learning-actions">${button("confirm", "确认加入学习清单")}${button("discard", "放弃这份草稿")}</div></section>` : ""}`;
     }
     function topicsHtml(state) {
       const topics = [...state.data.topics].sort((a, b) => (a.status === "needs_review" ? 0 : a.status === "untested" ? 1 : 2) - (b.status === "needs_review" ? 0 : b.status === "untested" ? 1 : 2) || String(a.nextReviewAt || "").localeCompare(String(b.nextReviewAt || "")));
       const statuses = { untested: "尚未检测", needs_review: "需要再练", answered_correct: "本次独立答对" };
-      return `<p>${safe("选你现在想学的内容。看过讲解和完成日程不会被当作掌握，只有作答会更新学习记录。")}</p>${topics.map((topic) => `<article class="learning-topic"><div class="learning-topic-heading"><h3>${esc(topic.title)}</h3><span class="learning-status ${topic.status === "needs_review" ? "needs-review" : ""}">${safe(statuses[topic.status] || "尚未检测")}</span></div>${topic.lastAttemptAt ? `<small>${esc(date(topic.lastAttemptAt))} · ${topic.lastScore}/3${topic.helped ? ` · ${safe("看过提示后作答")}` : ""}</small>` : ""}${topic.nextReviewAt ? `<p class="learning-next">${safe("建议再练时间")} · ${esc(date(topic.nextReviewAt))}</p>` : ""}${topic.sourceStale ? `<p class="learning-warning">${safe("资料已更新，请重新关联出处后再练习。")}</p>` : ""}<div class="learning-actions">${button("source", "看资料 / 学这部分", `data-topic="${esc(topic.id)}"`)}${button("quiz", "练三道题", `data-topic="${esc(topic.id)}" ${topic.sourceStale || !topic.sources.length ? "disabled" : ""}`)}${button("plan", "安排复习", `data-topic="${esc(topic.id)}"`)}${topic.lastQuizId ? button("resume", "查看上次作答", `data-id="${esc(topic.lastQuizId)}"`) : ""}</div><details><summary>${safe("编辑主题")}</summary><label>${safe("主题名称")}<input data-field="title-${esc(topic.id)}" value="${esc(state.fields[`title-${topic.id}`] ?? topic.title)}" maxlength="160"></label><div class="learning-actions">${button("rename", "保存名称", `data-topic="${esc(topic.id)}"`)}${button("bind", "关联资料出处", `data-topic="${esc(topic.id)}"`)}${button("delete", "删除主题", `data-topic="${esc(topic.id)}"`)}</div></details></article>`).join("") || `<div class="learning-empty"><h3>${safe("从你想学的内容开始")}</h3><p>${safe("可以从资料整理，也可以先自己添加一个主题。")}</p>${button("materials", "从课程资料整理")}</div>`}<section class="learning-add"><h3>${safe("自己添加主题")}</h3><label>${safe("主题名称")}<input data-field="newTitle" maxlength="160" value="${esc(state.fields.newTitle || "")}" placeholder="${safe("例如：我想弄懂 p 值")}"></label>${button("add", "添加到学习清单")}</section>`;
+      const reviewCount = topics.filter((topic) => topic.status === "needs_review").length;
+      return `<div class="learning-section-intro"><p>${safe("选择想学的内容，由你决定下一步。")}</p><span>${esc(ui.message`${topics.length} 个主题`)}${reviewCount ? ` · ${esc(ui.message`${reviewCount} 项需要再练`)}` : ""}</span></div>
+        <div class="learning-topic-list">${topics.map((topic) => `<article class="learning-topic" data-status="${esc(topic.status)}">
+          <div class="learning-topic-main"><div class="learning-topic-heading"><span class="learning-status ${topic.status === "needs_review" ? "needs-review" : ""}"><i aria-hidden="true"></i>${safe(statuses[topic.status] || "尚未检测")}</span><h3>${esc(topic.title)}</h3></div>
+          <div class="learning-topic-meta">${topic.lastAttemptAt ? `<span>${safe("上次练习")} <b>${topic.lastScore}/3</b></span><span>${esc(date(topic.lastAttemptAt))}</span>${topic.helped ? `<span>${safe("看过提示后作答")}</span>` : ""}` : `<span>${safe("从一段讲解，或三道练习开始。")}</span>`}</div>
+          ${topic.sourceStale ? `<p class="learning-warning">${safe("资料已更新，请重新关联出处后再练习。")}</p>` : ""}</div>
+          <div class="learning-topic-practice">${button("quiz", "练三道题", `data-topic="${esc(topic.id)}" ${topic.sourceStale || !topic.sources.length ? "disabled" : ""}`, `${topic.status === "needs_review" ? "is-primary " : ""}has-arrow`)}${button("source", "回看资料", `data-topic="${esc(topic.id)}"`, "is-text")}</div>
+          <div class="learning-topic-bottom">${topic.nextReviewAt ? `<span class="learning-next">${safe("建议再练时间")} · ${esc(date(topic.nextReviewAt))}</span>` : ""}<div class="learning-topic-links">${button("plan", "安排复习", `data-topic="${esc(topic.id)}"`, "is-text")}${topic.lastQuizId ? button("resume", "上次作答", `data-id="${esc(topic.lastQuizId)}"`, "is-text") : ""}<details class="learning-topic-edit" data-disclosure="edit-${esc(topic.id)}"><summary>${safe("编辑主题")}</summary><div class="learning-topic-edit-form"><label>${safe("主题名称")}<input data-field="title-${esc(topic.id)}" value="${esc(state.fields[`title-${topic.id}`] ?? topic.title)}" maxlength="160"></label><div class="learning-actions">${button("rename", "保存名称", `data-topic="${esc(topic.id)}"`)}${button("bind", "关联资料出处", `data-topic="${esc(topic.id)}"`)}${button("delete", "删除主题", `data-topic="${esc(topic.id)}"`)}</div></div></details></div></div>
+        </article>`).join("") || `<div class="learning-empty">${icon("book")}<h3>${safe("从你想学的内容开始")}</h3><p>${safe("可以从资料整理，也可以先自己添加一个主题。")}</p>${button("materials", "从课程资料整理")}</div>`}</div>
+        <details class="learning-add" data-disclosure="add"><summary>${icon("plus")}<span>${safe("自己添加主题")}</span></summary><div class="learning-add-form"><label>${safe("主题名称")}<input data-field="newTitle" maxlength="160" value="${esc(state.fields.newTitle || "")}" placeholder="${safe("例如：我想弄懂 p 值")}"></label>${button("add", "添加到学习清单")}</div></details>`;
     }
     function quizHtml(state) {
       const quiz = state.quiz;
@@ -130,6 +143,7 @@
     function draw() {
       if (!panel || !model()) return;
       const state = model(), wasFocused = panel.contains(doc.activeElement), focusField = doc.activeElement?.dataset.field;
+      const previousView = panel.dataset.learningView, previousScroll = panel.querySelector(".learning-body")?.scrollTop || 0;
       const views = { topics: "学习清单", materials: "整理资料", history: "练习记录", quiz: "短测与反馈", source: "资料与讲解", plan: "安排复习", bind: "关联资料出处" };
       let body = !state.data ? `<p role="status">${safe(state.loadError || "正在读取学习记录…")}</p>${button("refresh", "重新读取")}` : "";
       if (state.data) {
@@ -139,9 +153,15 @@
         if (state.view === "plan") body = planHtml(state);
         if (state.view === "bind") body = bindHtml(state);
         if (state.view === "source") body = `${(state.sources || []).map(sourceHtml).join("")}<p>${safe("可以让 AI 继续讲解，问题会先填入输入框，由你选择是否发送。")}</p>${button("lesson", "请 AI 讲解这个主题")}`;
-        if (state.view === "history") body = `<p>${safe("最近 24 次练习；关闭页面后也可继续未提交的题目。")}</p>${state.data.recent.map((entry) => `<article class="learning-history"><b>${esc(entry.title)}</b><small>${esc(date(entry.createdAt))} · ${entry.submittedAt ? `${entry.score}/3${entry.helped ? ` · ${safe("看过提示后作答")}` : ""}` : safe("尚未提交")}</small>${button("resume", entry.submittedAt ? "查看反馈" : "继续作答", `data-id="${esc(entry.id)}"`)}</article>`).join("") || `<p>${safe("还没有作答记录，选一个主题开始吧。")}</p>`}`;
+        if (state.view === "history") body = `<p class="learning-caption">${safe("最近 24 次练习；关闭页面后也可继续未提交的题目。")}</p>${state.data.recent.map((entry) => `<article class="learning-history"><div><b>${esc(entry.title)}</b><small>${esc(date(entry.createdAt))} · ${entry.submittedAt ? `${entry.score}/3${entry.helped ? ` · ${safe("看过提示后作答")}` : ""}` : safe("尚未提交")}</small></div>${button("resume", entry.submittedAt ? "查看反馈" : "继续作答", `data-id="${esc(entry.id)}"`, "is-text has-arrow")}</article>`).join("") || `<p>${safe("还没有作答记录，选一个主题开始吧。")}</p>`}`;
       }
-      panel.innerHTML = `<header><div><small>StudyBridge</small><h2 id="learning-title">${safe(views[state.view] || "学习清单")}</h2></div>${button("close", "关闭")}</header><nav aria-label="${safe("学习入口")}">${["topics", "materials", "history"].map((view) => button(view, views[view], `aria-pressed="${state.view === view}"`)).join("")}</nav><div class="learning-body">${state.error ? `<p role="alert" class="learning-error">${safe(state.error)}</p>${button("refresh", "刷新学习记录")}` : ""}${state.notice ? `<p role="status">${safe(state.notice)}</p>` : ""}${body}</div><footer><label><input type="checkbox" data-learning="prompts" ${state.data?.prompts !== false ? "checked" : ""}>${safe("允许自动弹出学习建议")}</label><small>${safe("私人学习记录仅自己可见。每一步都可自主选择，也可以随时退出。")}</small><span role="status">${state.busy ? safe("正在处理，请稍候…") : ""}</span></footer>`;
+      panel.innerHTML = `<header><div><div class="learning-eyebrow"><span class="learning-wordmark"><img src="/brand/icon-monochrome.svg" alt="" width="16" height="16">StudyBridge</span>${getContext()?.courseName ? `<span class="learning-course-name">${esc(getContext().courseName)}</span>` : ""}</div><h2 id="learning-title">${safe(views[state.view] || "学习清单")}</h2></div><button type="button" class="learning-close" data-learning="close" aria-label="${safe("关闭")}">${icon("close")}</button></header>
+        <nav aria-label="${safe("学习入口")}">${["topics", "materials", "history"].map((view) => `<button type="button" data-learning="${view}" ${state.view === view ? 'aria-current="page"' : ""} aria-label="${safe(views[view])}">${safe(views[view])}${view !== "materials" && state.data ? `<span class="learning-tab-count" aria-hidden="true">${view === "topics" ? state.data.topics.length : state.data.recent.length}</span>` : ""}</button>`).join("")}</nav>
+        <div class="learning-body">${state.error ? `<p role="alert" class="learning-error">${safe(state.error)}</p>${button("refresh", "刷新学习记录")}` : ""}${state.notice ? `<p role="status" class="learning-notice">${safe(state.notice)}</p>` : ""}${body}</div>
+        <footer><label class="learning-auto"><input type="checkbox" role="switch" data-learning="prompts" ${state.data?.prompts !== false ? "checked" : ""}><span>${safe("允许自动弹出学习建议")}</span></label><small class="learning-privacy">${icon("lock")}${safe("仅自己可见")}</small><span class="learning-busy" role="status">${state.busy ? safe("正在处理，请稍候…") : ""}</span></footer>`;
+      panel.dataset.learningView = state.view;
+      panel.querySelector(".learning-body").scrollTop = previousView === state.view ? previousScroll : 0;
+      panel.querySelectorAll("details[data-disclosure]").forEach((element) => { element.open = Boolean(state.disclosures?.[element.dataset.disclosure]); });
       if (state.busy) panel.querySelectorAll("button:not([data-learning=close]), input, textarea, select").forEach((element) => { element.disabled = true; });
       if (wasFocused && focusField) panel.querySelector(`[data-field="${CSS.escape(focusField)}"]`)?.focus({ preventScroll: true });
     }
@@ -156,6 +176,7 @@
       panel.addEventListener("click", (event) => { const button = event.target.closest("[data-learning]"); if (button && button.type !== "checkbox") void action(button); });
       panel.addEventListener("change", (event) => { capture(); if (event.target.dataset.learning === "prompts") void run("preferences", { prompts: event.target.checked }); });
       panel.addEventListener("input", capture);
+      panel.addEventListener("toggle", capture, true);
       panel.addEventListener("cancel", (event) => { event.preventDefault(); close(); });
       doc.body.append(panel); draw(); panel.showModal();
       if (model().data?.draft) { model().view = "materials"; draw(); }

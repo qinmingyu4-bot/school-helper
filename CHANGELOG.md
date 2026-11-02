@@ -2,6 +2,8 @@
 
 ## 2026-11-02 — Course learning loop (review branch)
 
+- Follow the existing account palette and independent dark mode throughout the refined learning panel. Use shared charcoal surfaces and champagne accents at night; prevent the older global dark-control reset from overriding text navigation, primary actions, inputs and suggestion switches.
+
 - Refine the complete learning panel to match StudyBridge's quieter workspace: compact brand/course heading and icon close control, understated text navigation, slim status indicators, a clear primary practice action, lighter source/history/calendar links, an optional add-topic disclosure, and a compact automatic-suggestion switch with private-record status. Apply the same typography and surfaces to materials, practice, feedback and history, retain account palettes/dark mode, and preserve disclosure, input and scroll state during redraws.
 
 - Fix the course header overflowing its former 54 px height when learning actions wrap. Let it size to its contents, give narrow screens a separate full-width action row with touch-sized controls, and compact course countdown reminders so navigation, actions, reminders and chat no longer overlap.

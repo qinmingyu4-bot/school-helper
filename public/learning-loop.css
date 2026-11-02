@@ -1,7 +1,7 @@
 /* Quiet paper surfaces, restrained controls and an explicit primary action. */
 .learning-dialog,.learning-prompt{--learning-ink:#252a27;--learning-muted:#6f7871;--learning-line:#e7ebe8;--learning-paper:#fff;--learning-soft:#f6f8f6;--learning-accent:var(--sb-accent,#426b57);color:var(--learning-ink);font-family:var(--font-ui,system-ui,sans-serif);font-weight:400}
 :root[data-sb-theme] :is(.learning-dialog,.learning-prompt){--learning-ink:var(--ink);--learning-muted:var(--muted);--learning-line:var(--line);--learning-paper:var(--panel);--learning-soft:var(--soft)}
-:root[data-sb-mode="dark"] :is(.learning-dialog,.learning-prompt){--learning-ink:#e7e8e4;--learning-muted:#a3aaa4;--learning-line:#3a403c;--learning-paper:#252a27;--learning-soft:#2c322e;--learning-accent:var(--sb-accent,#bdcbbf)}
+:root[data-sb-mode="dark"] :is(.learning-dialog,.learning-prompt){--learning-ink:var(--ink);--learning-muted:var(--muted);--learning-line:var(--line);--learning-paper:var(--panel);--learning-soft:var(--soft);--learning-accent:var(--sb-accent,#bdcbbf)}
 .learning-dialog *,.learning-dialog *::before,.learning-dialog *::after,.learning-prompt *,.learning-prompt *::before{box-sizing:border-box}
 .learning-dialog{width:min(860px,calc(100vw - 48px));max-width:none;max-height:calc(100dvh - 56px);padding:0;border:1px solid var(--learning-line);border-radius:16px;background:var(--learning-paper);box-shadow:0 30px 100px #14201a26;overflow:hidden}
 .learning-dialog[open]{display:flex;flex-direction:column}
@@ -169,3 +169,15 @@
 }
 @media(prefers-reduced-motion:reduce){.learning-dialog *,.learning-prompt *{transition:none !important}}
 @media(pointer:coarse){.learning-dialog .is-text,.learning-dialog .learning-topic-edit>summary{min-height:44px}}
+
+/* Keep the global dark-control reset from flattening the panel's hierarchy. */
+:root[data-sb-mode="dark"] .learning-dialog :is(button,input,textarea,select){background:var(--learning-paper);color:var(--learning-ink);border-color:var(--learning-line)}
+:root[data-sb-mode="dark"] .learning-dialog :is(nav>button,button.is-text,button.learning-close){background:transparent;color:var(--learning-muted);border-color:transparent}
+:root[data-sb-mode="dark"] .learning-dialog nav>button[aria-current="page"]{color:var(--learning-ink);border-bottom-color:var(--learning-accent)}
+:root[data-sb-mode="dark"] .learning-dialog button.is-primary{background:var(--learning-accent);color:var(--learning-paper);border-color:var(--learning-accent)}
+:root[data-sb-mode="dark"] .learning-dialog :is(button.is-text,button.learning-close,nav>button):hover{color:var(--learning-ink)}
+:root[data-sb-mode="dark"] .learning-dialog button.learning-close:hover{background:var(--learning-soft)}
+:root[data-sb-mode="dark"] .learning-dialog .learning-auto input{background:color-mix(in srgb,var(--learning-muted) 25%,var(--learning-paper));border-color:var(--learning-line)}
+:root[data-sb-mode="dark"] .learning-dialog .learning-auto input:checked{background:var(--learning-accent);border-color:var(--learning-accent)}
+:root[data-sb-mode="dark"] .learning-prompt button{background:transparent;color:var(--learning-muted);border-color:transparent}
+:root[data-sb-mode="dark"] .learning-prompt .learning-actions button:first-child{color:var(--learning-accent)}

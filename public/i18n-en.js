@@ -1428,6 +1428,26 @@ AI 只在你点击后参与；预览不会改动内容，应用后可撤销。|A
 至少保留一个工作表。|Keep at least one sheet.
 删除当前工作表？引用此表的公式会显示错误。|Delete this sheet? Formulas referencing it will show errors.
 StudyBridge · 连接学习的每一步|StudyBridge · Connect every step of learning
+StudyBridge 将课程资料、AI 学习、日程与创作连接起来。以你的课程资料为依据，在探索与追问中积累理解，找到自己的学习节奏。|StudyBridge connects course materials, AI learning, schedules and creative tools. Learn from your own materials, follow your questions and build understanding at your own pace.
+AI 从你的课程资料出发，陪你学习、复习、推敲问题。|AI works with your course materials to guide your study, review and reasoning.
+让零散的知识，慢慢成为自己的理解。|Bring the pieces together. Make understanding your own.
+知识在这里相连，|Ideas connect.\u0020
+理解由此展开。|Understanding unfolds.
+汇聚学习的片段|Bring it together
+讲义、课件与习题，在同一门课程里找到位置。|Give notes, slides and problem sets a shared home in one course.
+连起知识的线索|Find the connections
+把课程中的概念与问题放在一起，让知识逐渐形成脉络。|Connect concepts and questions to see how the pieces fit.
+走向自己的理解|Make it your own
+AI 以这些资料为依据，陪你学习、复习，在一次次推敲中深入理解。|Grounded in these materials, AI guides your study and review as you work toward deeper understanding.
+把资料、思考和计划放在一起，让每一次学习，都接上之前的积累。|Bring materials, ideas and plans together, so each study session builds on the last.
+让每一次追问，|With every question,
+都更接近理解。|understanding grows.
+AI 优先从你上传的资料中寻找依据，结合这门课的概念与方法，陪你学习、复习和推敲作业。需要核对时，沿着课程引用回到原文。|AI looks to your uploaded materials first, guiding study, review and assignment work through your course’s concepts and methods. Follow course references back to the original whenever you want to check.
+从一个问题，|One question.
+开始一段探索。|A new direction.
+从一门课出发|Start with a course
+让学习邮件，接上你的安排。|Connect study emails with your plans.
+下一次豁然开朗，|Your next moment of clarity
 资料归入课程，|One course.
 学习由此展开。|Learning unfolds.
 汇入课程资料|Bring your materials

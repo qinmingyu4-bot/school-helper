@@ -42,7 +42,10 @@ problems, revision and expressing what students learn. Keep account setup, invit
 membership labels and routine recovery details on the relevant application screens;
 public copy should make sense to a first-time visitor without development history.
 Permission and calendar-confirmation information stays beside the relevant features.
-Lead with the primary distinction: uploaded course materials ground AI-guided study,
+Balance the brand's ideas of connection, curiosity and a personal learning rhythm
+with concrete support: let major headings carry the broader idea, then ground it
+in the nearby explanation and product examples. Keep the primary distinction clear
+in the opening description: uploaded course materials ground AI-guided study,
 review and assignment help, with course references for checking the reasoning. Say
 materials come first; do not imply the service never uses web search or outside
 information, since the backend supports those and distinguishes their sources.

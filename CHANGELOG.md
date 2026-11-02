@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Learning rhythm and grounded understanding
+
+- Blend the original connection-and-rhythm brand voice with course-grounded AI guidance. Restore the broader hero and feature headings, give the course animation a connection-to-understanding narrative, and carry curiosity and insight through the learning and closing sections.
+- Keep uploaded-material guidance explicit in the opening description, practical examples and course citations; retain the course intake/output animation and useful feature, permission and FAQ details. Update matching English copy and description metadata. Prepared on the preview branch without a new deployment.
+- Validate 20 focused regressions and the 269-file source/assets/package checks. Browser review confirms fully translated headings, body copy and metadata, responsive Chinese/English layouts at 320 × 640, 689 px, 900 × 640 and 1440 px, and no clipped headings or cards, horizontal overflow or pinned-scene clipping.
+
 ## Unreleased — Materials into one course, learning from that course
 
 - Replace the generic interface assembly with a course-centered scroll story: Lecture Slides, Syllabus, Problem Set and Lecture Notes converge into one Calculus course, populate its stored file list, then give rise to guided learning, a review outline and assignment reasoning connected back to the course.

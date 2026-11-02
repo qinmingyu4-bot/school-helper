@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-02 — Course learning loop (review branch)
+
+- Add a permanent course learning entry with reviewed, editable topic drafts from selected materials; manual topics and verified source links; optional teaching prompts that preserve existing chat drafts; private three-question practice, saved mistakes and assisted/independent results; confirmed calendar review tasks and new-question retests that update the next suggested review.
+- Keep student choice at every step. Offer nonmodal automatic suggestions after relevant study activity or when a topic is due, without stealing focus or making automatic AI calls. Support dismissal, a one-day snooze and account-saved per-course disabling while preserving the manual entry. Keep learning records private and Community sharing separate.
+- Persist course state and quizzes in local/DynamoDB storage with conditional updates, hidden pre-submission answer keys, server grading, source-version guards and atomic linked-task completion. Preserve existing course/chat/calendar data; no migration or AWS deployment is included. Document the initial single-choice quiz format and review rules in `docs/learning-loop.md`.
+- Validate 491 automated tests and 271-file source/asset/version checks. Isolated Chrome/WebKit checks cover nonintrusive suggestions, persistent opt-out and manual entry, topic confirmation, quiz recovery/feedback, linked calendar retests, assisted practice, retained answers after failed submission, 320/390/1280 px layouts, English and dark mode. AI generation uses fixtures; real-course question quality remains a separate acceptance check.
+
 ## 1.2.9 — Alipay live integration preparation (2026-11-01)
 
 - Completed the separately authorized private credential setup at production commit `7979a53`: create a dedicated limited live key (7 read / 2 write permissions), save it and the webhook signing secret in encrypted deployment configuration, and verify the AWS installer succeeds with checkout closed and draft prices unapproved. Alipay now shows Enabled in Stripe. Online status confirms live configuration is ready while purchase controls remain disabled; unsigned webhooks are rejected. No orders or real payments were created, and signed Stripe-origin delivery / real-payment acceptance remain untested. No credential values are recorded in source or chat.

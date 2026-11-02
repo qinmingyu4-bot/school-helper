@@ -44,6 +44,7 @@ const { citationInstruction, extractPdfLocations } = require("./lib/study-citati
 const { pptxSourceParts } = require("./lib/study-office-locations");
 const { createStudyIndex } = require("./lib/study-index");
 const { createStudyJobs } = require("./lib/study-jobs");
+const { createLearningLoop } = require("./lib/learning-loop");
 const { buildExerciseCoverage, coverageInstruction } = require("./lib/study-coverage");
 const { selectAiModel } = require("./lib/ai-routing");
 const scheduleImport = require("./public/schedule-import");
@@ -148,6 +149,14 @@ const creative = createCreativeService({
   contextFor: (userId, courseId, message, cheatsheet) => courseContext(db, userId, courseId, message, cheatsheet)
 });
 const studyIndex = createStudyIndex({ db });
+const learningLoop = createLearningLoop({ db,
+  generate: (messages) => {
+    if (!process.env.OPENAI_API_KEY) throw Object.assign(new Error("AI 服务尚未配置，请先手动添加学习主题。"), { statusCode: 503 });
+    return callAiWithChatCompletions(messages, complexAiModel, null, { signal: AbortSignal.timeout(60000), store: false });
+  },
+  learningInstruction: (preferences) => learningStyle.buildInstruction(preferences),
+  listSchedule: (userId) => listUserScheduleItems(userId, { includeCompleted: true })
+});
 const billing = createBillingService({ db });
 const alipay = createAlipayService({ db });
 async function studySources({ userId, courseId, conversationId }) {
@@ -3113,6 +3122,28 @@ if (directMessageMatch && method === "POST") {
     if (!course) return sendError(res, 404, "Course not found.");
     if (course.chatType === "general" && ((!child && method === "DELETE") || (child === "documents" && method !== "GET"))) {
       return sendError(res, 403, "General chat is not a course. Upload attachments with a chat message instead.");
+    }
+
+    if (child === "learning-loop") {
+      if (course.chatType === "general" || course.name === "Schedule & Deadlines") return sendError(res, 400, "请先选择一门课程。");
+      res.setHeader("Cache-Control", "private, no-store");
+      if (method === "GET" && !childId) return sendJson(res, 200, { learning: await learningLoop.read(user.id, courseId) });
+      if (method === "GET" && childId === "quiz") return sendJson(res, 200, { quiz: await learningLoop.getQuiz(user.id, courseId, url.searchParams.get("id")) });
+      if (method === "GET" && childId === "source") return sendJson(res, 200, { sources: await learningLoop.source(user.id, courseId, url.searchParams.get("topicId")) });
+      if (method === "POST") {
+        const body = await readJson(req, 16000);
+        if (!body || typeof body !== "object" || Array.isArray(body)) return sendError(res, 400, "学习操作格式无效。");
+        if (childId === "extract") await learningLoop.extract(user, courseId, body);
+        else if (childId === "topics") await learningLoop.topics(user.id, courseId, body);
+        else if (childId === "quiz") return sendJson(res, 200, { quiz: await learningLoop.quiz(user, courseId, body) });
+        else if (childId === "submit") return sendJson(res, 200, { quiz: await learningLoop.submit(user.id, courseId, body) });
+        else if (childId === "help") return sendJson(res, 200, { quiz: await learningLoop.help(user.id, courseId, body) });
+        else if (childId === "plan") await learningLoop.plan(user.id, course, body);
+        else if (childId === "preferences") await learningLoop.preferences(user.id, courseId, body);
+        else return sendError(res, 404, "学习操作不存在。");
+        return sendJson(res, 200, { learning: await learningLoop.read(user.id, courseId) });
+      }
+      return sendError(res, 405, "Method not allowed.");
     }
 
     if (!child && method === "DELETE") {

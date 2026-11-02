@@ -1,0 +1,58 @@
+.learning-dialog { width:min(780px, calc(100vw - 32px)); max-height:calc(100dvh - 48px); padding:0; border:1px solid var(--line, #ddd); border-radius:18px; background:var(--panel, #fff); color:var(--ink, #222); box-shadow:0 24px 90px #0003; overflow:hidden; }
+.learning-dialog[open] { display:flex; flex-direction:column; }
+.learning-dialog > :is(header, nav, footer) { flex-shrink:0; }
+.learning-dialog::backdrop { background:#0006; }
+.learning-dialog header { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:22px 24px 16px; }
+.learning-dialog header small, .learning-dialog small { display:block; color:var(--muted, #666); }
+.learning-dialog h2 { margin:4px 0 0; font-size:24px; }
+.learning-dialog h3 { margin:0 0 10px; font-size:17px; overflow-wrap:anywhere; }
+.learning-dialog nav { display:flex; flex-wrap:wrap; gap:8px; padding:0 24px 16px; border-bottom:1px solid var(--line, #ddd); }
+.learning-dialog nav button[aria-pressed=true] { background:var(--green, #275c52); color:var(--panel, #fff); }
+.learning-body { padding:20px 24px; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+.learning-body > p:first-child { margin-top:0; color:var(--muted, #666); line-height:1.65; }
+.learning-dialog button, .learning-prompt button { min-height:36px; padding:7px 12px; border:1px solid var(--line, #ddd); border-radius:9px; background:var(--panel, #fff); color:var(--ink, #222); font:inherit; font-size:13px; cursor:pointer; }
+.learning-dialog button:hover, .learning-prompt button:hover { border-color:var(--green, #275c52); }
+.learning-dialog button:disabled { opacity:.5; cursor:default; }
+.learning-dialog :is(button, input, textarea, select):focus-visible, .learning-prompt button:focus-visible { outline:2px solid var(--green, #275c52); outline-offset:3px; }
+.learning-dialog :is(input, textarea, select) { max-width:100%; box-sizing:border-box; color:var(--ink, #222); background:var(--panel, #fff); border:1px solid var(--line, #ddd); border-radius:7px; padding:9px; font:inherit; font-size:15px; }
+.learning-dialog label { display:block; margin:10px 0; line-height:1.6; }
+.learning-dialog label > :is(input:not([type=checkbox]):not([type=radio]), textarea, select) { display:block; width:100%; margin-top:6px; }
+.learning-dialog input:is([type=checkbox], [type=radio]) { width:17px; height:17px; accent-color:var(--green, #275c52); flex-shrink:0; }
+.learning-topic, .learning-add, .learning-history, .learning-draft article { padding:18px 0; border-bottom:1px solid var(--line, #ddd); }
+.learning-topic-heading { display:flex; flex-wrap:wrap; gap:8px 14px; justify-content:space-between; }
+.learning-status { align-self:flex-start; font-size:12px; padding:3px 8px; border-radius:6px; color:var(--green, #275c52); background:var(--soft, #f4f5f5); }
+.learning-status.needs-review, .learning-warning { color:var(--ink, #222); }
+.learning-next { color:var(--muted, #666); font-size:13px; }
+.learning-actions { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.learning-topic details { margin-top:14px; font-size:13px; color:var(--muted, #666); }
+.learning-topic summary { cursor:pointer; }
+.learning-docs label, .learning-choice, .learning-draft article > label { display:flex; align-items:flex-start; gap:10px; overflow-wrap:anywhere; }
+.learning-docs input { margin-top:5px; }
+.learning-dialog fieldset { min-width:0; margin:20px 0; padding:16px; border:1px solid var(--line, #ddd); border-radius:12px; }
+.learning-dialog legend { max-width:100%; padding:0 5px; font-weight:600; line-height:1.7; overflow-wrap:anywhere; }
+.learning-dialog .learning-choice { display:flex; gap:10px; align-items:flex-start; padding:8px; border-radius:8px; cursor:pointer; font-weight:400; }
+.learning-choice:has(input:checked) { background:var(--soft, #f4f5f5); }
+.learning-choice input { margin-top:4px; }
+.learning-feedback, .learning-result { padding:14px; margin-top:14px; background:var(--soft, #f4f5f5); border-radius:10px; line-height:1.7; overflow-wrap:anywhere; }
+.learning-source { margin:12px 0; padding:12px; border-left:2px solid var(--green, #275c52); background:var(--soft, #f4f5f5); overflow-wrap:anywhere; }
+.learning-source blockquote { margin:10px 0 0; line-height:1.7; }
+.learning-source pre { font:inherit; font-size:14px; line-height:1.8; white-space:pre-wrap; max-height:350px; overflow:auto; }
+.learning-error { color:var(--ink, #222); padding:12px; border:1px solid var(--line, #ddd); border-radius:8px; }
+.learning-dialog footer { padding:16px 24px; border-top:1px solid var(--line, #ddd); font-size:13px; }
+.learning-dialog footer small { line-height:1.7; }
+.learning-prompt { position:fixed; z-index:120; right:24px; bottom:24px; width:min(360px, calc(100vw - 32px)); box-sizing:border-box; padding:20px 20px 8px; border:1px solid var(--line, #ddd); border-radius:16px; background:var(--panel, #fff); color:var(--ink, #222); box-shadow:0 10px 36px #0002; }
+.learning-prompt b { display:block; padding-right:24px; }
+.learning-prompt p { line-height:1.6; margin:8px 0; }
+.learning-prompt small { color:var(--muted, #666); }
+.learning-prompt .learning-prompt-close { position:absolute; top:8px; right:8px; border:0; min-height:32px; padding:3px 9px; }
+.course-chat-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
+.course-chat-actions button { white-space:nowrap; }
+@media(max-width:700px) {
+  .learning-dialog { width:calc(100vw - 16px); max-height:calc(100dvh - 16px); border-radius:12px; }
+  .learning-dialog :is(header, footer, .learning-body) { padding:16px; }
+  .learning-dialog nav { padding:0 16px 12px; }
+  .learning-dialog button, .learning-prompt button { min-height:44px; }
+  .learning-dialog :is(input, textarea, select) { font-size:16px; }
+  .learning-prompt { right:16px; bottom:16px; }
+  .course-chat-actions { max-width:160px; }
+}

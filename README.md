@@ -57,6 +57,23 @@ Session-dependent page redirects use `Cache-Control: no-store`.
 Preview this change with an isolated local database. Push review work to a task
 branch: pushing to `main` triggers the AWS deployment workflow.
 
+## Course learning loop
+
+Each course has a permanent **学习清单 · 练习 / Study topics · Practice** entry.
+Students can organize selected materials into an editable topic draft, confirm
+only the topics they want, or add a topic manually and link an exact source
+excerpt. Each topic offers source reading, an optional teaching prompt, three
+practice questions, saved feedback and a confirmed calendar review. Calendar
+**开始复习 / Start review** opens a new practice session for that topic; submitting
+it also completes its linked task. Future review suggestions depend on actual
+answers, with independent and assisted attempts distinguished.
+
+Automatic suggestions are optional, nonmodal and never send a message or call
+AI by themselves. Dismiss, snooze for a day, or turn them off for that course;
+the manual entry remains available. Preferences sync with the account. Private
+learning records stay with the course and are not posted to Community.
+See [learning-loop behavior and limits](docs/learning-loop.md).
+
 ## Study input
 
 Study uses the approved **轻量横排** input on desktop and mobile: a quiet

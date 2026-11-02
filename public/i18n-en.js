@@ -6,6 +6,117 @@
   "use strict";
   return Object.freeze(Object.fromEntries(`
 界面语言|Interface language
+学习清单 · 练习|Study topics · Practice
+学习清单|Study topics
+整理资料|Organize materials
+练习记录|Practice history
+短测与反馈|Practice & feedback
+资料与讲解|Sources & teaching
+安排复习|Plan a review
+关联资料出处|Link a source
+学习入口|Learning options
+学习建议|Study suggestion
+你来决定下一步|You choose the next step
+要把这次的资料整理成学习清单吗？|Would you like to turn these materials into study topics?
+想用三道题检查一下理解吗？|Would you like to check your understanding with three questions?
+有一个主题可以再练一练。|There is a topic you could revisit.
+我想试试|I'd like to try
+稍后再说|Maybe later
+关闭自动提示|Turn off suggestions
+关闭学习建议|Dismiss study suggestion
+允许自动弹出学习建议|Allow automatic study suggestions
+私人学习记录仅自己可见。每一步都可自主选择，也可以随时退出。|Your learning records are private. Choose each step yourself and leave whenever you like.
+选择资料后生成主题草稿，你可以修改名称、取消勾选，再确认加入。长资料会抽样整理，清单不代表完整覆盖或考试范围。|Choose materials to draft study topics. Edit names and uncheck topics before confirming. Long materials are sampled; this list is not complete coverage or a statement of exam scope.
+先在课程资料中上传讲义或保存笔记。|Upload lecture materials or save notes under Course materials first.
+生成学习清单草稿|Draft study topics
+核对学习清单|Review study topics
+主题名称|Topic name
+确认加入学习清单|Confirm and add topics
+放弃这份草稿|Discard this draft
+选你现在想学的内容。看过讲解和完成日程不会被当作掌握，只有作答会更新学习记录。|Choose what you want to study now. Reading explanations and completing calendar tasks do not count as mastery. Answers update your learning record.
+尚未检测|Not checked yet
+需要再练|Needs more practice
+本次独立答对|Answered independently this time
+看过提示后作答|Answered with help
+建议再练时间|Suggested next practice
+资料已更新，请重新关联出处后再练习。|The material changed. Relink its source before practicing again.
+看资料 / 学这部分|Read sources / Study this
+练三道题|Try three questions
+查看上次作答|View last attempt
+编辑主题|Edit topic
+保存名称|Save name
+删除主题|Delete topic
+从你想学的内容开始|Start with what you want to learn
+可以从资料整理，也可以先自己添加一个主题。|Organize topics from materials or add a topic yourself.
+从课程资料整理|Start from course materials
+自己添加主题|Add your own topic
+例如：我想弄懂 p 值|For example: I want to understand p-values
+添加到学习清单|Add to study topics
+这些是根据课程资料生成的练习题，请先作答，再查看反馈。AI 题目和解析也可能有误，可对照出处核对。|These practice questions are generated from course materials. Answer first, then review feedback. AI questions and explanations may contain errors; check the sources.
+本次结果|This attempt
+独立作答|Independent attempt
+已记录本次独立答对，后续用新题再检查。|Your independent success is recorded. Recheck later with new questions.
+已记下需要再练的内容，你可以看讲解或安排下一次复习。|Topics to revisit are recorded. Read an explanation or plan another review.
+参考答案|Reference answer
+这次的误区|Misconception in this attempt
+提交作答并查看反馈|Submit answers and view feedback
+我需要提示 / 讲解|I need help / an explanation
+先看答案与讲解（辅助练习）|See answers and explanations (assisted practice)
+换三道新题再练|Try three new questions
+安排下次复习|Plan the next review
+复习资料并完成三道新题，预计 15 分钟。请选择你愿意安排的时间，确认后才会加入日程。|Review the material and try three new questions, about 15 minutes. Choose a time that suits you. It is added to your calendar only after confirmation.
+复习时间|Review time
+预计分钟|Estimated minutes
+确认加入日程|Confirm and add to calendar
+选择课程资料，粘贴其中一小段原文作为定位依据。保存后可以根据这份资料练习。|Choose course material and paste a short exact excerpt to locate the source. Save it to practice from that material.
+请选择资料|Choose material
+原文片段|Exact source excerpt
+保存资料出处|Save source reference
+PDF 页码|Physical PDF pages
+提取文字位置|Extracted text characters
+最近 24 次练习；关闭页面后也可继续未提交的题目。|Your last 24 practice sessions. Resume unsubmitted questions after reopening the page.
+尚未提交|Not submitted
+查看反馈|View feedback
+继续作答|Resume practice
+还没有作答记录，选一个主题开始吧。|No attempts yet. Choose a topic to start.
+可以让 AI 继续讲解，问题会先填入输入框，由你选择是否发送。|Ask AI for an explanation. The question is placed in your input first; you decide whether to send it.
+请 AI 讲解这个主题|Ask AI to explain this topic
+正在读取学习记录…|Loading learning records…
+重新读取|Load again
+刷新学习记录|Refresh learning records
+正在处理，请稍候…|Working, please wait…
+已加入日程，点击日程中的开始复习可回到题目。|Added to your calendar. Choose Start review on the event to return to practice.
+删除这个学习主题？已保存的作答记录会保留。|Delete this study topic? Saved attempts will be kept.
+开始复习|Start review
+学习主题不存在。|Study topic not found.
+学习主题已更新，请重新生成练习。|The topic changed. Generate a new practice session.
+学习主题操作无效。|Invalid topic action.
+学习主题无效。|Invalid study topic.
+学习建议生成未完成，请重试。|The study suggestions could not be completed. Try again.
+学习提醒设置无效。|Invalid study suggestion preference.
+学习记录已更新，请刷新后重试。|The learning records changed. Refresh and try again.
+学习请求编号已被使用。|This learning request ID has already been used.
+学习请求编号无效。|Invalid learning request ID.
+每门课最多保留 80 个学习主题。|Each course supports up to 80 study topics.
+生成内容缺少可核对的资料出处，请重试或手动添加主题。|The generated content has no verifiable source. Try again or add a topic manually.
+练习记录不存在。|Practice session not found.
+练习题出处超出所选资料，请重试。|The practice source is outside the selected material. Try again.
+练习题格式无效，请重试。|The practice questions have an invalid format. Try again.
+练习题生成未完成，请重试。|The practice questions could not be completed. Try again.
+练习题重复，请重新生成。|The practice questions repeat earlier questions. Generate new ones.
+请先完成每一道题。|Answer every question first.
+请填写有效的学习内容。|Enter valid learning content.
+请选择有效日期、时间和 5–120 分钟的时长。|Choose a valid date, time and duration of 5–120 minutes.
+请选择未来的复习时间。|Choose a future review time.
+请选择本课程的 1–6 份资料。|Choose 1–6 materials from this course.
+请选择要保留的学习主题。|Choose the study topics to keep.
+课程资料已更新，请重新整理这个主题的资料出处。|The course material changed. Relink the source for this topic.
+资料还没有可读文字，请补充文字后再整理。|This material has no readable text yet. Add text before organizing it.
+这个时间已有安排，请选择其他时间。|There is already an event at this time. Choose another time.
+学习记录过长，请减少学习主题或题目内容。|The learning record is too large. Reduce the number of topics or question content.
+这个复习安排已保存，请刷新日程。|This review is already saved. Refresh your calendar.
+复习安排不存在。|Review event not found.
+请帮我理解这个学习主题：{0}。先讲概念和方法，再用例子解释。|Help me understand this study topic: {0}. Explain the concepts and method, then give an example.
 会员卡、订阅与账单|Passes, subscriptions and billing
 查看会员卡、订阅状态与账单。付款前会显示金额及续费方式。|View passes, subscription status and invoices. Prices and renewal terms are shown before payment.
 支付宝会员卡|Alipay passes

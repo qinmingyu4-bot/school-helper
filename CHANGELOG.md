@@ -2,6 +2,8 @@
 
 ## 2026-11-02 — Course learning loop (review branch)
 
+- Remove dark rectangular tab backplates by excluding self-themed learning controls from the global dark-control reset. Keep navigation and secondary actions flat across list, materials, source, practice, history and planning views; remove filled count badges and switch-thumb shadows, and use restrained neutral shadows for the dialog and optional suggestion. Refresh both affected stylesheet URLs together so the fixes reach existing previews.
+
 - Follow the existing account palette and independent dark mode throughout the refined learning panel. Use shared charcoal surfaces and champagne accents at night; prevent the older global dark-control reset from overriding text navigation, primary actions, inputs and suggestion switches.
 
 - Refine the complete learning panel to match StudyBridge's quieter workspace: compact brand/course heading and icon close control, understated text navigation, slim status indicators, a clear primary practice action, lighter source/history/calendar links, an optional add-topic disclosure, and a compact automatic-suggestion switch with private-record status. Apply the same typography and surfaces to materials, practice, feedback and history, retain account palettes/dark mode, and preserve disclosure, input and scroll state during redraws.

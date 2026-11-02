@@ -3,9 +3,9 @@
 :root[data-sb-theme] :is(.learning-dialog,.learning-prompt){--learning-ink:var(--ink);--learning-muted:var(--muted);--learning-line:var(--line);--learning-paper:var(--panel);--learning-soft:var(--soft)}
 :root[data-sb-mode="dark"] :is(.learning-dialog,.learning-prompt){--learning-ink:var(--ink);--learning-muted:var(--muted);--learning-line:var(--line);--learning-paper:var(--panel);--learning-soft:var(--soft);--learning-accent:var(--sb-accent,#bdcbbf)}
 .learning-dialog *,.learning-dialog *::before,.learning-dialog *::after,.learning-prompt *,.learning-prompt *::before{box-sizing:border-box}
-.learning-dialog{width:min(860px,calc(100vw - 48px));max-width:none;max-height:calc(100dvh - 56px);padding:0;border:1px solid var(--learning-line);border-radius:16px;background:var(--learning-paper);box-shadow:0 30px 100px #14201a26;overflow:hidden}
+.learning-dialog{width:min(860px,calc(100vw - 48px));max-width:none;max-height:calc(100dvh - 56px);padding:0;border:1px solid var(--learning-line);border-radius:16px;background:var(--learning-paper);box-shadow:0 18px 60px #0000001a;overflow:hidden}
 .learning-dialog[open]{display:flex;flex-direction:column}
-.learning-dialog::backdrop{background:#18221e55;backdrop-filter:blur(3px)}
+.learning-dialog::backdrop{background:#00000055;backdrop-filter:blur(3px)}
 .learning-dialog>:is(header,nav,footer){flex-shrink:0}
 .learning-dialog>header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:30px 36px 22px}
 .learning-dialog>header>div{min-width:0}
@@ -18,6 +18,7 @@
 .learning-dialog h3{margin:0;color:var(--learning-ink);font-size:16px;line-height:1.65;font-weight:550;overflow-wrap:anywhere}
 .learning-dialog svg,.learning-prompt svg{width:16px;height:16px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .learning-dialog button,.learning-prompt button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px;padding:7px 13px;border:1px solid var(--learning-line);border-radius:7px;background:var(--learning-paper);color:var(--learning-ink);font:inherit;font-size:12px;font-weight:450;line-height:20px;cursor:pointer;transition:background 120ms,border-color 120ms}
+.learning-dialog :is(button,input,textarea,select,summary),.learning-prompt button{box-shadow:none;text-shadow:none}
 .learning-dialog button:hover,.learning-prompt button:hover{background:var(--learning-soft);border-color:color-mix(in srgb,var(--learning-muted) 35%,var(--learning-line))}
 .learning-dialog button.is-primary{color:var(--learning-paper);background:var(--learning-ink);border-color:var(--learning-ink)}
 .learning-dialog button.is-primary:hover{opacity:.88}
@@ -31,7 +32,7 @@
 .learning-dialog>nav>button{flex:0 0 auto;gap:7px;min-height:44px;padding:0 0 13px;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;color:var(--learning-muted);font-size:13px;white-space:nowrap}
 .learning-dialog>nav>button:hover{background:transparent;color:var(--learning-ink)}
 .learning-dialog>nav>button[aria-current="page"]{border-bottom-color:var(--learning-accent);color:var(--learning-ink);font-weight:550}
-.learning-tab-count{min-width:17px;padding:0 4px;border-radius:4px;background:var(--learning-soft);font-size:10px;line-height:17px;color:var(--learning-muted);font-weight:400}
+.learning-tab-count{min-width:12px;font-size:10px;line-height:17px;color:var(--learning-muted);font-weight:400}
 .learning-body{min-height:0;padding:26px 36px 20px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--learning-line) transparent}
 .learning-body>p,.learning-caption{margin:0 0 20px;color:var(--learning-muted);font-size:12px;line-height:1.85;font-weight:400}
 .learning-body>h3{margin-bottom:10px}
@@ -115,14 +116,14 @@
 .learning-dialog>footer{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 16px;padding:12px 36px;border-top:1px solid var(--learning-line);background:var(--learning-soft)}
 .learning-dialog .learning-auto{display:flex;align-items:center;gap:9px;min-height:32px;margin:0;color:var(--learning-muted);font-size:11px;font-weight:400;cursor:pointer}
 .learning-dialog .learning-auto input{appearance:none;-webkit-appearance:none;width:28px;height:17px;margin:0;padding:2px;border:1px solid var(--learning-line);border-radius:10px;background:color-mix(in srgb,var(--learning-muted) 25%,var(--learning-paper));cursor:pointer}
-.learning-dialog .learning-auto input::before{content:"";display:block;width:11px;height:11px;border-radius:50%;background:var(--learning-paper);box-shadow:0 1px 3px #0002;transition:transform 120ms}
+.learning-dialog .learning-auto input::before{content:"";display:block;width:11px;height:11px;border-radius:50%;background:var(--learning-paper);transition:transform 120ms}
 .learning-dialog .learning-auto input:checked{background:var(--learning-accent);border-color:var(--learning-accent)}
 .learning-dialog .learning-auto input:checked::before{transform:translateX(11px)}
 .learning-privacy{display:inline-flex;align-items:center;gap:5px;color:var(--learning-muted);font-size:10px;font-weight:400}
 .learning-privacy svg{width:12px;height:12px}
 .learning-busy{color:var(--learning-muted);font-size:10px}
 .learning-busy:empty{display:none}
-.learning-prompt{position:fixed;z-index:120;right:24px;bottom:24px;width:min(340px,calc(100vw - 32px));box-sizing:border-box;padding:20px 22px 10px;border:1px solid var(--learning-line);border-radius:12px;background:var(--learning-paper);box-shadow:0 12px 40px #14201a14}
+.learning-prompt{position:fixed;z-index:120;right:24px;bottom:24px;width:min(340px,calc(100vw - 32px));box-sizing:border-box;padding:20px 22px 10px;border:1px solid var(--learning-line);border-radius:12px;background:var(--learning-paper);box-shadow:0 8px 28px #00000014}
 .learning-prompt b{display:block;padding-right:22px;font-size:13px;font-weight:500}
 .learning-prompt p{margin:8px 0;color:var(--learning-muted);font-size:12px;line-height:1.8}
 .learning-prompt small{color:var(--learning-muted);font-size:11px}
@@ -170,14 +171,5 @@
 @media(prefers-reduced-motion:reduce){.learning-dialog *,.learning-prompt *{transition:none !important}}
 @media(pointer:coarse){.learning-dialog .is-text,.learning-dialog .learning-topic-edit>summary{min-height:44px}}
 
-/* Keep the global dark-control reset from flattening the panel's hierarchy. */
-:root[data-sb-mode="dark"] .learning-dialog :is(button,input,textarea,select){background:var(--learning-paper);color:var(--learning-ink);border-color:var(--learning-line)}
-:root[data-sb-mode="dark"] .learning-dialog :is(nav>button,button.is-text,button.learning-close){background:transparent;color:var(--learning-muted);border-color:transparent}
-:root[data-sb-mode="dark"] .learning-dialog nav>button[aria-current="page"]{color:var(--learning-ink);border-bottom-color:var(--learning-accent)}
+/* All other control states use the same rules in daytime and dark mode. */
 :root[data-sb-mode="dark"] .learning-dialog button.is-primary{background:var(--learning-accent);color:var(--learning-paper);border-color:var(--learning-accent)}
-:root[data-sb-mode="dark"] .learning-dialog :is(button.is-text,button.learning-close,nav>button):hover{color:var(--learning-ink)}
-:root[data-sb-mode="dark"] .learning-dialog button.learning-close:hover{background:var(--learning-soft)}
-:root[data-sb-mode="dark"] .learning-dialog .learning-auto input{background:color-mix(in srgb,var(--learning-muted) 25%,var(--learning-paper));border-color:var(--learning-line)}
-:root[data-sb-mode="dark"] .learning-dialog .learning-auto input:checked{background:var(--learning-accent);border-color:var(--learning-accent)}
-:root[data-sb-mode="dark"] .learning-prompt button{background:transparent;color:var(--learning-muted);border-color:transparent}
-:root[data-sb-mode="dark"] .learning-prompt .learning-actions button:first-child{color:var(--learning-accent)}

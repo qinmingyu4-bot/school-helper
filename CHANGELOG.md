@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-01 — Scroll-driven product presentation
+
+- Add a pinned monochrome product scene with rising/rotating icons, an exploded course/AI/schedule interface and a final assembled workspace. Tie translation, 3D rotation, depth, scale and opacity to native scroll progress, including reverse scrolling; link the hero's feature preview to the scene.
+- Keep the application palette, typography and thin frames. Scale the choreography for phones and show a complete static composition for reduced motion, short viewports or unavailable JavaScript. Keep explanatory copy accessible and skip hidden/offscreen updates. Prepared on the task branch without AWS deployment.
+- Validate 20 focused scene/motion/language/page-entry checks and 269-file source/assets/package checks. Browser verification covers both directions, all three phases, Chinese/English at 320/390/768/900/1100/1440 px, 640 px compact heights, the 580 px static fallback and card boundaries without horizontal page overflow.
+
 ## 2026-11-01 — Restrained homepage parallax
 
 - Add subtle, scroll-linked depth to the study preview, its schedule note, feature demonstrations and closing bridge mark. Keep the existing monochrome palette, layout and stationary reading/action areas.

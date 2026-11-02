@@ -1428,6 +1428,19 @@ AI 只在你点击后参与；预览不会改动内容，应用后可撤销。|A
 至少保留一个工作表。|Keep at least one sheet.
 删除当前工作表？引用此表的公式会显示错误。|Delete this sheet? Formulas referencing it will show errors.
 StudyBridge · 连接学习的每一步|StudyBridge · Connect every step of learning
+学习的每一层，|Every layer of learning,
+在这里连接。|connected here.
+向下滚动，展开学习空间|Scroll to unfold your study space
+把资料放进来|Bring your materials
+讲义、课程与问题，成为学习的起点。|Start with your notes, courses and questions.
+展开你的学习|Unfold your learning
+资料、AI 理解与日程，各自展开，也彼此连接。|Materials, AI learning and schedules: distinct parts, connected together.
+回到同一个空间|One connected space
+把思考与安排收拢，接着完成下一步。|Bring your thinking and plans together, ready for the next step.
+来源已连接|Course source connected
+从课程资料出发，逐步理解每一个问题。|Understand your course, one question at a time.
+课程来源 · 第 3 页|Course source · Page 3
+今天的安排|Today's schedule
 上传课程资料，让 AI 帮你理解知识、复习备考，并核对课程来源。用 StudyBridge 连接课程学习、日程安排与创作工具，无需邀请码即可注册。|Upload course materials to understand concepts, prepare for exams and check course sources with AI. Connect study, schedules and creative tools in StudyBridge. No invitation required.
 上传课程资料，|Upload course notes.
 让 AI 帮你|Let AI help you\u0020

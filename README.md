@@ -47,6 +47,13 @@ reduced on widths up to 800 px and disabled for `prefers-reduced-motion`. The se
 `landing-motion.js` uses bounded transforms, passive scroll events and one requested
 frame per update; offscreen and hidden-page work is skipped. The static page remains
 readable if JavaScript or optional observers are unavailable.
+A dedicated scroll-driven product scene pins briefly in the viewport: monochrome
+icons rise and rotate, course/AI/schedule panels separate into layers, then assemble
+into one workspace. Native scrolling controls and reverses the scene; there is no
+wheel interception or autoplay loop. `landing-story.js` and `landing-story.css` keep
+the choreography separate from the application. Phones use smaller displacement;
+reduced-motion and viewports at most 600 px tall show the complete static workspace
+without a long pinned section. All three explanatory steps remain in the document.
 Login and registration use the same neutral style through scoped `public/auth.css`,
 with the shared bridge wordmark, visible field focus, status messages and a homepage
 link. Existing authentication actions, invitation/email-code fields and Google

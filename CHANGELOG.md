@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Course-grounded AI guidance
+
+- Lead the Chinese/English homepage with AI-guided learning, review and assignment help grounded in uploaded course materials. Strengthen the course-first story, learning feature, description metadata and materials FAQ; show a course-source marker in the illustrative answer.
+- Keep the distinction accurate: course materials are the primary basis, while the backend retains external lookup support with source differentiation. No AI routing, access rules or production deployment changes.
+- Validate 20 focused regressions and 269-file source/assets/package checks. Browser checks confirm complete bilingual headings/metadata, the course-source marker and no clipping or horizontal overflow in 320 px phone, 900 × 640 compact desktop and 1440 px desktop scene layouts.
+
 ## Unreleased — Homepage editorial pass
 
 - Rewrite the Chinese/English introduction around course understanding, problem solving, revision, planning and expression. Remove registration/invitation/login explanations, membership categories, refresh/retry selling points and repetitive filler; replace setup-oriented steps and FAQs with useful learning starting points and calendar-control information.

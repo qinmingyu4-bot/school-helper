@@ -1428,6 +1428,20 @@ AI 只在你点击后参与；预览不会改动内容，应用后可撤销。|A
 至少保留一个工作表。|Keep at least one sheet.
 删除当前工作表？引用此表的公式会显示错误。|Delete this sheet? Formulas referencing it will show errors.
 StudyBridge · 连接学习的每一步|StudyBridge · Connect every step of learning
+StudyBridge 以你上传的课程资料为主要依据，结合讲义、课件和习题带你学习、复习与推敲作业，并通过课程引用帮助你核对依据、理解过程。|StudyBridge grounds learning in the course materials you upload. Study, review and work through assignments with guidance based on your notes, slides and problem sets, with course references to check the reasoning.
+以你的资料为依据，|Grounded in your materials.
+AI 结合你上传的讲义、课件与习题，|AI works with the notes, slides and problem sets you upload.
+带你学习、复习，逐步推敲作业里的难点。|Study, review and work through difficult assignment questions with guidance.
+从上传的资料中，找到问题对应的课程内容。|Find the relevant course content in the materials you upload.
+结合课程中的概念与方法，带你学习、复习和推敲作业。|Learn, review and work through assignments using the concepts and methods in your course.
+对照原文核对依据，把学习过程整理成自己的理解。|Check the source, follow the reasoning and make the understanding your own.
+跟着这门课的思路，|Follow your course.
+理解每一步。|Understand each step.
+AI 优先从你上传的资料中寻找依据，结合这门课的概念与方法，带你学习、复习和推敲作业。沿着课程引用回到原文，核对某一步为什么成立。|AI looks to your uploaded materials first. Learn, review and work through assignments using your course’s concepts and methods. Follow course references back to the source to check why a step holds.
+AI 会怎样使用我的课程资料？|How does AI use my course materials?
+上传的讲义、课件和习题，会成为 AI 带你学习的主要依据。讲解围绕其中的概念与方法展开，引用的课程内容可以回到原文核对。|The notes, slides and problem sets you upload form the primary basis for guided learning. Explanations work with their concepts and methods, and cited course content can be checked against the original.
+带着你|Your AI\u0020
+课程依据 · 讲义第 3 页|Course source · Lecture notes, page 3
 从一份讲义，|From course notes
 到自己的理解。|to understanding.
 从平均速度想起，再把时间间隔不断缩短。|Start with speed, then shrink the time interval.
@@ -1497,7 +1511,7 @@ StudyBridge 将课程资料、AI 学习、日程与创作连接起来，帮你�
 今天的安排|Today's schedule
 上传课程资料，|Upload course notes.
 让 AI 帮你|Let AI help you\u0020
-学明白|what you learn
+学明白|study guide
 学习功能亮点|Study highlights
 对照资料，核对来源|Check the course sources
 整套题，逐步完成|Work through a problem set

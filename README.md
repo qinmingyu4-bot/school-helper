@@ -42,6 +42,10 @@ problems, revision and expressing what students learn. Keep account setup, invit
 membership labels and routine recovery details on the relevant application screens;
 public copy should make sense to a first-time visitor without development history.
 Permission and calendar-confirmation information stays beside the relevant features.
+Lead with the primary distinction: uploaded course materials ground AI-guided study,
+review and assignment help, with course references for checking the reasoning. Say
+materials come first; do not imply the service never uses web search or outside
+information, since the backend supports those and distinguishes their sources.
 Chinese and English copy (including the description metadata) follow the language selector;
 brand punctuation stays fixed. Phone previews prioritize the readable study example.
 Small scroll-linked offsets give preview surfaces, document samples and the closing

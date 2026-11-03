@@ -23,18 +23,19 @@
         if (item) start = management.localParts(item.startsAt, item.timeZone || "UTC");
         if (item?.endsAt) end = management.localParts(item.endsAt, item.timeZone || "UTC");
       } catch { /* A malformed historical item can still be deleted. */ }
-      dialog.innerHTML = ui.html`<h2 id="scheduleManageTitle">${editing ? ui.text("编辑日程安排") : ui.text("删除日程安排")}</h2><p class="schedule-manage-name">${escape(name)}</p>
+      dialog.innerHTML = ui.html`<header class="dialog-heading"><h2 id="scheduleManageTitle">${editing ? ui.text("编辑日程安排") : ui.text("删除日程安排")}</h2><button type="button" data-manage-close aria-label="关闭">×</button></header><form><div class="dialog-body"><p class="schedule-manage-name">${escape(name)}</p>
         <p id="scheduleManageHint">按课程一次处理多天的安排。课程资料和聊天记录会保留。</p>
-        <form><fieldset class="schedule-manage-controls"><div class="schedule-manage-grid">
+        <fieldset class="schedule-manage-controls"><div class="schedule-manage-grid">
           <label>处理范围<select name="scope">${item ? ui.markup('<option value="single">仅此安排</option>') : ""}${courseItems.length ? ui.markup('<option value="future">此课程尚未开始的安排</option><option value="all">此课程全部安排（含历史）</option>') : ""}</select></label>
           <label data-kind-field>安排类型<select name="kind"><option value="all">所有类型（含作业、考试）</option><option value="LEC">仅 Lecture</option><option value="TUT">仅 Tutorial</option><option value="DDL">仅作业 / 截止 / 考试</option><option value="EVENT">仅个人安排</option></select></label>
         </div>${editing ? ui.html`<p>勾选要修改的字段。每条安排保留原日期，时间按该安排的时区修改；旧安排未存时区时使用 UTC。</p><div class="schedule-manage-grid">${field("title", ui.text("标题"), "text", item?.title || "", true, "160")}${field("date", ui.text("日期"), "date", start?.date || "", true)}${field("startTime", ui.text("开始 / 截止时间"), "time", start?.time || "")}${field("endTime", ui.text("结束时间（留空可清除）"), "time", end?.time || "")}${field("location", ui.text("地点 / 链接（留空可清除）"), "text", item?.location || "", false, "2000")}${field("notes", ui.text("备注（留空可清除）"), "textarea", item?.notes || "")}</div>` : ""}</fieldset>
           <section class="schedule-manage-preview" aria-label="受影响的安排"><p data-manage-count aria-live="polite"></p><ul data-manage-preview></ul></section>
           ${editing ? "" : ui.markup('<p class="schedule-manage-warning">删除后无法恢复，确认前请核对范围和条数。</p>')}
-          <p data-manage-status role="status" aria-live="polite"></p><div class="schedule-manage-actions"><button type="button" data-manage-close>取消</button><button type="submit" class="${editing ? "primary" : "schedule-manage-delete"}" data-manage-submit></button></div>
+          </div><footer class="dialog-footer"><p data-manage-status role="status" aria-live="polite"></p><div class="schedule-manage-actions"><button type="button" data-manage-close>取消</button><button type="submit" class="${editing ? "primary" : "schedule-manage-delete"}" data-manage-submit></button></div></footer>
         </form>`;
       const form = dialog.querySelector("form"), controls = dialog.querySelector("fieldset");
-      const submit = dialog.querySelector("[data-manage-submit]"), close = dialog.querySelector("[data-manage-close]");
+      const submit = dialog.querySelector("[data-manage-submit]"), close = dialog.querySelector(".schedule-manage-actions [data-manage-close]");
+      const closeButtons = [...dialog.querySelectorAll("[data-manage-close]")];
       const status = dialog.querySelector("[data-manage-status]");
       let busy = false, remaining = null, patch = null, processed = 0;
       const targets = () => form.elements.scope.value === "single" ? [item] : management.select(courseItems, { scope: form.elements.scope.value, kind: form.elements.kind.value, now: selectionNow });
@@ -57,7 +58,7 @@
         const key = event.target.dataset.editValue;
         if (key) dialog.querySelector(`[data-edit-check="${key}"]`).checked = true;
       });
-      close.addEventListener("click", () => dialog.close());
+      closeButtons.forEach((button) => button.addEventListener("click", () => dialog.close()));
       dialog.addEventListener("cancel", (event) => { if (busy) event.preventDefault(); });
       dialog.addEventListener("close", () => { dialog.remove(); active = null; }, { once: true });
       form.addEventListener("submit", async (event) => {
@@ -77,7 +78,7 @@
             }
             remaining = selected.map(({ docId, courseId }) => ({ docId, courseId }));
           }
-          busy = true; controls.disabled = true; close.disabled = true; submit.disabled = true;
+          busy = true; controls.disabled = true; closeButtons.forEach((button) => { button.disabled = true; }); submit.disabled = true;
           while (remaining.length) {
             if (!isCurrent()) { closeIfStale(); return; }
             const batch = remaining.slice(0, 80);
@@ -94,7 +95,7 @@
           status.textContent = `${processed ? ui.message`已处理 ${processed} 条。` : ""}${error.message}${remaining?.length ? ui.message` 还有 ${remaining.length} 条待处理，可重试。` : ""}`;
           if (remaining) { submit.textContent = ui.message`重试剩余 ${remaining.length} 条`; close.textContent = ui.text("关闭"); }
         } finally {
-          busy = false; close.disabled = false; submit.disabled = false;
+          busy = false; closeButtons.forEach((button) => { button.disabled = false; }); submit.disabled = false;
           controls.disabled = Boolean(remaining);
         }
       });

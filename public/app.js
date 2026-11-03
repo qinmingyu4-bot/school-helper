@@ -851,7 +851,7 @@
     const dialog = document.createElement("dialog");
     dialog.className = "chat-image-dialog";
     dialog.setAttribute("aria-label", ui.text("图片预览"));
-    dialog.innerHTML = ui.html`<header><strong>${esc(name || ui.text("图片"))}</strong><button type="button" aria-label="关闭图片预览">关闭</button></header><img src="${esc(url)}" alt="${esc(name || ui.text("图片"))}"><p role="status"></p>`;
+    dialog.innerHTML = ui.html`<header><strong>${esc(name || ui.text("图片"))}</strong><button type="button" aria-label="关闭图片预览">关闭</button></header><div class="chat-image-body"><img src="${esc(url)}" alt="${esc(name || ui.text("图片"))}"><p role="status"></p></div>`;
     dialog.querySelector("button").addEventListener("click", () => dialog.close());
     dialog.querySelector("img").addEventListener("error", () => { dialog.querySelector("p").textContent = ui.text("图片暂时无法加载，请重新登录或稍后重试。"); });
     dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
@@ -1943,7 +1943,8 @@
       dialog.className = "admin-delete-dialog";
       dialog.setAttribute("aria-labelledby", "deleteInviteTitle");
       dialog.setAttribute("aria-describedby", "deleteInviteDescription");
-      dialog.innerHTML = ui.html`<h2 id="deleteInviteTitle">删除邀请码？</h2><p class="admin-invite-code">${esc(code)}</p><p id="deleteInviteDescription">删除后，该邀请码将无法再用于注册。已注册的用户不受影响。</p><form method="dialog"><button value="cancel" autofocus>取消</button><button class="admin-confirm-delete" value="delete">删除邀请码</button></form>`;
+      dialog.innerHTML = ui.html`<header class="dialog-heading"><h2 id="deleteInviteTitle">删除邀请码？</h2><button type="button" data-dialog-cancel aria-label="关闭">×</button></header><div class="dialog-body"><p class="admin-invite-code">${esc(code)}</p><p id="deleteInviteDescription">删除后，该邀请码将无法再用于注册。已注册的用户不受影响。</p></div><form method="dialog" class="dialog-footer"><button value="cancel" autofocus>取消</button><button class="admin-confirm-delete" value="delete">删除邀请码</button></form>`;
+      dialog.querySelector("[data-dialog-cancel]").addEventListener("click", () => dialog.close("cancel"));
       dialog.addEventListener("close", () => {
         const confirmed = dialog.returnValue === "delete";
         dialog.remove();

@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-02 — Course learning loop (review branch)
+## 2026-11-02 — Course learning loop
 
 - Remove dark rectangular tab backplates by excluding self-themed learning controls from the global dark-control reset. Keep navigation and secondary actions flat across list, materials, source, practice, history and planning views; remove filled count badges and switch-thumb shadows, and use restrained neutral shadows for the dialog and optional suggestion. Refresh both affected stylesheet URLs together so the fixes reach existing previews.
 
@@ -12,8 +12,67 @@
 
 - Add a permanent course learning entry with reviewed, editable topic drafts from selected materials; manual topics and verified source links; optional teaching prompts that preserve existing chat drafts; private three-question practice, saved mistakes and assisted/independent results; confirmed calendar review tasks and new-question retests that update the next suggested review.
 - Keep student choice at every step. Offer nonmodal automatic suggestions after relevant study activity or when a topic is due, without stealing focus or making automatic AI calls. Support dismissal, a one-day snooze and account-saved per-course disabling while preserving the manual entry. Keep learning records private and Community sharing separate.
-- Persist course state and quizzes in local/DynamoDB storage with conditional updates, hidden pre-submission answer keys, server grading, source-version guards and atomic linked-task completion. Preserve existing course/chat/calendar data; no migration or AWS deployment is included. Document the initial single-choice quiz format and review rules in `docs/learning-loop.md`.
+- Persist course state and quizzes in local/DynamoDB storage with conditional updates, hidden pre-submission answer keys, server grading, source-version guards and atomic linked-task completion. Preserve existing course/chat/calendar data; no migration is required. Document the initial single-choice quiz format and review rules in `docs/learning-loop.md`.
 - Validate 491 automated tests and 271-file source/asset/version checks. Isolated Chrome/WebKit checks cover nonintrusive suggestions, persistent opt-out and manual entry, topic confirmation, quiz recovery/feedback, linked calendar retests, assisted practice, retained answers after failed submission, 320/390/1280 px layouts, English and dark mode. AI generation uses fixtures; real-course question quality remains a separate acceptance check.
+
+## Unreleased — Restore the clear 2D course flow
+
+- Restore the earlier materials-to-course-to-learning composition with restrained scroll-driven card movement and simple source connections. Keep the blended brand copy and aligned vector arrows; remove the experimental spatial volumes and knowledge-space narrative from the preview. Preserve the existing reduced-motion and short-viewport static flow.
+- Prepared on the preview branch without deployment.
+- Validate 20 focused regressions and the 269-file source/assets/package checks. Browser verification confirms the restored course card, four materials and three outcomes, with no experimental canvas/solid faces or horizontal overflow.
+
+## Unreleased — Spatial course-flow preview
+
+- Give the course story a shared perspective camera and actual CSS 3D solids, including front/back/top/bottom/side faces, a folder tab, material thickness and a restrained spatial shadow. Rotate the view with native scroll while materials approach from different depths and learning outputs rise from the course into separate volumes.
+- Keep the monochrome palette, copy, intake-to-output sequence and reversible scrolling. Reduce depth, solid thickness and camera angles on phones; preserve a complete flat static flow for reduced motion and short viewports. Add no rendering dependency. Prepared on the preview branch without deployment.
+- Validate 20 focused regressions and the 269-file source/assets/package checks. Browser review confirms visible solid faces and different object depths, all three phases and reverse scrolling, Chinese/English at 320 × 640, 689 px, 900 × 640 and 1440 px, and the 580 px static fallback without clipped content or horizontal overflow.
+
+## Unreleased — Aligned landing-page arrows
+
+- Replace the homepage's native language-select chevron with a symmetric vector chevron and its action/scroll arrow characters with consistently sized, rounded-stroke SVG icons. Center icons within their controls and preserve native select behavior, accessible link names and the system high-contrast fallback. Prepared on the preview branch without deployment.
+- Validate 10 language/page-entry regressions and the 269-file source/assets/package checks. Browser checks confirm centered 20 px entry arrows, a symmetric dropdown chevron, keyboard language selection, unchanged link labels and Chinese/English layouts at 320 and 689 px without horizontal overflow.
+
+## Unreleased — Learning rhythm and grounded understanding
+
+- Blend the original connection-and-rhythm brand voice with course-grounded AI guidance. Restore the broader hero and feature headings, give the course animation a connection-to-understanding narrative, and carry curiosity and insight through the learning and closing sections.
+- Keep uploaded-material guidance explicit in the opening description, practical examples and course citations; retain the course intake/output animation and useful feature, permission and FAQ details. Update matching English copy and description metadata. Prepared on the preview branch without a new deployment.
+- Validate 20 focused regressions and the 269-file source/assets/package checks. Browser review confirms fully translated headings, body copy and metadata, responsive Chinese/English layouts at 320 × 640, 689 px, 900 × 640 and 1440 px, and no clipped headings or cards, horizontal overflow or pinned-scene clipping.
+
+## Unreleased — Materials into one course, learning from that course
+
+- Replace the generic interface assembly with a course-centered scroll story: Lecture Slides, Syllabus, Problem Set and Lecture Notes converge into one Calculus course, populate its stored file list, then give rise to guided learning, a review outline and assignment reasoning connected back to the course.
+- Use responsive normalized paths, staggered file intake and output emergence, reversible native scrolling, monochrome cards and the existing static/reduced-motion fallback. Update bilingual scene copy and choreography regressions. Prepared on the task branch without AWS deployment.
+- Validate 20 focused regressions and the 269-file source/assets/package checks. Browser checks cover file intake, the populated course and emerging outputs in Chinese/English, including 320 × 640, 390 px phones, 900 × 640 compact desktop, 1440 px desktop and the 580 px static fallback, with no card clipping or horizontal overflow.
+
+## Unreleased — Course-grounded AI guidance
+
+- Lead the Chinese/English homepage with AI-guided learning, review and assignment help grounded in uploaded course materials. Strengthen the course-first story, learning feature, description metadata and materials FAQ; show a course-source marker in the illustrative answer.
+- Keep the distinction accurate: course materials are the primary basis, while the backend retains external lookup support with source differentiation. No AI routing, access rules or production deployment changes.
+- Validate 20 focused regressions and 269-file source/assets/package checks. Browser checks confirm complete bilingual headings/metadata, the course-source marker and no clipping or horizontal overflow in 320 px phone, 900 × 640 compact desktop and 1440 px desktop scene layouts.
+
+## Unreleased — Homepage editorial pass
+
+- Rewrite the Chinese/English introduction around course understanding, problem solving, revision, planning and expression. Remove registration/invitation/login explanations, membership categories, refresh/retry selling points and repetitive filler; replace setup-oriented steps and FAQs with useful learning starting points and calendar-control information.
+- Make sample interfaces concrete, simplify calls to action and update description metadata. Retain optional read-only mailbox access, calendar confirmation and the privacy-policy link beside the relevant feature. Preserve the monochrome layout and scroll presentation. Prepared on the task branch without AWS deployment.
+- Validate 20 focused regression checks and 269-file source/assets/package checks. Browser verification confirms the removed setup/recovery text is absent, English translations and metadata are complete, the new FAQ expands, and both languages fit 320/390/768/900/1100/1440 px layouts including the compact 900 × 640 scene.
+
+## 2026-11-01 — Scroll-driven product presentation
+
+- Add a pinned monochrome product scene with rising/rotating icons, an exploded course/AI/schedule interface and a final assembled workspace. Tie translation, 3D rotation, depth, scale and opacity to native scroll progress, including reverse scrolling; link the hero's feature preview to the scene.
+- Keep the application palette, typography and thin frames. Scale the choreography for phones and show a complete static composition for reduced motion, short viewports or unavailable JavaScript. Keep explanatory copy accessible and skip hidden/offscreen updates. Prepared on the task branch without AWS deployment.
+- Validate 20 focused scene/motion/language/page-entry checks and 269-file source/assets/package checks. Browser verification covers both directions, all three phases, Chinese/English at 320/390/768/900/1100/1440 px, 640 px compact heights, the 580 px static fallback and card boundaries without horizontal page overflow.
+
+## 2026-11-01 — Restrained homepage parallax
+
+- Add subtle, scroll-linked depth to the study preview, its schedule note, feature demonstrations and closing bridge mark. Keep the existing monochrome palette, layout and stationary reading/action areas.
+- Reduce movement on phones/tablets, honor reduced-motion preferences (including live changes), limit transform distances and pause hidden/offscreen updates without an animation loop. Keep all content visible without JavaScript. Prepared on the task branch without AWS deployment.
+- Validate 15 focused motion/language/page-entry checks and 267-file source/assets/package checks. Browser checks verify opposing hero layers, layered document previews, clean console output and Chinese/English layouts at 320, 390, 768, 900, 1100 and 1440 px without horizontal overflow.
+
+## 2026-11-01 — Homepage clarity and readability
+
+- Explain course-based AI learning in the first screen, clarify invitation-free Google/email registration and add source-reference, full problem-set and saved-progress highlights in Chinese and English.
+- Increase supporting text sizes, simplify the phone study preview, allow the header/actions to wrap and keep brand punctuation fixed during language switching. Translate homepage description metadata with the selected language. Prepared on a task branch without AWS deployment.
+- Validate 10 focused language/page-entry regression checks and 265-file source/assets/package checks. Browser checks cover Chinese and English at 320, 390, 768, 900, 1100 and 1440 px without horizontal overflow, plus language switching, metadata and fixed brand punctuation.
 
 ## 1.2.9 — Alipay live integration preparation (2026-11-01)
 

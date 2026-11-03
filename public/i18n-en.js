@@ -1548,6 +1548,136 @@ AI 只在你点击后参与；预览不会改动内容，应用后可撤销。|A
 至少保留一个工作表。|Keep at least one sheet.
 删除当前工作表？引用此表的公式会显示错误。|Delete this sheet? Formulas referencing it will show errors.
 StudyBridge · 连接学习的每一步|StudyBridge · Connect every step of learning
+StudyBridge 将课程资料、AI 学习、日程与创作连接起来。以你的课程资料为依据，在探索与追问中积累理解，找到自己的学习节奏。|StudyBridge connects course materials, AI learning, schedules and creative tools. Learn from your own materials, follow your questions and build understanding at your own pace.
+AI 从你的课程资料出发，陪你学习、复习、推敲问题。|AI works with your course materials to guide your study, review and reasoning.
+让零散的知识，慢慢成为自己的理解。|Bring the pieces together. Make understanding your own.
+知识在这里相连，|Ideas connect.\u0020
+理解由此展开。|Understanding unfolds.
+汇聚学习的片段|Bring it together
+讲义、课件与习题，在同一门课程里找到位置。|Give notes, slides and problem sets a shared home in one course.
+连起知识的线索|Find the connections
+把课程中的概念与问题放在一起，让知识逐渐形成脉络。|Connect concepts and questions to see how the pieces fit.
+走向自己的理解|Make it your own
+AI 以这些资料为依据，陪你学习、复习，在一次次推敲中深入理解。|Grounded in these materials, AI guides your study and review as you work toward deeper understanding.
+把资料、思考和计划放在一起，让每一次学习，都接上之前的积累。|Bring materials, ideas and plans together, so each study session builds on the last.
+让每一次追问，|With every question,
+都更接近理解。|understanding grows.
+AI 优先从你上传的资料中寻找依据，结合这门课的概念与方法，陪你学习、复习和推敲作业。需要核对时，沿着课程引用回到原文。|AI looks to your uploaded materials first, guiding study, review and assignment work through your course’s concepts and methods. Follow course references back to the original whenever you want to check.
+从一个问题，|One question.
+开始一段探索。|A new direction.
+从一门课出发|Start with a course
+让学习邮件，接上你的安排。|Connect study emails with your plans.
+下一次豁然开朗，|Your next moment of clarity
+资料归入课程，|One course.
+学习由此展开。|Learning unfolds.
+汇入课程资料|Bring your materials
+Lecture Slides、Syllabus 和习题，都放进同一门课。|Lecture slides, a syllabus and problem sets come together in one course.
+归到同一门课|Keep one course together
+以课程为单位，把讲义、课程要求与问题连在一起。|Keep the notes, requirements and questions for a course together.
+从课程展开学习|Learn from your course
+AI 以这些资料为依据，带你学习、复习和推敲作业。|AI uses these materials to guide your study, review and assignment work.
+课程课件|Lecture slides
+课程习题|Problem set
+课堂笔记|Class notes
+沿着课程概念，理解每一步。|Follow the concepts, step by step.
+课程依据 · 第 3 页|Course source · Page 3
+复习提纲|Review outline
+重点概念|Key concepts
+易混知识|Tricky concepts
+自测问题|Self-checks
+作业推导|Assignment reasoning
+理解题意|Understand
+找到依据|Find evidence
+逐步推导|Reason it out
+课程资料与学习成果示意|Course materials and learning outcomes · Illustration
+StudyBridge 以你上传的课程资料为主要依据，结合讲义、课件和习题带你学习、复习与推敲作业，并通过课程引用帮助你核对依据、理解过程。|StudyBridge grounds learning in the course materials you upload. Study, review and work through assignments with guidance based on your notes, slides and problem sets, with course references to check the reasoning.
+以你的资料为依据，|Grounded in your materials.
+AI 结合你上传的讲义、课件与习题，|AI works with the notes, slides and problem sets you upload.
+带你学习、复习，逐步推敲作业里的难点。|Study, review and work through difficult assignment questions with guidance.
+从上传的资料中，找到问题对应的课程内容。|Find the relevant course content in the materials you upload.
+结合课程中的概念与方法，带你学习、复习和推敲作业。|Learn, review and work through assignments using the concepts and methods in your course.
+对照原文核对依据，把学习过程整理成自己的理解。|Check the source, follow the reasoning and make the understanding your own.
+跟着这门课的思路，|Follow your course.
+理解每一步。|Understand each step.
+AI 优先从你上传的资料中寻找依据，结合这门课的概念与方法，带你学习、复习和推敲作业。沿着课程引用回到原文，核对某一步为什么成立。|AI looks to your uploaded materials first. Learn, review and work through assignments using your course’s concepts and methods. Follow course references back to the source to check why a step holds.
+AI 会怎样使用我的课程资料？|How does AI use my course materials?
+上传的讲义、课件和习题，会成为 AI 带你学习的主要依据。讲解围绕其中的概念与方法展开，引用的课程内容可以回到原文核对。|The notes, slides and problem sets you upload form the primary basis for guided learning. Explanations work with their concepts and methods, and cited course content can be checked against the original.
+带着你|Your AI\u0020
+课程依据 · 讲义第 3 页|Course source · Lecture notes, page 3
+从一份讲义，|From course notes
+到自己的理解。|to understanding.
+从平均速度想起，再把时间间隔不断缩短。|Start with speed, then shrink the time interval.
+StudyBridge 将课程资料、AI 学习、日程与创作连接起来，帮你梳理讲义、推敲问题、复习备考，把所学整理成自己的表达。|StudyBridge brings course materials, AI learning, schedules and creative tools together. Work through notes, think through questions and turn what you learn into work of your own.
+围绕你的课程，|Your courses.
+把知识|Make sense of\u0020
+用 AI 梳理讲义、推敲问题、复习备考。|Use AI to understand your notes, work through problems and prepare for exams.
+从看过一遍，到能用自己的话讲清楚。|Go from reading the material to explaining it in your own words.
+探索学习空间|Explore the workspace
+微积分 · 第一章|Calculus · Chapter 1
+微积分 · 课程资料|Calculus · Course materials
+继续追问…|Ask a follow-up…
+微积分 · 章节复习|Calculus · Chapter review
+14:00 · 导数与变化率|14:00 · Derivatives and rates of change
+界面示意|Interface preview
+滚动探索|Scroll to explore
+从课程出发|Start with your course
+讲义里的概念、习题中的疑问，都是追问的起点。|Start with a concept in your notes or a question in a problem set.
+把问题想清楚|Think it through
+结合资料推敲概念与解题思路，找到不明白的那一步。|Reason through the material and focus on the step that is still unclear.
+留下自己的理解|Make it your own
+整理成笔记和作品，也为接下来的学习留出时间。|Turn ideas into notes and projects, then make time to keep learning.
+时间间隔越短，越接近某一瞬间的变化率。|Shrink the interval to approach the rate at an instant.
+学进去，|Understand it.
+也能用起来。|Put it to use.
+沿着课程资料，|Work through your materials.
+把问题想透。|Think through the questions.
+预习时梳理重点，遇到难题时逐步推敲，考前再回到需要巩固的部分。资料与讨论围绕课程展开，让每一次学习都能接得上。|Find the key ideas before class, reason through difficult questions and revisit what needs practice before an exam. Keep your materials and discussions together around each course.
+讲义 · 习题 · 复习|Notes · Practice · Review
+回到原文，核对理解|Return to the source
+沿着回答中的课程引用，回到讲义核对概念与推导。|Follow course references in an answer back to your notes to check concepts and reasoning.
+一题一题，理清思路|Work through the reasoning
+把整套习题展开来看，跟着解答推敲，追问真正卡住的地方。|Work through a problem set, examine the solutions and ask about the steps that leave you stuck.
+回顾重点，查漏补缺|Review what needs practice
+把讨论整理成复习提纲，再用练习检查哪些地方还需要巩固。|Turn a discussion into a revision outline, then use practice questions to see what needs more work.
+看清安排，|See what is ahead.
+给学习留出余地。|Make room to study.
+把课表、作业截止和复习计划放在同一份日历里，留出准备的时间，也看清下一步。|Bring classes, deadlines and revision plans into one calendar. Leave time to prepare and see what comes next.
+把讨论整理成文档，用表格理清数据，用演示讲清一个想法。|Shape a discussion into a document, make sense of data in a spreadsheet and explain an idea in a presentation.
+重要的学习邮件，别埋在收件箱里。|Keep important study emails in view.
+让一个人的思考，接上更多视角。|Bring more perspectives to your thinking.
+分享自己的理解，看看同学的思路，再把值得继续聊的问题带进私聊。|Share your understanding, explore how classmates think and continue a worthwhile discussion in private chat.
+从今天要学的内容开始。|Start with what you are learning today.
+带着一个问题，|Bring a question.
+开始今天的学习。|Start learning today.
+理解概念、理清思路，再把所学整理成自己的表达。|Understand concepts, work through ideas and turn what you learn into expression of your own.
+从教授通知、作业邮件里整理要点与日期，把容易遗漏的安排接回学习日程。|Find the key points and dates in course announcements and assignment emails, and bring easily missed plans into your study schedule.
+可选连接 Gmail 或 Outlook，仅申请只读权限；日程经你确认后添加。|Connecting Gmail or Outlook is optional and uses read-only access. You confirm items before they are added to your schedule.
+放入一门课的资料|Bring your course materials
+选一份正在读的讲义、一章笔记，或一套需要复习的习题。|Choose notes you are reading, a chapter you are studying or a problem set you want to review.
+从一个具体问题开始|Begin with a specific question
+问清一个概念，推敲一道题，再沿着不理解的地方继续追问。|Explore a concept, reason through a problem and keep asking about what is still unclear.
+把讨论整理成提纲或作品，也把下一次复习放进日程。|Shape the discussion into an outline or project, and make time for your next review.
+可以带着哪些资料来学习？|What materials can I study with?
+课程讲义、课件和习题都可以作为起点。把资料放进对应课程，就能结合其中的内容追问、梳理重点，或准备复习提纲。|Start with lecture notes, slides or problem sets. Add them to the relevant course to discuss their content, find the key ideas or prepare a revision outline.
+课表和邮件会自动改动我的日程吗？|Do timetables and emails change my schedule automatically?
+识别出的事项会先供你核对。你可以调整条目、日期与时间，再决定哪些安排加入日程。|Review the extracted items first. Adjust their details, dates and times, then choose what to add to your schedule.
+开始学习|Start learning
+学习的每一层，|Every layer of learning,
+在这里连接。|connected here.
+向下滚动，展开学习空间|Scroll to unfold your study space
+把资料放进来|Bring your materials
+展开你的学习|Unfold your learning
+回到同一个空间|One connected space
+来源已连接|Course source connected
+课程来源 · 第 3 页|Course source · Page 3
+今天的安排|Today's schedule
+上传课程资料，|Upload course notes.
+让 AI 帮你|Let AI help you\u0020
+学明白|study guide
+学习功能亮点|Study highlights
+对照资料，核对来源|Check the course sources
+整套题，逐步完成|Work through a problem set
+刷新后，接着看进度|Keep track after a refresh
 跳转到主要内容|Skip to main content
 主导航|Main navigation
 探索功能|Explore features
@@ -1560,8 +1690,6 @@ StudyBridge · 连接学习的每一步|StudyBridge · Connect every step of lea
 从一份课程资料，到一次真正的理解。|From course materials to real understanding.
 让课程、AI 学习、日程与创作，在同一个空间里连接起来。|Connect courses, AI learning, schedules and creation in one space.
 开始使用|Get started
-看看 StudyBridge 能做什么|See what StudyBridge can do
-已有账号？直接进入你的学习空间。Google 可直接进入；邀请码可在注册时或登录后的设置中填写，成为 Plus 用户。|Already have an account? Enter your study space. Continue with Google, or redeem an invitation during registration or later in Settings for Plus.
 少一点来回切换，多一点专注学习。|Less switching. More focused learning.
 StudyBridge 学习空间示意，展示课程、学习对话和日程|StudyBridge preview showing courses, study conversations and schedules
 示意导航|Preview navigation
@@ -1573,18 +1701,13 @@ StudyBridge 学习空间示意，展示课程、学习对话和日程|StudyBridg
 学习 / 微积分|Study / Calculus
 课程学习|Course study
 让知识，慢慢连起来。|Connect what you learn.
-从你的问题开始，找到理解的下一步。|Start with your question. Find your next step toward understanding.
 第一章 · 课程讲义.pdf|Chapter 1 · Lecture notes.pdf
-课程资料 · 为学习提供上下文|Course materials · Context for learning
 为什么说导数是「瞬时变化率」？|Why is a derivative an instantaneous rate of change?
 先从你熟悉的速度想起。|Start with something familiar: speed.
 平均速度看的是一段路程；把这段时间不断缩短，就在靠近某一瞬间的变化率。|Average speed covers a period of time. Shorten that period, and you approach the rate of change at one instant.
 平均变化率|Average rate of change
 瞬时变化率|Instantaneous rate of change
-继续追问，让理解再深一点…|Ask another question. Go a little deeper…
 学习，也有条不紊。|Keep your learning organized.
-讲座、作业与考试，放进同一份日程。|Lectures, assignments and exams in one schedule.
-示例界面 · 内容仅用于功能展示|Example interface · Demonstration content only
 一条更连贯的学习路径|A more connected learning journey
 整理课程|Organize courses
 理解知识|Understand concepts
@@ -1597,7 +1720,6 @@ StudyBridge 学习空间示意，展示课程、学习对话和日程|StudyBridg
 01 / 学习|01 / STUDY
 带着课程资料，|Bring your course materials.
 把问题学明白。|Understand the questions.
-按课程整理资料与对话，让 AI 结合课程内容帮助你预习、理解和复习。同一门课也可以展开多个话题，各自保留讨论脉络。|Organize materials and conversations by course. AI uses course context to help you prepare, understand and review. Explore several topics within a course, each with its own conversation.
 支持的学习场景|Supported study modes
 引导学习|Guided learning
 课程与对话的组织方式示意|Example of course and conversation organization
@@ -1609,7 +1731,6 @@ StudyBridge 学习空间示意，展示课程、学习对话和日程|StudyBridg
 02 / 日程|02 / SCHEDULE
 知道下一步，|Know what comes next,
 也记得什么时候。|and when it happens.
-导入课表或课程大纲，检查识别结果后再保存。把讲座、辅导课、截止日期与个人计划放进日历。|Import a timetable or syllabus, review the results, then save. Keep lectures, tutorials, deadlines and personal plans in one calendar.
 日程示例|Example schedule
 微积分 · 讲座|Calculus · Lecture
 LEC / 课程安排|LEC / Class
@@ -1620,21 +1741,17 @@ DDL / 截止日期|DDL / Deadline
 03 / 工具|03 / TOOLS
 把学到的东西，|Turn what you learn
 变成自己的作品。|into something of your own.
-用 SB Docs、SB Sheets 和 SB Slides 整理文字、数据与演示。自主编辑，也可以先预览 AI 建议，再决定是否应用。|Organize writing, data and presentations with SB Docs, SB Sheets and SB Slides. Edit yourself, or preview AI suggestions before applying them.
 文档、表格和演示工具示意|Document, spreadsheet and presentation previews
 把想法|Give your ideas
 写成条理。|a clear structure.
 从理解，|From understanding
 到表达。|to expression.
-让学习邮件，接上你的安排。|Connect study emails with your plans.
 在设置中自愿绑定 Gmail 或 Outlook，只读检查收件箱，用 AI 整理教授通知、作业与活动。核对后再加入日程；随时可以解除绑定。|Optionally connect Gmail or Outlook in Settings. Read-only inbox access lets AI organize notices, assignments and events. Review before adding to Schedule, and disconnect at any time.
 了解邮件数据用途|Learn how email data is used
 还有，同路的人|And people on the same journey
 学习之外，也能找到交流。|Find connection beyond coursework.
-在社区分享和讨论，添加同学，通过私聊继续对话。|Share in Community, connect with classmates and continue in private chat.
 从你的第一门课开始。|Start with your first course.
 进入学习空间|Enter your study space
-使用 Google 直接进入，或通过邮箱注册；邀请码可稍后在设置中补填。|Continue with Google or register with email. Redeem an invitation later in Settings.
 放进你的课程|Add your courses
 添加课程，上传讲义；也可以导入课表或大纲，确认课程与日程。|Add courses and notes, or import a timetable or syllabus and confirm courses and events.
 按你的节奏学下去|Learn at your own pace
@@ -1642,9 +1759,6 @@ DDL / 截止日期|DDL / Deadline
 开始前，|Before you begin,
 你可能想知道。|a few things to know.
 现在可以注册吗？|Can I register now?
-可以。Google 首次授权会直接创建普通账号，之后直接登录。邀请码可在注册时填写，也可登录后在设置里兑换为 Plus。Plus 目前仅作分类，功能暂时相同。|Yes. First-time Google authorization creates a standard account. Redeem an invitation during registration or later in Settings for Plus. Both account types currently have the same features.
-已经登录了，还需要再登录吗？|Do I need to sign in again?
-只要登录状态有效，点击「进入 StudyBridge」就会直接打开你的学习空间。你也可以收藏学习空间的网址，方便下次直接进入。|If your session is valid, Enter StudyBridge opens your study space directly. Bookmark it for easy access next time.
 上传课表后，会直接改动我的日程吗？|Does uploading a timetable change my schedule immediately?
 识别结果会先展示给你检查。确认需要保留的条目、日期和时间后，再保存到日程。|Review extracted items, dates and times first, then confirm what to save to Schedule.
 下一次理解，|Your next moment of clarity

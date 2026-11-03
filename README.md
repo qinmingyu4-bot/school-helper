@@ -37,6 +37,36 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, op
 The bare domain serves `public/landing.html` with its own responsive styles and
 no application scripts or account requests. Its neutral white/light-gray surfaces,
 charcoal text and thin frames are independent of saved learning-space themes.
+The homepage describes course-based understanding, checking sources, working through
+problems, revision and expressing what students learn. Keep account setup, invitations,
+membership labels and routine recovery details on the relevant application screens;
+public copy should make sense to a first-time visitor without development history.
+Permission and calendar-confirmation information stays beside the relevant features.
+Balance the brand's ideas of connection, curiosity and a personal learning rhythm
+with concrete support: let major headings carry the broader idea, then ground it
+in the nearby explanation and product examples. Keep the primary distinction clear
+in the opening description: uploaded course materials ground AI-guided study,
+review and assignment help, with course references for checking the reasoning. Say
+materials come first; do not imply the service never uses web search or outside
+information, since the backend supports those and distinguishes their sources.
+Chinese and English copy (including the description metadata) follow the language selector;
+brand punctuation stays fixed. Phone previews prioritize the readable study example.
+Small scroll-linked offsets give preview surfaces, document samples and the closing
+bridge mark depth while headings, body copy and actions stay stationary. Motion is
+reduced on widths up to 800 px and disabled for `prefers-reduced-motion`. The separate
+`landing-motion.js` uses bounded transforms, passive scroll events and one requested
+frame per update; offscreen and hidden-page work is skipped. The static page remains
+readable if JavaScript or optional observers are unavailable.
+A dedicated scroll-driven product scene pins briefly in the viewport: Lecture Slides,
+Syllabus, Problem Set and Lecture Notes cards gather into one Calculus course. Its
+stored file list fills before guided study, a review outline and assignment reasoning
+emerge from that course, with connecting lines showing their shared basis. Native
+scrolling controls and reverses the scene; there is no
+wheel interception or autoplay loop. `landing-story.js` and `landing-story.css` keep
+the choreography separate from the application. Percentage-based paths keep the
+files converging on the course center at every size; phones use less 3D depth.
+Reduced-motion and viewports at most 600 px tall show the complete static course flow
+without a long pinned section. All three explanatory steps remain in the document.
 Login and registration use the same neutral style through scoped `public/auth.css`,
 with the shared bridge wordmark, visible field focus, status messages and a homepage
 link. Existing authentication actions, invitation/email-code fields and Google

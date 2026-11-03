@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-11-02 — Course learning loop
+
+- Remove dark rectangular tab backplates by excluding self-themed learning controls from the global dark-control reset. Keep navigation and secondary actions flat across list, materials, source, practice, history and planning views; remove filled count badges and switch-thumb shadows, and use restrained neutral shadows for the dialog and optional suggestion. Refresh both affected stylesheet URLs together so the fixes reach existing previews.
+
+- Follow the existing account palette and independent dark mode throughout the refined learning panel. Use shared charcoal surfaces and champagne accents at night; prevent the older global dark-control reset from overriding text navigation, primary actions, inputs and suggestion switches.
+
+- Refine the complete learning panel to match StudyBridge's quieter workspace: compact brand/course heading and icon close control, understated text navigation, slim status indicators, a clear primary practice action, lighter source/history/calendar links, an optional add-topic disclosure, and a compact automatic-suggestion switch with private-record status. Apply the same typography and surfaces to materials, practice, feedback and history, retain account palettes/dark mode, and preserve disclosure, input and scroll state during redraws.
+
+- Fix the course header overflowing its former 54 px height when learning actions wrap. Let it size to its contents, give narrow screens a separate full-width action row with touch-sized controls, and compact course countdown reminders so navigation, actions, reminders and chat no longer overlap.
+
+- Add a permanent course learning entry with reviewed, editable topic drafts from selected materials; manual topics and verified source links; optional teaching prompts that preserve existing chat drafts; private three-question practice, saved mistakes and assisted/independent results; confirmed calendar review tasks and new-question retests that update the next suggested review.
+- Keep student choice at every step. Offer nonmodal automatic suggestions after relevant study activity or when a topic is due, without stealing focus or making automatic AI calls. Support dismissal, a one-day snooze and account-saved per-course disabling while preserving the manual entry. Keep learning records private and Community sharing separate.
+- Persist course state and quizzes in local/DynamoDB storage with conditional updates, hidden pre-submission answer keys, server grading, source-version guards and atomic linked-task completion. Preserve existing course/chat/calendar data; no migration is required. Document the initial single-choice quiz format and review rules in `docs/learning-loop.md`.
+- Validate 491 automated tests and 271-file source/asset/version checks. Isolated Chrome/WebKit checks cover nonintrusive suggestions, persistent opt-out and manual entry, topic confirmation, quiz recovery/feedback, linked calendar retests, assisted practice, retained answers after failed submission, 320/390/1280 px layouts, English and dark mode. AI generation uses fixtures; real-course question quality remains a separate acceptance check.
+
 ## Unreleased — Restore the clear 2D course flow
 
 - Restore the earlier materials-to-course-to-learning composition with restrained scroll-driven card movement and simple source connections. Keep the blended brand copy and aligned vector arrows; remove the experimental spatial volumes and knowledge-space narrative from the preview. Preserve the existing reduced-motion and short-viewport static flow.
@@ -61,13 +76,15 @@
 
 ## 1.2.9 — Alipay live integration preparation (2026-11-01)
 
-- Owner authorized the closed-sales AWS deployment and live webhook destination on 2026-11-01. Deployment at `e8f2d78` succeeded; the separate Stripe destination was created. Credentials and signed-delivery/real-payment acceptance remain outstanding. Prepare an optional private GitHub Actions credential installation path; adding credentials requires separate specific owner consent and cannot open checkout.
+- Completed the separately authorized private credential setup at production commit `7979a53`: create a dedicated limited live key (7 read / 2 write permissions), save it and the webhook signing secret in encrypted deployment configuration, and verify the AWS installer succeeds with checkout closed and draft prices unapproved. Alipay now shows Enabled in Stripe. Online status confirms live configuration is ready while purchase controls remain disabled; unsigned webhooks are rejected. No orders or real payments were created, and signed Stripe-origin delivery / real-payment acceptance remain untested. No credential values are recorded in source or chat.
+
+- Owner authorized the initial closed-sales AWS deployment and live webhook destination on 2026-11-01. Deployment at `e8f2d78` succeeded and the separate Stripe destination was created. At that stage, credentials and signed-delivery/real-payment acceptance were outstanding. The optional private GitHub Actions credential installation path required separate specific owner consent and cannot open checkout; the later credential setup is recorded above.
 
 - Add a separate Alipay-only 30-day/month and 120-day/semester payment integration, with isolated sandbox/live records and a pinned merchant account. Draft prices stay CAD 19.99 / 69.99; no owner approval of final pricing or public charging is implied.
 - Keep all new checkout access closed by default. Support a separately configured owner-only verification stage; require explicit approved pricing and a current consent version before any Checkout can be created.
 - Verify signed notifications, current provider payment/capture details, exclusive CAD price, automatic tax and successful refunds before committing expiring paid membership. Closing sales preserves purchased validity; invitations and manual Plus remain separate.
 - Add bilingual Alipay preparation/consent UI, a private server configuration installer that always retains closed sales and draft prices, and local/DynamoDB/HTTP/UI/configuration checks. No live credentials or real payments are included.
-- External status on 2026-11-01: Alipay remains pending approval in Stripe. Official sandbox, signed live delivery and owner-completed real payment verification remain outstanding; existing AI usage/feature limits have not been changed.
+- Initial external status on 2026-11-01 was Pending approval; the later Enabled/configuration verification is recorded above. Official sandbox, signed live delivery and owner-completed real payment verification remain outstanding; existing AI usage/feature limits have not been changed.
 
 
 ## 2026-10-31

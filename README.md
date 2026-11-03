@@ -87,6 +87,23 @@ Session-dependent page redirects use `Cache-Control: no-store`.
 Preview this change with an isolated local database. Push review work to a task
 branch: pushing to `main` triggers the AWS deployment workflow.
 
+## Course learning loop
+
+Each course has a permanent **学习清单 · 练习 / Study topics · Practice** entry.
+Students can organize selected materials into an editable topic draft, confirm
+only the topics they want, or add a topic manually and link an exact source
+excerpt. Each topic offers source reading, an optional teaching prompt, three
+practice questions, saved feedback and a confirmed calendar review. Calendar
+**开始复习 / Start review** opens a new practice session for that topic; submitting
+it also completes its linked task. Future review suggestions depend on actual
+answers, with independent and assisted attempts distinguished.
+
+Automatic suggestions are optional, nonmodal and never send a message or call
+AI by themselves. Dismiss, snooze for a day, or turn them off for that course;
+the manual entry remains available. Preferences sync with the account. Private
+learning records stay with the course and are not posted to Community.
+See [learning-loop behavior and limits](docs/learning-loop.md).
+
 ## Study input
 
 Study uses the approved **轻量横排** input on desktop and mobile: a quiet
@@ -771,6 +788,15 @@ Each invitation permits one successful registration. Previously used codes canno
 be reused, even if their old usage limit was higher or they are re-enabled.
 
 ### Subscription and payment testing
+
+Alipay also has a separate live-account preparation path. On 2026-11-01, the owner
+authorized its restricted credentials and signing secret to be installed through
+encrypted GitHub deployment secrets into AWS private configuration. Alipay shows
+Enabled in Stripe, but prices remain drafts and **all live checkout is closed**.
+No real payment has been tested. Customer Alipay payments would settle through
+Stripe to the linked payout bank, not the owner's personal Alipay wallet.
+See [Alipay configuration and remaining acceptance](docs/billing.md).
+The card and combined-wallet foundation below remains test-only.
 
 Settings → **订阅与账单 / Subscription & billing** prepares a configurable CAD
 monthly plan, hosted Stripe Checkout/invoice portal, period-end cancellation,

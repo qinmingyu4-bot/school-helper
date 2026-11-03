@@ -38,6 +38,20 @@
     getDefaults: () => profile(), onChange: () => { if (state.page === "community") render(); }, onSaved: updateEditedCommunityPost });
 
   const root = document.getElementById("root");
+  const learningLoop = window.StudyBridgeLearningLoop.create({ request: api, ui,
+    getContext: () => ({ userId: state.user?.id, courseId: isGeneralChat() ? "" : state.activeCourseId,
+      courseName: state.courses.find((course) => course.id === state.activeCourseId)?.name || "",
+      visible: Boolean(state.user && state.mode === "student" && state.page === "study"),
+      quiet: !state.busy && !activeStudyReply() && !activeStudyTask() }),
+    onStudy: (topic, sources) => {
+      if (!topic) return;
+      const input = $("chatInput");
+      const prompt = ui.message`请帮我理解这个学习主题：${topic.title}。先讲概念和方法，再用例子解释。`;
+      const excerpt = (sources || []).map((source) => `${source.name}: ${source.quote}`).join("\n");
+      if (input) { input.value = [input.value, prompt, excerpt].filter(Boolean).join("\n\n"); studyComposer.resize(); input.focus(); }
+    },
+    onScheduleChange: () => loadScheduleItems(false)
+  });
   const studyComposer = window.StudyBridgeComposer.create({ root });
   const mobileNavigation = window.StudyBridgeMobileNavigation.create({ navigate: (page) => loadPage(page), resizeComposer: () => studyComposer.resize() });
   const brandMarkHtml = () => `<span class="sb-brand-symbol" aria-hidden="true"><img class="sb-logo-monochrome" src="/brand/book-bridge-monochrome.svg" width="128" height="72" alt=""><img class="sb-logo-color" src="/brand/book-bridge-color.svg" width="128" height="72" alt=""></span>`;
@@ -734,7 +748,7 @@
     const conversation = state.courseConversations[state.activeCourseId]?.find((item) => item.id === state.activeConversationId);
     const courseName = isGeneralChat() ? ui.text(chatSpaces.general.name) : course?.name;
     return `
-      <header class="page-header"><div class="course-chat-heading"><small>${esc(courseName || ui.text("请选择课程"))}${!isGeneralChat() ? ui.text(" · 课程资料共享") : ""}</small><h1 title="${esc(conversation?.title || courseName || ui.text("请选择课程"))}">${esc(conversation?.title || courseName || ui.text("请选择课程"))}</h1></div>${!isGeneralChat() && course ? ui.html`<button data-action="new-conversation" data-id="${esc(course.id)}">＋ 新对话</button>` : ""}</header>
+      <header class="page-header"><div class="course-chat-heading"><small>${esc(courseName || ui.text("请选择课程"))}${!isGeneralChat() ? ui.text(" · 课程资料共享") : ""}</small><h1 title="${esc(conversation?.title || courseName || ui.text("请选择课程"))}">${esc(conversation?.title || courseName || ui.text("请选择课程"))}</h1></div>${!isGeneralChat() && course ? ui.html`<div class="course-chat-actions"><button data-action="learning-open">学习清单 · 练习</button><button data-action="new-conversation" data-id="${esc(course.id)}">＋ 新对话</button></div>` : ""}</header>
       ${upcomingBanner()}
       <section class="chat-area">
         <div class="messages" id="messages">
@@ -1044,6 +1058,7 @@
       if (reply.courseId !== chatSpaces.general.id && state.user?.id === reply.userId) {
         await refreshCourseConversations(reply.courseId).catch(() => {});
         if (state.page === "study") render();
+        if (!reply.assistant.interrupted && ["guided", "review", "preview", "cram"].includes(reply.mode) && studyReplyKey() === reply.key) learningLoop.offer("lesson");
       }
     }
   }
@@ -2403,6 +2418,7 @@
       }
       setToast(ui.message`已上传 ${uploaded} 个文件。`);
       if (state.activeCourseId === courseId) await loadPage("study");
+      if (state.activeCourseId === courseId) { await learningLoop.refresh(); learningLoop.offer("upload"); }
     } finally {
       courseUploadPending = false;
       root.querySelectorAll('[data-action="upload-doc"], [data-action="save-doc"]').forEach((button) => { button.disabled = false; });
@@ -2415,6 +2431,13 @@
     const authSubmission = action === "register" || action === "login";
     if (authSubmission) button.disabled = true;
     try {
+      if (action === "learning-open") { learningLoop.open(); return; }
+      if (action === "learning-start") {
+        const topicId = button.dataset.topic, courseId = button.dataset.course, taskId = button.dataset.doc;
+        await selectConversation(courseId, "default");
+        await learningLoop.startTask(topicId, taskId);
+        return;
+      }
       if (action === "view-chat-image") { showChatImage(button.dataset.imageUrl, button.dataset.imageName); return; }
       if (action.startsWith("creative-")) { await creativeTools.handle(button, creativeContext()); return; }
       if (action === "auth-tab") {
@@ -2508,6 +2531,7 @@
         return;
       }
       if (action === "logout") {
+        learningLoop.reset();
         classmateNotifications.stop();
         dmAttachments.reset();
         mailboxView.reset();
@@ -2624,6 +2648,7 @@
         if (!docText.trim()) throw new Error(ui.text("请先粘贴资料文字，或选择 PDF / Word / PPT / Excel 文件上传。"));
         await api(`/api/courses/${state.activeCourseId}/documents`, { method: "POST", body: { title: $("docTitle")?.value || "Course note", text: docText, type: "Note" } });
         await loadPage("study");
+        await learningLoop.refresh(); learningLoop.offer("upload");
         return;
       }
       if (action === "upload-doc") {
@@ -3183,6 +3208,7 @@
     const renameInput = $("conversationRename");
     if (renameInput && state.renamingConversation?.courseId === renameInput.dataset.course && state.renamingConversation.id === renameInput.dataset.conversation) state.renamingConversation.title = renameInput.value;
     appearanceController.sync(state.user);
+    void learningLoop.sync();
     officeTools.capture();
     creativeTools.capture();
     const previousAdminWorkspace = root.querySelector(".admin-workspace");

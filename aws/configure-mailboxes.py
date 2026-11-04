@@ -110,7 +110,9 @@ for (const provider of JSON.parse(process.env.SB_VERIFY_PROVIDERS)) {
   const config = configuration(provider);
   assert.equal(config.enabled, true);
   const auth = {user:{id:'configuration-check'},tokenHash:'configuration-check'};
-  const result = startOAuth(provider, auth, 'America/Toronto');
+  // Only this isolated no-network check permits its synthetic account ID.
+  const checkEnv = {...process.env, GMAIL_REVIEW_USER_IDS:'configuration-check'};
+  const result = startOAuth(provider, auth, 'America/Toronto', checkEnv);
   const url = new URL(result.url), query = url.searchParams;
   assert.equal(url.protocol, 'https:');
   assert.equal(url.hostname, provider === 'gmail' ? 'accounts.google.com' : 'login.microsoftonline.com');
@@ -121,7 +123,7 @@ for (const provider of JSON.parse(process.env.SB_VERIFY_PROVIDERS)) {
   assert.match(result.cookie, /; Secure/); assert.match(result.cookie, /; HttpOnly/);
   const [name, sealed] = result.cookie.split(';')[0].split('=');
   assert.equal(name, `__Host-sb_mailbox_${provider}`);
-  assert.equal(verifyOAuth(provider, auth, query.get('state'), {[name]:sealed}).userId, auth.user.id);
+  assert.equal(verifyOAuth(provider, auth, query.get('state'), {[name]:sealed}, checkEnv).userId, auth.user.id);
 }
 """
     result = subprocess.run(["node", "-e", check], env={**os.environ, **active, "SB_VERIFY_PROVIDERS": json.dumps(providers)}, capture_output=True)

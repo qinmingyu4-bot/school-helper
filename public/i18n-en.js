@@ -1212,6 +1212,7 @@ Quiz / 小测|Quiz
 正在前往邮箱授权…|Opening mailbox authorization…
 已解除绑定，提取记录已清除。已确认的日程保留。|Disconnected and extracted records removed. Confirmed events remain.
 邮箱授权失败，请重试。|Mailbox authorization failed. Please retry.
+Gmail 正在审核，仅向指定测试账号开放。|Gmail is under review and available only to designated test accounts.
 已导出当前选择的偏好副本。|Preferences exported.
 可以补填有效邀请码，升级为 Plus 用户。|Redeem a valid invitation to become a Plus member.
 添加个人计划，或从课程文件导入。|Add a personal plan or import course files.

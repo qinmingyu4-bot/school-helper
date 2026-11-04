@@ -167,3 +167,94 @@ test("temporary provider failures back off without consuming queued mail, while 
   clock.value += 901000; await service.tick(); assert.equal(calls, 2);
   await assert.rejects(service.requestSync("alice", "gmail"), /重新绑定/);
 });
+
+test("Gmail rejects non-inbox and excluded labels before requesting any message content", async () => {
+  for (const labels of [[], ["SENT"], ["DRAFT"], ["SPAM"], ["TRASH"], ["INBOX", "SENT"], ["INBOX", "DRAFT"], ["INBOX", "SPAM"], ["INBOX", "TRASH"], undefined]) {
+    const calls = [];
+    const transport = p.createProviders({ request: async (input) => {
+      const url = new URL(input); calls.push(url);
+      assert.equal(url.searchParams.get("format"), "minimal", "ineligible mail must never request full content");
+      assert.equal(url.searchParams.get("fields"), "id,labelIds");
+      return Response.json({ id: "private", labelIds: labels });
+    } });
+    assert.equal(await transport.message("gmail", "private", "token"), null);
+    assert.equal(calls.length, 1);
+  }
+});
+
+test("Gmail eligible mail has label-only preflight and a second label check; errors never bypass preflight", async () => {
+  for (const scenario of ["ok", "archived", "trashed", "deleted-before", "deleted-after", "rate-limit", "revoked"]) {
+    const formats = [];
+    const transport = p.createProviders({ request: async (input) => {
+      const url = new URL(input), format = url.searchParams.get("format"); formats.push(format);
+      if (scenario === "deleted-before" || scenario === "deleted-after" && format === "full") return Response.json({}, { status: 404 });
+      if (scenario === "rate-limit") return Response.json({}, { status: 429 });
+      if (scenario === "revoked") return Response.json({}, { status: 403 });
+      if (format === "minimal") return Response.json({ id: "m", labelIds: ["INBOX", "CATEGORY_PERSONAL"] });
+      return Response.json({ id: "m", labelIds: scenario === "archived" ? [] : scenario === "trashed" ? ["INBOX", "TRASH"] : ["INBOX"], internalDate: "1793800000000", payload: { mimeType: "text/plain", headers: [{ name: "Subject", value: "Study" }], body: { data: Buffer.from("Assignment due tomorrow").toString("base64url") } } });
+    } });
+    if (["rate-limit", "revoked"].includes(scenario)) {
+      await assert.rejects(transport.message("gmail", "m", "token"), (error) => error.providerStatus === (scenario === "revoked" ? 403 : 429));
+    } else {
+      const result = await transport.message("gmail", "m", "token");
+      if (scenario === "ok") assert.equal(result.text, "Assignment due tomorrow");
+      else assert.equal(result, null);
+    }
+    assert.deepEqual(formats, ["deleted-before", "rate-limit", "revoked"].includes(scenario) ? ["minimal"] : ["minimal", "full"]);
+  }
+});
+
+test("Gmail history pages stay inbox-scoped and keep the original cursor until the last page", async () => {
+  const calls = [];
+  const transport = p.createProviders({ request: async (input) => {
+    const url = new URL(input); calls.push(url);
+    assert.equal(url.searchParams.get("labelId"), "INBOX");
+    assert.equal(url.searchParams.get("startHistoryId"), "100");
+    return Response.json({ historyId: "200", nextPageToken: calls.length === 1 ? "next" : undefined, history: [{ messagesAdded: [{ message: { id: "m" } }, { message: { id: "m" } }] }] });
+  } });
+  const first = await transport.page({ provider: "gmail", sync: { historyId: "100" } }, "token");
+  assert.deepEqual(first.ids, ["m"]); assert.equal(first.sync.historyId, "100");
+  const last = await transport.page({ provider: "gmail", sync: first.sync }, "token");
+  assert.equal(calls[1].searchParams.get("pageToken"), "next");
+  assert.equal(last.sync.historyId, "200"); assert.equal(last.more, false);
+});
+
+test("a legacy persisted Gmail queue cannot forward non-inbox content to AI or save extracted records", async (t) => {
+  const db = await setup(t), clock = Date.now(), calls = [], analyzed = [];
+  await db.changeMailbox("alice", "gmail", () => ({ userId: "alice", provider: "gmail", active: true, generation: "legacy", tokens: p.seal({ accessToken: "a", refreshToken: "r", expiresAt: clock + 3600000 }, env), since: new Date(clock - 86400000).toISOString(), timeZone: "UTC", queue: ["sent", "archived", "inbox"], nextSyncAt: 0 }));
+  const transport = p.createProviders({ request: async (input) => {
+    const url = new URL(input), id = url.pathname.split("/").at(-1), format = url.searchParams.get("format"); calls.push([id, format]);
+    const labelIds = id === "sent" ? ["INBOX", "SENT"] : id === "archived" ? [] : ["INBOX"];
+    if (format === "minimal") return Response.json({ id, labelIds });
+    assert.equal(id, "inbox");
+    return Response.json({ id, labelIds, internalDate: String(clock), payload: { mimeType: "text/plain", body: { data: Buffer.from("safe synthetic course notice").toString("base64url") } } });
+  } });
+  const service = createMailboxService({ db, env, transport, now: () => clock, analyze: async (messages) => { analyzed.push(JSON.parse(messages[1].content).body); return '{"relevant":true,"summary":"Study","items":[]}'; } });
+  await service.sync("alice", "gmail");
+  assert.deepEqual(calls, [["sent", "minimal"], ["archived", "minimal"], ["inbox", "minimal"], ["inbox", "full"]]);
+  assert.deepEqual(analyzed, ["safe synthetic course notice"]);
+  assert.equal((await service.status("alice")).drafts.length, 1);
+  assert.deepEqual((await db.getMailbox("alice", "gmail")).queue, []);
+});
+
+test("unverified production Gmail requires explicit review IDs at OAuth, connection and worker boundaries", async (t) => {
+  const production = { ...env, NODE_ENV: "production", APP_BASE_URL: "https://example.test", GMAIL_REVIEW_USER_IDS: " alice , reviewer " };
+  assert.equal(p.gmailAccessAllowed("alice", production), true);
+  assert.equal(p.gmailAccessAllowed("ali", production), false);
+  assert.equal(p.gmailAccessAllowed("bob", { ...production, GMAIL_SCOPE_VERIFIED: "false" }), false);
+  assert.equal(p.gmailAccessAllowed("bob", { ...production, GMAIL_SCOPE_VERIFIED: "true" }), true);
+  assert.equal(p.gmailAccessAllowed("alice", { ...production, GMAIL_REVIEW_USER_IDS: "" }), false);
+  assert.throws(() => p.startOAuth("gmail", { user: { id: "bob" } }, "UTC", production), /正在审核/);
+  assert.throws(() => p.verifyOAuth("gmail", { user: { id: "bob" } }, "state", {}, production), /正在审核/);
+  assert.ok(p.startOAuth("gmail", { user: { id: "alice" }, tokenHash: "s" }, "UTC", production).url);
+  const db = await setup(t);
+  await db.changeMailbox("bob", "gmail", () => ({ userId: "bob", provider: "gmail", active: true, generation: "keep", tokens: "must-not-decrypt", queue: ["private"], nextSyncAt: 0 }));
+  const service = createMailboxService({ db, env: production, transport: { profile: () => { throw new Error("must not call provider"); } } });
+  await assert.rejects(service.connect("bob", "gmail", {}, "UTC"), /正在审核/);
+  await assert.rejects(service.requestSync("bob", "gmail"), /正在审核/);
+  await service.sync("bob", "gmail");
+  const row = await db.getMailbox("bob", "gmail"); assert.equal(row.tokens, "must-not-decrypt"); assert.deepEqual(row.queue, ["private"]);
+  assert.equal((await service.status("bob")).connections[0].configured, false);
+  assert.equal((await service.status("alice")).connections[0].configured, true);
+  await service.disconnect("bob", "gmail"); assert.equal((await db.getMailbox("bob", "gmail")).active, false);
+});

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-05 — Gmail inbox access and verification testing
+
+- Filter Gmail history to Inbox and check only message ID/labels before requesting content. Reject non-Inbox, Sent, Draft, Spam and Trash messages before full retrieval; recheck full responses before AI processing, including stale durable queues.
+- Clarify the bilingual privacy policy about label checks and concurrent label changes; refresh affected frontend assets.
+- Restrict unverified production Gmail authorization and synchronization to explicit review account IDs, with a closed default and retained disconnect access. Document configuration, remaining concurrency limits and reviewer acceptance steps.
+- Add regression coverage for label exclusions, concurrent label changes, pagination, deletion/provider errors, legacy queues and production review restrictions; preserve existing Outlook, confirmation and unlink behavior.
+
 ## 1.2.10 — Authorized schedule push production release
 
 - Publish the owner-approved background schedule notifications from `d9d2859`. Preserve the existing main baseline and all account, course, schedule, payment and authored-file data; refresh package/frontend versions to 1.2.10.

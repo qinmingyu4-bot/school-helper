@@ -15,6 +15,7 @@ global.fetch = async (input, options = {}) => {
     if (url.pathname.endsWith("/history")) return Response.json({ historyId: "102", history: [] });
     if (url.pathname.endsWith("/messages")) return Response.json({ messages: [{ id: "academic" }, { id: "advert" }, { id: "date-only" }] });
     const id = url.pathname.split("/").at(-1);
+    if (url.searchParams.get("format") === "minimal") return Response.json({ id, labelIds: ["INBOX"] });
     return Response.json({ id, labelIds: ["INBOX"], internalDate: String(Date.now()), payload: { mimeType: "text/plain", headers: [
       { name: "Subject", value: id === "advert" ? "Shop sale" : id === "date-only" ? "MAT135 office hours" : "STA437 assignment" }, { name: "From", value: "Professor <prof@university.test>" }
     ], body: { data: Buffer.from(id === "advert" ? "Buy now sale" : id === "date-only" ? "Office hours November 15, 2026. Time to follow." : "Assignment due November 16, 2026 at 18:00 Toronto time.").toString("base64url") } } });

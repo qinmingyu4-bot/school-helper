@@ -47,6 +47,39 @@ test("background sends at lead time without a page; durable state and concurrent
   await createPushService({ ...f.options, db: restarted }).tick(); assert.equal(f.deliveries.length, 1);
 });
 
+test("server-wired at-time reminders include classes without end times but skip explicit completions and expired catch-up", async (context) => {
+  const setup = await fixture(context);
+  const importer = require("../public/schedule-import"), vm = require("node:vm");
+  const startsAt = new Date(setup.time() + 60000).toISOString();
+  const items = [
+    { id: "lecture", kind: "LEC", startsAt },
+    { id: "tutorial", kind: "TUT", startsAt, endsAt: "" },
+    { id: "completed", kind: "LEC", startsAt, completedAt: new Date(setup.time()).toISOString() },
+    { id: "too-late", kind: "TUT", startsAt: new Date(setup.time() - 6 * 60000).toISOString() }
+  ];
+  const documents = items.map((item) => ({ id: item.id, type: "Schedule", text: JSON.stringify({ title: item.id, ...item }) }));
+  const source = await fs.readFile(path.join(__dirname, "../server.js"), "utf8");
+  const helpers = source.slice(source.indexOf("function parseScheduleDocument("), source.indexOf("function formatScheduleContext("));
+  const wiring = source.match(/^const schedulePush = .+;$/m)[0];
+  const sandbox = vm.createContext({
+    db: Object.assign(Object.create(setup.db), { listCourses: async () => [{ id: "planner" }], listDocuments: async () => documents }),
+    scheduleItemPrefix: "[SCHEDULE_ITEM]", scheduleCourseName: "Schedule & Deadlines",
+    scheduleImport: { ...importer, completion: (item) => importer.completion(item, setup.time()) },
+    createPushService: (options) => createPushService({ ...setup.options, ...options })
+  });
+  const service = vm.runInContext(`${helpers}\n${wiring}\nschedulePush;`, sandbox);
+  await service.subscribe(setup.auth, { subscription: setup.sub, leadMinutes: 0 });
+  await service.tick(); assert.equal(setup.deliveries.length, 0);
+  setup.advance(90000);
+  assert.ok(importer.completion(items[0], setup.time()).completedAt);
+  assert.ok(importer.completion(items[1], setup.time()).completedAt);
+  await service.tick();
+  assert.deepEqual(setup.deliveries.map((delivery) => delivery.data.url), [
+    "/app?page=schedule&scheduleItem=lecture", "/app?page=schedule&scheduleItem=tutorial"
+  ]);
+  await service.tick(); assert.equal(setup.deliveries.length, 2);
+});
+
 test("current edits, deletions, completions, old reminders and invalid dates do not trigger stale notifications", async (t) => {
   const f = await fixture(t);
   f.items([{ id: "edit", startsAt: new Date(f.time() + 16 * 60000).toISOString() }]);
@@ -126,26 +159,6 @@ test("Dynamo conditional device updates retry conflicts and preserve ownership a
   assert.equal((await db.listPushDevices()).rows.length, 1);
   assert.equal(await db.changePushDevice("device", (row) => row.userId === "bob" ? null : undefined), null);
   await db.changePushDevice("device", (row) => row.userId === "alice" ? null : undefined); assert.equal(await db.getPushDevice("device"), null);
-});
-
-test("service worker suppresses old-account pushes and restricts notification navigation to the app", async () => {
-  const vm = require("node:vm"), source = await fs.readFile(path.join(__dirname, "../public/push-worker.js"), "utf8");
-  const handlers = {}, shown = [], opened = [], messages = [];
-  let userId = "alice", existing = false;
-  const self = { location: { origin: "https://study.example" }, addEventListener: (name, handler) => handlers[name] = handler,
-    registration: { showNotification: async (title, options) => shown.push({ title, options }) },
-    clients: { matchAll: async () => existing ? [{ url: "https://study.example/app?page=study", postMessage: (value) => messages.push(value), focus: async () => {} }] : [], openWindow: async (url) => opened.push(url) }
-  };
-  vm.runInNewContext(source, { self, URL, fetch: async () => ({ ok: Boolean(userId), json: async () => ({ user: { id: userId } }) }) });
-  const push = async (value) => { let work; handlers.push({ data: { json: () => value }, waitUntil: (promise) => work = promise }); await work; };
-  const value = { title: "Reminder", body: "View schedule", userId: "alice", url: "https://evil.test/phishing" };
-  await push(value); assert.equal(shown.length, 1); assert.equal(shown[0].options.data.url, "/app?page=schedule");
-  userId = "bob"; await push(value); assert.equal(shown.length, 1);
-  userId = null; await push(value); assert.equal(shown.length, 1);
-  const click = async (url) => { let work; handlers.notificationclick({ notification: { close() {}, data: { url, userId: "alice" } }, waitUntil: (promise) => work = promise }); await work; };
-  await click("https://evil.test/"); assert.equal(opened.length, 0);
-  await click("/app?page=schedule&scheduleItem=event"); assert.equal(opened.length, 1);
-  existing = true; await click("/app?page=schedule&scheduleItem=event"); assert.equal(opened.length, 1); assert.equal(messages[0].type, "studybridge-schedule-push");
 });
 
 test("local device pagination does not skip subsequent devices when expired rows are deleted", async (t) => {

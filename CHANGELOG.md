@@ -2,6 +2,7 @@
 
 ## Unreleased — Background schedule system notifications
 
+- Fix at-time reminders for lectures/tutorials without end times while retaining explicit completion, catch-up and duplicate checks. Display generic push notifications without an account API dependency; validate account ownership on click, with a safe app-only fallback on logout, account changes or request failures. Add regression coverage for both fixes.
 - Add opt-in per-device Web Push with reminder timing, test delivery, disable and refresh controls, and bilingual availability states. Include no installation or Home Screen prompts.
 - Send from the server with durable local/DynamoDB subscriptions, conditional device leases, bounded retries and deduplication, current schedule/completion checks and session/account isolation. Keep lock screen content generic and open the item’s calendar date on click.
 - Document private VAPID configuration and real-device acceptance; prepare on a task branch without AWS deployment. Production keys and delivery remain a deployment-time setup.

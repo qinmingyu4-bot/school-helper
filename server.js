@@ -113,7 +113,7 @@ loadEnvFile();
 
 const db = new StudyBridgeDatabase();
 const office = createOfficeService(db);
-const schedulePush = createPushService({ db, listSchedule: listUserScheduleItems });
+const schedulePush = createPushService({ db, listSchedule: (userId) => listUserScheduleItems(userId, { includeCompleted: true }) });
 const publicDir = path.join(__dirname, "public");
 const port = Number(process.env.PORT || 3000);
 const serverStartedAt = new Date().toISOString();

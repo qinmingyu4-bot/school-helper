@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.10 — Authorized schedule push production release
+
+- Publish the owner-approved background schedule notifications from `d9d2859`. Preserve the existing main baseline and all account, course, schedule, payment and authored-file data; refresh package/frontend versions to 1.2.10.
+- Generate persistent VAPID keys only in the server's private environment after the verified release backup. Reuse valid existing keys on future deployments, enable the sender, verify both key readiness and the running worker after restart, and restore the previous environment with code rollback on failure. Keep all key material out of GitHub and logs.
+- Validate 527 automated regressions, 285-file source/assets/package checks and deployment-shell syntax, including persistent key reuse and environment/code recovery when the sender is not running. Preserve the concurrently released image-dialog palette fix from `9fbd685` and the reviewed at-time class/network-failure fixes from `38649d9`.
+- Use the application's canonical/proxied HTTPS origin for notification-setting requests. Continue without installation or Home Screen prompts; physical-device lock-screen delivery remains subject to user permissions and system/network settings.
+
 ## Unreleased — Background schedule system notifications
 
 - Fix at-time reminders for lectures/tutorials without end times while retaining explicit completion, catch-up and duplicate checks. Display generic push notifications without an account API dependency; validate account ownership on click, with a safe app-only fallback on logout, account changes or request failures. Add regression coverage for both fixes.
@@ -8,6 +15,9 @@
 - Document private VAPID configuration and real-device acceptance; prepare on a task branch without AWS deployment. Production keys and delivery remain a deployment-time setup.
 - Validate 513 automated tests and 284-file source/assets/package checks. Isolated Chrome/WebKit checks cover bilingual settings and 320/390/1280 px layouts; Chrome verifies service-worker registration, subscription/timing/test/disable flows with simulated transport. Both browsers verify notification links select the scheduled month. Real lock-screen delivery requires production configuration and physical-device acceptance.
 
+## 2026-11-04 — Image preview palette consistency
+
+- Use the shared theme surface, text, border and accent tokens in image preview dialogs and their keyboard focus rings. Remove the fixed blue colors so custom daytime palettes and independent dark mode apply consistently. Recheck phone and short-screen dialog frames, internal scrolling and visible close/actions across the existing palettes.
 
 ## 2026-11-02 — Stable application dialog layout
 

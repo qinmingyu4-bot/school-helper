@@ -186,3 +186,24 @@ test("push configuration writes private persistent keys, preserves other configu
   const again = spawnSync(process.execPath, [script, target, "mailto:owner@example.test"], { encoding: "utf8" });
   assert.equal(again.status, 1); assert.equal(await fs.readFile(target, "utf8"), text);
 });
+
+
+test("deployment ensure preserves existing VAPID keys, enables the worker and rejects incomplete or mismatched pairs", async (t) => {
+  const { spawnSync } = require("node:child_process");
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "sb-push-ensure-")); t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  const target = path.join(dir, ".env"), script = path.join(__dirname, "../scripts/configure-web-push.js");
+  const run = () => spawnSync(process.execPath, [script, target, "https://studybridge.ink", "--ensure"], { encoding: "utf8" });
+  await fs.writeFile(target, "OTHER=preserve\n\tWEB_PUSH_PUBLIC_KEY=\nWEB_PUSH_WORKER_DISABLED=true\n");
+  assert.equal(run().status, 0);
+  const first = await fs.readFile(target, "utf8");
+  assert.equal(run().status, 0); assert.equal(await fs.readFile(target, "utf8"), first);
+  assert.match(first, /WEB_PUSH_WORKER_DISABLED=false/);
+  assert.equal(first.match(/WEB_PUSH_PUBLIC_KEY=/g).length, 1);
+  await fs.writeFile(target, first.replace(/^WEB_PUSH_PRIVATE_KEY=.*$/m, "WEB_PUSH_PRIVATE_KEY="));
+  const incomplete = await fs.readFile(target, "utf8"); const failed = run();
+  assert.equal(failed.status, 1); assert.equal(await fs.readFile(target, "utf8"), incomplete);
+  assert.doesNotMatch(failed.stderr, new RegExp(keys.privateKey));
+  const wrong = webpush.generateVAPIDKeys();
+  await fs.writeFile(target, first.replace(/^WEB_PUSH_PRIVATE_KEY=.*$/m, `WEB_PUSH_PRIVATE_KEY=${wrong.privateKey}`));
+  assert.equal(run().status, 1);
+});

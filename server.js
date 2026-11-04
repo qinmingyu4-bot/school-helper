@@ -2084,7 +2084,7 @@ async function routeApi(req, res) {
   }
 
   if (url.pathname === "/api/health") {
-    return sendJson(res, 200, { ok: true, db: process.env.STUDYBRIDGE_DB || "local" });
+    return sendJson(res, 200, { ok: true, db: process.env.STUDYBRIDGE_DB || "local", schedulePush: schedulePush.health() });
   }
 
   if (url.pathname === "/api/auth/config" && method === "GET") {
@@ -2273,7 +2273,7 @@ async function routeApi(req, res) {
     if (!["POST", "DELETE"].includes(method) || url.pathname === "/api/push/test" && method !== "POST") return sendError(res, 405, "Method not allowed.");
     const supplied = String(req.headers["x-csrf-token"] || "");
     const origin = req.headers.origin;
-    const allowedOrigin = process.env.APP_BASE_URL ? new URL(process.env.APP_BASE_URL).origin : `http://${req.headers.host}`;
+    const allowedOrigin = new URL(appBaseUrl(req)).origin;
     if (!/^[a-f0-9]{64}$/.test(supplied) || !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(csrfToken)) || origin && origin !== allowedOrigin) return sendError(res, 403, "请重新打开提醒设置。");
     const body = await readJson(req);
     if (body.userId !== auth.user.id) return sendError(res, 409, "登录状态已变更，请重新打开设置。");

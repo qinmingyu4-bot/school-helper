@@ -14,7 +14,7 @@ async function deployment(t) {
   git("init", "-q", "-b", "main");
   git("config", "user.email", "deployment@example.test");
   git("config", "user.name", "Deployment regression");
-  await fs.writeFile(path.join(root, ".gitignore"), ".env\n.data/\n");
+  await fs.writeFile(path.join(root, ".gitignore"), ".env\n.data/\nnode_modules/\n");
   await fs.writeFile(path.join(root, ".env"), "SESSION_SECRET=fixture-only\n");
   const data = JSON.stringify({ users: { alice: { legacy: true } }, courses: {}, documents: {}, messages: {}, unknown: "keep" });
   await fs.writeFile(path.join(root, ".data/database.json"), data);
@@ -24,6 +24,8 @@ async function deployment(t) {
   const previous = git("rev-parse", "HEAD");
   await fs.copyFile(path.join(__dirname, "../scripts/release-backup.js"), path.join(root, "scripts/release-backup.js"));
   await fs.copyFile(path.join(__dirname, "../scripts/deploy-release.sh"), path.join(root, "scripts/deploy-release.sh"));
+  await fs.copyFile(path.join(__dirname, "../scripts/configure-web-push.js"), path.join(root, "scripts/configure-web-push.js"));
+  await fs.symlink(path.resolve(__dirname, "../node_modules"), path.join(root, "node_modules"));
   await fs.writeFile(path.join(root, "package.json"), '{"version":"1.1.107"}');
   await fs.writeFile(path.join(root, "public/app.js"), 'const VERSION = "1.1.107";');
   git("add", "."); git("commit", "-qm", "New release");
@@ -39,7 +41,7 @@ if (process.argv[2] === 'jlist') console.log(JSON.stringify([{name:'studybridge'
 const fs = require('node:fs');
 const path = require('node:path');
 const args = process.argv.slice(2), output = args[args.indexOf('-o') + 1];
-if (args.some(arg => arg.endsWith('/api/health'))) fs.writeFileSync(output, JSON.stringify({ok:true,db:process.env.DEPLOY_TEST_BAD_HEALTH ? 'dynamodb' : 'local'}));
+if (args.some(arg => arg.endsWith('/api/health'))) fs.writeFileSync(output, JSON.stringify({ok:true,db:process.env.DEPLOY_TEST_BAD_HEALTH ? 'dynamodb' : 'local',schedulePush:{configured:true,workerEnabled:!process.env.DEPLOY_TEST_BAD_PUSH}}));
 else fs.copyFileSync(path.join(process.env.DEPLOY_TEST_ROOT,'public/app.js'), output);
 `, { mode: 0o700 });
   const log = path.join(temporary, "pm2.log");
@@ -56,7 +58,10 @@ test("deployment backs up private data before installing the exact release and r
   assert.equal(result.status, 0, result.stderr);
   assert.equal(d.git("rev-parse", "HEAD"), d.target);
   assert.equal(await fs.readFile(path.join(d.root, ".data/database.json"), "utf8"), d.data);
-  assert.equal(await fs.readFile(path.join(d.root, ".env"), "utf8"), "SESSION_SECRET=fixture-only\n");
+  const liveEnv = await fs.readFile(path.join(d.root, ".env"), "utf8");
+  assert.match(liveEnv, /^SESSION_SECRET=fixture-only\n/);
+  assert.match(liveEnv, /WEB_PUSH_PRIVATE_KEY=[\w-]+/);
+  assert.match(liveEnv, /WEB_PUSH_WORKER_DISABLED=false/);
   const folders = await fs.readdir(d.backupRoot);
   assert.equal(folders.length, 1);
   const backup = path.join(d.backupRoot, folders[0]);
@@ -64,6 +69,7 @@ test("deployment backs up private data before installing the exact release and r
   assert.equal(manifest.previousCommit, d.previous);
   assert.equal(manifest.targetCommit, d.target);
   assert.equal(manifest.mode, "local");
+  assert.equal(await fs.readFile(path.join(backup, "environment.env"), "utf8"), "SESSION_SECRET=fixture-only\n");
   assert.deepEqual(JSON.parse(await fs.readFile(path.join(backup, "database.json"), "utf8")), JSON.parse(d.data));
   assert.match(await fs.readFile(d.log, "utf8"), /^stop studybridge\njlist\nrestart studybridge --update-env\nsave\n$/);
 });
@@ -84,6 +90,16 @@ test("failed startup verification rolls back code while preserving user data and
   assert.equal(d.git("rev-parse", "HEAD"), d.previous);
   assert.equal(await fs.readFile(path.join(d.root, ".data/database.json"), "utf8"), d.data);
   assert.equal(await fs.readFile(path.join(d.root, "public/app.js"), "utf8"), 'const VERSION = "1.1.106";');
+  assert.equal(await fs.readFile(path.join(d.root, ".env"), "utf8"), "SESSION_SECRET=fixture-only\n");
   const calls = await fs.readFile(d.log, "utf8");
   assert.equal(calls.split("restart studybridge --update-env").length - 1, 2);
+});
+
+
+test("a disabled push worker fails deployment verification and restores private environment and code", async (t) => {
+  const d = await deployment(t), result = d.run({ DEPLOY_TEST_BAD_PUSH: "true" });
+  assert.notEqual(result.status, 0);
+  assert.equal(d.git("rev-parse", "HEAD"), d.previous);
+  assert.equal(await fs.readFile(path.join(d.root, ".env"), "utf8"), "SESSION_SECRET=fixture-only\n");
+  assert.equal(await fs.readFile(path.join(d.root, ".data/database.json"), "utf8"), d.data);
 });

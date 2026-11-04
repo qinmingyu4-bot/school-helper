@@ -15,6 +15,7 @@ backup="$(mktemp -d "$backup_root/release-${target:0:12}-XXXXXXXX")"
 git show "$target:scripts/release-backup.js" > "$backup/backup-runner.cjs"
 printf '%s\n' "$previous" > "$backup/previous-commit.txt"
 restore_needed=0
+push_config_changed=0
 
 recover() {
   result=$?
@@ -31,6 +32,10 @@ recover() {
     fi
     if [ "$(git rev-parse HEAD)" != "$previous" ]; then
       git switch --detach "$previous" && npm ci --omit=dev || true
+    fi
+    if [ "$push_config_changed" -eq 1 ] && [ -f "$backup/environment.env" ]; then
+      cp "$backup/environment.env" .env
+      chmod 600 .env
     fi
     pm2 restart studybridge --update-env && pm2 save || true
   fi
@@ -69,6 +74,10 @@ if (manifest.mode === 'local') {
 }
 NODE
 
+# This release is authorized to enable scheduled Web Push. Generate keys only on the server,
+# after the private backup and unchanged-data check, and preserve valid keys on later releases.
+push_config_changed=1
+node scripts/configure-web-push.js "$PWD/.env" "https://studybridge.ink" --ensure
 pm2 restart studybridge --update-env
 port="$(node -p "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')).port" "$backup/manifest.json")"
 [[ "$port" =~ ^[0-9]+$ ]] || exit 1
@@ -82,6 +91,8 @@ const backup = process.argv[2];
 const manifest = JSON.parse(fs.readFileSync(path.join(backup, 'manifest.json'), 'utf8'));
 const health = JSON.parse(fs.readFileSync(path.join(backup, 'live-health.json'), 'utf8'));
 assert.equal(health.ok, true);
+assert.equal(health.schedulePush?.configured, true, 'Schedule push keys are not loaded.');
+assert.equal(health.schedulePush?.workerEnabled, true, 'Schedule push worker is not running.');
 assert.equal(health.db, manifest.mode, 'Application switched database mode.');
 assert.ok(fs.readFileSync(path.join(backup, 'live-app.js')).equals(fs.readFileSync('public/app.js')), 'Application is not serving the expected release.');
 NODE

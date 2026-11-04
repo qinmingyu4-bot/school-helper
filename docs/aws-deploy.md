@@ -457,3 +457,7 @@ reported closed sales, unapproved draft prices and no payment creation. The
 authenticated production billing view independently confirmed the same closed
 state; unsigned webhook notifications are rejected. Alipay now shows Enabled in
 Stripe. Signed Stripe-origin delivery and actual payment acceptance remain untested.
+
+## 可选：日程系统推送
+
+本地准备不启用生产推送。部署经授权后，按 [系统推送说明](system-push.md) 在服务器私有环境文件生成持久 VAPID 配置并重启应用；保留原有密钥，确认 HTTPS 与推送服务出站连通，再用真实设备验收锁屏和关闭页面后的通知。无需新增 DynamoDB 表或迁移日程。

@@ -10,7 +10,7 @@ const importer = require("../public/schedule-import");
 test("timetable images/PDFs retain layout, use school calendars and return recurring drafts without saving reminders", { timeout: 30000 }, async (context) => {
   const root = path.resolve(__dirname, "..");
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "studybridge-timetable-"));
-  const child = spawn(process.execPath, ["--require", "./tests/fixtures/echo-ai.js", "server.js"], { cwd: root, env: {
+  const child = spawn(process.execPath, ["--require", "./tests/fixtures/timetable-clock.js", "--require", "./tests/fixtures/echo-ai.js", "server.js"], { cwd: root, env: {
     ...process.env, PORT: "0", NODE_ENV: "test", STUDYBRIDGE_DB: "local", LOCAL_DB_FILE: path.join(directory, "db.json"), LOCAL_DB_BACKUP_DISABLED: "true",
     REQUIRE_INVITE_CODE: "false", REQUIRE_EMAIL_VERIFICATION: "false", OPENAI_API_KEY: "test-fixture", OPENAI_WEB_SEARCH: "true", SESSION_SECRET: "timetable-test-session"
   }, stdio: ["ignore", "pipe", "pipe"] });

@@ -1,0 +1,53 @@
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs/promises");
+const os = require("node:os");
+const path = require("node:path");
+const { spawn } = require("node:child_process");
+const { once } = require("node:events");
+const crypto = require("node:crypto");
+const webpush = require("web-push");
+
+test("push HTTP enforces authentication, CSRF, origin and ownership without exposing private keys; logout stops subscription", { timeout: 30000 }, async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "sb-push-http-")), keys = webpush.generateVAPIDKeys();
+  const child = spawn(process.execPath, ["--require", "./tests/fixtures/push-transport.js", "server.js"], { cwd: path.resolve(__dirname, ".."), env: { ...process.env, NODE_ENV: "test", PORT: "0", APP_BASE_URL: "http://localhost", STUDYBRIDGE_DB: "local", LOCAL_DB_FILE: path.join(dir, "db.json"), LOCAL_DB_BACKUP_DISABLED: "true", REQUIRE_EMAIL_VERIFICATION: "false", SESSION_SECRET: "isolated-push-http", MAILBOX_SYNC_DISABLED: "true", WEB_PUSH_WORKER_DISABLED: "true", WEB_PUSH_PUBLIC_KEY: keys.publicKey, WEB_PUSH_PRIVATE_KEY: keys.privateKey, WEB_PUSH_SUBJECT: "mailto:push@example.test" }, stdio: ["ignore", "pipe", "pipe"] });
+  let stderr = ""; child.stderr.on("data", (chunk) => stderr += chunk);
+  t.after(async () => { if (child.exitCode === null) { const done = once(child, "exit"); child.kill(); await done; } await fs.rm(dir, { recursive: true, force: true }); });
+  const base = await new Promise((resolve, reject) => {
+    let output = ""; const timer = setTimeout(() => reject(new Error(stderr || "Startup timeout")), 10000);
+    child.on("error", (error) => { clearTimeout(timer); reject(error); });
+    child.stdout.on("data", (chunk) => { output += chunk; const match = output.match(/http:\/\/localhost:(\d+)/); if (match) { clearTimeout(timer); resolve(`http://127.0.0.1:${match[1]}`); } });
+  });
+  const request = (route, account, options = {}) => fetch(base + route, { ...options, headers: { "content-type": "application/json", cookie: account?.cookie || "", ...options.headers } });
+  const register = async (name) => {
+    const response = await request("/api/auth/register", null, { method: "POST", body: JSON.stringify({ name, email: `${name}@example.test`, password: "PushHttp2026!", passwordConfirm: "PushHttp2026!" }) });
+    assert.equal(response.status, 201); return { user: (await response.json()).user, cookie: response.headers.get("set-cookie").split(";")[0] };
+  };
+  assert.equal((await request("/api/push")).status, 401);
+  const alice = await register("alice"), bob = await register("bob");
+  const initialResponse = await request("/api/push", alice), initial = await initialResponse.json();
+  assert.match(initialResponse.headers.get("cache-control"), /no-store/); assert.equal(initial.configured, true); assert.equal(initial.publicKey, keys.publicKey); assert.equal(initial.enabled, false);
+  assert.ok(!JSON.stringify(initial).includes(keys.privateKey));
+  const curve = crypto.createECDH("prime256v1"); curve.generateKeys();
+  const subscription = { endpoint: "https://fcm.googleapis.com/fcm/send/http-fixture", keys: { p256dh: curve.getPublicKey().toString("base64url"), auth: crypto.randomBytes(16).toString("base64url") } };
+  const mutate = (route, body, csrf = initial.csrfToken, account = alice, headers = {}, method = "POST") => request(route, account, { method, headers: { "x-csrf-token": csrf, ...headers }, body: JSON.stringify({ userId: account.user.id, ...body }) });
+  assert.equal((await mutate("/api/push", { subscription }, "")).status, 403);
+  assert.equal((await mutate("/api/push", { subscription }, initial.csrfToken, alice, { origin: "https://evil.test" })).status, 403);
+  assert.equal((await mutate("/api/push", { subscription, userId: bob.user.id })).status, 409);
+  assert.equal((await mutate("/api/push", { subscription: { ...subscription, endpoint: "https://127.0.0.1/secret" } })).status, 400);
+  assert.equal((await mutate("/api/push", { subscription, leadMinutes: 30, language: "en" })).status, 200);
+  const route = `/api/push?endpoint=${encodeURIComponent(subscription.endpoint)}`;
+  const status = await (await request(route, alice)).json(); assert.equal(status.enabled, true); assert.equal(status.leadMinutes, 30); assert.ok(!JSON.stringify(status).includes(subscription.keys.auth));
+  const bobStatus = await (await request("/api/push", bob)).json();
+  assert.equal((await mutate("/api/push/test", { endpoint: subscription.endpoint }, bobStatus.csrfToken, bob)).status, 409);
+  assert.equal((await mutate("/api/push/test", { endpoint: subscription.endpoint })).status, 200);
+  assert.equal((await mutate("/api/push/test", { endpoint: subscription.endpoint })).status, 429);
+  assert.equal((await request("/push-worker.js")).status, 200);
+  await request("/api/auth/logout", alice, { method: "POST", body: "{}" });
+  const relogin = await request("/api/auth/login", null, { method: "POST", body: JSON.stringify({ email: "alice@example.test", password: "PushHttp2026!" }) });
+  alice.cookie = relogin.headers.get("set-cookie").split(";")[0];
+  const loggedOut = await (await request(route, alice)).json(); assert.equal(loggedOut.enabled, false);
+  assert.equal((await mutate("/api/push", { subscription }, loggedOut.csrfToken)).status, 200);
+  assert.equal((await mutate("/api/push", { endpoint: subscription.endpoint }, loggedOut.csrfToken, alice, {}, "DELETE")).status, 200);
+  assert.equal((await (await request(route, alice)).json()).enabled, false);
+});

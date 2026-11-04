@@ -6,6 +6,9 @@
   "use strict";
   return Object.freeze(Object.fromEntries(`
 界面语言|Interface language
+还没有课程资料|No course materials yet
+还没有练习记录|No practice history yet
+选择学习主题|Choose a study topic
 学习清单 · 练习|Study topics · Practice
 选择想学的内容，由你决定下一步。|Choose what to study. The next step is yours.
 {0} 个主题|{0} topics

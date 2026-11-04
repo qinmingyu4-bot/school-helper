@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-02 — Stable application dialog layout
+
+- Give learning, settings, schedule management, image previews and invitation confirmation dialogs one fixed 860 × 576 CSS-pixel frame, clamped to the available viewport. Keep headings and actions stationary and scroll overflowing content internally, including the settings navigation. Learning tabs retain the same frame for empty, short and long content, with centered empty states for topics, materials and practice history. Keep image previews contained without resizing the surrounding dialog.
+
 ## 2026-11-02 — Course learning loop
 
 - Remove dark rectangular tab backplates by excluding self-themed learning controls from the global dark-control reset. Keep navigation and secondary actions flat across list, materials, source, practice, history and planning views; remove filled count badges and switch-thumb shadows, and use restrained neutral shadows for the dialog and optional suggestion. Refresh both affected stylesheet URLs together so the fixes reach existing previews.

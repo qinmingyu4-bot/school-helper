@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — Background schedule system notifications
+
+- Add opt-in per-device Web Push with reminder timing, test delivery, disable and refresh controls, and bilingual availability states. Include no installation or Home Screen prompts.
+- Send from the server with durable local/DynamoDB subscriptions, conditional device leases, bounded retries and deduplication, current schedule/completion checks and session/account isolation. Keep lock screen content generic and open the item’s calendar date on click.
+- Document private VAPID configuration and real-device acceptance; prepare on a task branch without AWS deployment. Production keys and delivery remain a deployment-time setup.
+- Validate 513 automated tests and 284-file source/assets/package checks. Isolated Chrome/WebKit checks cover bilingual settings and 320/390/1280 px layouts; Chrome verifies service-worker registration, subscription/timing/test/disable flows with simulated transport. Both browsers verify notification links select the scheduled month. Real lock-screen delivery requires production configuration and physical-device acceptance.
+
+
 ## 2026-11-02 — Stable application dialog layout
 
 - Give learning, settings, schedule management, image previews and invitation confirmation dialogs one fixed 860 × 576 CSS-pixel frame, clamped to the available viewport. Keep headings and actions stationary and scroll overflowing content internally, including the settings navigation. Learning tabs retain the same frame for empty, short and long content, with centered empty states for topics, materials and practice history. Keep image previews contained without resizing the surrounding dialog.

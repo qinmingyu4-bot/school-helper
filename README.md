@@ -861,3 +861,5 @@ Import review keeps duplicate items visible: entries fully present in the calend
 When calendar lookup fails, duplicate review can compare a bounded weekly source against its explicit dates without inventing university breaks. If source boundaries are missing, matching saved course/kind/section/weekday/clock patterns are labeled with an unverified-term notice and default unchecked only when every stated weekday has a match; unmatched weekdays remain selected. This comparison never authorizes saving an unconfirmed academic calendar.
 
 Selected import drafts with missing or invalid title/date/time/weekday/end-time fields use amber highlighting and inline accessible explanations. A persistent footer counts affected items; confirmation opens and focuses the first issue before starting any save. Correcting fields or deselecting incomplete items clears the relevant highlights. Source review warnings remain nonblocking, and API/calendar/save errors stay visible in the preview.
+
+日程后台系统推送的设备支持、私有配置与验收步骤见 [系统推送说明](docs/system-push.md)。

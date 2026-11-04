@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-04 — Google OAuth review materials
+
+- Reconcile the recorded OAuth submission with the live verified-branding and pending Gmail data-access review status.
+- Add the review checklist, scope explanations, reviewer test instructions, synthetic test message and supplemental video plan. Track outstanding data-handling evidence, test-access isolation and independent CASA assessment without claiming completion or changing production behavior.
+
 ## 1.2.10 — Authorized schedule push production release
 
 - Publish the owner-approved background schedule notifications from `d9d2859`. Preserve the existing main baseline and all account, course, schedule, payment and authored-file data; refresh package/frontend versions to 1.2.10.

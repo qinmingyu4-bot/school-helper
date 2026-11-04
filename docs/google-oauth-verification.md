@@ -1,10 +1,17 @@
 # Google OAuth production verification
 
-Status: the owner approved policy publication, domain verification and a future switch to production. Google verification has not been submitted or approved.
-The Google publishing status and OAuth scopes have not yet changed.
-The existing project is `reference-bee-441922-b2` (Google Auth Platform / My First Project).
+Status checked 2026-11-04 (Asia/Shanghai): branding is verified; Google Cloud Verification Center says the app's data access is under review. Gmail read-only access is not yet approved. The submission was recorded on 2026-10-29 in commit `c77ef326cc1eb486ebf64de73d3777adc3bbdb1b`.
+The existing project is `reference-bee-441922-b2` (Google Auth Platform / My First Project), project number `879850044391`.
+
+Audience is External / In production, with 1 of 100 unverified users shown on November 4. This publishing status is not restricted-scope approval and does not establish that new-user access is isolated to review/testing.
+
+Google's November 3 action-needed email requests a checklist audit and a reply or an updated verification request. It is not an approval or an itemized rejection. See [the review checklist and prepared materials](google-oauth-review-materials-2026-11-04.md) for confirmed facts, outstanding evidence, and follow-up work. No full compliance attestation, new submission, or independent CASA completion is recorded by this audit.
+
+The live Data Access inventory contains `openid`, `userinfo.email`, `userinfo.profile`, and restricted `gmail.readonly`, matching the separate basic sign-in and optional mailbox flows. The existing 981-character scope justification and a 95-second Unlisted YouTube demo remain saved in Cloud Console. Keep the Unlisted video link, private screenshots and reviewer credentials outside the public repository.
 
 ## Observed prerequisites (2026-10-28, America/Toronto)
+
+Historical snapshot before submission; these entries do not describe the current review state. The public policy is now online and branding is verified.
 
 - Branding: StudyBridge, support/developer contact `qinmingyu4@gmail.com`, home `https://studybridge.ink/`, authorized domain `studybridge.ink`.
 - Privacy policy and terms fields are empty. Privacy policy is required; a terms URL is optional and should not be populated with an unrelated page.
@@ -19,7 +26,7 @@ The existing project is `reference-bee-441922-b2` (Google Auth Platform / My Fir
 1. A signed-in student explicitly consents in Settings and at Google. Google sign-in alone cannot connect Gmail.
 2. Gmail OAuth uses authorization code + PKCE, state/session binding and a short-lived encrypted HttpOnly cookie. `access_type=offline` requests a refresh token.
 3. Server-side tokens are AES-256-GCM encrypted with the private mailbox key. Do not disclose client secrets, refresh/access tokens, production database contents or the encryption key in reviewer materials.
-4. The worker polls Inbox, initially backfilling seven days, then using Gmail history/pagination. It processes message subject, sender, receipt time and text; attachments are not downloaded for analysis.
+4. The worker initially backfills seven days of Inbox mail, then uses Gmail history/pagination. It processes message subject, sender, receipt time and text; attachments are not downloaded for analysis. The November 4 source audit found that incremental history is not filtered to Inbox and full message retrieval precedes label exclusion. Non-Inbox bodies can therefore be fetched transiently before being discarded; this remains an implementation/disclosure alignment item, not a completed fix.
 5. Message text is sent to OpenAI API for classification, including mail eventually classified as irrelevant. Requests set `store: false`; this is not evidence of zero provider retention or a completed third-party security assessment.
 6. Relevant results persist source metadata, summary, short evidence and proposed schedule fields. No automatic calendar write: the student must review/select/correct/confirm. No Gmail send, modify or delete permission is requested.
 7. Disconnect removes active connection credentials and corresponding extraction records and stops subsequent sync. Confirmed schedules remain independently editable. Provider-side revocation is distinct from deletion of existing local records. Operational backups need separate handling for deletion requests.
@@ -42,7 +49,9 @@ Record the real app and Google consent flow using a designated test mailbox cont
 6. Disconnect in Settings; show disconnected status and extracted cards removed. Explain confirmed schedules remain. Show where Google-side revocation and deletion contact are available.
 7. Upload an actual recording to an owner-approved reviewer-accessible location and provide its exact URL. Do not invent a video URL or claim a recording exists before it is created.
 
-## Remaining release and review gates
+## Release and review requirements
+
+The publication, branding and initial submission steps below are retained as workflow guidance and were completed in the October 29 submission history. Use the November 4 checklist linked above for current outstanding work; do not repeat submission or switch publishing status based on this historical list.
 
 - Review/publish the policy and new homepage disclosure to AWS. Confirm public URLs return the actual policy and homepage without login, including mobile layout.
 - Confirm operator contact and Limited Use practices (no sale, advertising, generalized-model training; restricted human access and deletion handling); do not publish unverified operational assertions.

@@ -35,7 +35,8 @@
         "pdf-lib": "1.17.1",
         "pdf-parse": "^1.1.1",
         "pptxgenjs": "4.0.1",
-        "stripe": "23.1.0"
+        "stripe": "23.1.0",
+        "web-push": "3.6.7"
     },
     "devDependencies": {
         "esbuild": "0.28.2"

@@ -27,7 +27,7 @@
   }
 
   function createView({ document: doc = document, themes, logos, version, getUser, getContext, getAppearance, flushAppearance,
-    learning, saveProfile, loadMembership, redeemMembershipInvite, loadSecurity, savePassword, requestPasswordReset, loadMailboxes, changeMailbox, billingRequest, navigate, logout }) {
+    learning, saveProfile, loadMembership, redeemMembershipInvite, loadSecurity, savePassword, requestPasswordReset, loadMailboxes, changeMailbox, billingRequest, pushRequest, navigate, logout }) {
     const dialog = doc.createElement("dialog");
     dialog.className = "settings-dialog";
     dialog.setAttribute("aria-labelledby", "settings-title");
@@ -70,7 +70,7 @@
           <fieldset class="settings-themes"><legend>界面色调</legend><p>保留默认蓝绿，也可选择柔和色调，或与首页一致的黑白灰简约。</p><div class="settings-theme-grid">${themes.map((theme) => `<label class="settings-theme-option"><input type="radio" name="sb-theme" value="${theme.id}"><span class="settings-theme-sample" style="--sample-accent:${theme.accent};--sample-tint:${theme.tint}"><i></i><i></i><i></i></span><span class="settings-theme-name">${theme.name}<small>${theme.detail}</small></span></label>`).join("")}</div></fieldset><div class="settings-save-row"><span class="settings-save-status" role="status" aria-live="polite"></span><button type="button" class="settings-retry" hidden>重试</button></div><p class="settings-caption">界面色调不会改变文档、幻灯片或表格中已经设置的内容颜色。</p>
         </section>
         <section id="settings-panel-reminders" class="settings-panel" aria-labelledby="settings-reminders-heading" hidden>${heading("reminders", ui.text("把课程、资料和重要时间放在一起管理。"))}
-          <div class="settings-block"><h4>课程空间</h4><div class="settings-row"><div><strong>我的课程与资料</strong><small class="settings-course-count"></small></div><button type="button" data-settings-route="study">打开学习 ↗</button></div><div class="settings-row"><div><strong>作业、考试与课程提醒</strong><small>手动添加，或从课程资料中提取时间安排。</small></div><button type="button" data-settings-route="schedule">打开日程 ↗</button></div></div><div class="settings-block"><h4>提醒方式</h4><div class="settings-row"><div><strong>站内截止日期提醒</strong><small>在「学习」页面顶部与日程中查看。</small></div><span class="settings-static-value">已提供</span></div><div class="settings-row"><div><strong>邮件与系统推送</strong><small>目前请通过站内日程查看安排。</small></div><span class="settings-static-value">尚未开放</span></div></div>
+          <div class="settings-block"><h4>课程空间</h4><div class="settings-row"><div><strong>我的课程与资料</strong><small class="settings-course-count"></small></div><button type="button" data-settings-route="study">打开学习 ↗</button></div><div class="settings-row"><div><strong>作业、考试与课程提醒</strong><small>手动添加，或从课程资料中提取时间安排。</small></div><button type="button" data-settings-route="schedule">打开日程 ↗</button></div></div><div class="settings-block"><h4>提醒方式</h4><div class="settings-row"><div><strong>站内截止日期提醒</strong><small>在「学习」页面顶部与日程中查看。</small></div><span class="settings-static-value">已提供</span></div><div class="settings-push"><div class="settings-row"><div><strong>系统推送</strong><small>仅对此设备生效。锁屏通知不显示日程标题或课程内容。</small></div></div><label>提醒时间<select data-push-lead aria-label="提醒时间"><option value="0">到时间提醒</option><option value="5">提前 5 分钟</option><option value="15" selected>提前 15 分钟</option><option value="30">提前 30 分钟</option><option value="60">提前 1 小时</option><option value="1440">提前 1 天</option></select></label><div class="settings-actions"><button type="button" data-push-enable disabled>开启系统推送</button><button type="button" data-push-test disabled>发送测试通知</button><button type="button" data-push-disable disabled>关闭此设备推送</button><button type="button" data-push-refresh>刷新状态</button></div><p class="settings-caption" data-push-status role="status" aria-live="polite"></p></div></div>
         </section>
         <section id="settings-panel-data" class="settings-panel" aria-labelledby="settings-data-heading" hidden>${heading("data", ui.text("了解个人信息的用途，保留一份自己的偏好副本。"))}
           <div class="settings-block"><h4>资料与账号</h4><div class="settings-row"><div><strong>公开资料</strong><small>检查展示给同学的头像、学校、专业和 SB ID。</small></div><button type="button" data-settings-route="profile">查看资料 ↗</button></div><div class="settings-row"><div><strong>学习偏好与外观</strong><small>保存在当前账号中，重新登录后继续使用。</small></div><span class="settings-static-value">按账号保存</span></div></div><div class="settings-block"><h4>偏好副本</h4><p class="settings-caption">下载当前 Logo、色调、回答语言与自定义学习要求。不包含课程资料、聊天记录或登录凭据。</p><button type="button" class="settings-export">导出当前偏好</button><p class="settings-export-status settings-caption" role="status"></p></div>
@@ -261,6 +261,8 @@
       catch (error) { setStatus(".settings-password-status", error.message || ui.text("申请失败，请重试。"), true); }
       finally { if (active()) button.disabled = false; }
     });
+    const pushPanel = pushRequest && globalThis.StudyBridgePush?.createPanel({ root: dialog.querySelector(".settings-push"), api: pushRequest, getUser, win: doc.defaultView, ui });
+    dialog.querySelector("[data-push-refresh]").addEventListener("click", () => void pushPanel?.activate());
     dialog.querySelectorAll("[data-settings-section]").forEach((button) => button.addEventListener("click", () => {
       billingPanel?.suspend();
       clearPasswords(); setStatus(".settings-password-save-status", "");
@@ -271,6 +273,7 @@
       if (button.dataset.settingsSection === "security" && !passwordPending) void readSecurity();
       if (button.dataset.settingsSection === "account" && !invitePending) void readMembership();
       if (button.dataset.settingsSection === "mailbox" && !mailboxPending) void readMailboxes();
+      if (button.dataset.settingsSection === "reminders") void pushPanel?.activate();
       if (button.dataset.settingsSection === "billing") void billingPanel?.activate();
     }));
     dialog.querySelectorAll("[data-settings-open]").forEach((button) => button.addEventListener("click", () => dialog.querySelector(`[data-settings-section="${button.dataset.settingsOpen}"]`).click()));
@@ -312,7 +315,7 @@
       if (!invitePending) setStatus(".settings-membership-status", tier === "plus" ? ui.text("你已是 Plus 用户，无需重复兑换邀请码。") : ui.text("可以补填有效邀请码，升级为 Plus 用户。"));
     };
     dialog.refreshLearning = refreshLearning;
-    dialog.disposeSettings = () => { billingPanel?.dispose(); unbindLanguage(); disposed = true; ++securityGeneration; ++membershipGeneration; inviteForm.reset(); clearPasswords(); clearTimeout(learningTimer); };
+    dialog.disposeSettings = () => { pushPanel?.dispose(); billingPanel?.dispose(); unbindLanguage(); disposed = true; ++securityGeneration; ++membershipGeneration; inviteForm.reset(); clearPasswords(); clearTimeout(learningTimer); };
     refreshUser(); refreshLearning();
     return dialog;
   }

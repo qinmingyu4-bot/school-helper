@@ -1,0 +1,7 @@
+.settings-push { min-width: 0; }
+.settings-push > label { display: grid; gap: 8px; margin-block: 12px; max-width: 100%; }
+.settings-push select { width: min(100%, 260px); min-height: 44px; }
+.settings-push .settings-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 12px; }
+.settings-push button, .schedule-push-entry button { min-height: 44px; max-width: 100%; white-space: normal; }
+.settings-push [data-push-status] { overflow-wrap: anywhere; }
+.schedule-push-entry { display: flex; justify-content: flex-end; margin-block: 0 12px; }

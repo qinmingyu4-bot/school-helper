@@ -94,3 +94,13 @@ test("push notifications continue to restrict navigation to the same-origin app"
   assert.equal(worker.requests.length, 0);
   assert.equal(worker.opened.length, 0);
 });
+
+test("classmate pushes use authenticated conversation links and the matching existing-tab event", async () => {
+  const worker = await fixture(async () => ({ ok: true, json: async () => ({ user: { id: "alice" } }) }), true);
+  const data = { ...notification, type: "classmate-message", url: "/app?page=classmates&classmateChat=chat" };
+  await worker.push(data);
+  assert.equal(worker.shown[0].options.data.type, "classmate-message");
+  await worker.click(worker.shown[0].options.data);
+  assert.equal(worker.messages[0].type, "studybridge-classmate-push");
+  assert.equal(worker.messages[0].url, "https://study.example/app?page=classmates&classmateChat=chat");
+});

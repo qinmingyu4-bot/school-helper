@@ -1275,6 +1275,7 @@
     if (state.classmateChatOpen) return state.classmateProfileOpen ? classmateProfilePage(active?.peer) : classmateChatPage(active);
     return ui.html`
       ${pageHeader("CLASSMATES", ui.text("同学"), "")}
+      <div class="schedule-push-entry"><button type="button" data-action="open-push-settings">${ui.text("消息通知设置")}</button></div>
       <section class="two-col classmates-layout">
         <aside class="classmates-sidebar" aria-label="同学列表">
           <h2>添加同学</h2>
@@ -3319,10 +3320,25 @@
     }
     await loadPage("schedule");
   }
+  async function openPushClassmate(url) {
+    const userId = state.user?.id;
+    const result = await api("/api/classmates");
+    if (!userId || state.user?.id !== userId) return;
+    const chatId = url.searchParams.get("classmateChat");
+    const chat = result.classmates?.find((item) => item.id === chatId);
+    state.classmates = result;
+    state.activeClassmateId = chat?.id || "";
+    state.classmateChatOpen = Boolean(chat); state.classmateProfileOpen = false;
+    state.directMessages = []; state.directMessageReadIds = [];
+    await loadPage("classmates");
+  }
+  function openPushLink(url) {
+    return url.searchParams.get("page") === "classmates" ? openPushClassmate(url) : openPushSchedule(url);
+  }
   if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", (event) => {
-    if (event.data?.type !== "studybridge-schedule-push" || event.data.userId !== state.user?.id) return;
+    if (!["studybridge-schedule-push", "studybridge-classmate-push"].includes(event.data?.type) || event.data.userId !== state.user?.id) return;
     const url = new URL(event.data.url, location.origin);
-    if (url.origin === location.origin && url.pathname === "/app") void openPushSchedule(url).catch((error) => setToast(error.message));
+    if (url.origin === location.origin && url.pathname === "/app") void openPushLink(url).catch((error) => setToast(error.message));
   });
 
   async function boot() {
@@ -3354,7 +3370,7 @@
       const savedPage = localStorage.getItem("studybridge.page");
       const page = urlPage || savedPage || "study";
       await loadPage(page);
-      if (entryUrl.searchParams.has("scheduleItem")) await openPushSchedule(entryUrl);
+      if (entryUrl.searchParams.has("scheduleItem") || entryUrl.searchParams.has("classmateChat")) await openPushLink(entryUrl);
       if (["return", "cancelled"].includes(billingResult)) {
         appearanceController.open();
         document.querySelector('[data-settings-section="billing"]')?.click();

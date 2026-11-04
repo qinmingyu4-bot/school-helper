@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Classmate system notifications
+
+- Add explicit per-device opt-in for classmate new-message Web Push alongside independently selectable schedule reminders. Keep existing devices on schedule-only until the user opts in; retain browser permission, VAPID keys and account/session isolation.
+- Check recent unread incoming messages in the background, coalesce each chat to its latest eligible message, skip read/outgoing/historical messages, and persist per-device deduplication and chat watermarks with existing conditional leases. Recheck membership/read state before sending; include only generic lock-screen text, never chat contents.
+- Add a notification-settings entry to Classmates and authenticated notification links into the corresponding conversation, including existing-tab focus and cold opening. Prepare on a task branch without production deployment.
+- Validate 536 automated tests and 287-file source/assets/package checks. Isolated HTTP tests verify delivery with no page open, retry deduplication and read suppression. Chrome/WebKit checks cover independent notification selections, conversation links, bilingual settings and 320/390/1280 px layouts; push delivery is simulated pending production/device acceptance.
+
 ## 1.2.10 — Authorized schedule push production release
 
 - Publish the owner-approved background schedule notifications from `d9d2859`. Preserve the existing main baseline and all account, course, schedule, payment and authored-file data; refresh package/frontend versions to 1.2.10.

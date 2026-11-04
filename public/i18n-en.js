@@ -37,6 +37,16 @@
 请稍后再发送测试通知。|Please wait before sending another test notification.
 测试通知发送失败，请重新开启或稍后重试。|The test could not be sent. Enable notifications again or try later.
 请重新打开提醒设置。|Please reopen reminder settings.
+通知与提醒|Notifications and reminders
+日程与同学消息|Schedule and classmate messages
+仅对此设备生效。锁屏通知不显示日程或聊天内容。|Applies to this device only. Lock screen notifications hide schedule and chat contents.
+日程提醒|Schedule reminders
+新消息通常在半分钟内提醒；已读消息不再推送。|New messages are usually notified within half a minute. Read messages are not pushed.
+消息通知设置|Message notification settings
+请选择有效的通知类型。|Choose valid notification types.
+请至少选择一种通知，或关闭此设备推送。|Select at least one notification type or turn off notifications on this device.
+管理日程提醒和同学消息通知。|Manage schedule reminders and classmate message notifications.
+保存通知设置|Save notification settings
 界面语言|Interface language
 还没有课程资料|No course materials yet
 还没有练习记录|No practice history yet

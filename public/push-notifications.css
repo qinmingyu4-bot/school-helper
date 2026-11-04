@@ -5,3 +5,6 @@
 .settings-push button, .schedule-push-entry button { min-height: 44px; max-width: 100%; white-space: normal; }
 .settings-push [data-push-status] { overflow-wrap: anywhere; }
 .schedule-push-entry { display: flex; justify-content: flex-end; margin-block: 0 12px; }
+
+.settings-push > label.push-choice { display: flex; align-items: center; gap: 10px; }
+.settings-push .push-choice input { width: 18px; height: 18px; min-height: 0; flex: 0 0 18px; margin: 0; }

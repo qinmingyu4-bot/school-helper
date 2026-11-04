@@ -21,8 +21,10 @@
       node("enable").disabled = busy || Boolean(reason) || !info?.configured;
       node("disable").disabled = busy || !info?.enabled;
       node("test").disabled = busy || !info?.enabled || Boolean(reason);
-      node("lead").disabled = busy || !info?.configured;
-      node("enable").textContent = ui.text(info?.enabled ? "保存提醒设置" : "开启系统推送");
+      node("lead").disabled = busy || !info?.configured || !node("schedule").checked;
+      node("schedule").disabled = busy || !info?.configured;
+      node("messages").disabled = busy || !info?.configured;
+      node("enable").textContent = ui.text(info?.enabled ? "保存通知设置" : "开启系统推送");
     }
     async function read() {
       const registration = "serviceWorker" in win.navigator ? await win.navigator.serviceWorker.getRegistration("/") : null;
@@ -30,6 +32,7 @@
       const result = await api(`/api/push${subscription ? `?endpoint=${encodeURIComponent(subscription.endpoint)}` : ""}`);
       if (!active()) return;
       info = result; node("lead").value = String(info.leadMinutes);
+      node("schedule").checked = info.scheduleEnabled !== false; node("messages").checked = info.messagesEnabled === true;
       tell(capability(win) || (!info.configured ? "系统推送尚未配置。" : info.enabled ? "此设备已开启系统推送，网页关闭后也可接收；通知显示受网络与系统设置影响。" : "此设备尚未开启系统推送。"));
       controls();
     }
@@ -42,6 +45,7 @@
       busy = true; controls();
       try {
         if (kind === "enable") {
+          if (!node("schedule").checked && !node("messages").checked) throw new Error(ui.text("请至少选择一种通知，或关闭此设备推送。"));
           // Request immediately in the click handler, before network work loses user activation.
           const permission = await win.Notification.requestPermission();
           if (permission !== "granted") throw new Error(ui.text("通知权限未开启，可以稍后重试。"));
@@ -53,7 +57,7 @@
           }
           subscription ||= await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(info.publicKey) });
           if (!active()) { await subscription.unsubscribe(); return; }
-          await mutate("/api/push", { subscription: subscription.toJSON(), leadMinutes: Number(node("lead").value), language: ui.getLanguage() });
+          await mutate("/api/push", { subscription: subscription.toJSON(), leadMinutes: Number(node("lead").value), scheduleEnabled: node("schedule").checked, messagesEnabled: node("messages").checked, language: ui.getLanguage() });
           await read();
         } else if (kind === "disable") {
           await mutate("/api/push", { endpoint: subscription.endpoint }, "DELETE");
@@ -66,6 +70,7 @@
       } catch (error) { tell(error.message || "操作失败，请重试。"); }
       finally { busy = false; if (active()) controls(); }
     }
+    node("schedule").addEventListener("change", controls);
     for (const name of ["enable", "disable", "test"]) node(name).addEventListener("click", () => void action(name));
     const unsubscribe = ui.subscribe(() => { if (active()) { controls(); void activate(); } });
     async function activate() { if (busy || !active()) return; busy = true; controls(); try { await read(); } catch (error) { tell(error.message || "读取失败，请重试。"); } finally { busy = false; if (active()) controls(); } }

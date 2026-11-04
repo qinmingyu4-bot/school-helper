@@ -8,7 +8,7 @@ self.addEventListener("push", (event) => {
     if (!data || typeof data.title !== "string" || typeof data.body !== "string") return;
     const url = new URL(data.url || "/app?page=schedule", self.location.origin);
     const target = url.origin === self.location.origin && url.pathname === "/app" ? url.pathname + url.search : "/app?page=schedule";
-    await self.registration.showNotification(data.title.slice(0, 100), { body: data.body.slice(0, 300), tag: String(data.tag || "studybridge-schedule").slice(0, 200), icon: "/brand/book-bridge-color.svg", data: { url: target, userId: data.userId } });
+    await self.registration.showNotification(data.title.slice(0, 100), { body: data.body.slice(0, 300), tag: String(data.tag || "studybridge-schedule").slice(0, 200), icon: "/brand/book-bridge-color.svg", data: { url: target, userId: data.userId, type: data.type === "classmate-message" ? "classmate-message" : "schedule" } });
   })());
 });
 self.addEventListener("notificationclick", (event) => {
@@ -25,7 +25,7 @@ self.addEventListener("notificationclick", (event) => {
     const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     const app = clients.find((client) => new URL(client.url).pathname === "/app");
     if (app) {
-      if (authorized) app.postMessage({ type: "studybridge-schedule-push", url: url.href, userId: event.notification.data?.userId });
+      if (authorized) app.postMessage({ type: event.notification.data?.type === "classmate-message" ? "studybridge-classmate-push" : "studybridge-schedule-push", url: url.href, userId: event.notification.data?.userId });
       await app.focus();
     } else await self.clients.openWindow(authorized ? url.href : new URL("/app", self.location.origin).href);
   })());

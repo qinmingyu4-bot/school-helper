@@ -5,6 +5,38 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+系统推送|System push notifications
+仅对此设备生效。锁屏通知不显示日程标题或课程内容。|Applies to this device only. Lock screen notifications hide schedule titles and course details.
+提醒时间|Reminder time
+到时间提醒|At the scheduled time
+提前 5 分钟|5 minutes before
+提前 15 分钟|15 minutes before
+提前 30 分钟|30 minutes before
+提前 1 小时|1 hour before
+提前 1 天|1 day before
+开启系统推送|Enable system notifications
+发送测试通知|Send test notification
+关闭此设备推送|Turn off on this device
+刷新状态|Refresh status
+保存提醒设置|Save reminder settings
+系统通知需要安全连接（HTTPS）。|System notifications require a secure connection (HTTPS).
+当前浏览器暂不支持网页系统推送。|This browser does not currently support web push notifications.
+通知权限已关闭，请在浏览器或系统设置中允许通知后重试。|Notifications are blocked. Allow them in browser or system settings and try again.
+系统推送尚未配置。|System notifications have not been configured yet.
+此设备已开启系统推送，网页关闭后也可接收；通知显示受网络与系统设置影响。|System notifications are enabled on this device, including when the page is closed. Delivery depends on your network and system settings.
+此设备尚未开启系统推送。|System notifications are not enabled on this device.
+通知权限未开启，可以稍后重试。|Notification permission was not granted. You can try again later.
+此设备的系统推送已关闭。|System notifications are off on this device.
+测试通知已交给系统，请查看通知中心；实际显示取决于系统设置。|The test notification has been sent to the push service. Check Notification Center; display depends on system settings.
+系统提醒设置|System reminder settings
+无效的通知订阅。|Invalid notification subscription.
+不支持此通知服务。|This push service is not supported.
+无效的通知密钥。|Invalid notification keys.
+请选择有效的提醒时间。|Choose a valid reminder time.
+请先开启此设备的系统推送。|Enable system notifications on this device first.
+请稍后再发送测试通知。|Please wait before sending another test notification.
+测试通知发送失败，请重新开启或稍后重试。|The test could not be sent. Enable notifications again or try later.
+请重新打开提醒设置。|Please reopen reminder settings.
 界面语言|Interface language
 还没有课程资料|No course materials yet
 还没有练习记录|No practice history yet

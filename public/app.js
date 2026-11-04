@@ -58,7 +58,7 @@
   const appearanceController = window.StudyBridgeAppearance.createController({
     load: async () => (await api("/api/me/appearance")).appearance,
     save: async (_userId, appearance) => { await api("/api/me/appearance", { method: "PUT", body: appearance }); },
-    createSettingsView: (appearance) => window.StudyBridgeSettings.createView({ ...appearance, version: VERSION,
+    createSettingsView: (appearance) => window.StudyBridgeSettings.createView({ ...appearance, version: VERSION, pushRequest: api,
       getUser: () => state.user, getContext: () => ({ courseCount: state.courses.length }),
       learning: {
         snapshot: () => getLearningStyleEditor().saver.snapshot(),
@@ -1385,6 +1385,7 @@
     state.scheduleClockSignature = scheduleClockSignature(model);
     return ui.html`
       ${pageHeader("SCHEDULE", ui.text("日程"), ui.text("一个月历，收好你的课程、作业与生活安排。"))}
+      <div class="schedule-push-entry"><button type="button" data-action="open-push-settings">${ui.text("系统提醒设置")}</button></div>
       <section class="schedule-layout">
         <div id="scheduleCalendarView" class="planner-view">${parts.calendar}</div>
         ${scheduleCalendarView.courseManagementHtml(state.scheduleItems)}
@@ -2531,6 +2532,9 @@
         if (action === "mailbox-view" && ["reply", "learning"].includes(button.dataset.view)) document.getElementById(`mailbox-${button.dataset.view}-button`)?.focus({ preventScroll: true });
         return;
       }
+      if (action === "open-push-settings") {
+        appearanceController.open(); document.querySelector('[data-settings-section="reminders"]')?.click(); return;
+      }
       if (action === "logout") {
         learningLoop.reset();
         classmateNotifications.stop();
@@ -3303,7 +3307,26 @@
     requestAnimationFrame(acknowledgeClassmateRead);
   }
 
+  async function openPushSchedule(url) {
+    const userId = state.user?.id;
+    const id = url.searchParams.get("scheduleItem");
+    await loadScheduleItems(false);
+    if (!userId || state.user?.id !== userId) return;
+    const item = state.scheduleItems.find((row) => row.id === id);
+    if (item) {
+      const date = scheduleCalendarView.buildModel({ items: [item] }).rows[0]?.startDay;
+      if (date) { state.scheduleMonth = date.slice(0, 7); state.scheduleSelectedDate = date; }
+    }
+    await loadPage("schedule");
+  }
+  if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", (event) => {
+    if (event.data?.type !== "studybridge-schedule-push" || event.data.userId !== state.user?.id) return;
+    const url = new URL(event.data.url, location.origin);
+    if (url.origin === location.origin && url.pathname === "/app") void openPushSchedule(url).catch((error) => setToast(error.message));
+  });
+
   async function boot() {
+    const entryUrl = new URL(location.href);
     try {
       const [google, authConfig] = await Promise.all([api("/api/auth/google/config").catch(() => ({ enabled: false })), api("/api/auth/config").catch(() => null)]);
       state.authConfig = authConfig;
@@ -3331,6 +3354,7 @@
       const savedPage = localStorage.getItem("studybridge.page");
       const page = urlPage || savedPage || "study";
       await loadPage(page);
+      if (entryUrl.searchParams.has("scheduleItem")) await openPushSchedule(entryUrl);
       if (["return", "cancelled"].includes(billingResult)) {
         appearanceController.open();
         document.querySelector('[data-settings-section="billing"]')?.click();

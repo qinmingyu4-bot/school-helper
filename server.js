@@ -22,6 +22,7 @@ const {
 const { validEmail, emailPolicy, createEmailVerification } = require("./lib/email-verification");
 const { startGoogleOAuth, verifyGoogleOAuth, clearGoogleOAuthCookie } = require("./lib/google-oauth");
 const { StudyBridgeDatabase } = require("./lib/database");
+const { createPushService } = require("./lib/push-service");
 const mailboxProviders = require("./lib/mailbox-providers");
 const { createMailboxService } = require("./lib/mailbox-service");
 const { membershipTier } = require("./lib/membership");
@@ -112,6 +113,7 @@ loadEnvFile();
 
 const db = new StudyBridgeDatabase();
 const office = createOfficeService(db);
+const schedulePush = createPushService({ db, listSchedule: listUserScheduleItems });
 const publicDir = path.join(__dirname, "public");
 const port = Number(process.env.PORT || 3000);
 const serverStartedAt = new Date().toISOString();
@@ -2262,6 +2264,23 @@ async function routeApi(req, res) {
     return sendJson(res, 200, { user: publicUser(withEffectiveRole(user)) }, { "set-cookie": sessionCookie(token) });
   }
 
+  if (url.pathname === "/api/push" || url.pathname === "/api/push/test") {
+    const auth = await currentUser(req);
+    if (!auth) return sendError(res, 401, "请先登录。");
+    const csrfToken = hashToken(`schedule-push:${auth.tokenHash}`);
+    const respond = (value) => sendJson(res, 200, { ...value, csrfToken }, { "cache-control": "private, no-store" });
+    if (url.pathname === "/api/push" && method === "GET") return respond(await schedulePush.status(auth, url.searchParams.get("endpoint")));
+    if (!["POST", "DELETE"].includes(method) || url.pathname === "/api/push/test" && method !== "POST") return sendError(res, 405, "Method not allowed.");
+    const supplied = String(req.headers["x-csrf-token"] || "");
+    const origin = req.headers.origin;
+    const allowedOrigin = process.env.APP_BASE_URL ? new URL(process.env.APP_BASE_URL).origin : `http://${req.headers.host}`;
+    if (!/^[a-f0-9]{64}$/.test(supplied) || !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(csrfToken)) || origin && origin !== allowedOrigin) return sendError(res, 403, "请重新打开提醒设置。");
+    const body = await readJson(req);
+    if (body.userId !== auth.user.id) return sendError(res, 409, "登录状态已变更，请重新打开设置。");
+    if (url.pathname === "/api/push/test") return respond(await schedulePush.test(auth, body.endpoint));
+    return respond(await (method === "DELETE" ? schedulePush.unsubscribe(auth, body.endpoint) : schedulePush.subscribe(auth, body)));
+  }
+
   if (url.pathname === "/api/auth/logout" && method === "POST") {
     const auth = await currentUser(req);
     if (auth) {
@@ -3355,6 +3374,7 @@ server.listen(port, () => {
   console.log(`StudyBridge cloud app running on http://localhost:${server.address().port}`);
   scheduleLocalDatabaseBackups();
   mailbox.start();
+  schedulePush.start();
   studyJobs.start();
   void db.compactStudyMaterials().catch(() => console.warn("Private material compaction deferred; legacy data remains readable."));
 });
@@ -3364,6 +3384,7 @@ async function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
   mailbox.stop();
+  await schedulePush.stop();
   await studyJobs.stop();
   server.close();
   server.closeAllConnections();

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-04 — Image preview palette consistency
+
+- Use the shared theme surface, text, border and accent tokens in image preview dialogs and their keyboard focus rings. Remove the fixed blue colors so custom daytime palettes and independent dark mode apply consistently. Recheck phone and short-screen dialog frames, internal scrolling and visible close/actions across the existing palettes.
+
 ## 2026-11-02 — Stable application dialog layout
 
 - Give learning, settings, schedule management, image previews and invitation confirmation dialogs one fixed 860 × 576 CSS-pixel frame, clamped to the available viewport. Keep headings and actions stationary and scroll overflowing content internally, including the settings navigation. Learning tabs retain the same frame for empty, short and long content, with centered empty states for topics, materials and practice history. Keep image previews contained without resizing the surrounding dialog.

@@ -22,6 +22,9 @@
 .schedule-steps > span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .schedule-steps b { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #e5f1ed; color: #2c8067; font-size: 11px; }
 .schedule-upload-controls { display: grid; gap: 12px; align-content: center; }
+.schedule-file-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.schedule-file-row .schedule-file-picker { flex: 1 1 180px; min-width: 0; }
+.schedule-remove-file { min-height: 44px; font-size: 13px; white-space: nowrap; }
 .schedule-file-picker {
   position: relative;
   display: flex;

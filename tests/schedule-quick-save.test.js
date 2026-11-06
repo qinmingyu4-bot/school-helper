@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
 const source = fs.readFileSync(require.resolve("../public/app.js"), "utf8");
+const clearFilePreview = source.slice(source.indexOf("  function clearScheduleFilePreview()"), source.indexOf("  function removeScheduleFile()"));
 const save = source.slice(source.indexOf("  async function confirmScheduleImport()"), source.indexOf("  function toolsPage()"));
 
 function harness({ origin = "quick", count = 1, failAt = 0, duplicates = false } = {}) {
@@ -38,7 +39,7 @@ function harness({ origin = "quick", count = 1, failAt = 0, duplicates = false }
       return { saved: duplicates ? 0 : body.items.length, duplicates: duplicates ? body.items.length : 0, items: [], courses: [] };
     }
   });
-  vm.runInContext(save, context);
+  vm.runInContext(clearFilePreview + save, context);
   return { state, text, notices, renders, run: () => context.confirmScheduleImport(), cancelled: () => cancelled, calls: () => calls, focused: () => focused };
 }
 

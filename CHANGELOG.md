@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add a Remove file action to schedule imports. Clear the selected file and its unconfirmed preview, or stop an in-progress extraction and select a replacement.
+
 ## 1.2.20 — Timetable import progress and Toronto calendar archives
 
 - Publish the owner-authorized timetable/calendar updates (`7d81e1a`, `8d847a7`) on production baseline `74b9c27` (1.2.19), retaining page delivery performance, compact review and fixed clock times. Refresh package and entry asset versions; no database migration or model-quality change.

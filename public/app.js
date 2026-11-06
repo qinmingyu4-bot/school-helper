@@ -1400,8 +1400,8 @@
     state.scheduleClockSignature = scheduleClockSignature(model);
     return ui.html`
       ${pageHeader("SCHEDULE", ui.text("日程"), ui.text("一个月历，收好你的课程、作业与生活安排。"))}
-      <div class="schedule-push-entry"><button type="button" data-action="open-push-settings">${ui.text("系统提醒设置")}</button></div>
       <section class="schedule-layout">
+        <div class="schedule-push-entry"><button type="button" data-action="open-push-settings">${ui.text("系统提醒设置")}</button></div>
         <div id="scheduleCalendarView" class="planner-view">${parts.calendar}</div>
         ${scheduleCalendarView.courseManagementHtml(state.scheduleItems)}
         <details class="card schedule-manual" id="scheduleManual" ${state.scheduleManualOpen || state.scheduleDraftOrigin === "quick" && state.scheduleDrafts.length ? "open" : ""}>

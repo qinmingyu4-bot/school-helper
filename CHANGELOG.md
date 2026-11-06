@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — Aligned schedule reminder settings
+
+- Place the system-reminder settings action inside the schedule content column, aligning its right edge with the calendar cards and sharing their responsive margins and vertical spacing. Use a compact desktop button and retain a 44 px touch target on phones.
+- Verify Chrome/WebKit alignment and settings navigation across 320–1920 px, Chinese/English and light/dark appearances; pass the 302-file source/assets/package checks.
+
 ## 1.2.16 — Smooth streamed answers without reducing AI quality
 
 - Publish the owner-authorized rendering optimization on production baseline `887c6ba` (1.2.15), retaining all existing AI quality, allowance, billing and video restrictions.

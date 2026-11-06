@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased — Timetable import progress and Toronto calendar archives
+## 1.2.20 — Timetable import progress and Toronto calendar archives
+
+- Publish the owner-authorized timetable/calendar updates (`7d81e1a`, `8d847a7`) on production baseline `74b9c27` (1.2.19), retaining page delivery performance, compact review and fixed clock times. Refresh package and entry asset versions; no database migration or model-quality change.
 
 - Show the actual recognition, saved-calendar lookup, official-calendar search and duplicate-review stages with elapsed waiting time; record phase durations without logging uploaded content. Keep image detail/model quality and JSON API compatibility; stop recognition on disconnect.
 - Add campus/faculty profile fields and prefer timetable campus evidence. Share verified regular undergraduate archives across course sets using campus/faculty scope, while rejecting mixed-campus reuse.

@@ -1960,6 +1960,7 @@ async function signInWithGoogle(req, res, url) {
 }
 
 async function routeApi(req, res) {
+  res.setHeader("Cache-Control", "private, no-store");
   if (req.url.split("?")[0] === "/api/me/ai-usage" && req.method === "GET") {
     const user = await requireUser(req, res);
     if (!user) return;
@@ -2215,8 +2216,9 @@ async function routeApi(req, res) {
     if (!user) return sendError(res, 400, "Email verification code is incorrect or expired.");
     try {
       validatePasswordPair(body.password, body.passwordConfirm);
+      const passwordHash = await hashPassword(body.password);
       await verifyEmailCode(email, "password-reset", body.emailCode);
-      await db.updatePassword(user.id, user.passwordHash, hashPassword(body.password));
+      await db.updatePassword(user.id, user.passwordHash, passwordHash);
       return sendJson(res, 200, { ok: true });
     } catch (error) {
       return sendError(res, 400, error.message);
@@ -2237,19 +2239,20 @@ async function routeApi(req, res) {
     }
     if (await db.findUserByEmail(email)) return sendError(res, 409, "This email is already registered.");
 
-    let inviteGrant;
+    let inviteGrant, passwordHash;
     try {
       inviteGrant = await validateInviteForRegistration(body.inviteCode, email);
+      passwordHash = await hashPassword(body.password);
       if (requireEmailVerification) await verifyEmailCode(email, "register", body.emailCode);
     } catch (error) {
-      return sendError(res, 403, error.message);
+      return sendError(res, error.statusCode || 403, error.message);
     }
 
     const user = await db.createUser({
       id: createId("user"),
       name,
       email,
-      passwordHash: hashPassword(body.password),
+      passwordHash,
       role: adminEmails().includes(email) || normalizeInviteRole(inviteGrant.invite?.role) === "admin" ? "admin" : "student",
       inviteCode: inviteGrant.code || inviteGrant.invite?.code || "",
       inviteId: inviteGrant.invite?.id || "",
@@ -2275,7 +2278,7 @@ async function routeApi(req, res) {
     const body = await readJson(req);
     const email = normalizeEmail(body.email);
     const user = await db.findUserByEmail(email);
-    if (!user || !verifyPassword(body.password, user.passwordHash)) return sendError(res, 401, "Email or password is incorrect.");
+    if (!user || !await verifyPassword(body.password, user.passwordHash)) return sendError(res, 401, "Email or password is incorrect.");
     const token = createSessionToken();
     await db.createSession({ tokenHash: hashToken(token), userId: user.id, passwordVersion: Number(user.passwordVersion || 0), expiresAt: Date.now() + SESSION_TTL_MS });
     return sendJson(res, 200, { user: publicUser(withEffectiveRole(user)) }, { "set-cookie": sessionCookie(token) });
@@ -2435,17 +2438,25 @@ async function routeApi(req, res) {
     const time = Date.now();
     for (const [id, record] of accountPasswordAttempts) if (record.expires <= time) accountPasswordAttempts.delete(id);
     const attempts = accountPasswordAttempts.get(auth.user.id) || { count: 0, expires: time + 15 * 60 * 1000 };
-    if (attempts.count >= 5) return sendError(res, 429, "当前密码验证次数过多，请 15 分钟后重试。");
+    if (attempts.count + (attempts.pending || 0) >= 5) return sendError(res, 429, "当前密码验证次数过多，请 15 分钟后重试。");
     if (security.hasPassword) {
-      if (typeof body.currentPassword !== "string" || body.currentPassword.length > 1024 || !verifyPassword(body.currentPassword, auth.user.passwordHash)) {
-        attempts.count++; accountPasswordAttempts.set(auth.user.id, attempts);
-        return sendError(res, 400, "当前密码不正确。");
+      // Reserve the attempt before yielding to asynchronous password work so
+      // simultaneous requests cannot bypass the existing five-attempt guard.
+      attempts.pending = (attempts.pending || 0) + 1;
+      accountPasswordAttempts.set(auth.user.id, attempts);
+      try {
+        if (!await verifyPassword(body.currentPassword, auth.user.passwordHash)) {
+          attempts.count++;
+          return sendError(res, 400, "当前密码不正确。");
+        }
+      } finally {
+        attempts.pending--;
       }
-      if (verifyPassword(body.password, auth.user.passwordHash)) return sendError(res, 400, "新密码不能与当前密码相同。");
+      if (await verifyPassword(body.password, auth.user.passwordHash)) return sendError(res, 400, "新密码不能与当前密码相同。");
     } else if (security.needsGoogleReauth) {
       return sendJson(res, 409, { error: "请先重新使用 Google 登录，再设置网站密码。", code: "GOOGLE_REAUTH_REQUIRED" });
     }
-    const updated = await db.updatePassword(auth.user.id, auth.user.passwordHash, hashPassword(body.password));
+    const updated = await db.updatePassword(auth.user.id, auth.user.passwordHash, await hashPassword(body.password));
     const token = createSessionToken();
     await db.createSession({ tokenHash: hashToken(token), userId: updated.id,
       passwordVersion: updated.passwordVersion, expiresAt: Date.now() + SESSION_TTL_MS });
@@ -2765,7 +2776,7 @@ async function routeApi(req, res) {
     const user = request.userId ? await db.getUser(request.userId) : await db.findUserByEmail(request.email);
     if (!user) return sendError(res, 404, "Student account not found.");
     const temporaryPassword = createTemporaryPassword();
-    await db.updatePassword(user.id, user.passwordHash, hashPassword(temporaryPassword));
+    await db.updatePassword(user.id, user.passwordHash, await hashPassword(temporaryPassword));
     const updated = await db.updateInvite(request.id, {
       active: false,
       status: "completed",
@@ -3377,6 +3388,9 @@ if (directMessageMatch && method === "POST") {
 }
 
 const server = http.createServer((req, res) => aiUsage.run(null, async () => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("Content-Security-Policy", "frame-ancestors 'self'");
   try {
     if (req.url.startsWith("/api/")) return await routeApi(req, res);
     return await serveStatic(req, res);

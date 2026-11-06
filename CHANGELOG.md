@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — Whole-site audit: authentication resilience and background writes
+
+- Pin Nodemailer 10.1.4 to fix the three moderate recipient-parser advisories; retain simulated mail coverage and add recipient-boundary regressions.
+- Stop unchanged AI allowance polling from writing the full local database or transacting in DynamoDB. Keep expired-hold reconciliation, weekly rollover, reservations, pricing and AI behavior unchanged.
+- Move password work off the HTTP event loop with the same scrypt strength and existing hashes; bound work/queue sizes and preserve the account-security attempt limit under concurrency. Reject malformed login values and ignore malformed unrelated cookies safely.
+- Mark API responses private/non-cacheable and add same-origin framing and MIME-sniffing protection. No production data or configuration migration.
+- Validate 602 full-suite tests, 16 final focused account/password/mail checks, 303-file source/assets/package checks and 84 Chrome/WebKit page/language/viewport combinations. Official advisory lookup reports no advisories for 261 production dependency names.
+- Document the outstanding ordinary-login rate-limit gap and real-provider/device acceptance limits in [the audit report](docs/full-site-audit-2026-11-06.md). Prepared for review without deployment.
+
 ## 1.2.16 — Smooth streamed answers without reducing AI quality
 
 - Publish the owner-authorized rendering optimization on production baseline `887c6ba` (1.2.15), retaining all existing AI quality, allowance, billing and video restrictions.

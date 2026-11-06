@@ -95,6 +95,7 @@ test("timetable images/PDFs retain layout, use school calendars and return recur
   await context.test("a missing calendar can be recovered from an explicit scope without re-reading the file or creating reminders", async () => {
     const extracted = await request("/api/schedule/extract", { fileName: "calendar-recovery-fixture.txt", fileData: Buffer.from("Winter 2027; St. George; faculty not shown").toString("base64") }, cookie);
     assert.equal(extracted.data.calendar, null);
+    assert.match(extracted.data.calendarNotice, /已有可选的校历存档/);
     assert.equal(extracted.data.items.length, 6);
     assert.equal(extracted.data.termHint.year, 2027);
     const scope = extracted.data.calendarScopes.find((item) => item.campus === "St. George");

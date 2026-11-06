@@ -30,7 +30,7 @@ test("academic calendars require live university-domain evidence, preserve dates
   assert.equal(first.calendar.verifiedAt, "2026-10-26T16:00:00.000Z");
   await service.lookup(input);
   assert.equal(calls, 1);
-  await service.lookup({ ...input, termHint: { ...input.termHint, campus: "Scarborough" } });
+  await service.lookup({ ...input, termHint: { ...input.termHint, campus: "Mississauga" } });
   assert.equal(calls, 2);
 });
 
@@ -71,13 +71,16 @@ test("verified calendars survive a new service instance and match only the same 
     db.local = new LocalStore(path.join(directory, "calendar.json"));
     return { get: (key) => db.getAcademicCalendar(key), put: (key, value) => db.putAcademicCalendar(key, value) };
   }
-  const first = createCalendarService({ archive: archive(), request: async () => payload() });
-  const original = await first.lookup({ ...input, courseCodes: ["FOR200H1F", "MAT100H1F"] });
+  const first = createCalendarService({ archive: archive(), request: async () => payload({ faculty: "Arts & Science" }) });
+  await first.lookup(input);
+  const termHint = { ...input.termHint, faculty: "Arts & Science" };
+  const original = await first.lookup({ ...input, termHint });
+  assert.ok(original.calendar);
   const second = createCalendarService({ archive: archive(), request: async () => assert.fail("Archived lookup must stay offline") });
-  const archived = await second.lookup({ ...input, courseCodes: ["MAT100H1F", "FOR200H1F"], allowSearch: false });
+  const archived = await second.lookup({ ...input, termHint, courseCodes: ["MAT100H1F"], allowSearch: false });
   assert.deepEqual(archived.calendar, original.calendar);
   assert.match(archived.notice, /存档/);
-  assert.equal((await second.lookup({ ...input, allowSearch: false })).calendar, null);
+  assert.equal((await second.lookup({ ...input, allowSearch: false })).calendar, null, "An ad hoc course-specific lookup is not persisted");
 });
 
 test("preloaded undergraduate terms retain official closures and stay separate from special programs and winter sessions", async () => {
@@ -142,6 +145,23 @@ test("Toronto winter archives separate campuses, faculties and optional makeup d
   for (const hint of [{ campus: "UTM" }, { campus: "" }, { faculty: "Engineering" }, { faculty: "" }, { year: 2026 }]) {
     assert.equal((await service.lookup({ ...request, allowSearch: false, termHint: { ...request.termHint, ...hint } })).calendar, null);
   }
+});
+
+test("a compatible saved term prompts for missing scope without making an online request", async () => {
+  let searches = 0;
+  const service = createCalendarService({ request: async () => { searches++; return { output_text: "null" }; } });
+  const termHint = { year: 2027, season: "winter", campus: "St. George" };
+  const lookup = { ...input, termHint, today: "2026-11-06", courseCodes: ["MAT137H1"] };
+  for (const hint of [termHint, { ...termHint, faculty: "Undergraduate" }, { ...termHint, year: null }]) {
+    const phases = [];
+    const result = await service.lookup({ ...lookup, termHint: hint, onProgress: (phase) => phases.push(phase) });
+    assert.equal(result.calendar, null);
+    assert.match(result.notice, /已有可选的校历存档/);
+    assert.deepEqual(phases, ["calendar-cache"]);
+  }
+  assert.equal(searches, 0);
+  await service.lookup({ ...lookup, termHint: { ...termHint, faculty: "Engineering" } });
+  assert.equal(searches, 1, "A different faculty keeps the usual official lookup");
 });
 
 test("known university scopes share newly verified archives across course sets and restarts", async () => {

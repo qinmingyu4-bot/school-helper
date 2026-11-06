@@ -683,9 +683,14 @@ compatible campus. Separate winter and spring terms keep their school-specific
 names. The preview summarizes teaching dates; open the term section to inspect
 its scope, breaks and official sources.
 
-On an archive miss, the server can look up the official calendar using the Profile
-school, year, term, campus/faculty and course codes. It saves verified results to
-the local database or DynamoDB. Known regular undergraduate scopes share verified calendars across course sets; other lookups remain keyed to the exact timetable scope and course set. Refresh and lookup use the same campus/faculty key, so Toronto campus archives cannot overwrite one another.
+If the extracted term or campus/faculty is incomplete and a compatible saved
+term is available, the course preview opens immediately after extraction. The
+student confirms the missing scope before applying dates. Other misses can still
+use official web lookup with the Profile school and timetable details. Only the
+configured regular undergraduate scopes write shared date records to the local
+database or DynamoDB. Other verified results use a bounded in-memory cache.
+Previously saved exact matches remain readable. Refresh and lookup use the same
+campus/faculty key, so Toronto campus archives cannot overwrite one another.
 Calendar lookup requires confirmed scope, confirmed no-class dates and consulted
 official sources for each teaching period, break or makeup day. The archive
 works with web lookup disabled. Missing dates or uncertain scope can be entered

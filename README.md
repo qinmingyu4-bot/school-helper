@@ -947,4 +947,5 @@ are documented in [AI usage](docs/ai-usage.md).
 
 See [the 2026-11-06 whole-site audit](docs/full-site-audit-2026-11-06.md) for tested
 coverage, authentication and background-write fixes, dependency verification and
-explicitly outstanding sign-in abuse controls and real-provider acceptance work.
+the remaining real-provider acceptance work. [Login protection](docs/login-protection.md)
+documents the failed-login policy, trusted proxy boundary and multi-instance limits.

@@ -4,7 +4,8 @@ Baseline: production 1.2.16, `974a7513d8ad325b146272ca89f8ad44d2af7831`.
 Scope: source review, isolated local/DynamoDB tests, real browser checks using
 synthetic accounts/AI, dependency advisories and small unauthenticated production
 GET checks. Production accounts, data, payments and AI allowance were not used.
-Fixes are prepared on a review branch; this audit does not deploy them.
+The owner subsequently authorized failed-login protection and release 1.2.17 with
+these audit fixes, subject to passing local and CI checks.
 
 ## Confirmed findings and fixes
 
@@ -15,6 +16,7 @@ Fixes are prepared on a review branch; this audit does not deploy them.
 | Server responsiveness | Password hashing/verification used synchronous scrypt on the HTTP event loop. | Use asynchronous scrypt with unchanged parameters, salt, hash format and timing-safe comparison. Limit active password work to two and queued work to 32; overload is rejected instead of allocating unbounded work. Old hashes continue to work. |
 | Input robustness | Malformed cookie percent encoding or non-string login passwords could throw HTTP 500. | Ignore only malformed cookies, use a null-prototype cookie map, and reject invalid password types/oversized input as failed authentication. A bad unrelated cookie no longer blocks a valid session. |
 | Private response caching | Several private API responses did not explicitly prohibit caching. | Default API responses to `private, no-store`, including authentication errors; explicit stream/download policies remain in their routes. |
+| Sign-in abuse | Ordinary sign-in had no failed-credential budget. | Add ten attempts per normalized email/address pair per 15-minute window, reserve concurrent attempts, reset on success and exclude system failures. Preserve other users and existing sessions. See [operations and limits](login-protection.md). |
 | Browser response policy | Public pages had no frame-embedding or MIME-sniffing protection. | Add SAMEORIGIN, `frame-ancestors 'self'` and `nosniff`; same-origin document functionality remains permitted. |
 
 The existing account-security five-attempt rule now reserves an in-flight attempt
@@ -32,13 +34,16 @@ exploitable mail-delivery path in StudyBridge or send a real proof-of-concept em
 
 ## Validation
 
-- Baseline: 594 full-suite tests passed. After fixes: 602 tests passed. The final
-  asynchronous-attempt race hardening additionally passed all 16 focused account,
-  password and mail tests. Source/assets/package checks cover 303 JavaScript files.
+- Baseline: 594 full-suite tests passed. Audit fixes: 602 tests passed. Release
+  1.2.17 including failed-login protection: 614 tests passed. Source/assets/package
+  checks cover 307 JavaScript files; deployment shell syntax also passes.
 - Chrome and WebKit: seven authenticated pages (Community, Classmates, Schedule,
   Study, Tools, Mailbox, Profile), Chinese/English and 320/390/1280 px widths:
   84 combinations, no page exceptions or document-wide horizontal overflow.
   Screenshots of narrow Schedule, Tools and Mailbox pages were inspected.
+- The release repeats the 84 browser combinations and adds 24 login limit/overload
+  checks across both languages, three widths and both browsers. Inputs and recovery
+  controls remain available; normal password sign-in succeeds after simulated errors.
 - Both browsers also check streamed Chinese/emoji, late Markdown references,
   formulas, complete final DOM, unchanged table identity, typing/draft retention,
   navigation during generation, stop and absence of late repaint after stopping.
@@ -64,14 +69,12 @@ reset, production configuration change or account-data rewrite is performed.
 
 ## Open risks and limits
 
-1. The ordinary `/api/auth/login` handler has no failed-login rate limiter in the
-   reviewed application code. The password-work cap protects server load, not
-   against sustained password guessing. The existing five-attempt limit applies
-   to changing a password in an authenticated account, not to ordinary sign-in.
-   Add a separate, tested sign-in abuse control considering trusted-proxy address
-   handling, shared networks, account lockout abuse and multi-instance persistence.
-   Independent edge/WAF controls were not audited or assumed present. No brute-force
-   testing was performed against production.
+1. Sign-in protection is process-local and resets on restart; the present deployment
+   runs one application process. Before adding workers/instances, use shared atomic
+   counters or equivalent edge enforcement. The pair-based policy avoids global
+   account lockouts but is not protection against distributed address rotation or
+   spraying many accounts. Independent edge/WAF controls were not audited or assumed
+   present. No brute-force testing was performed against production.
 2. AI accuracy cannot be certified by simulated transports. The tests validate
    routing, source boundaries, completeness checks and review behavior; actual
    difficult course questions still require real-model evaluation.

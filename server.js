@@ -20,6 +20,7 @@ const {
   verifyPassword
 } = require("./lib/security");
 const { validEmail, emailPolicy, createEmailVerification } = require("./lib/email-verification");
+const { clientAddress, createLoginAttempts } = require("./lib/login-attempts");
 const { startGoogleOAuth, verifyGoogleOAuth, clearGoogleOAuthCookie } = require("./lib/google-oauth");
 const { StudyBridgeDatabase } = require("./lib/database");
 const { createPushService } = require("./lib/push-service");
@@ -108,6 +109,7 @@ function loadEnvFile(filePath = path.join(__dirname, ".env")) {
 loadEnvFile();
 
 const db = new StudyBridgeDatabase();
+const loginAttempts = createLoginAttempts();
 const academicCalendars = createCalendarService({
   archive: { get: (key) => db.getAcademicCalendar(key), put: (key, calendar) => db.putAcademicCalendar(key, calendar) },
   onError: (message) => console.warn(message),
@@ -2275,13 +2277,26 @@ async function routeApi(req, res) {
   }
 
   if (url.pathname === "/api/auth/login" && method === "POST") {
-    const body = await readJson(req);
-    const email = normalizeEmail(body.email);
-    const user = await db.findUserByEmail(email);
-    if (!user || !await verifyPassword(body.password, user.passwordHash)) return sendError(res, 401, "Email or password is incorrect.");
-    const token = createSessionToken();
-    await db.createSession({ tokenHash: hashToken(token), userId: user.id, passwordVersion: Number(user.passwordVersion || 0), expiresAt: Date.now() + SESSION_TTL_MS });
-    return sendJson(res, 200, { user: publicUser(withEffectiveRole(user)) }, { "set-cookie": sessionCookie(token) });
+    const body = await readJson(req, 16 * 1024);
+    const email = normalizeEmail(typeof body.email === "string" ? body.email : "");
+    const attempt = loginAttempts.begin(email, clientAddress(req));
+    if (!attempt.allowed) return sendJson(res, attempt.status, {
+      error: attempt.status === 429 ? "登录尝试过于频繁，请稍后再试。" : "登录服务繁忙，请稍后重试。"
+    }, { "retry-after": String(attempt.retryAfter) });
+    try {
+      const user = await db.findUserByEmail(email);
+      if (!user || !await verifyPassword(body.password, user.passwordHash)) {
+        attempt.finish("failure");
+        return sendError(res, 401, "Email or password is incorrect.");
+      }
+      const token = createSessionToken();
+      await db.createSession({ tokenHash: hashToken(token), userId: user.id, passwordVersion: Number(user.passwordVersion || 0), expiresAt: Date.now() + SESSION_TTL_MS });
+      attempt.finish("success");
+      return sendJson(res, 200, { user: publicUser(withEffectiveRole(user)) }, { "set-cookie": sessionCookie(token) });
+    } finally {
+      // Database/hash-service failures release capacity without counting as a bad password.
+      attempt.finish();
+    }
   }
 
   if (url.pathname === "/api/push" || url.pathname === "/api/push/test" || url.pathname === "/api/push/time-zone") {

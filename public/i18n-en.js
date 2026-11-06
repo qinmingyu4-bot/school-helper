@@ -437,6 +437,9 @@ Google 可直接进入，首次使用将自动创建普通账号。|Continue wit
 忘记密码？|Forgot password?
 发送中…|Sending…
 {0} 秒后重发|Resend in {0}s
+登录尝试过于频繁，请稍后再试。|Too many sign-in attempts. Please try again later.
+登录尝试过于频繁，请在 {0} 秒后重试。|Too many sign-in attempts. Try again in {0} seconds.
+登录服务繁忙，请稍后重试。|Sign-in is busy. Please try again shortly.
 用户端|Student view
 ‹ 返回学习|‹ Back to Study
 课程与资料|Courses and materials

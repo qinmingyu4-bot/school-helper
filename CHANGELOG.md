@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.2.14 — Reliable AI tutoring and practice review
+
+- Publish all three owner-approved tutoring review rounds together on `fe7f8a3` (1.2.13), retaining weekly allowances, video restrictions, calendar updates and payment settings. Meter independent background reviews to the task owner, stop on allowance errors without accepting unverified answers, and refresh package/frontend cache versions to 1.2.14.
+- Release validation: all 592 merged regressions, 31 focused allowance/tutoring regressions, 302-file source/assets/package checks and deployment-shell syntax pass. HTTP accounting verifies planning, solving and independent review all charge the correct account. Production dependency auditing remains a required deployment-workflow gate.
+- Missing-input follow-up: stop conversational generation when required originals are unavailable or text refers to a missing figure. Keep independent readable background questions progressing when another original fails to load, with a specific recovery message and retry limited to blocked questions.
+- Give every incomplete task an add-image/details entry carrying the original request and unfinished question numbers, preserving drafts and completed answers. Keep retry available for mixed failures; reject no-op retries when clearer input is required. Independently review unreadable-labelled prose too, and require helpful, approachable teaching without guessed conditions or answers.
+- Missing-input validation: 582 full-suite regressions pass, plus 23 focused regressions after hardening thrown file-read failures; source/assets/package checks cover 295 JavaScript files. HTTP regressions cover both chat transports, missing originals, supplied transcriptions and restored visuals with simulated AI.
+- Second review: preserve detected subparts and inspected PDF pages; distinguish reference filenames from solving targets; pass verified prerequisite results across batches and block dependent answers when prerequisites are unreadable. Keep retry actions on mixed unresolved/failed tasks and reject missing visuals at solve time. Retain earlier full derivations alongside later clarifications.
+- Hide both proposed answer indices and author explanations during quiz review; store independently derived explanations in the resolved learning languages.
+- Respect hint-only, interactive, specific-question and time-budget requests before routing whole-paper jobs. Preserve the complete-teaching shortcut and all files in a retained upload group.
+- Keep every numbered section and numbering gap, distinguish subpart headings from function arguments, and preserve section givens. Explicitly inspect mixed text/PDF/image inventories; unreadable or uninspected attachments cannot be reported as a completed paper.
+- Preserve relevant middle calculations for follow-up questions within a bounded history budget, including older numbered sections and scoped background-task context.
+- Independently review background solutions before saving them and retry only rejected questions. Review generated quizzes without revealing the proposed answer index; reject ambiguous, unsupported or inconsistent questions before creating learning records.
+- Second-review validation: all 574 full-suite regressions pass with the complete Node runtime path under UTC, plus the strengthened reference-filename HTTP regression. Source/assets/package checks cover 293 JavaScript files. AI transports are simulated.
+- Use selected wrong answers and their explanations to target follow-up practice. Add regression coverage for scope routing, full inventories, missing visuals, failed reviews, persistence, history and misconception feedback. Additional model reviews add latency/usage and do not guarantee correctness.
+
 ## 1.2.13 — Weekly AI allowances and video production restriction
 
 - Publish the owner-approved weekly allowance and video restriction together, retaining the 1.2.12 calendar archive and stable schedule clock times.

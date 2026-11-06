@@ -25,19 +25,21 @@ async function setup(t, cloud = false) {
   const user = { id: "alice", preferences: { chineseExplanations: true } };
   const course = await db.createCourse({ id: "statistics", userId: user.id, name: "Statistics" });
   const document = await db.createDocument({ id: "notes", userId: user.id, courseId: course.id, title: "Lecture 1", type: "Note", text: QUOTE + "\n" + "Type I error rejects a true null hypothesis.", sourcePages: [{ page: 2, start: 0, end: QUOTE.length }] });
-  let calls = [], custom, index = 0;
+  let calls = [], custom, review, index = 0;
   const service = createLearningLoop({ db, now: () => Date.parse("2026-11-02T20:00:00Z"),
     listSchedule: async (userId) => storedItems(await db.listCourses(userId), await db.listDocuments(userId, course.id), userId),
     learningInstruction: () => "RESOLVED_LANGUAGES",
     generate: async (messages) => {
-      calls.push(messages); if (custom) return custom(messages);
+      calls.push(messages);
+      if (messages[0].content.startsWith("StudyBridge quiz-review/v1")) return review ? review(messages) : JSON.stringify({ checks: JSON.parse(messages[1].content).questions.map(({ id }) => ({ id, correctIndices: [0], grounded: true, explanations: ["Assume the null is true.", "This reverses the conditional.", "Not the probability of the null.", "Not a causal claim."] })) });
+      if (custom) return custom(messages);
       if (messages[0].content.includes("topics/v1")) return JSON.stringify({ topics: ["P-values", "Hypothesis testing"].map((title) => ({ title, documentId: document.id, quote: QUOTE })) });
       return JSON.stringify({ questions: Array.from({ length: 3 }, (_, question) => ({ prompt: `Practice ${++index} / ${question}`, choices: ["Right", "Wrong A", "Wrong B", "Wrong C"], answerIndex: 0, explanations: ["Assume the null is true.", "This reverses the conditional.", "Not the probability of the null.", "Not a causal claim."], documentId: document.id, quote: QUOTE })) });
     } });
   const read = () => service.read(user.id, course.id);
   const extract = async () => { await service.extract(user, course.id, { version: (await read()).version, documentIds: [document.id] }); return read(); };
   const confirm = async () => { const state = await extract(); await service.topics(user.id, course.id, { action: "confirm", version: state.version, draftId: state.draft.id, topics: state.draft.topics.slice(0, 1).map((topic) => ({ id: topic.id, title: "Understanding p-values" })) }); return (await read()).topics[0]; };
-  return { db, memory, user, course, document, service, read, extract, confirm, calls, setCustom: (handler) => { custom = handler; } };
+  return { db, memory, user, course, document, service, read, extract, confirm, calls, setCustom: (handler) => { custom = handler; }, setReview: (handler) => { review = handler; } };
 }
 
 for (const cloud of [false, true]) {
@@ -49,7 +51,7 @@ for (const cloud of [false, true]) {
     const quiz = await service.quiz(user, course.id, { requestId: "first-attempt", topicId: topic.id });
     assert.equal(quiz.questions[0].answerIndex, undefined);
     assert.equal(quiz.questions[0].explanations, undefined);
-    assert.ok(f.calls.at(-1)[0].content.includes("RESOLVED_LANGUAGES"));
+    assert.ok(f.calls.findLast((call) => call[0].content.includes("quiz/v1"))[0].content.includes("RESOLVED_LANGUAGES"));
     const bad = await service.submit(user.id, course.id, { quizId: quiz.id, answers: [1, 0, 0] });
     assert.equal(bad.score, 2);
     let state = await f.read();
@@ -61,7 +63,7 @@ for (const cloud of [false, true]) {
     assert.equal((await f.read()).version, state.version);
     if (!cloud) { const reopened = new StudyBridgeDatabase(); reopened.dynamo = null; reopened.local = new LocalStore(db.local.file); assert.equal((await reopened.getLearningQuiz(user.id, course.id, quiz.id)).score, 2); }
     const again = await service.quiz(user, course.id, { requestId: "second-attempt", topicId: topic.id });
-    assert.ok(f.calls.at(-1)[1].content.includes(bad.questions[0].prompt));
+    assert.ok(f.calls.findLast((call) => call[0].content.includes("quiz/v1"))[1].content.includes(bad.questions[0].prompt));
     assert.ok(!bad.questions.some((old) => again.questions.some((next) => next.prompt === old.prompt)));
     await service.submit(user.id, course.id, { quizId: again.id, answers: [0, 0, 0] });
     state = await f.read();
@@ -148,4 +150,26 @@ test("automatic suggestions respect consent, snooze and stale evidence; manual l
   const topic = { id: "p-values", nextReviewAt: "2000-01-01T00:00:00Z" };
   assert.equal(suggestion({ ...data, topics: [topic] }, "load").topicId, topic.id);
   assert.equal(suggestion({ ...data, topics: [{ ...topic, sourceStale: true }] }, "load"), null);
+});
+
+
+test("new practice targets the selected wrong answer and its misconception, not only the old prompt", async (t) => {
+  const f = await setup(t), topic = await f.confirm();
+  const quiz = await f.service.quiz(f.user, f.course.id, { requestId: "misconception-first", topicId: topic.id });
+  await f.service.submit(f.user.id, f.course.id, { quizId: quiz.id, answers: [1, 0, 0] });
+  await f.service.quiz(f.user, f.course.id, { requestId: "misconception-next", topicId: topic.id });
+  const input = JSON.parse(f.calls.findLast((call) => call[0].content.includes("quiz/v1"))[1].content);
+  assert.equal(input.past[0].mistakes.length, 1);
+  assert.equal(input.past[0].mistakes[0].selectedAnswer, "Wrong A");
+  assert.equal(input.past[0].mistakes[0].correctAnswer, "Right");
+  assert.equal(input.past[0].mistakes[0].misconception, "This reverses the conditional.");
+});
+
+test("a quiz failing semantic review is not saved and cannot affect learning evidence", async (t) => {
+  const f = await setup(t), topic = await f.confirm(), before = await f.read();
+  f.setReview((messages) => JSON.stringify({ checks: JSON.parse(messages[1].content).questions.map(({ id }) => ({ id, correctIndices: [0, 1], grounded: true, explanations: ["Assume the null is true.", "This reverses the conditional.", "Not the probability of the null.", "Not a causal claim."] })) }));
+  await assert.rejects(f.service.quiz(f.user, f.course.id, { requestId: "ambiguous-quiz", topicId: topic.id }), { statusCode: 502 });
+  assert.equal(await f.db.getLearningQuiz(f.user.id, f.course.id, "quiz_ambiguous-quiz"), null);
+  const after = await f.read();
+  assert.equal(after.version, before.version); assert.deepEqual(after.recent, before.recent); assert.deepEqual(after.topics, before.topics);
 });

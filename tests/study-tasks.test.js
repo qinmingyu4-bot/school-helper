@@ -37,3 +37,20 @@ test("task actions deduplicate clicks, retain scoped state, escape errors and re
   fail = false; await controller.load(scope); assert.doesNotMatch(controller.html(job), /进度暂时无法更新/);
   controller.clear();
 });
+
+test("unreadable-only and mixed failures keep actionable recovery entries with the original question context", () => {
+  let context = { ...scope };
+  const controller = create({ getContext: () => context, request: async () => ({ jobs: [] }) });
+  const waiting = { ...job, status: "needs_input", remaining: ["3(b)"], batches: [{ status: "done" }] };
+  controller.accept(scope, waiting);
+  assert.match(controller.html(waiting), /study-task-supplement/);
+  assert.doesNotMatch(controller.html(waiting), /study-task-retry/);
+  const mixed = { ...waiting, status: "partial", batches: [{ status: "failed" }] };
+  assert.match(controller.html(mixed), /study-task-retry/); assert.match(controller.html(mixed), /study-task-supplement/);
+  assert.match(controller.html({ ...mixed, status: "needs_input" }), /study-task-retry/, "Retained older mixed-status jobs also recover");
+  const draft = controller.supplement(job.id, [{ id: job.messageId, content: "Solve this paper", attachments: [{ name: "exam.txt" }] }]);
+  assert.match(draft, /3\(b\)/); assert.match(draft, /exam.txt/); assert.match(draft, /不要猜答案/);
+  context = { ...scope, conversationId: "other" }; assert.equal(controller.supplement(job.id), "");
+  assert.doesNotMatch(controller.html({ ...job, status: "completed" }), /study-task-(?:retry|supplement)/);
+  controller.clear();
+});

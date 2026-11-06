@@ -524,7 +524,52 @@ single-question, hints-only, one-at-a-time and quiz requests still take preceden
 Short PDF tutoring tasks and retained multipart course sources select the complex
 model even below the generic long-attachment threshold. The immediate upload's text
 has priority over older background when retrieval is needed, and recent long replies
-retain their completion summary for follow-up questions.
+retain their working for follow-up questions. History has a 40,000-character budget:
+numbered follow-ups first select matching problem sections from up to 80 saved
+messages, keeping up to three matching replies within a combined 24,000-character
+budget so a short clarification does not hide the earlier derivation. Recent
+conversation is then included, with up to 24,000 characters per ordinary assistant reply. Genuine omissions are marked explicitly; no historical messages
+are rewritten.
+
+Background whole-paper jobs require an explicit solving/teaching scope. Hint-only,
+interactive, single-question, counting and time-budget requests stay conversational;
+the complete “一步步教” shortcut still requests the whole paper. Numbering resets
+and gaps are preserved, section givens remain attached to their questions, and
+function arguments such as `f(x)` are not subpart headings. Follow-ups reuse the
+whole most recent upload group, or explicitly named solving targets. A filename
+mentioned as a reference (for example, “based on notes.pdf”) does not narrow the
+requested paper.
+
+Every PDF/image and otherwise unrecognized attachment in a background task must
+receive an explicit inventory check. Missing/oversized inputs cannot silently fall
+back to the readable subset. Partially readable sources remain visible as unresolved
+items and prevent a completed status. Detected subparts cannot be removed by
+planning, reviewed original-page selections are retained, and required question
+visuals are checked again before solving. Dependent questions run in later batches
+and receive verified prerequisite results; unreadable prerequisites remain explicit
+instead of being guessed. Mixed unreadable/failed tasks keep their retry action.
+Every incomplete task also offers an add-information entry that prepares a follow-up
+with the original request, source names and unfinished question numbers. It preserves
+the student's draft and completed answers; added information is sent as a new
+follow-up, so it does not rewrite the earlier task's completion record. Unreadable-only
+tasks request clearer input rather than performing a no-op retry. Original-file
+loading failures retain a retry action and do not discard independent readable
+questions in the same batch.
+Conversational replies (streaming and non-streaming) also stop before generation
+when a requested original is absent/omitted or text explicitly references a missing
+figure. They request the relevant crop, full wording, labels and units. These checks
+cover known input gaps, not semantic image readability; supplied but blurry figures
+still depend on model recognition. Tutoring instructions require confirmed facts,
+useful next steps and a clear distinction between a general method and an unresolved
+answer, with no invented values or conclusions for the sake of engagement.
+A separate model review checks each batch's
+calculations, requested working and evidence before results are saved, including
+prose in parts labelled unreadable so that label cannot hide a guessed answer. Rejected
+questions retry within the existing two-attempt/120-second-per-batch bounds;
+completed questions are preserved. Review failure never approves an answer by
+default. These extra calls add latency and usage; model review is not a mathematical
+proof or a guarantee of correctness. Ordinary streamed single-question replies
+continue to use the teaching prompt rather than this background review stage.
 
 Mock-exam mode defaults to the format and structure of previously uploaded questions
 available in the current conversation or shared course materials. It follows observable

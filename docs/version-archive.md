@@ -10,6 +10,20 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.2.14 - 2026-11-06
+
+Purpose:
+- Publish all three AI tutoring review rounds (`262c0ed`, `50291f6`, `c01d9a5`) on the latest production baseline `fe7f8a3` (1.2.13).
+- Block missing-figure guesses, preserve full inventories and question dependencies, independently review answers and quizzes, and expose clear supplement/retry actions. Charge background reviews to the task owner and retain completed work when allowance is exhausted.
+- Preserve existing allowances, video restrictions, calendar updates, account data and payment configuration. Refresh package/frontend cache versions to 1.2.14.
+
+Validation:
+- All 592 merged regression tests, 31 focused tutoring/allowance tests, 302-file source/assets/package checks and deployment-shell syntax pass. HTTP checks verify owner-scoped planning/answer/review accounting, missing-input recovery and persisted progress with simulated AI.
+- The release workflow must pass the production dependency audit before installing, verify private backups and unchanged data/configuration, then check the runtime and actual assets. Real-model answer quality remains subject to practical acceptance.
+
+Rollback target:
+- `fe7f8a3` (1.2.13). Restore application code only and retain current user data, task results, allowance records and private backups.
+
 ### 1.2.13 - 2026-11-06
 
 Purpose:

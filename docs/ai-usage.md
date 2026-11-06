@@ -52,8 +52,8 @@ guaranteed exact ceiling on the provider invoice.
 
 ## Included operations and prices
 
-Account requests include Study and free chat, problem-set planning and answer
-batches, course search expansion, learning tools, Office assistance, generated
+Account requests include Study and free chat, problem-set planning, answer
+batches and independent answer/quiz review, course search expansion, learning tools, Office assistance, generated
 documents and images, schedule parsing/transcription, and mailbox analysis.
 Shared public academic-calendar lookups and operator health probes are outside
 account allowances. Video production is permanently unsupported and has no quota price.

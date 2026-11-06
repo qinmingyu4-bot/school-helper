@@ -8,7 +8,7 @@ const save = source.slice(source.indexOf("  async function confirmScheduleImport
 function harness({ origin = "quick", count = 1, failAt = 0, duplicates = false } = {}) {
   const text = "十一月三日早上九点从多伦多飞香港";
   const state = {
-    user: { id: "demo" }, page: "schedule", scheduleDraftOrigin: origin,
+    user: { id: "demo" }, page: "schedule", scheduleDraftOrigin: origin, scheduleImportBusy: false,
     scheduleDrafts: Array.from({ length: count }, (_, index) => ({ title: `Plan ${index}`, startsAt: "2026-11-03T09:00", selected: true })),
     scheduleQuickText: text, scheduleQuickStatus: "待确认", scheduleManualOpen: true,
     scheduleVoiceMessage: "已转成文字", scheduleVoiceFile: { name: "voice.webm" },
@@ -22,10 +22,10 @@ function harness({ origin = "quick", count = 1, failAt = 0, duplicates = false }
     scheduleFromDate: "2026-10-28", courses: [{ id: "course", name: "Statistics" }], scheduleItems: []
   };
   const notices = [], renders = [];
-  let calls = 0, cancelled = 0;
+  let calls = 0, cancelled = 0, focused = 0;
   const context = vm.createContext({ ui: require("../public/i18n"), state, Intl, Set,
     requestAnimationFrame: (fn) => fn(), setTimeout: (fn) => fn(),
-    updateSchedulePreviewCount() {}, updateScheduleReviewValidationNotice() {}, focusScheduleDraftIssue() {},
+    updateSchedulePreviewCount() {}, updateScheduleReviewValidationNotice() {}, focusScheduleDraftIssue() { focused++; },
     updateScheduleSaveProgress() {}, loadScheduleItems: async () => {},
     root: { querySelector: () => null },
     render: () => renders.push({ open: state.scheduleManualOpen, text: state.scheduleQuickText }),
@@ -39,8 +39,19 @@ function harness({ origin = "quick", count = 1, failAt = 0, duplicates = false }
     }
   });
   vm.runInContext(save, context);
-  return { state, text, notices, renders, run: () => context.confirmScheduleImport(), cancelled: () => cancelled };
+  return { state, text, notices, renders, run: () => context.confirmScheduleImport(), cancelled: () => cancelled, calls: () => calls, focused: () => focused };
 }
+
+test("weekly imports without term dates focus the shared term editor before any save", async () => {
+  const h = harness({ origin: "file" });
+  h.state.scheduleDrafts[0].weekly = { weekdays: [1], startTime: "10:00", endTime: "11:00" };
+  h.state.scheduleCalendar = null;
+  await h.run();
+  assert.equal(h.calls(), 0);
+  assert.equal(h.focused(), 1);
+  assert.equal(h.state.scheduleImportBusy, false);
+  assert.equal(h.state.scheduleDrafts.length, 1);
+});
 
 test("successful quick saves clear typed/transcribed input, release audio and collapse the entry panel", async () => {
   for (const duplicates of [false, true]) {

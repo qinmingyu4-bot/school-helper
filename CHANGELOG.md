@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Summary-first timetable review
+
+- Show extracted classes, times, course/location and selection as compact rows. Keep every editor closed initially, including incomplete items; open only the requested item or the first required correction when confirming.
+- Summarize shared term dates and generated event counts once, with holidays, official sources and manual term editing behind a disclosure. Mark missing details visibly, retain duplicate checks, and add select-all and collapse-all controls without losing edits or selections.
+- Validate 76 schedule/language regressions and 302-file source/assets/package checks. Chrome/WebKit checks cover collapsed defaults, keyboard editing, selection, missing details, language changes, actual saves and failed-save retries, plus 320–1280 px light/dark layouts with simulated extraction.
+
 ## Unreleased — Aligned schedule reminder settings
 
 - Place the system-reminder settings action inside the schedule content column, aligning its right edge with the calendar cards and sharing their responsive margins and vertical spacing. Use a compact desktop button and retain a 44 px touch target on phones.

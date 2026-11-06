@@ -47,6 +47,9 @@ test("homepage, authenticated entry, legacy bookmarks and OAuth use distinct pag
     const response = await request("/");
     const html = await response.text();
     assert.equal(response.status, 200);
+    assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+    assert.equal(response.headers.get("x-frame-options"), "SAMEORIGIN");
+    assert.equal(response.headers.get("content-security-policy"), "frame-ancestors 'self'");
     assert.match(html, /连接学习的每一步/);
     assert.match(html, /进入 StudyBridge/);
     assert.doesNotMatch(html, /<script[^>]+src="\/app\.js|id="root"/);
@@ -62,6 +65,7 @@ test("homepage, authenticated entry, legacy bookmarks and OAuth use distinct pag
     assert.equal(login.status, 200);
     assert.match(await login.text(), /id="root"/);
     assert.equal((await request("/api/me")).status, 401);
+    assert.match((await request("/api/me")).headers.get("cache-control"), /private.*no-store/);
     await redirect("/app", "/login");
     await redirect("/app?page=schedule", "/login?page=schedule");
     await redirect("/app", "/login", "sb_session=invalid-session");
@@ -88,6 +92,7 @@ test("homepage, authenticated entry, legacy bookmarks and OAuth use distinct pag
     const registration = await request("/api/auth/register", "", { method: "POST", body: JSON.stringify(credentials) });
     assert.equal(registration.status, 201);
     cookie = registration.headers.get("set-cookie").split(";")[0];
+    assert.match((await request("/api/me", cookie)).headers.get("cache-control"), /private.*no-store/);
     assert.match(registration.headers.get("set-cookie"), /Path=\//);
     const app = await request("/app?page=study", cookie);
     assert.equal(app.status, 200);

@@ -946,3 +946,10 @@ does not roll over. The planned month pass is C$19.99 for 30 days.
 The upgrade action appears only when live Alipay checkout is configured and open
 for that account. Full accounting, supported models, and failure/recovery behavior
 are documented in [AI usage](docs/ai-usage.md).
+
+## Operational audit
+
+See [the 2026-11-06 whole-site audit](docs/full-site-audit-2026-11-06.md) for tested
+coverage, authentication and background-write fixes, dependency verification and
+the remaining real-provider acceptance work. [Login protection](docs/login-protection.md)
+documents the failed-login policy, trusted proxy boundary and multi-instance limits.

@@ -94,3 +94,26 @@ test("usage UI displays reset, balance, estimates and gated upgrade in both lang
   assert.match(markup({ ...data, canUpgrade: true }), /Upgrade to Plus/);
   ui.setLanguage("zh-CN");
 });
+
+for (const dynamo of [false, true]) test(`${dynamo ? "DynamoDB" : "local"} allowance polling is read-only until reconciliation is needed`, async (t) => {
+  const f = await fixture(t, dynamo), s = f.service;
+  const ticket = await s.reserve("alice", 10000);
+  const before = structuredClone(await f.db.getAiUsage("alice"));
+  const change = f.db.changeAiUsage.bind(f.db);
+  let writes = 0;
+  f.db.changeAiUsage = (...args) => { writes++; return change(...args); };
+  for (let i = 0; i < 20; i++) assert.equal((await s.status("alice")).pendingUsd, 0.01);
+  assert.equal(writes, 0, "unchanged polls must not rewrite the database");
+  assert.deepEqual(await f.db.getAiUsage("alice"), before);
+  f.advance(11 * 60000);
+  assert.equal((await s.status("alice")).estimatedUsd, 0.01);
+  assert.equal(writes, 1, "expired reservations still reconcile durably");
+  await s.status("alice"); assert.equal(writes, 1);
+  await s.settle(ticket, 10000);
+  assert.equal((await s.status("alice")).usedUsd, 0.01);
+  f.advance(WEEK);
+  assert.equal((await s.status("alice")).remainingUsd, 0.5);
+  const afterReset = writes;
+  await s.status("alice"); assert.equal(writes, afterReset);
+  assert.equal((await s.status("bob")).resetsAt, null);
+});

@@ -1,15 +1,25 @@
 # Changelog
 
-## Unreleased — Summary-first timetable review
+## 1.2.18 — Compact timetable review and aligned reminder settings
 
+- Publish both owner-authorized layout improvements (`ac51ebf`, `19a7d5f`) on the latest `45aaadc` (1.2.17) baseline, preserving its login protection, security and dependency fixes. Refresh package/frontend/cache versions to 1.2.18 through the existing verified-backup AWS workflow.
 - Show extracted classes, times, course/location and selection as compact rows. Keep every editor closed initially, including incomplete items; open only the requested item or the first required correction when confirming.
 - Summarize shared term dates and generated event counts once, with holidays, official sources and manual term editing behind a disclosure. Mark missing details visibly, retain duplicate checks, and add select-all and collapse-all controls without losing edits or selections.
-- Validate 76 schedule/language regressions and 302-file source/assets/package checks. Chrome/WebKit checks cover collapsed defaults, keyboard editing, selection, missing details, language changes, actual saves and failed-save retries, plus 320–1280 px light/dark layouts with simulated extraction.
-
-## Unreleased — Aligned schedule reminder settings
+- Chrome/WebKit checks cover collapsed defaults, keyboard editing, selection, missing details, language changes, actual saves and failed-save retries, plus 320–1280 px light/dark layouts with simulated extraction.
 
 - Place the system-reminder settings action inside the schedule content column, aligning its right edge with the calendar cards and sharing their responsive margins and vertical spacing. Use a compact desktop button and retain a 44 px touch target on phones.
-- Verify Chrome/WebKit alignment and settings navigation across 320–1920 px, Chinese/English and light/dark appearances; pass the 302-file source/assets/package checks.
+- Verify Chrome/WebKit alignment and settings navigation across 320–1920 px, Chinese/English and light/dark appearances. Release validation passes all 615 merged regressions, 307-file source/assets/package checks and deployment-shell syntax; the production dependency audit reports no vulnerabilities.
+
+## 1.2.17 — Whole-site audit and failed-login protection
+
+- Add a separate sign-in failure budget: ten failures per normalized email/client-address pair in a 15-minute window, counting pending attempts. Successful login clears that pair; system failures do not count. Return a non-cacheable 429 with Retry-After and bilingual feedback while retaining form input, existing sessions and other users on the same network.
+- Trust forwarded client addresses only from the loopback Nginx proxy, canonicalize IPv4/IPv6, bound memory and login payloads, and cover expiry, concurrent attempts, proxy spoofing, shared networks and transient service failures.
+- Pin Nodemailer 10.1.4 to fix the three moderate recipient-parser advisories; retain simulated mail coverage and add recipient-boundary regressions.
+- Stop unchanged AI allowance polling from writing the full local database or transacting in DynamoDB. Keep expired-hold reconciliation, weekly rollover, reservations, pricing and AI behavior unchanged.
+- Move password work off the HTTP event loop with the same scrypt strength and existing hashes; bound work/queue sizes and preserve the account-security attempt limit under concurrency. Reject malformed login values and ignore malformed unrelated cookies safely.
+- Mark API responses private/non-cacheable and add same-origin framing and MIME-sniffing protection. No production data or configuration migration.
+- Validate 614 full-suite tests, 307-file source/assets/package checks, 84 Chrome/WebKit page/language/viewport combinations and 24 bilingual login limit/overload feedback checks, including retained inputs and successful sign-in. Official advisory lookup reports no advisories for 261 production dependency names; CI independently gates the production dependency audit.
+- Publish the owner-authorized audit fixes and login protection together using the existing backup, unchanged-data/configuration verification and code rollback workflow. Update package/frontend versions to 1.2.17; keep AI models, reasoning, prompts, retrieval, context and independent review unchanged. See [the audit report](docs/full-site-audit-2026-11-06.md) and [login protection operations](docs/login-protection.md) for scope and limits.
 
 ## 1.2.16 — Smooth streamed answers without reducing AI quality
 

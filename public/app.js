@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.2.16";
+  const VERSION = "1.2.18";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -3259,7 +3259,11 @@
         return;
       }
     } catch (error) {
-      if (!state.user && root.querySelector(".auth-feedback")) authMessage(error.message);
+      if (!state.user && root.querySelector(".auth-feedback")) {
+        authMessage(action === "login" && error.status === 429 && error.retryAfter > 0
+          ? ui.message`登录尝试过于频繁，请在 ${Math.ceil(error.retryAfter)} 秒后重试。`
+          : ui.text(error.message));
+      }
       else { setToast(error.message); render(); }
     } finally {
       if (authSubmission && button.isConnected) button.disabled = false;

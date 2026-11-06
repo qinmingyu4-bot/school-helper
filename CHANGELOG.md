@@ -2,6 +2,9 @@
 
 ## Unreleased — Reliable AI tutoring and practice review
 
+- Missing-input follow-up: stop conversational generation when required originals are unavailable or text refers to a missing figure. Keep independent readable background questions progressing when another original fails to load, with a specific recovery message and retry limited to blocked questions.
+- Give every incomplete task an add-image/details entry carrying the original request and unfinished question numbers, preserving drafts and completed answers. Keep retry available for mixed failures; reject no-op retries when clearer input is required. Independently review unreadable-labelled prose too, and require helpful, approachable teaching without guessed conditions or answers.
+- Missing-input validation: 582 full-suite regressions pass, plus 23 focused regressions after hardening thrown file-read failures; source/assets/package checks cover 295 JavaScript files. HTTP regressions cover both chat transports, missing originals, supplied transcriptions and restored visuals with simulated AI.
 - Second review: preserve detected subparts and inspected PDF pages; distinguish reference filenames from solving targets; pass verified prerequisite results across batches and block dependent answers when prerequisites are unreadable. Keep retry actions on mixed unresolved/failed tasks and reject missing visuals at solve time. Retain earlier full derivations alongside later clarifications.
 - Hide both proposed answer indices and author explanations during quiz review; store independently derived explanations in the resolved learning languages.
 - Respect hint-only, interactive, specific-question and time-budget requests before routing whole-paper jobs. Preserve the complete-teaching shortcut and all files in a retained upload group.

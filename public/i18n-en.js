@@ -331,6 +331,15 @@ PDF 页码|Physical PDF pages
 请补充标明题号的清晰题图或资料|Please provide a clear image or source for the specified question
 停止任务|Stop task
 重试未完成题目|Retry unfinished questions
+补充题图或条件|Add a clear image or missing details
+补充资料后继续提问，已完成的解答会保留。|Continue with added information. Completed answers stay saved.
+请结合这次补充的题图或条件，继续以下未完成题目：|Use the newly supplied images or details to continue these unfinished questions:
+上次未能读清的题目|the questions that could not be read last time
+只处理这些题目；请讲清方法和关键步骤。资料仍不足时，请指出具体缺项，不要猜答案。|Work only on these questions and explain the method and key steps. If details are still missing, identify them specifically without guessing an answer.
+补充说明：|Additional details:
+原提问：|Original request:
+部分题目的原图未能读取，请重试或补充清晰题图。|Original images for some questions could not be read. Retry or add clear images.
+剩余题目需要补充清晰题图或条件，请使用补充入口后发送。已完成的解答会保留。|The remaining questions need clear images or missing details. Use the add-information button, then send. Completed answers stay saved.
 后台会继续处理，刷新页面可恢复进度。|Work continues in the background. Refresh to restore progress.
 进度暂时无法更新，后台任务仍在继续。|Progress is temporarily unavailable. Work continues in the background.
 已完成 {0}/{1} 题|Completed {0}/{1} questions

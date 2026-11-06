@@ -548,8 +548,23 @@ planning, reviewed original-page selections are retained, and required question
 visuals are checked again before solving. Dependent questions run in later batches
 and receive verified prerequisite results; unreadable prerequisites remain explicit
 instead of being guessed. Mixed unreadable/failed tasks keep their retry action.
+Every incomplete task also offers an add-information entry that prepares a follow-up
+with the original request, source names and unfinished question numbers. It preserves
+the student's draft and completed answers; added information is sent as a new
+follow-up, so it does not rewrite the earlier task's completion record. Unreadable-only
+tasks request clearer input rather than performing a no-op retry. Original-file
+loading failures retain a retry action and do not discard independent readable
+questions in the same batch.
+Conversational replies (streaming and non-streaming) also stop before generation
+when a requested original is absent/omitted or text explicitly references a missing
+figure. They request the relevant crop, full wording, labels and units. These checks
+cover known input gaps, not semantic image readability; supplied but blurry figures
+still depend on model recognition. Tutoring instructions require confirmed facts,
+useful next steps and a clear distinction between a general method and an unresolved
+answer, with no invented values or conclusions for the sake of engagement.
 A separate model review checks each batch's
-calculations, requested working and evidence before results are saved. Rejected
+calculations, requested working and evidence before results are saved, including
+prose in parts labelled unreadable so that label cannot hide a guessed answer. Rejected
 questions retry within the existing two-attempt/120-second-per-batch bounds;
 completed questions are preserved. Review failure never approves an answer by
 default. These extra calls add latency and usage; model review is not a mathematical

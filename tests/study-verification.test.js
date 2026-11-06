@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { verifyQuiz } = require("../lib/study-verification");
+const { verifyQuiz, verifyWorkedAnswers } = require("../lib/study-verification");
 const questions = [{ prompt: "What is 2 + 2?", choices: ["4", "5", "6", "7"], answerIndex: 0, explanations: ["2 + 2 = 4", "Not 5", "Not 6", "Not 7"], source: { quote: "Adding two pairs gives four." } }];
 const check = { id: 0, correctIndices: [0], grounded: true, explanations: ["Independent calculation: 2 + 2 = 4", "Adding two pairs is not five", "Adding two pairs is not six", "Adding two pairs is not seven"] };
 
@@ -21,4 +21,16 @@ test("wrong, ambiguous, unsupported, incomplete and malformed reviews are reject
   }
   await assert.rejects(verifyQuiz(async () => "invalid", questions, []));
   await assert.rejects(verifyQuiz(async () => { throw Error("Provider timeout"); }, questions, []));
+});
+
+test("unreadable answers are also reviewed so the label cannot conceal a guessed final answer", async () => {
+  const answers = [{ id: "q1", parts: [{ id: "a", status: "unreadable", text: "The figure is missing, but the answer is probably 42." }] }];
+  let reviewed = false;
+  const result = await verifyWorkedAnswers(async (messages) => {
+    reviewed = true;
+    assert.deepEqual(JSON.parse(messages[1].content).proposedAnswers, answers);
+    assert.match(messages[0].content, /no guessed values or final answer/);
+    return JSON.stringify({ checks: [{ id: "q1", valid: false }] });
+  }, [{}, { content: JSON.stringify({ questions: [{ id: "q1" }] }) }], [], new AbortController().signal, answers);
+  assert(reviewed); assert.deepEqual(result, []);
 });

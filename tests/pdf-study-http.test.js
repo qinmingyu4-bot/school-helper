@@ -87,4 +87,26 @@ test("study PDFs retain original private bytes across restart, API transports, s
   assert(incomplete.status >= 400, "A truncated provider answer must not be reported as complete");
   const incompleteHistory = await request(incompleteRoute + "/messages", "GET", null, cookie);
   assert(!incompleteHistory.data.messages.some((item) => item.role === "assistant" && !item.interrupted));
+
+  const missingCourse = await request("/api/courses", "POST", { name: "Missing question figure" }, cookie), missingRoute = `/api/courses/${missingCourse.data.course.id}`;
+  const missing = await request(missingRoute + "/chat", "POST", { message: "请解答第一题", attachments: [{ name: "figure-question.txt", kind: "text", text: "Question 1: Find x from the graph." }] }, cookie);
+  assert.equal(missing.status, 201); assert.match(missing.data.messages[1].content, /figure-question.txt/);
+  assert.match(missing.data.messages[1].content, /不能给出可靠答案/);
+  const missingStream = await fetch(base + missingRoute + "/chat", { method: "POST", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ stream: true, mode: "guided", message: "继续解答第一题" }) });
+  let missingDone, streamedText = "";
+  await readEvents(missingStream, ({ event, data }) => { if (event === "delta") streamedText += JSON.parse(data).text; if (event === "done") missingDone = JSON.parse(data); });
+  assert(missingDone); assert.equal(streamedText, missingDone.messages[1].content); assert.match(streamedText, /图中标注和单位/);
+  const typed = await request(missingRoute + "/chat", "POST", { message: "继续 figure-question.txt。补充说明：图中直角三角形两条直角边分别为 3 和 4，x 为斜边长。" }, cookie);
+  assert.equal(typed.status, 201); assert.match(JSON.parse(typed.data.messages[1].content).input[0].content, /Never infer missing labels/);
+  const repaired = await request(missingRoute + "/chat", "POST", { message: "请根据补充的原图继续第一题", attachments: [{ name: "figure.pdf", mime: "application/pdf", dataUrl }] }, cookie);
+  assert.equal(repaired.status, 201);
+  assert.equal(JSON.parse(repaired.data.messages[1].content).input[1].content.find((part) => part.type === "input_file").file_data, dataUrl);
+
+  const lostDoc = await request(missingRoute + "/documents", "POST", { title: "lost-original.pdf", fileName: "lost-original.pdf", fileType: "application/pdf", fileData: pdf.toString("base64") }, cookie);
+  const lostState = JSON.parse(await fs.readFile(database, "utf8"));
+  const lostRow = Object.values(lostState.materials).find((row) => row.id === `DOCFILE#${lostDoc.data.document.id}#PDF`);
+  await require("../lib/material-files").remove(database, lostRow.userId, lostRow.courseId, lostRow.id);
+  const lostReply = await request(missingRoute + "/chat", "POST", { message: "请讲解 lost-original.pdf 第一题" }, cookie);
+  assert.equal(lostReply.status, 201); assert.match(lostReply.data.messages[1].content, /lost-original.pdf/);
+  assert.match(lostReply.data.messages[1].content, /不能给出可靠答案/);
 });

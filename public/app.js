@@ -2695,6 +2695,15 @@
         activeStudyReply()?.controller.abort();
         return;
       }
+      if (action === "study-task-supplement") {
+        const prompt = studyTasks?.supplement(button.dataset.job, state.messages), input = $("chatInput");
+        if (prompt && input) {
+          if (!input.value.includes(prompt)) input.value = [input.value.trim(), prompt].filter(Boolean).join("\n\n");
+          studyComposer.resize(); input.scrollIntoView({ block: "center" }); input.focus();
+          input.setSelectionRange(input.value.length, input.value.length);
+        }
+        return;
+      }
       if (action === "stop-study-task" || action === "study-task-cancel" || action === "study-task-retry") {
         const id = button.dataset.job || activeStudyTask()?.id;
         if (id) await studyTasks.action(id, action === "study-task-retry" ? "retry" : "cancel");

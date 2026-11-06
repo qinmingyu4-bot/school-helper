@@ -258,3 +258,43 @@ test("course PDF planning validates reviewed pages against retained original met
   const done = await waitFor(() => service.get("alice", "math", job.id), (job) => job.status === "failed");
   assert(sawPageCount); assert.equal((await service.publicJob(done)).completed, 0);
 });
+
+test("a text question referring to a missing figure is withheld while independent questions finish", async (t) => {
+  const f = await fixture(t), service = f.service();
+  const paper = { ...f.context.attachments[0], text: f.context.attachments[0].text.replace("1. Explain opportunity cost.", "1. Find x from the graph.") };
+  const context = { ...f.context, attachments: [paper] }, detected = detectSet({ message: context.message, sources: [{ ...paper, id: "upload:0" }] });
+  const job = await service.create(context, detected, "text-missing-figure");
+  const done = await waitFor(() => service.get("alice", "math", job.id), (job) => job.status === "needs_input");
+  const view = await service.publicJob(done);
+  assert.equal(view.completed, 19); assert.deepEqual(view.remaining, ["1"]); assert(view.needsInput);
+  assert.match(view.content, /questions.txt · 1/); assert.match(view.content, /图中标注和单位/);
+  assert.equal(f.calls.get("q1"), undefined); assert.equal(f.calls.get("q2"), 1);
+  await assert.rejects(service.retry(done), /补充清晰题图或条件/);
+  assert.equal((await service.get("alice", "math", job.id)).status, "needs_input");
+});
+
+test("missing originals do not discard readable questions in the same batch and retry restores only the blocked question", async (t) => {
+  let available = true, reads = 0;
+  const image = { name: "extra.png", kind: "image", dataUrl: "data:image/png;base64,fixture" };
+  const f = await fixture(t, {
+    loadVisual: async () => { if (++reads === 1 || available) return image; throw new Error("Original file unavailable"); },
+    plan: async (messages) => {
+      const input = JSON.parse(messages[1].content), sourceId = input.reviewSourceIds[0]; available = false;
+      return JSON.stringify({ sourceChecks: [{ sourceId, status: "complete" }], questions: [
+        ...input.questions, { id: "q21", sourceId, number: 21, text: "Read the graph", parts: ["answer"], pages: [] }
+      ] });
+    }
+  });
+  const paper = { ...f.context.attachments[0], text: f.context.attachments[0].text.split("\n").slice(0, 18).join("\n") };
+  const context = { ...f.context, attachments: [paper, image] }, service = f.service();
+  const detected = detectSet({ message: context.message, sources: context.attachments.map((item, i) => ({ ...item, id: `upload:${i}` })) });
+  const job = await service.create(context, detected, "restore-original-only");
+  const partial = await waitFor(() => service.get("alice", "math", job.id), (job) => job.status === "partial");
+  assert.equal((await service.publicJob(partial)).completed, 6); assert.equal(f.calls.get("q6"), 1);
+  assert.match(partial.error, /原图未能读取/); assert(partial.inputIssues.q21);
+  available = true;
+  await Promise.all([service.retry(partial), service.retry(partial)]);
+  const completed = await waitFor(() => service.get("alice", "math", job.id), (job) => job.status === "completed");
+  assert.equal((await service.publicJob(completed)).completed, 7); assert.deepEqual(completed.inputIssues, {});
+  assert.equal(f.calls.get("q6"), 1); assert.equal(f.calls.get("q21"), 1);
+});

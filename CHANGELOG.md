@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.23 — Keep schedule entries out of course materials
+
+- Exclude timetable meetings and other schedule entries from the Study sidebar’s course materials list and count.
+
 ## 1.2.22 — Email password reset
 
 - Open a bilingual password reset form from the sign-in page. Use the six-digit code delivered to the account email, confirm a new password, and return to sign in.

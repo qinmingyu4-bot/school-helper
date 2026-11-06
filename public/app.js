@@ -233,6 +233,7 @@
     status: null,
     googleEnabled: false,
     authConfig: null,
+    authMode: "login",
     toast: "",
     busy: false,
     uploadFiles: []
@@ -448,8 +449,10 @@
     return blocks.join("");
   }
 
-  function authHtml(mode = "login") {
+  function authHtml(mode) {
     const register = mode === "register";
+    const reset = mode === "reset";
+    const registerWithCode = register && state.authConfig?.emailVerificationRequired !== false;
     return ui.html`
       <main class="auth-shell auth-entry">
         <header class="auth-header">
@@ -464,31 +467,32 @@
         <section class="auth-card" aria-labelledby="authTitle">
           <div class="auth-intro">
             <p class="auth-eyebrow">YOUR STUDY, CONNECTED</p>
-            <h1 id="authTitle">${register ? ui.text("创建你的学习空间") : ui.text("欢迎回到 StudyBridge")}</h1>
-            <p>${register ? ui.text("注册普通账号，填写有效邀请码可成为 Plus 用户。") : ui.text("Google 可直接进入，首次使用将自动创建普通账号。")}</p>
+            <h1 id="authTitle">${reset ? ui.text("重置密码") : register ? ui.text("创建你的学习空间") : ui.text("欢迎回到 StudyBridge")}</h1>
+            <p>${reset ? ui.text("使用账号邮箱接收验证码，然后设置新密码。") : register ? ui.text("注册普通账号，填写有效邀请码可成为 Plus 用户。") : ui.text("Google 可直接进入，首次使用将自动创建普通账号。")}</p>
           </div>
-          <div class="segmented" role="group" aria-label="选择登录或注册">
+          ${reset ? "" : ui.html`<div class="segmented" role="group" aria-label="选择登录或注册">
             <button data-action="auth-tab" data-tab="login" aria-pressed="${!register}" class="${register ? "" : "active"}">登录</button>
             <button data-action="auth-tab" data-tab="register" aria-pressed="${register}" class="${register ? "active" : ""}">注册</button>
-          </div>
+          </div>`}
           ${register ? ui.html`<label>姓名<input id="authName" placeholder="你的名字"></label>` : ""}
           <label>Email<input id="authEmail" type="email" autocomplete="email" placeholder="you@example.com"></label>
-          <label>密码<input id="authPassword" type="password" autocomplete="${register ? "new-password" : "current-password"}" placeholder="至少 8 位"></label>
+          ${reset ? authCodeHtml(true) : ""}
+          <label>${ui.text(reset ? "新密码" : "密码")}<input id="authPassword" type="password" autocomplete="${register || reset ? "new-password" : "current-password"}" placeholder="${ui.text(reset ? "8–128 个字符" : "至少 8 位")}"></label>
+          ${register || reset ? ui.html`<label>${ui.text(reset ? "确认新密码" : "确认密码")}<input id="authPasswordConfirm" type="password" autocomplete="new-password" placeholder="再输入一次密码"></label>` : ""}
           ${register ? ui.html`
-            <label>确认密码<input id="authPasswordConfirm" type="password" autocomplete="new-password" placeholder="再输入一次密码"></label>
             <label>邀请码（选填）<input id="authInvite" placeholder="有邀请码可成为 Plus 用户" aria-describedby="authInviteHelp"></label><p id="authInviteHelp" class="auth-code-help">留空即可注册普通用户，也可登录后在设置中补填。Plus 享有 4 倍每周 AI 额度。</p>
-            ${state.authConfig?.emailVerificationRequired !== false ? ui.html`<label for="authEmailCode">邮箱验证码</label>
-            <div class="inline-fields">
-              <input id="authEmailCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" aria-describedby="authCodeHelp" placeholder="输入 6 位验证码">
-              <button data-action="send-email-code">发送验证码</button>
-            </div>
-            <p id="authCodeHelp" class="auth-code-help">确认邮箱无误后发送验证码，收取邮件并填写后才能创建账号。</p>` : ""}
+            ${registerWithCode ? authCodeHtml(false) : ""}
           ` : ""}
-          <button class="primary wide" data-action="${register ? "register" : "login"}" ${register && !state.authConfig ? "disabled" : ""}>${register ? ui.text("创建账号") : ui.text("登录")}</button>
-          <div class="or-line"><span>或</span></div>
-          <button class="ghost wide auth-google" data-action="google-login" data-auth-mode="${mode}" ${state.googleEnabled ? "" : "disabled"}>使用 Google 继续${state.googleEnabled ? "" : ui.text("待配置")}</button>
-          ${register ? "" : ui.html`<button class="link-button" data-action="forgot-password">忘记密码？</button>`}
-          <p class="notice auth-feedback" role="status" aria-live="polite" ${state.toast ? "" : "hidden"}>${esc(state.toast)}</p>
+          ${reset ? ui.html`
+            <button class="primary wide" data-action="confirm-password-reset" ${passwordResetPending ? "disabled" : ""}>保存新密码</button>
+            <button class="link-button" data-action="back-to-login">返回登录</button>
+          ` : ui.html`
+            <button class="primary wide" data-action="${register ? "register" : "login"}" ${register && !state.authConfig ? "disabled" : ""}>${ui.text(register ? "创建账号" : "登录")}</button>
+            <div class="or-line"><span>或</span></div>
+            <button class="ghost wide auth-google" data-action="google-login" data-auth-mode="${mode}" ${state.googleEnabled ? "" : "disabled"}>使用 Google 继续${state.googleEnabled ? "" : ui.text("待配置")}</button>
+            ${register ? "" : ui.html`<button class="link-button" data-action="forgot-password">忘记密码？</button>`}
+          `}
+          <p class="notice auth-feedback" role="status" aria-live="polite" ${state.toast ? "" : "hidden"}>${esc(ui.text(state.toast))}</p>
         </section>
         <p class="auth-footnote">课程、资料与对话，都在你的学习空间。</p>
         </div>
@@ -496,7 +500,30 @@
     `;
   }
 
+  function authCodeHtml(reset) {
+    return ui.html`<label for="authEmailCode">邮箱验证码</label>
+      <div class="inline-fields">
+        <input id="authEmailCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" aria-describedby="authCodeHelp" placeholder="输入 6 位验证码">
+        <button data-action="send-email-code">发送验证码</button>
+      </div>
+      <p id="authCodeHelp" class="auth-code-help">${ui.text(reset
+        ? "验证码会发送到已注册的邮箱，请查看收件箱或垃圾邮件。"
+        : "确认邮箱无误后发送验证码，收取邮件并填写后才能创建账号。")}</p>`;
+  }
+
+  let passwordResetPending = false;
   const emailCooldowns = new Map();
+  const sendingEmailCodes = new Set();
+  const emailCodeKey = (email) => `${state.authMode}:${email}`;
+  const authEmail = () => $("authEmail")?.value.trim().toLowerCase() || "";
+  function switchAuthMode(mode, { email = "", message = "", focus } = {}) {
+    state.authMode = mode;
+    state.toast = message;
+    root.innerHTML = authHtml(mode);
+    $("authEmail").value = email;
+    updateEmailCooldown();
+    if (focus) $(focus)?.focus();
+  }
   let emailCooldownTimer;
   function authMessage(message) {
     const node = root.querySelector(".auth-feedback");
@@ -505,15 +532,16 @@
   function updateEmailCooldown() {
     const button = root.querySelector('[data-action="send-email-code"]');
     if (!button) { clearInterval(emailCooldownTimer); emailCooldownTimer = null; return; }
-    const email = $("authEmail")?.value.trim().toLowerCase();
-    const seconds = Math.max(0, Math.ceil(((emailCooldowns.get(email) || 0) - Date.now()) / 1000));
-    button.disabled = button.dataset.sending === "true" || seconds > 0;
-    button.textContent = button.dataset.sending === "true" ? ui.text("发送中…") : seconds ? ui.message`${seconds} 秒后重发` : ui.text("发送验证码");
+    const key = emailCodeKey(authEmail());
+    const sending = sendingEmailCodes.has(key);
+    const seconds = Math.max(0, Math.ceil(((emailCooldowns.get(key) || 0) - Date.now()) / 1000));
+    button.disabled = sending || seconds > 0;
+    button.textContent = sending ? ui.text("发送中…") : seconds ? ui.message`${seconds} 秒后重发` : ui.text("发送验证码");
     if (seconds > 0 && !emailCooldownTimer) emailCooldownTimer = setInterval(updateEmailCooldown, 1000);
     if (!seconds && emailCooldownTimer) { clearInterval(emailCooldownTimer); emailCooldownTimer = null; }
   }
-  function startEmailCooldown(email, seconds) {
-    emailCooldowns.set(email, Date.now() + seconds * 1000);
+  function startEmailCooldown(key, seconds) {
+    emailCooldowns.set(key, Date.now() + seconds * 1000);
     clearInterval(emailCooldownTimer);
     emailCooldownTimer = null;
     updateEmailCooldown();
@@ -735,7 +763,7 @@
   }
 
   function routeHtml() {
-    if (!state.user) return authHtml();
+    if (!state.user) return authHtml(state.authMode);
     if (state.mode === "admin") return shellHtml(adminPage());
     const pages = {
       study: studyPage,
@@ -2654,12 +2682,11 @@
       if (action === "view-chat-image") { showChatImage(button.dataset.imageUrl, button.dataset.imageName); return; }
       if (action.startsWith("creative-")) { await creativeTools.handle(button, creativeContext()); return; }
       if (action === "auth-tab") {
-        state.toast = "";
-        root.innerHTML = authHtml(button.dataset.tab);
-        updateEmailCooldown();
+        switchAuthMode(button.dataset.tab);
         return;
       }
       if (action === "login") {
+        state.toast = "";
         const data = await api("/api/auth/login", { method: "POST", body: { email: $("authEmail")?.value || "", password: $("authPassword")?.value || "" } });
         state.user = data.user;
         state.mode = "student";
@@ -2690,26 +2717,35 @@
       }
       if (action === "send-email-code") {
         const input = $("authEmail");
-        const email = input?.value.trim().toLowerCase() || "";
+        const email = authEmail();
+        const key = emailCodeKey(email);
+        const reset = state.authMode === "reset";
         if (!email || !input.checkValidity()) { input?.reportValidity(); throw new Error(ui.text("请先填写正确的邮箱地址。")); }
-        if (state.authConfig?.inviteRequired && !$("authInvite")?.value.trim()) { $("authInvite")?.focus(); throw new Error(ui.text("请先填写邀请码。")); }
-        if (button.disabled) return;
-        button.dataset.sending = "true";
+        if (!reset && state.authConfig?.inviteRequired && !$("authInvite")?.value.trim()) { $("authInvite")?.focus(); throw new Error(ui.text("请先填写邀请码。")); }
+        if (sendingEmailCodes.has(key)) return;
+        sendingEmailCodes.add(key);
         updateEmailCooldown();
         authMessage("");
         try {
-          const data = await api("/api/auth/send-verification", { method: "POST", body: { email, inviteCode: $("authInvite")?.value || "" } });
-          if (!button.isConnected) return;
-          startEmailCooldown(email, data.resendAfter || 0);
-          if (data.emailDelivery === "disabled") authMessage(data.message);
+          const data = await api(reset ? "/api/auth/request-password-reset" : "/api/auth/send-verification", {
+            method: "POST", body: reset ? { email } : { email, inviteCode: $("authInvite")?.value || "" }
+          });
+          startEmailCooldown(key, data.resendAfter || 0);
+          if (emailCodeKey(authEmail()) !== key || state.user) return;
+          if (reset) {
+            authMessage(ui.text("如果该邮箱已注册，请查收验证码。收不到时请检查垃圾邮件，或稍后重新发送。"));
+          } else if (data.emailDelivery === "disabled") authMessage(data.message);
           else if (data.emailDelivery === "page") {
-            if (input.value.trim().toLowerCase() === email) $("authEmailCode").value = data.emailCode;
+            $("authEmailCode").value = data.emailCode;
             authMessage(data.message);
           } else authMessage(ui.message`验证码已发送至 ${email}，${Math.ceil(data.expiresIn / 60)} 分钟内有效。请查看收件箱或垃圾邮件。`);
         } catch (error) {
-          if (error.retryAfter) startEmailCooldown(email, error.retryAfter);
-          throw error;
-        } finally { delete button.dataset.sending; updateEmailCooldown(); }
+          if (error.retryAfter) startEmailCooldown(key, error.retryAfter);
+          if (emailCodeKey(authEmail()) === key && !state.user) throw error;
+        } finally {
+          sendingEmailCodes.delete(key);
+          updateEmailCooldown();
+        }
         return;
       }
       if (action === "google-login") {
@@ -2718,12 +2754,36 @@
         location.assign(`/api/auth/google/start?${params}`);
         return;
       }
-      if (action === "forgot-password") {
-        const email = $("authEmail")?.value || "";
-        if (!email) throw new Error(ui.text("请先填写邮箱。"));
-        await api("/api/auth/request-manual-reset", { method: "POST", body: { email } });
-        setToast(ui.text("已提交密码重置申请，请联系创作者。"));
-        render();
+      if (action === "forgot-password" || action === "back-to-login") {
+        switchAuthMode(action === "forgot-password" ? "reset" : "login", { email: $("authEmail")?.value.trim(), focus: "authEmail" });
+        return;
+      }
+      if (action === "confirm-password-reset") {
+        if (passwordResetPending) return;
+        const input = $("authEmail");
+        const email = authEmail();
+        if (!email || !input.checkValidity()) { input.reportValidity(); throw new Error(ui.text("请先填写正确的邮箱地址。")); }
+        const code = $("authEmailCode");
+        if (!/^\d{6}$/.test(code.value.trim())) {
+          code.focus();
+          throw new Error(ui.text("请先向邮箱发送验证码，再填写收到的 6 位验证码。"));
+        }
+        passwordResetPending = true;
+        button.disabled = true;
+        authMessage("");
+        const isCurrent = () => !state.user && state.authMode === "reset" && authEmail() === email;
+        try {
+          await api("/api/auth/reset-password", { method: "POST", body: {
+            email, emailCode: code.value, password: $("authPassword").value, passwordConfirm: $("authPasswordConfirm").value
+          } });
+          if (isCurrent()) switchAuthMode("login", { email, message: "密码已重置，请使用新密码登录。", focus: "authPassword" });
+        } catch (error) {
+          if (isCurrent()) throw error;
+        } finally {
+          passwordResetPending = false;
+          const submit = root.querySelector('[data-action="confirm-password-reset"]');
+          if (submit) submit.disabled = false;
+        }
         return;
       }
       if (action === "settings") {
@@ -3658,6 +3718,7 @@
 
   document.addEventListener("input", (event) => {
     if (event.target.id === "authEmail") {
+      state.toast = "";
       if ($("authEmailCode")) $("authEmailCode").value = "";
       authMessage("");
       updateEmailCooldown();
@@ -3777,6 +3838,12 @@
   });
 
   document.addEventListener("keydown", (event) => {
+    if (!state.user && state.authMode === "reset" && event.key === "Enter" && !event.isComposing
+      && event.target?.matches?.(".auth-card input")) {
+      event.preventDefault();
+      root.querySelector('[data-action="confirm-password-reset"]')?.click();
+      return;
+    }
     if (event.target?.id === "chatInput" && event.key === "Enter") {
       if (event.defaultPrevented || event.isComposing || event.keyCode === 229 || composingChatInputs.has(event.target)) return;
       if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
@@ -4007,9 +4074,7 @@
     const fields = Array.from(root.querySelectorAll("input, textarea, select")).filter((field) => field.id && !field.matches("[data-interface-language]"))
       .map((field) => ({ id: field.id, value: field.value, checked: field.checked, files: field.files, start: field.selectionStart, end: field.selectionEnd }));
     const activeId = document.activeElement?.id;
-    const authMode = root.querySelector('[data-action="auth-tab"][aria-pressed="true"]')?.dataset.tab;
     render();
-    if (!state.user && authMode === "register") root.innerHTML = authHtml("register");
     for (const field of fields) {
       const target = $(field.id);
       if (!target) continue;

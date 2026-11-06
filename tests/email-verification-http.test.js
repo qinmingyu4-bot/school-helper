@@ -5,8 +5,9 @@ const path = require("node:path");
 const { spawn } = require("node:child_process");
 const { once } = require("node:events");
 const { test } = require("node:test");
+const { setTimeout: delay } = require("node:timers/promises");
 
-test("production registration requires delivered mailbox-bound codes and preserves existing logins", { timeout: 30000 }, async (t) => {
+test("registration and password reset require delivered mailbox-bound codes", { timeout: 30000 }, async (t) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "studybridge-email-"));
   const mailFile = path.join(directory, "mail.jsonl");
   const child = spawn(process.execPath, ["--require", "./tests/fixtures/verification-mail.js", "server.js"], {
@@ -61,15 +62,45 @@ test("production registration requires delivered mailbox-bound codes and preserv
   const cookie = account.headers.get("set-cookie").split(";")[0];
   const status = await request("/api/admin/system-status", undefined, cookie);
   assert.equal(status.data.email.fallbackAllowed, false);
-  const reset = await request("/api/auth/request-password-reset", { email: details.email });
-  assert.equal(reset.data.emailDelivery, "email");
-  const resetMail = JSON.parse((await fs.readFile(mailFile, "utf8")).trim().split("\n").at(-1));
-  const resetCode = resetMail.text.match(/\d{6}/)[0];
-  assert.equal((await request("/api/auth/reset-password", { ...registration, emailCode: resetCode })).status, 200);
+  const requestReset = (email) => request("/api/auth/request-password-reset", { email });
+  const crossSiteForm = await fetch(base + "/api/auth/request-password-reset", {
+    method: "POST", headers: { "content-type": "text/plain" }, body: JSON.stringify({ email: details.email })
+  });
+  assert.equal(crossSiteForm.status, 415);
+  const reset = await requestReset(details.email.toUpperCase());
+  assert.equal(reset.status, 200);
+  assert.deepEqual(reset.data, { ok: true, resendAfter: 60, expiresIn: 900 });
+  const unknown = await requestReset("unknown@example.test");
+  assert.equal(unknown.status, reset.status);
+  assert.deepEqual(unknown.data, reset.data);
+  const repeated = await requestReset(details.email);
+  assert.equal(repeated.status, reset.status);
+  assert.deepEqual(repeated.data, reset.data);
+  let messages = [];
+  for (let attempt = 0; attempt < 100; attempt++) {
+    messages = (await fs.readFile(mailFile, "utf8")).trim().split("\n").map(JSON.parse);
+    if (messages.length >= 2) break;
+    await delay(20);
+  }
+  assert.deepEqual(messages.map((message) => message.to), [details.email, details.email]);
+  const resetCode = messages[1].text.match(/\d{6}/)[0];
+  const newPassword = "Replacement-Password-2026!";
+  const replacement = { email: details.email, password: newPassword, passwordConfirm: newPassword, emailCode: resetCode };
+  const wrongCode = resetCode === "123456" ? "654321" : "123456";
+  const wrong = await request("/api/auth/reset-password", { ...replacement, emailCode: wrongCode });
+  assert.equal(wrong.status, 400);
+  assert.deepEqual((await request("/api/auth/reset-password", { ...replacement, email: "unknown@example.test" })).data, wrong.data);
+  assert.equal((await request("/api/auth/reset-password", { ...replacement, passwordConfirm: "Different!" })).status, 400);
+  assert.equal((await request("/api/auth/reset-password", { ...registration, emailCode: resetCode })).status, 400);
+  assert.equal((await request("/api/admin/system-status", undefined, cookie)).status, 200);
+  const races = await Promise.all([replacement, replacement].map((body) => request("/api/auth/reset-password", body)));
+  assert.equal(races.filter((result) => result.status === 200).length, 1);
   assert.equal((await request("/api/auth/reset-password", { ...registration, emailCode: resetCode })).status, 400);
   assert.equal((await request("/api/admin/system-status", undefined, cookie)).status, 401);
-  const signedIn = await request("/api/auth/login", registration);
+  assert.equal((await request("/api/auth/login", registration)).status, 401);
+  const signedIn = await request("/api/auth/login", replacement);
   assert.equal(signedIn.status, 200);
+  assert.equal(signedIn.data.user.id, account.data.user.id);
   const refreshedCookie = signedIn.headers.get("set-cookie").split(";")[0];
   const invitation = await request("/api/admin/invites", { label: "Delivery failure test" }, refreshedCookie);
   assert.equal(invitation.status, 201);
@@ -89,4 +120,8 @@ test("production registration requires delivered mailbox-bound codes and preserv
   assert.equal(standardAccount.data.user.membershipTier, "standard");
   assert.equal(account.data.user.membershipTier, "plus");
 
+  for (let i = 0; i < 7; i++) assert.equal((await requestReset(`unused-${i}@example.test`)).status, 200);
+  const limited = await requestReset(details.email);
+  assert.equal(limited.status, 429);
+  assert.ok(Number(limited.headers.get("retry-after")) > 0);
 });

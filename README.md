@@ -250,7 +250,7 @@ OWNER_INVITE_CODE=your-private-creator-code
 
 Register with that email and owner invite code. After login, the creator console appears inside the app.
 
-### Registration email verification
+### Registration email verification and password reset
 
 Email/password registration uses a six-digit code delivered to the entered mailbox.
 Set `REQUIRE_EMAIL_VERIFICATION=true` and configure `SMTP_HOST`, `SMTP_PORT`,
@@ -271,15 +271,18 @@ For isolated development only, explicitly enable this flag to use a setup fallba
 Production defaults to verification required when the requirement flag is absent;
 an explicit `false` retains the previous registration mode during rollout.
 
-Existing password logins and manual password-reset requests remain available.
 Google first entry accepts Google's verified email and the same optional Plus invitation; both login and registration automatically create an ordinary account when needed.
-The delivered-code password-reset API shares expiration, resend and attempt limits.
+From the sign-in page, choose **Forgot password?**, request a code at the account email,
+and confirm a new password of 8–128 characters. Reset codes use the same mail service
+and expiration, resend and attempt limits as registration, even when registration
+verification is disabled. They are delivered only by email. Resetting replaces the
+previous password and revokes existing sessions. Sign in again with the new password.
+Creator-assisted recovery remains available from account security settings.
 
 Before release: configure and verify a sender, set the requirement flag to `true`,
 check the developer email status, then test real inbox delivery (including spam),
 resending, incorrect/expired codes, changed addresses, successful invited registration,
-and an existing account login. This branch uses isolated mail fixtures; no live mail
-service has been configured and no AWS deployment is included.
+and password reset for an existing account.
 
 Recent online times begin with successful logins and authenticated browser activity.
 Visible tabs report at most once per minute while recently active; hidden tabs and
@@ -314,8 +317,9 @@ navigation on mobile. **退出登录** remains inside Settings. Categories are:
   password to change it. The password is 8–128 characters and must be confirmed.
   Google and email/password sign-in continue to use the same account, SB ID and
   saved data. Saving rotates the current session and invalidates other sessions;
-  Google remains linked. Forgotten passwords retain the creator-assisted recovery
-  flow. Password fields clear on close/category change and are never auto-saved,
+  Google remains linked. Use the sign-in page to reset a forgotten password by email.
+  Account security also offers creator-assisted recovery. Password fields clear on
+  close/category change and are never auto-saved,
   exported, cached in browser storage, or returned by the API.
 - **邮箱授权:** connect/reconnect or unlink one Gmail and one Outlook/Microsoft 365
   mailbox, with explicit read-only inbox/AI consent. Authorization feedback and

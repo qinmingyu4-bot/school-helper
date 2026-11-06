@@ -468,6 +468,20 @@ Google 可直接进入，首次使用将自动创建普通账号。|Continue wit
 创建账号|Create account
 待配置|Not configured
 忘记密码？|Forgot password?
+重置密码|Reset password
+使用账号邮箱接收验证码，然后设置新密码。|Get a verification code at your account email, then choose a new password.
+验证码会发送到已注册的邮箱，请查看收件箱或垃圾邮件。|Check the inbox or spam folder for your registered email.
+如果该邮箱已注册，请查收验证码。收不到时请检查垃圾邮件，或稍后重新发送。|If this email is registered, check your inbox for a code. Check spam or try sending it again later.
+保存新密码|Save new password
+返回登录|Back to sign-in
+8–128 个字符|8–128 characters
+新密码需要 8–128 个字符。|Your new password must be 8–128 characters.
+新密码不能与当前密码相同。|Choose a password different from your current password.
+验证码发送请求过于频繁，请稍后再试。|Too many code requests. Please try again later.
+验证码邮件暂时无法发送，请稍后重试或联系管理员。|Email delivery is temporarily unavailable. Try again later or contact an administrator.
+验证码无效或已过期，请检查或重新发送。|The code is invalid or expired. Check it or request a new one.
+密码重置发生冲突，请重新发送验证码。|Your password changed during this request. Request a new code and try again.
+密码已重置，请使用新密码登录。|Password reset. Sign in with your new password.
 发送中…|Sending…
 {0} 秒后重发|Resend in {0}s
 登录尝试过于频繁，请稍后再试。|Too many sign-in attempts. Please try again later.

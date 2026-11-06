@@ -72,6 +72,8 @@ test("delivery failure removes challenges and hides transport details; local fal
   const result = await local.issue("a@example.test", "register");
   assert.match(result.fallbackCode, /^\d{6}$/);
   await local.verify("a@example.test", "register", result.fallbackCode);
+  await assert.rejects(local.issue("a@example.test", "password-reset", "user:0"), { status: 503 });
+  assert.equal(local.codes.size, 0);
 });
 
 test("DynamoDB challenges use current reads and preserve cooldown across service restarts", async () => {

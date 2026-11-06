@@ -111,6 +111,7 @@ loadEnvFile();
 
 const db = new StudyBridgeDatabase();
 const loginAttempts = createLoginAttempts();
+const resetEmailRequests = createLoginAttempts();
 const academicCalendars = createCalendarService({
   archive: { get: (key) => db.getAcademicCalendar(key), put: (key, calendar) => db.putAcademicCalendar(key, calendar) },
   onError: (message) => console.warn(message),
@@ -131,6 +132,7 @@ const serverStartedAt = new Date().toISOString();
 const verificationPolicy = emailPolicy();
 const requireEmailVerification = verificationPolicy.required;
 const allowEmailCodeFallback = verificationPolicy.fallbackAllowed;
+const passwordResetBinding = (user) => `${user.id}:${Number(user.passwordVersion || 0)}`;
 const { issue: issueEmailCode, verify: verifyEmailCode } = createEmailVerification({ db, sendEmail, policy: verificationPolicy });
 const maxJsonBytes = 32 * 1024 * 1024;
 const maxPdfBytes = 8 * 1024 * 1024;
@@ -2192,40 +2194,58 @@ async function routeApi(req, res) {
   }
 
   if (url.pathname === "/api/auth/request-password-reset" && method === "POST") {
-    const body = await readJson(req);
-    const email = normalizeEmail(body.email);
-    if (!validEmail(email)) return sendError(res, 400, "Please enter a valid email address first.");
-    const user = await db.findUserByEmail(email);
-    try {
-      const verification = user ? await issueEmailCode(email, "password-reset") : { sent: false };
-      return sendJson(res, 200, {
-        ok: true,
-        message: verification.message || "If this email exists, a reset code has been sent.",
-        emailCode: verification.fallbackCode || "",
-        resendAfter: verification.resendAfter || 0,
-        expiresIn: verification.expiresIn || 0,
-        emailDelivery: verification.sent ? "email" : verification.fallbackCode ? "page" : "disabled"
-      });
-    } catch (error) {
-      if (error.retryAfter) res.setHeader("retry-after", String(error.retryAfter));
-      return sendError(res, error.status || 400, error.message);
+    if (!/^application\/json(?:;|$)/i.test(req.headers["content-type"] || "")) {
+      return sendError(res, 415, "Please submit JSON.");
     }
+    const body = await readJson(req, 16 * 1024);
+    const email = normalizeEmail(typeof body.email === "string" ? body.email : "");
+    if (!validEmail(email)) return sendError(res, 400, "Please enter a valid email address first.");
+    if (!emailDeliveryConfigured()) return sendError(res, 503, "验证码邮件暂时无法发送，请稍后重试或联系管理员。");
+    const attempt = resetEmailRequests.begin("", clientAddress(req));
+    if (!attempt.allowed) return sendJson(res, attempt.status, {
+      error: "验证码发送请求过于频繁，请稍后再试。"
+    }, { "retry-after": String(attempt.retryAfter) });
+
+    // Respond independently of account lookup and SMTP to avoid disclosing registered addresses.
+    void db.findUserByEmail(email, { consistent: true })
+      .then((user) => user && issueEmailCode(email, "password-reset", passwordResetBinding(user)))
+      .catch((error) => { if (error.status !== 429) console.warn("Password reset email delivery failed."); })
+      .finally(() => attempt.finish("failure"));
+    return sendJson(res, 200, {
+      ok: true, resendAfter: verificationPolicy.resendSeconds, expiresIn: verificationPolicy.ttlMs / 1000
+    }, { "cache-control": "no-store" });
   }
 
   if (url.pathname === "/api/auth/reset-password" && method === "POST") {
-    const body = await readJson(req);
-    const email = normalizeEmail(body.email);
-    const user = await db.findUserByEmail(email);
-    if (!user) return sendError(res, 400, "Email verification code is incorrect or expired.");
-    try {
-      validatePasswordPair(body.password, body.passwordConfirm);
-      const passwordHash = await hashPassword(body.password);
-      await verifyEmailCode(email, "password-reset", body.emailCode);
-      await db.updatePassword(user.id, user.passwordHash, passwordHash);
-      return sendJson(res, 200, { ok: true });
-    } catch (error) {
-      return sendError(res, 400, error.message);
+    if (!/^application\/json(?:;|$)/i.test(req.headers["content-type"] || "")) {
+      return sendError(res, 415, "Please submit JSON.");
     }
+    const body = await readJson(req, 16 * 1024);
+    const email = normalizeEmail(typeof body.email === "string" ? body.email : "");
+    if (!validEmail(email)) return sendError(res, 400, "Please enter a valid email address first.");
+    if (!validatePassword(body.password) || body.password.length > 128) return sendError(res, 400, "新密码需要 8–128 个字符。");
+    if (body.password !== body.passwordConfirm) return sendError(res, 400, "两次输入的新密码不一致。");
+
+    const invalidCode = () => sendError(res, 400, "验证码无效或已过期，请检查或重新发送。");
+    const user = await db.findUserByEmail(email, { consistent: true });
+    if (!user) return invalidCode();
+    try {
+      await verifyEmailCode(email, "password-reset", typeof body.emailCode === "string" ? body.emailCode : "", {
+        binding: passwordResetBinding(user),
+        consume: async () => {
+          if (await verifyPassword(body.password, user.passwordHash)) {
+            throw Object.assign(new Error("新密码不能与当前密码相同。"), { statusCode: 400 });
+          }
+          // The same conditional write replaces the password, revokes sessions and invalidates this code.
+          await db.updatePassword(user.id, user.passwordHash, await hashPassword(body.password));
+        }
+      });
+    } catch (error) {
+      if (error.status === 400) return invalidCode();
+      if (error.statusCode === 409) return sendError(res, 409, "密码重置发生冲突，请重新发送验证码。");
+      throw error;
+    }
+    return sendJson(res, 200, { ok: true }, { "cache-control": "no-store" });
   }
 
   if (url.pathname === "/api/auth/register" && method === "POST") {
@@ -2285,7 +2305,7 @@ async function routeApi(req, res) {
       error: attempt.status === 429 ? "登录尝试过于频繁，请稍后再试。" : "登录服务繁忙，请稍后重试。"
     }, { "retry-after": String(attempt.retryAfter) });
     try {
-      const user = await db.findUserByEmail(email);
+      const user = await db.findUserByEmail(email, { consistent: true });
       if (!user || !await verifyPassword(body.password, user.passwordHash)) {
         attempt.finish("failure");
         return sendError(res, 401, "Email or password is incorrect.");

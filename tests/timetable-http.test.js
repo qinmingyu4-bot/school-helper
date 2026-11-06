@@ -51,6 +51,44 @@ test("timetable images/PDFs retain layout, use school calendars and return recur
   assert.equal(image.data.createdCourses.length, 1);
   assert.equal(pdf.data.createdCourses.length, 0, "PDF extraction reuses the course created from the image");
   assert.deepEqual((await request(`/api/courses/${autoCourses[0].id}/documents`, null, cookie, "GET")).data.documents, []);
+  await context.test("streamed extraction reports actual stages, keeps JSON compatibility and ends cleanly on errors", async () => {
+    const { readEvents } = require("../public/chat-stream");
+    async function stream(file, auth = cookie) {
+      const response = await fetch(base + "/api/schedule/extract", { method: "POST", headers: { cookie: auth, accept: "text/event-stream", "content-type": "application/json" }, body: JSON.stringify(file) });
+      if (!response.ok) return { status: response.status, data: await response.json() };
+      assert.match(response.headers.get("content-type"), /text\/event-stream/);
+      assert.equal(response.headers.get("x-accel-buffering"), "no");
+      const events = [];
+      await readEvents(response, ({ event, data }) => { events.push({ event, ...JSON.parse(data) }); });
+      return events;
+    }
+    assert.equal((await stream(imageFile, "")).status, 401);
+    const savedProfile = await request("/api/me/profile", { name: "Timetable test", school: "University of Toronto", campus: "St. George", faculty: "Arts & Science" }, cookie, "PUT");
+    assert.equal(savedProfile.data.user.profile.campus, "St. George");
+    const preserved = await request("/api/me/profile", { name: "Timetable test", school: "University of Toronto" }, cookie, "PUT");
+    assert.equal(preserved.data.user.profile.faculty, "Arts & Science", "older clients preserve campus/faculty for the same school");
+    const events = await stream({ fileName: "winter-timetable-fixture.txt", fileData: Buffer.from("Winter 2027").toString("base64") });
+    assert.deepEqual(events.filter((item) => item.event === "progress").map((item) => item.phase), ["recognizing", "calendar-cache", "calendar-cached", "reviewing"]);
+    const result = events.at(-1);
+    assert.equal(result.event, "result");
+    assert.equal(result.calendar.teachingPeriods[0].endDate, "2027-04-09");
+    assert.match(result.calendarNotice, /补课/);
+    assert.ok(result.timings.totalMs >= result.timings.recognitionMs);
+    assert.ok(result.timings.calendarMs >= 0);
+    const failed = await stream({ fileName: "MALFORMED_SCHEDULE.txt", fileData: Buffer.from("MALFORMED_SCHEDULE").toString("base64") });
+    assert.deepEqual(failed.map((item) => item.event), ["progress", "error"]);
+    assert.match(failed.at(-1).error, /未成功/);
+    const controller = new AbortController();
+    const cancelled = await fetch(base + "/api/schedule/extract", { method: "POST", signal: controller.signal, headers: { cookie, accept: "text/event-stream", "content-type": "application/json" },
+      body: JSON.stringify({ fileName: "slow-timetable-fixture.txt", fileData: Buffer.from("Slow extraction").toString("base64") }) });
+    await readEvents(cancelled, () => { controller.abort(); return false; });
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    assert.ok((await request("/api/courses", null, cookie, "GET")).data.courses.every((course) => course.name !== "QA805H1"), "disconnected recognition must not create courses");
+    const changedSchool = await request("/api/me/profile", { name: "Timetable test", school: "University of Waterloo" }, cookie, "PUT");
+    assert.equal(changedSchool.data.user.profile.campus, "");
+    assert.equal(changedSchool.data.user.profile.faculty, "");
+    await request("/api/me/profile", { name: "Timetable test", school: "University of Toronto" }, cookie, "PUT");
+  });
   const unknownDay = await request("/api/schedule/extract", { fileName: "weekly-missing-day-fixture.txt", fileData: Buffer.from("Weekly timetable; weekday heading unreadable").toString("base64") }, cookie);
   assert.deepEqual(unknownDay.data.items[0].weekly.weekdays, []);
   assert.match(unknownDay.data.items[0].warning, /星期/);

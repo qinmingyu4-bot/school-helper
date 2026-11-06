@@ -677,7 +677,7 @@ bar reduces mobile scrolling without truncating saved content or paginating the 
 
 For weekly patterns, the server checks its academic calendar archive before
 searching. The included 2026–27 records cover regular undergraduate fall and
-winter/spring teaching at Waterloo, UC Berkeley and HKUST. A shared calendar
+winter/spring teaching at Waterloo, UC Berkeley and HKUST, plus Toronto St. George Arts & Science Winter 2027 and UTSC Fall 2026 / Winter 2027. Toronto records are separated by campus and faculty. St. George Arts & Science regular teaching ends April 9; its instructor-optional April 12 makeup is explained in the preview and is not automatically added. A shared calendar
 requires an explicit year and term, a regular undergraduate scope and a
 compatible campus. Separate winter and spring terms keep their school-specific
 names. The preview summarizes teaching dates; open the term section to inspect
@@ -685,7 +685,7 @@ its scope, breaks and official sources.
 
 On an archive miss, the server can look up the official calendar using the Profile
 school, year, term, campus/faculty and course codes. It saves verified results to
-the local database or DynamoDB, keyed to the same timetable scope and course set.
+the local database or DynamoDB. Known regular undergraduate scopes share verified calendars across course sets; other lookups remain keyed to the exact timetable scope and course set. Refresh and lookup use the same campus/faculty key, so Toronto campus archives cannot overwrite one another.
 Calendar lookup requires confirmed scope, confirmed no-class dates and consulted
 official sources for each teaching period, break or makeup day. The archive
 works with web lookup disabled. Missing dates or uncertain scope can be entered
@@ -697,6 +697,25 @@ the following calendar year, rechecks active and upcoming terms after 90 days
 and preserves the last verified copy if the school has yet to publish dates or
 lookup fails. Set `ACADEMIC_CALENDAR_REFRESH=false` to disable background checks.
 Initial records and refresh targets live in `lib/academic-calendar-seeds.js`.
+
+File imports report real server stages (recognition, archive match or official
+calendar search, then duplicate review) and elapsed waiting time. The endpoint
+supports opt-in SSE via `Accept: text/event-stream`, retaining JSON for existing
+clients. It returns recognition/calendar/total durations in `timings` and logs
+only those durations, without files, course codes or account information. Closing
+the connection aborts recognition; a disconnected request cannot proceed from
+recognition/calendar lookup to course creation. Image detail and model quality
+remain unchanged. A cached calendar skips web lookup, not image recognition.
+
+Profile has optional campus and faculty fields, separate from school and major.
+The timetable's campus takes precedence; Toronto course suffixes provide campus
+context (1 / 3 / 5), and conflicting or mixed campus evidence cannot match a
+shared campus seed. Profile campus/faculty are fallbacks for missing scope;
+changing schools clears omitted old campus/faculty values. The scope is visible
+in calendar review before reminders can be added. See the official
+[U of T course-code guide](https://utsc.utoronto.ca/registrar/fall-winter-utsc-registrars-guide),
+[Arts & Science dates](https://www.artsci.utoronto.ca/current/dates-deadlines/academic-dates)
+and [UTSC dates](https://www.utsc.utoronto.ca/registrar/fall-2026-winter-2027-academic-dates).
 
 Confirmation expands selected weekly patterns from the import date through the
 last teaching day, excluding reading weeks, closures, holidays, exam/vacation

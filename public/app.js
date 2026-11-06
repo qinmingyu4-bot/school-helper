@@ -15,6 +15,7 @@
   const scheduleManagement = window.StudyBridgeScheduleManagement;
   const scheduleManagementUi = window.StudyBridgeScheduleManagementUi.create();
   const scheduleDraftDisclosure = new WeakMap();
+  let scheduleExtractionRequest = null;
   const userActivity = window.StudyBridgeUserActivity;
   const learningStyle = window.StudyBridgeLearningStyle;
   let learningStyleEditor = null;
@@ -300,14 +301,27 @@
   };
 
   async function api(path, options = {}) {
-    const init = { credentials: "same-origin", ...options };
+    const { onProgress, ...requestOptions } = options;
+    const init = { credentials: "same-origin", ...requestOptions };
     if (init.body && typeof init.body !== "string" && !(init.body instanceof FormData)) {
       init.headers = { "content-type": "application/json", ...(init.headers || {}) };
       init.body = JSON.stringify(init.body);
     }
     const response = await fetch(path, init);
-    const data = await response.json().catch(() => ({}));
-    if (path !== "/api/me/ai-usage" && init.method && init.method !== "GET") void usageView.refresh(true);
+    let data;
+    try {
+      if (onProgress && response.ok && response.headers.get("content-type")?.includes("text/event-stream")) {
+        await window.StudyBridgeChatStream.readEvents(response, ({ event, data: packet }) => {
+          const value = JSON.parse(packet);
+          if (event === "progress") onProgress(value.phase);
+          if (event === "error") throw new Error(value.error || ui.text("读取失败，请重试。"));
+          if (event === "result") { data = value; return false; }
+        });
+        if (!data) throw new Error(ui.text("连接中断，请重试；尚未保存任何提醒。"));
+      } else data = await response.json().catch(() => ({}));
+    } finally {
+      if (path !== "/api/me/ai-usage" && init.method && init.method !== "GET") void usageView.refresh(true);
+    }
     if (!response.ok) throw Object.assign(new Error(data.error || data.message || ui.message`请求失败 (${response.status})`), { status: response.status, retryAfter: Number(response.headers.get("retry-after")) || 0 });
     return data;
   }
@@ -1090,7 +1104,7 @@
           </div>
           <div class="profile-identity">
             <h2>${esc(state.user.name)}</h2>
-            <p>${esc(p.school || ui.text("还没有填写学校"))}</p>
+            <p>${esc([p.school, p.campus, p.faculty].filter(Boolean).join(" · ") || ui.text("还没有填写学校"))}</p>
             <p class="profile-major">${esc(p.major || ui.text("还没有填写专业"))}</p>
             <span class="profile-id">SB ID <strong>${esc(profileSbId() || ui.text("未设置"))}</strong></span>
           </div>
@@ -1105,6 +1119,9 @@
           <label>姓名<input id="profileName" value="${esc(state.user.name)}"></label>
           <label>学校<input id="profileSchool" list="schoolOptions" value="${esc(p.school || "")}"></label>
           <datalist id="schoolOptions">${schoolOptions().map((item) => `<option value="${esc(item)}"></option>`).join("")}</datalist>
+          <label>校区（选填）<input id="profileCampus" list="campusOptions" maxlength="100" value="${esc(p.campus || "")}" placeholder="例如 St. George / UTM / UTSC"></label>
+          <datalist id="campusOptions">${(/^(?:university of toronto|toronto university|uoft|u of t|多伦多大学)$/i.test(p.school || "") ? ["St. George", "Mississauga", "Scarborough"] : []).map((item) => `<option value="${item}"></option>`).join("")}</datalist>
+          <label>学院（选填）<input id="profileFaculty" maxlength="100" value="${esc(p.faculty || "")}" placeholder="例如 Arts & Science"></label>
           <label>专业<input id="profileMajor" list="majorOptions" value="${esc(p.major || "")}"></label>
           <datalist id="majorOptions">${["Finance", "Economics", "Business", "Computer Science", "Engineering", "Nursing", "Mathematics", "Statistics", "Psychology", "Biology"].map((item) => `<option value="${item}"></option>`).join("")}</datalist>
           <label>SB ID<input id="profileSbId" required maxlength="8" pattern="[A-Za-z0-9]{1,8}" title="1–8 位数字或字母，区分大小写" value="${esc(profileSbId())}" placeholder="1–8 位数字或字母，区分大小写"></label>
@@ -1758,13 +1775,13 @@
     let count = null;
     try { if (calendar) count = scheduleImport.deduplicate(scheduleImport.expandWeekly(state.scheduleDrafts.filter((item) => item.selected), calendar, { fromDate: state.scheduleFromDate }), state.scheduleItems).items.length; } catch {}
     return ui.html`<details class="schedule-calendar" id="scheduleCalendarDetails" ${state.scheduleCalendarOpen ? "open" : ""}>
-      <summary class="schedule-calendar-summary"><span><strong>学期与停课规则</strong><span class="schedule-calendar-range">${calendar ? calendar.teachingPeriods.map((period) => `${esc(period.startDate)} — ${esc(period.endDate)}`).join("；") : ui.text("待补充学期范围")}</span><span class="schedule-calendar-count" data-schedule-preview-count>${calendar ? count !== null ? ui.message`新增 ${count} 次安排（自动跳过重复）` : ui.text("课程信息补齐后显示安排数量") : ui.text("所有每周课程共用，只需填写一次。")}</span></span><span class="schedule-review-toggle"><span class="schedule-review-edit-label">查看 / 修改</span><span class="schedule-review-close-label">收起</span><span class="schedule-review-chevron" aria-hidden="true">⌄</span></span></summary>
+      <summary class="schedule-calendar-summary"><span><strong>学期与停课规则</strong>${calendar?.campus || calendar?.faculty ? `<span class="schedule-calendar-count">${esc([calendar.campus, calendar.faculty].filter(Boolean).join(" · "))}</span>` : ""}<span class="schedule-calendar-range">${calendar ? calendar.teachingPeriods.map((period) => `${esc(period.startDate)} — ${esc(period.endDate)}`).join("；") : ui.text("待补充学期范围")}</span><span class="schedule-calendar-count" data-schedule-preview-count>${calendar ? count !== null ? ui.message`新增 ${count} 次安排（自动跳过重复）` : ui.text("课程信息补齐后显示安排数量") : ui.text("所有每周课程共用，只需填写一次。")}</span></span><span class="schedule-review-toggle"><span class="schedule-review-edit-label">查看 / 修改</span><span class="schedule-review-close-label">收起</span><span class="schedule-review-chevron" aria-hidden="true">⌄</span></span></summary>
       <div class="schedule-calendar-details"><p>${esc(ui.text(state.scheduleCalendarNotice))}</p>
       ${calendar ? ui.html`<p><strong>${esc([calendar.school, calendar.campus, calendar.faculty, calendar.label].filter(Boolean).join(" · "))}</strong></p><p>从 ${esc(state.scheduleFromDate)} 起生成；自动跳过停课日期。</p>
       <p>停课：${calendar.breaks.length ? calendar.breaks.map((pause) => `${esc(pause.startDate)}${pause.endDate !== pause.startDate ? ` — ${esc(pause.endDate)}` : ""} ${esc(pause.label)}`).join("；") : ui.text("本次校历未列出范围内的停课日")}</p>
       ${(calendar.sources || []).map((source) => `<a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a>`).join(" · ")}` : ui.html`<p class="schedule-warning">只需填写一次学期范围，所有已识别的每周课程都会使用它。</p>`}
       <details id="scheduleCalendarEditor" ${!calendar || state.scheduleCalendarEditing ? "open" : ""}><summary>手动确认或调整本学期</summary><div class="inline-fields"><label>授课开始<input type="date" data-calendar-field="startDate" value="${esc(draft.startDate)}"></label><label>最后授课日<input type="date" data-calendar-field="endDate" value="${esc(draft.endDate)}"></label></div><label>停课日期（每行一个日期或起止范围）<textarea data-calendar-field="breaks" placeholder="2026-10-12&#10;2026-10-26 / 2026-10-30">${esc(draft.breaks)}</textarea></label></details>
-      </div></details>`;
+      </div></details>${calendar?.notice ? `<p class="schedule-warning">${esc(ui.text(calendar.notice))}</p>` : ""}`;
   }
 
   function applyScheduleCalendarDraft() {
@@ -1821,11 +1838,33 @@
     if (/\.pdf$/i.test(file.name) && file.size > 8 * 1024 * 1024) throw new Error(ui.text("PDF 最大支持 8 MB。"));
     state.scheduleDraftOrigin = "file";
     state.scheduleImportBusy = true;
-    state.scheduleImportStatus = ui.text("正在读取课表版面与时间；识别到每周课程后将自动核对学校官网校历…");
+    const controller = new AbortController();
+    scheduleExtractionRequest = controller;
+    const started = Date.now();
+    let phase = "uploading";
+    const messages = {
+      uploading: ui.text("正在上传文件…"),
+      recognizing: ui.text("正在识别课程和时间；图片识别需要一些时间…"),
+      "calendar-cache": ui.text("课程已识别，正在匹配校历存档…"),
+      "calendar-cached": ui.text("已找到匹配的校历存档，正在整理预览…"),
+      "calendar-search": ui.text("课程已识别，存档未匹配，正在核对学校官网校历…"),
+      reviewing: ui.text("正在检查重复安排并准备预览…")
+    };
+    const progress = (next = phase) => {
+      if (messages[next]) phase = next;
+      state.scheduleImportStatus = ui.message`${messages[phase]} 已等待 ${Math.floor((Date.now() - started) / 1000)} 秒`;
+      const status = root.querySelector("#scheduleImportPanel .schedule-import-status");
+      if (status) status.textContent = state.scheduleImportStatus;
+    };
+    progress();
+    const timer = setInterval(progress, 1000);
     render();
     try {
       const [payload] = await readFiles([file]);
-      const result = await api("/api/schedule/extract", { method: "POST", body: { ...payload, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone } });
+      controller.signal.throwIfAborted();
+      const result = await api("/api/schedule/extract", { method: "POST", signal: controller.signal,
+        headers: { accept: "text/event-stream" }, onProgress: progress,
+        body: { ...payload, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone } });
       for (const course of result.courses || []) if (!state.courses.some((item) => item.id === course.id)) state.courses.push(course);
       state.scheduleImportedCourses = result.courses || [];
       state.scheduleReviewError = "";
@@ -1840,7 +1879,7 @@
       state.scheduleImportStatus = result.items.length ? ui.message`提取到 ${result.items.length} 条待核对安排${result.duplicateCount ? ui.message`，发现 ${result.duplicateCount} 项重复，已标记已有安排并默认取消勾选` : ""}。请在下方核对并确认。` : result.duplicateCount ? ui.message`识别的安排已存在，已跳过 ${result.duplicateCount} 项重复，无需再次添加。` : ui.text("未找到可提取的时间点。请尝试更清晰的文件或分批上传，也可以手动添加。");
       if (result.courses?.length) state.scheduleImportStatus += ui.message` ${result.createdCourses?.length ? ui.message`已自动添加 ${result.createdCourses.length} 门课程；` : ""}已识别课程可直接在「对话与课程」中打开。`;
     } catch (error) { state.scheduleImportStatus = error.message; }
-    finally { state.scheduleImportBusy = false; render(); if (state.scheduleDrafts.length) revealScheduleReview(); }
+    finally { clearInterval(timer); scheduleExtractionRequest = null; state.scheduleImportBusy = false; render(); if (state.scheduleDrafts.length) revealScheduleReview(); }
   }
 
   function scheduleSaveProgressHtml() {
@@ -2607,6 +2646,7 @@
         mailboxView.reset();
         for (const key of Object.keys(emailDraft)) delete emailDraft[key];
         scheduleQuickRequest?.abort();
+        scheduleExtractionRequest?.abort();
         cancelScheduleVoice(); state.scheduleVoiceFile = null;
         appearanceController.reset();
         for (const url of uploadPreviewUrls.values()) URL.revokeObjectURL(url);
@@ -2781,7 +2821,7 @@
         const message = $("profileSaveStatus");
         if (message) message.textContent = ui.text("正在处理照片并保存…");
         const userId = state.user.id;
-        const values = { name: $("profileName")?.value || "", school: $("profileSchool")?.value || "", major: $("profileMajor")?.value || "", sbId: $("profileSbId")?.value || "" };
+        const values = { name: $("profileName")?.value || "", school: $("profileSchool")?.value || "", campus: $("profileCampus")?.value || "", faculty: $("profileFaculty")?.value || "", major: $("profileMajor")?.value || "", sbId: $("profileSbId")?.value || "" };
         const avatarInput = $("profileAvatarFile"), coverInput = $("profileCoverFile");
         const avatar = $("profileAvatar")?.value || "", cover = $("profileCover")?.value || "";
         let data;
@@ -3520,6 +3560,14 @@
   }, true);
 
   document.addEventListener("change", (event) => {
+    if (event.target?.id === "profileSchool") {
+      const options = $("campusOptions");
+      if (options) options.innerHTML = /^(?:university of toronto|toronto university|uoft|u of t|多伦多大学)$/i.test(event.target.value.trim()) ? '<option value="St. George"></option><option value="Mississauga"></option><option value="Scarborough"></option>' : "";
+      if (event.target.value.trim() !== (profile().school || "")) {
+        if ($("profileCampus")) $("profileCampus").value = "";
+        if ($("profileFaculty")) $("profileFaculty").value = "";
+      }
+    }
     if (event.target.dataset?.communityEditChannel) {
       const draft = communityEditor.snapshot(), type = event.target.dataset.communityEditChannel;
       if (draft && !draft.saving) { communityEditor.set("channels", event.target.checked ? [...new Set([...draft.channels, type])] : draft.channels.filter((entry) => entry !== type)); render(); }

@@ -57,7 +57,7 @@ const scheduleBatch = require("./lib/schedule-batch");
 const courseConversations = require("./public/course-conversations");
 const scheduleInput = require("./lib/schedule-input");
 const scheduleTranscription = require("./lib/schedule-transcription");
-const { createCalendarService } = require("./lib/academic-calendar");
+const { createCalendarService, timetableScope } = require("./lib/academic-calendar");
 const { readEvents } = require("./public/chat-stream");
 const { createCreativeService } = require("./lib/creative-service");
 const { VIDEO_POLICY } = require("./lib/product-policy");
@@ -570,6 +570,8 @@ function cleanProfile(body = {}) {
     avatarUrl,
     backgroundUrl,
     school: String(body.school || "").trim().slice(0, 120),
+    campus: String(body.campus || "").trim().slice(0, 100),
+    faculty: String(body.faculty || "").trim().slice(0, 100),
     major: String(body.major || "").trim().slice(0, 120),
     sbId
   };
@@ -2486,7 +2488,9 @@ async function routeApi(req, res) {
     const name = String(body.name || "").trim().slice(0, 80);
     if (!name) return sendError(res, 400, "Name is required.");
     let profile;
-    try { profile = cleanProfile({ ...body, sbId: body.sbId ?? user.profile?.sbId }); } catch (error) { return sendError(res, 400, error.message); }
+    try { profile = cleanProfile({ ...body, sbId: body.sbId ?? user.profile?.sbId,
+      campus: body.campus ?? (body.school === user.profile?.school ? user.profile?.campus : ""),
+      faculty: body.faculty ?? (body.school === user.profile?.school ? user.profile?.faculty : "") }); } catch (error) { return sendError(res, 400, error.message); }
     if (!isValidSbId(profile.sbId)) {
       return sendError(res, 400, "SB ID must be 1-8 letters or numbers (case-sensitive).");
     }
@@ -3124,18 +3128,40 @@ if (directMessageMatch && method === "POST") {
       { role: "user", content: visual ? [{ type: "text", text: `File: ${file.fileName}\nStudent school: ${String(user.profile?.school || "")}\nDocument text:\n${text}` }, visual] : `File: ${file.fileName}\nStudent school: ${String(user.profile?.school || "")}\nDocument text:\n${text}` }
     ];
     messages[0].content += " Preserve the school’s own season name (including distinct spring and winter terms) and use the calendar year teaching starts. Map a numbered semester to its season only when the document makes it clear. Use Undergraduate as faculty only when the source identifies regular undergraduate study and gives no more specific faculty or program. Keep explicit campus, faculty or program names. For a syllabus or course outline, prioritize every explicitly scheduled quiz, test, midterm, final exam, assignment, essay, project and submission deadline. Emit assessments as DDL, even when they take place during a regular lecture or tutorial; they are separate tasks, not replacement LEC/TUT meetings. Preserve assessment names and numbers so different quizzes or assignments at the same time remain distinct. Use the same full course code for course meetings and assessments, keeping explicit meeting section identifiers. Extract ordinary course meeting patterns when stated; the server will compare them with saved timetable meetings rather than relying on matching titles. Do not invent dates from grading weights, TBD or an exam period; preserve missing dates/times for review.";
+    const streaming = req.headers.accept?.includes("text/event-stream");
+    const controller = new AbortController();
+    const close = () => controller.abort();
+    res.on("close", close);
+    res.on("error", close);
+    const started = performance.now();
+    const timings = {};
+    const send = (event, data) => {
+      if (streaming && !res.destroyed && !res.writableEnded) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+    if (streaming) res.writeHead(200, { "content-type": "text/event-stream; charset=utf-8", "cache-control": "private, no-store, no-transform", "x-accel-buffering": "no" });
+    const heartbeat = streaming && setInterval(() => { if (!res.destroyed && !res.writableEnded) res.write(": heartbeat\n\n"); }, 10000);
+    let timedOut = false;
+    const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 180000);
     try {
-      const content = await callAiWithChatCompletions(messages, complexAiModel);
+      send("progress", { phase: "recognizing" });
+      const content = await callAiWithChatCompletions(messages, complexAiModel, null, { signal: controller.signal, store: false });
+      controller.signal.throwIfAborted();
+      timings.recognitionMs = Math.round(performance.now() - started);
       let { items, termHint } = scheduleImport.parseExtraction(content);
       items = items.map((item) => item.weekly ? item : { ...item, timeZone });
       let calendar = null, calendarNotice = "";
+      const calendarStarted = performance.now();
       if (items.some((item) => item.weekly)) {
         const courseCodes = [...new Set(items.map((item) => item.course).join(" ").match(/\b[A-Z]{2,4}\d{2,4}(?:[A-Z]\d[A-Z]?)?\b/g) || [])];
+        termHint = timetableScope(user.profile?.school, termHint, courseCodes, user.profile);
         const lookup = await academicCalendars.lookup({ school: user.profile?.school || "", termHint, courseCodes,
-          today: scheduleImport.todayInZone(timeZone), model: complexAiModel, allowSearch: webSearchEnabled });
+          today: scheduleImport.todayInZone(timeZone), model: complexAiModel, allowSearch: webSearchEnabled, onProgress: (phase) => send("progress", { phase }) });
         calendar = lookup.calendar;
         calendarNotice = lookup.notice;
       }
+      controller.signal.throwIfAborted();
+      timings.calendarMs = Math.round(performance.now() - calendarStarted);
+      send("progress", { phase: "reviewing" });
       const importFromDate = scheduleImport.todayInZone(timeZone);
       const imported = await db.ensureImportedCourses(user.id, items.map((item) => item.course), calendar?.label || [termHint.year, termHint.season].filter(Boolean).join(" "));
       const existing = await listUserScheduleItems(user.id, { includeCompleted: true });
@@ -3143,10 +3169,24 @@ if (directMessageMatch && method === "POST") {
       items = review.items;
       const previewCount = calendar ? scheduleImport.deduplicate(scheduleImport.expandWeekly(items.filter((item) => !item.weekly || scheduleImport.validWeekly(item.weekly)), calendar, { fromDate: importFromDate }).map((item) => ({ ...item, timeZone: item.timeZone || timeZone })), existing).items.length : null;
       if (/\.(doc|ppt|xls)$/i.test(file.fileName)) items.forEach((item) => { item.warning = `${item.warning} 旧版 Office 文件可能漏读，请核对原件；建议另存为 DOCX / PPTX / XLSX 后提取。`.trim(); });
-      return sendJson(res, 200, { items, courses: imported.courses, createdCourses: imported.createdCourses, duplicateCount: review.duplicateCount, fileName: file.fileName, timeZone: calendar?.timeZone || timeZone, calendar, calendarNotice, importFromDate, previewCount });
+      timings.totalMs = Math.round(performance.now() - started);
+      const result = { timings, items, courses: imported.courses, createdCourses: imported.createdCourses, duplicateCount: review.duplicateCount, fileName: file.fileName, timeZone: calendar?.timeZone || timeZone, calendar, calendarNotice, importFromDate, previewCount };
+      console.info("Schedule extraction timings:", JSON.stringify(timings));
+      if (!streaming) return sendJson(res, 200, result);
+      send("result", result);
+      return res.end();
     } catch (error) {
-      console.warn("Schedule extraction failed:", error.message);
-      return sendError(res, 502, "AI 提取未成功，请重试或手动添加；尚未保存任何提醒。");
+      if (res.destroyed) return;
+      console.warn("Schedule extraction failed:", error.name);
+      const message = timedOut ? "读取超时，请重试或分批上传；尚未保存任何提醒。" : "AI 提取未成功，请重试或手动添加；尚未保存任何提醒。";
+      if (!streaming) return sendError(res, error.status || 502, error.usageError ? error.message : message);
+      send("error", { error: error.usageError ? error.message : message });
+      return res.end();
+    } finally {
+      clearTimeout(timeout);
+      if (heartbeat) clearInterval(heartbeat);
+      res.off("close", close);
+      res.off("error", close);
     }
   }
 

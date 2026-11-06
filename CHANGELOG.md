@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Timetable import progress and Toronto calendar archives
+
+- Show the actual recognition, saved-calendar lookup, official-calendar search and duplicate-review stages with elapsed waiting time; record phase durations without logging uploaded content. Keep image detail/model quality and JSON API compatibility; stop recognition on disconnect.
+- Add campus/faculty profile fields and prefer timetable campus evidence. Share verified regular undergraduate archives across course sets using campus/faculty scope, while rejecting mixed-campus reuse.
+- Preload official St. George Arts & Science Winter 2027 and UTSC Fall 2026 / Winter 2027 dates. Preserve reading weeks, holidays and UTSC makeup days; explain the instructor-optional St. George April 12 makeup without automatically scheduling it.
+
 ## 1.2.19 — Faster page refresh and static delivery
 
 - Combine each entry’s ordered scripts and full CSS cascade into two content-addressed bundles. Defer JavaScript until parsing finishes and request authentication configuration and identity concurrently. Keep Office loading on demand and stop preloading the large Chinese font before it is needed.

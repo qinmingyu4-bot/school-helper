@@ -5,6 +5,20 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+常规授课至 4 月 9 日。4 月 12 日为教师自行决定的周五补课日，未自动加入；若老师确认补课，请另行添加当天安排。|Regular classes end April 9. The April 12 Friday makeup depends on your instructor and is not added automatically; add it separately if confirmed.
+校区（选填）|Campus (optional)
+学院（选填）|Faculty (optional)
+例如 St. George / UTM / UTSC|e.g. St. George / UTM / UTSC
+例如 Arts & Science|e.g. Arts & Science
+正在上传文件…|Uploading your file…
+正在识别课程和时间；图片识别需要一些时间…|Reading courses and times; image recognition can take a little while…
+课程已识别，正在匹配校历存档…|Courses recognized. Checking saved academic calendars…
+已找到匹配的校历存档，正在整理预览…|Matching calendar found in the archive. Preparing your preview…
+课程已识别，存档未匹配，正在核对学校官网校历…|Courses recognized. No matching archive; checking the university's official calendar…
+正在检查重复安排并准备预览…|Checking for duplicates and preparing your preview…
+{0} 已等待 {1} 秒|{0} Waiting {1}s
+连接中断，请重试；尚未保存任何提醒。|Connection interrupted. Please retry; no reminders have been saved.
+读取失败，请重试。|Reading failed. Please retry.
 AI 额度|AI allowance
 剩余额度与恢复时间|Remaining allowance and reset time
 额度每 7 天恢复，未用完的额度不结转。|Allowance resets every 7 days. Unused allowance does not roll over.

@@ -41,7 +41,7 @@ globalThis.fetch = async (url, options) => {
   }
   if (typeof body.input?.[0]?.content === "string" && body.input[0].content.startsWith("Find official academic teaching dates")) {
     const sourceUrl = "https://rotmancommerce.utoronto.ca/current-students/international-student-welcome-guide/important-dates-and-deadlines-for-rotman-commerce-international-students/";
-    const calendar = { year: 2026, season: "fall", label: "2026 Fall teaching term", campus: "St. George / Arts & Science", timeZone: "America/Toronto", scopeConfirmed: true, breaksConfirmed: true,
+    const calendar = { year: 2026, season: "fall", label: "2026 Fall teaching term", campus: "St. George / Arts & Science", faculty: "Arts & Science", timeZone: "America/Toronto", scopeConfirmed: true, breaksConfirmed: true,
       teachingPeriods: [{ startDate: "2026-09-08", endDate: "2026-12-07", sourceUrl }],
       breaks: [{ startDate: "2026-10-12", endDate: "2026-10-12", label: "Thanksgiving", sourceUrl }, { startDate: "2026-10-26", endDate: "2026-10-30", label: "Reading week", sourceUrl }], replacements: [], sources: [{ url: sourceUrl, title: "University official academic dates (test fixture)" }] };
     return new Response(JSON.stringify({ status: "completed", output: [{ type: "web_search_call", action: { sources: [{ url: sourceUrl }] } }, { type: "message", content: [{ type: "output_text", text: JSON.stringify(calendar) }] }] }), { status: 200 });
@@ -116,7 +116,16 @@ globalThis.fetch = async (url, options) => {
     const source = typeof input === "string" ? input : input.filter((part) => part.type === "text").map((part) => part.text).join("\n");
     if (source.includes("weekly-timetable-fixture.png") && (!Array.isArray(input) || !input.some((part) => part.type === "image_url" && part.image_url.detail === "high"))) throw new Error("Timetable images must retain their original layout in high detail.");
     if (source.includes("weekly-timetable-fixture.pdf") && (!Array.isArray(input) || !input.some((part) => part.type === "file"))) throw new Error("Timetable PDFs must include original page visuals.");
-    if (source.includes("MALFORMED_SCHEDULE")) content = "invalid JSON";
+    if (source.includes("slow-timetable-fixture")) await new Promise((resolve, reject) => {
+      const timer = setTimeout(resolve, 1000);
+      options.signal.addEventListener("abort", () => { clearTimeout(timer); reject(options.signal.reason); }, { once: true });
+      options.signal.throwIfAborted();
+    });
+    if (source.includes("winter-timetable-fixture")) content = JSON.stringify({ termHint: { year: 2027, season: "winter", faculty: "Arts & Science" }, items: [
+      { kind: "LEC", title: "MAT137H1 LEC0101", course: "MAT137H1", weekly: { weekdays: [5], startTime: "10:00", endTime: "11:00" } }
+    ] });
+    else if (source.includes("slow-timetable-fixture")) content = JSON.stringify({ items: [{ kind: "LEC", course: "QA805H1", title: "Cancelled course", startsAt: "2026-11-10T10:00" }] });
+    else if (source.includes("MALFORMED_SCHEDULE")) content = "invalid JSON";
     else if (source.includes("syllabus-assessments-fixture")) {
       if (!body.messages[0].content.includes("prioritize every explicitly scheduled quiz") || !body.messages[0].content.includes("they are separate tasks")) throw new Error("Syllabus extraction must prioritize assessments without replacing their host lectures.");
       content = JSON.stringify([

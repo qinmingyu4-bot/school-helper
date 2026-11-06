@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { createCalendarService, officialUrl } = require("../lib/academic-calendar");
+const { createCalendarService, officialUrl, timetableScope } = require("../lib/academic-calendar");
 
 const sourceUrl = "https://www.artsci.utoronto.ca/current/dates-deadlines/academic-dates";
 function payload(change = {}) {
@@ -121,4 +121,50 @@ test("scheduled prefetch skips recent records and stores newly verified terms wi
   now = new Date("2027-08-01T12:00:00Z");
   await service.refresh("test-model");
   assert.deepEqual(await service.lookup(term), saved);
+});
+
+test("Toronto winter archives separate campuses, faculties and optional makeup dates without searching", async () => {
+  const service = createCalendarService({ request: async () => assert.fail("Known term must use the archive") });
+  const events = [];
+  const request = { school: "uoft", today: "2026-11-06", onProgress: (phase) => events.push(phase), termHint: { year: 2027, season: "winter", campus: "St. George", faculty: "Faculty of Arts and Science" } };
+  for (const courseCodes of [["MAT137H1"], ["CSC108H1", "STA130H1"]]) {
+    const { calendar, notice } = await service.lookup({ ...request, courseCodes });
+    assert.equal(calendar.teachingPeriods[0].endDate, "2027-04-09");
+    assert.match(notice, /教师自行决定/);
+    const meetings = require("../public/schedule-import").expandWeekly([{ kind: "LEC", title: "Lecture", weekly: { weekdays: [5], startTime: "10:00", endTime: "11:00" } }], calendar, { fromDate: "2027-01-01" });
+    assert.equal(meetings.length, 11);
+    assert.ok(meetings.every((item) => !/2027-(02-19|03-26|04-12)/.test(item.startsAt)));
+  }
+  assert.deepEqual(events, ["calendar-cache", "calendar-cached", "calendar-cache", "calendar-cached"]);
+  const utsc = await service.lookup({ ...request, termHint: { ...request.termHint, campus: "UTSC", faculty: "Undergraduate" } });
+  assert.equal(utsc.calendar.teachingPeriods[0].endDate, "2027-04-12");
+  assert.equal(utsc.calendar.replacements[0].weekday, 5);
+  for (const hint of [{ campus: "UTM" }, { campus: "" }, { faculty: "Engineering" }, { faculty: "" }, { year: 2026 }]) {
+    assert.equal((await service.lookup({ ...request, allowSearch: false, termHint: { ...request.termHint, ...hint } })).calendar, null);
+  }
+});
+
+test("known university scopes share newly verified archives across course sets and restarts", async () => {
+  const records = new Map();
+  const archive = { get: async (key) => records.get(key), put: async (key, calendar) => records.set(key, calendar) };
+  const request = { ...input, termHint: { ...input.termHint, faculty: "Arts & Science" } };
+  const phases = [];
+  const service = createCalendarService({ archive, request: async () => payload({ faculty: "Arts & Science" }) });
+  const original = await service.lookup({ ...request, onProgress: (phase) => phases.push(phase) });
+  assert.deepEqual(phases, ["calendar-cache", "calendar-search"]);
+  assert.equal(records.size, 1);
+  const restarted = createCalendarService({ archive, request: async () => assert.fail("Verified scope should be reused") });
+  assert.deepEqual((await restarted.lookup({ ...request, courseCodes: ["CSC108H1"] })).calendar, original.calendar);
+  assert.equal((await restarted.lookup({ ...request, allowSearch: false, termHint: { ...request.termHint, campus: "UTM" } })).calendar, null);
+});
+
+test("timetable scope uses source campus before profile and rejects mixed or conflicting Toronto campuses", () => {
+  const profile = { campus: "St. George", faculty: "Arts & Science" };
+  assert.equal(timetableScope("uoft", {}, ["MAT137H1S"], profile).campus, "St. George");
+  assert.equal(timetableScope("uoft", {}, [], profile).faculty, "Arts & Science");
+  const utsc = timetableScope("uoft", { campus: "UTSC" }, ["MATA31H3"], profile);
+  assert.equal(utsc.campus, "UTSC");
+  assert.equal(utsc.faculty, undefined);
+  assert.equal(timetableScope("uoft", {}, ["MATA31H3", "MAT137H1"], profile).campus, "Multiple campuses");
+  assert.equal(timetableScope("uoft", { campus: "St. George" }, ["MATA31H3"], profile).campus, "Conflicting campus evidence");
 });

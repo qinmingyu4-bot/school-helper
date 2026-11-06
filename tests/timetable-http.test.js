@@ -12,7 +12,7 @@ test("timetable images/PDFs retain layout, use school calendars and return recur
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "studybridge-timetable-"));
   const child = spawn(process.execPath, ["--require", "./tests/fixtures/timetable-clock.js", "--require", "./tests/fixtures/echo-ai.js", "server.js"], { cwd: root, env: {
     ...process.env, PORT: "0", NODE_ENV: "test", STUDYBRIDGE_DB: "local", LOCAL_DB_FILE: path.join(directory, "db.json"), LOCAL_DB_BACKUP_DISABLED: "true",
-    REQUIRE_INVITE_CODE: "false", REQUIRE_EMAIL_VERIFICATION: "false", OPENAI_API_KEY: "test-fixture", OPENAI_WEB_SEARCH: "true", SESSION_SECRET: "timetable-test-session"
+    REQUIRE_INVITE_CODE: "false", REQUIRE_EMAIL_VERIFICATION: "false", OPENAI_API_KEY: "test-fixture", OPENAI_WEB_SEARCH: "true", OPENAI_SIMPLE_MODEL: "gpt-6-luna", OPENAI_COMPLEX_MODEL: "gpt-6.1-sol", SESSION_SECRET: "timetable-test-session"
   }, stdio: ["ignore", "pipe", "pipe"] });
   context.after(async () => { if (child.exitCode === null) { const stopped = once(child, "exit"); child.kill(); await stopped; } await fs.rm(directory, { recursive: true, force: true }); });
   const base = await new Promise((resolve, reject) => {
@@ -31,7 +31,10 @@ test("timetable images/PDFs retain layout, use school calendars and return recur
   const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aOZkAAAAASUVORK5CYII=";
   const imageFile = { fileName: "weekly-timetable-fixture.png", fileData: `data:image/png;base64,${png}`, timeZone: "Asia/Shanghai" };
   assert.equal((await request("/api/schedule/extract", imageFile)).status, 401);
+  const used = async () => Math.round((await request("/api/me/ai-usage", null, cookie, "GET")).data.usage.usedUsd * 1e6);
+  const beforeImage = await used();
   const image = await request("/api/schedule/extract", imageFile, cookie);
+  assert.equal(await used() - beforeImage, 35, "A readable screenshot uses one lightweight model call");
   assert.equal(image.status, 200, JSON.stringify(image.data));
   assert.equal(image.data.items.length, 1);
   assert.equal(image.data.items[0].weekly.startTime, "10:00");
@@ -42,8 +45,10 @@ test("timetable images/PDFs retain layout, use school calendars and return recur
   assert.equal(expanded.length, 6);
   assert.equal(expanded[0].startsAt, "2026-11-02T10:00");
   const pdfBytes = await fs.readFile(path.join(root, "tests/fixtures/schedule-full.pdf"));
+  const beforePdf = await used();
   const pdf = await request("/api/schedule/extract", { fileName: "weekly-timetable-fixture.pdf", fileData: pdfBytes.toString("base64"), timeZone: "America/Toronto" }, cookie);
   assert.equal(pdf.status, 200);
+  assert.equal(await used() - beforePdf, 700, "PDFs use the complex model directly");
   assert.equal(pdf.data.items[0].weekly.endTime, "11:00");
   const autoCourses = (await request("/api/courses", null, cookie, "GET")).data.courses;
   assert.equal(autoCourses.length, 1);
@@ -76,7 +81,12 @@ test("timetable images/PDFs retain layout, use school calendars and return recur
     assert.ok(result.timings.totalMs >= result.timings.recognitionMs);
     assert.ok(result.timings.calendarMs >= 0);
     const failed = await stream({ fileName: "MALFORMED_SCHEDULE.txt", fileData: Buffer.from("MALFORMED_SCHEDULE").toString("base64") });
-    assert.deepEqual(failed.map((item) => item.event), ["progress", "error"]);
+    assert.deepEqual(failed.map((item) => item.event), ["progress", "progress", "error"]);
+    const beforeRetry = await used();
+    const retried = await stream({ fileName: "FALLBACK_SCHEDULE.txt", fileData: Buffer.from("FALLBACK_SCHEDULE").toString("base64") });
+    assert.deepEqual(retried.filter((item) => item.event === "progress").map((item) => item.phase), ["recognizing", "recognizing-deeper", "reviewing"]);
+    assert.equal(retried.at(-1).items[0].title, "Recovered assignment");
+    assert.equal(await used() - beforeRetry, 735, "One lightweight attempt and one complex fallback are metered");
     assert.match(failed.at(-1).error, /未成功/);
     const controller = new AbortController();
     const cancelled = await fetch(base + "/api/schedule/extract", { method: "POST", signal: controller.signal, headers: { cookie, accept: "text/event-stream", "content-type": "application/json" },

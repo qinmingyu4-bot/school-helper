@@ -675,6 +675,13 @@ manual term editing inside a separate disclosure. Draft edits, selections and
 disclosure state survive calendar navigation. A sticky selected-count confirmation
 bar reduces mobile scrolling without truncating saved content or paginating the preview.
 
+Schedule extraction starts with the configured simple model for images and
+text up to 12,000 characters, preserving image detail. PDFs and longer text
+use the complex model directly. If the simple result is empty, invalid, or
+missing a title or weekly meeting time, the complex model can retry once.
+Both attempts use the normal usage accounting. Calendar verification uses
+its existing model separately.
+
 For weekly patterns, the server checks its academic calendar archive before
 searching. The included 2026–27 records cover regular undergraduate fall and
 winter/spring teaching at Waterloo, UC Berkeley and HKUST, plus Toronto St. George Arts & Science Winter 2027 and UTSC Fall 2026 / Winter 2027. Toronto records are separated by campus and faculty. St. George Arts & Science regular teaching ends April 9; its instructor-optional April 12 makeup is explained in the preview and is not automatically added. A shared calendar

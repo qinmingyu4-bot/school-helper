@@ -1906,6 +1906,7 @@
     const messages = {
       uploading: ui.text("正在上传文件…"),
       recognizing: ui.text("正在识别课程和时间；图片识别需要一些时间…"),
+      "recognizing-deeper": ui.text("首次识别结果不完整，正在仔细核对课程和时间…"),
       "calendar-cache": ui.text("课程已识别，正在匹配校历存档…"),
       "calendar-cached": ui.text("已找到匹配的校历存档，正在整理预览…"),
       "calendar-search": ui.text("课程已识别，存档未匹配，正在核对学校官网校历…"),

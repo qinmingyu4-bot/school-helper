@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Reduce AI allowance use for timetable images and short course documents by starting with the lightweight model and retrying incomplete extraction with the complex model when needed.
 - Show timetable previews as soon as extraction finishes when an available calendar needs term or campus/faculty confirmation. Save new calendar records only for the configured priority university scopes.
 - Reuse the resolved campus in the timetable preview, show compatible faculty choices, and prefill a saved faculty when it matches the timetable scope.
 

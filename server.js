@@ -1380,7 +1380,8 @@ async function callAiWithChatCompletions(messages, model, stream = null, { signa
   const text = await response.text();
   if (!response.ok) throw new Error(`AI request failed: ${text}`);
   const payload = JSON.parse(text);
-  if (payload.choices?.[0]?.finish_reason && payload.choices[0].finish_reason !== "stop") throw new Error("AI answer was incomplete; please continue the unfinished parts.");
+  const finishReason = payload.choices?.[0]?.finish_reason;
+  if (finishReason && finishReason !== "stop") throw Object.assign(new Error("AI answer was incomplete; please continue the unfinished parts."), { finishReason });
   lastAiRequest = { model, api: "Chat Completions", completedAt: new Date().toISOString() };
   return payload.choices?.[0]?.message?.content || "AI \u6ca1\u6709\u8fd4\u56de\u5185\u5bb9\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5\u3002";
 }
@@ -3161,10 +3162,31 @@ if (directMessageMatch && method === "POST") {
     const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 180000);
     try {
       send("progress", { phase: "recognizing" });
-      const content = await callAiWithChatCompletions(messages, complexAiModel, null, { signal: controller.signal, store: false });
+      const useLightweight = simpleAiModel !== complexAiModel && visual?.type !== "file" && text.length <= 12000;
+      const recognize = (model) => callAiWithChatCompletions(messages, model, null, { signal: controller.signal, store: false });
+      let content, extracted;
+      try {
+        content = await recognize(useLightweight ? simpleAiModel : complexAiModel);
+        controller.signal.throwIfAborted();
+        extracted = scheduleImport.parseExtraction(content);
+      } catch (error) {
+        if (!useLightweight || controller.signal.aborted || (content === undefined && error.finishReason !== "length")) throw error;
+      }
+      const needsDeeperRead = useLightweight && (!extracted?.items.length || extracted.items.some((item) =>
+        !item.title || (item.weekly && !scheduleImport.validWeekly(item.weekly)) ||
+        (visual && !item.weekly && item.kind !== "DDL" && !scheduleImport.validTime(item.startsAt))));
+      if (needsDeeperRead) {
+        send("progress", { phase: "recognizing-deeper" });
+        try {
+          const detailed = scheduleImport.parseExtraction(await recognize(complexAiModel));
+          if (detailed.items.length || !extracted) extracted = detailed;
+        } catch (error) {
+          if (!extracted?.items.length) throw error;
+        }
+      }
       controller.signal.throwIfAborted();
       timings.recognitionMs = Math.round(performance.now() - started);
-      let { items, termHint } = scheduleImport.parseExtraction(content);
+      let { items, termHint } = extracted;
       items = items.map((item) => item.weekly ? item : { ...item, timeZone });
       let calendar = null, calendarNotice = "";
       const calendarStarted = performance.now();

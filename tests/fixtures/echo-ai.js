@@ -128,6 +128,11 @@ globalThis.fetch = async (url, options) => {
       { kind: "LEC", title: "MAT137H1 LEC0101", course: "MAT137H1", weekly: { weekdays: [5], startTime: "10:00", endTime: "11:00" } }
     ] });
     else if (source.includes("slow-timetable-fixture")) content = JSON.stringify({ items: [{ kind: "LEC", course: "QA805H1", title: "Cancelled course", startsAt: "2026-11-10T10:00" }] });
+    else if (source.includes("FALLBACK_SCHEDULE")) {
+      content = body.model === "gpt-6-luna" ? "invalid JSON" : JSON.stringify([
+        { kind: "DDL", title: "Recovered assignment", course: "QA806H1", startsAt: "2026-11-10T10:00" }
+      ]);
+    }
     else if (source.includes("MALFORMED_SCHEDULE")) content = "invalid JSON";
     else if (source.includes("syllabus-assessments-fixture")) {
       if (!body.messages[0].content.includes("prioritize every explicitly scheduled quiz") || !body.messages[0].content.includes("they are separate tasks")) throw new Error("Syllabus extraction must prioritize assessments without replacing their host lectures.");

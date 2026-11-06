@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.2.20";
+  const VERSION = "1.2.21";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -1454,11 +1454,14 @@
             <div class="schedule-steps" aria-label="导入步骤"><span><b>1</b> 上传文件</span><span><b>2</b> 核对时间</span><span><b>3</b> 开始倒计时</span></div>
           </div>
           <div class="schedule-upload-controls">
-            <label class="schedule-file-picker ${state.scheduleImportBusy || state.scheduleDrafts.length ? "is-disabled" : ""}">
-              <input id="scheduleFile" aria-label="选择课程文件" type="file" accept=".png,.jpg,.jpeg,.webp,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md,.csv,.json" ${state.scheduleImportBusy || state.scheduleDrafts.length ? "disabled" : ""}>
-              <span class="schedule-file-symbol" aria-hidden="true">↑</span>
-              <span><strong id="scheduleFileName">${esc(state.scheduleUploadFile?.name || ui.text("选择课程文件"))}</strong><small>课表截图、PDF、Word、PPT、Excel 或文字文件</small></span>
-            </label>
+            <div class="schedule-file-row">
+              <label class="schedule-file-picker ${state.scheduleImportBusy || state.scheduleDrafts.length ? "is-disabled" : ""}">
+                <input id="scheduleFile" aria-label="选择课程文件" type="file" accept=".png,.jpg,.jpeg,.webp,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.md,.csv,.json" ${state.scheduleImportBusy || state.scheduleDrafts.length ? "disabled" : ""}>
+                <span class="schedule-file-symbol" aria-hidden="true">↑</span>
+                <span><strong id="scheduleFileName">${esc(state.scheduleUploadFile?.name || ui.text("选择课程文件"))}</strong><small>课表截图、PDF、Word、PPT、Excel 或文字文件</small></span>
+              </label>
+              <button type="button" class="schedule-remove-file" data-action="remove-schedule-file" ${state.scheduleUploadFile ? "" : "hidden"} ${state.scheduleImportBusy && !scheduleExtractionRequest ? "disabled" : ""}>移除文件</button>
+            </div>
             <div class="schedule-upload-bottom"><small>PDF ≤ 8 MB · 其他文件 ≤ 12 MB</small><button class="primary" data-action="extract-schedule" ${state.scheduleImportBusy || state.scheduleDrafts.length ? "disabled" : ""}>${state.scheduleImportBusy ? ui.text("处理中…") : ui.text("AI 提取时间")}</button></div>
           </div>
           ${state.scheduleImportStatus ? `<p class="schedule-import-status" role="status" aria-live="polite">${esc(state.scheduleImportStatus)}</p>` : ""}
@@ -1890,6 +1893,40 @@
     catch { preview.textContent = ui.text("课程信息补齐后显示安排数量"); }
   }
 
+  function clearScheduleFilePreview() {
+    state.scheduleDrafts = [];
+    state.scheduleSource = "";
+    state.scheduleImportedCourses = [];
+    state.scheduleReviewError = "";
+    state.scheduleCalendar = null;
+    state.scheduleCalendarNotice = "";
+    state.scheduleCalendarScopes = [];
+    state.scheduleCalendarMatch = { year: "", season: "", scopeId: "" };
+    state.scheduleCalendarMatchNotice = "";
+    state.scheduleCalendarDraft = { startDate: "", endDate: "", breaks: "", timeZone: "" };
+    state.scheduleCalendarEditing = false;
+    state.scheduleCalendarOpen = false;
+    state.scheduleFromDate = "";
+  }
+
+  function removeScheduleFile() {
+    if (state.scheduleImportBusy && !scheduleExtractionRequest) return;
+    if (scheduleExtractionRequest) {
+      scheduleExtractionRequest.abort();
+      scheduleExtractionRequest = null;
+      state.scheduleImportBusy = false;
+    }
+    const hadImportedCourses = state.scheduleDraftOrigin === "file" && state.scheduleImportedCourses.length;
+    state.scheduleUploadFile = null;
+    if (state.scheduleDraftOrigin === "file") clearScheduleFilePreview();
+    state.scheduleImportOpen = true;
+    state.scheduleImportStatus = hadImportedCourses
+      ? ui.text("已移除文件和导入预览。已识别并加入的课程仍可在「对话与课程」中管理。")
+      : ui.text("已移除文件，可以重新选择。");
+    render();
+    $("scheduleFile")?.focus({ preventScroll: true });
+  }
+
   async function extractScheduleFile() {
     if (state.scheduleImportBusy || state.scheduleDrafts.length) return;
     cancelScheduleVoice();
@@ -1913,6 +1950,7 @@
       reviewing: ui.text("正在检查重复安排并准备预览…")
     };
     const progress = (next = phase) => {
+      if (controller.signal.aborted) return;
       if (messages[next]) phase = next;
       state.scheduleImportStatus = ui.message`${messages[phase]} 已等待 ${Math.floor((Date.now() - started) / 1000)} 秒`;
       const status = root.querySelector("#scheduleImportPanel .schedule-import-status");
@@ -1927,6 +1965,7 @@
       const result = await api("/api/schedule/extract", { method: "POST", signal: controller.signal,
         headers: { accept: "text/event-stream" }, onProgress: progress,
         body: { ...payload, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone } });
+      if (controller.signal.aborted) return;
       for (const course of result.courses || []) if (!state.courses.some((item) => item.id === course.id)) state.courses.push(course);
       state.scheduleImportedCourses = result.courses || [];
       state.scheduleReviewError = "";
@@ -1944,8 +1983,17 @@
       state.scheduleCalendarDraft = { startDate: result.calendar?.teachingPeriods[0]?.startDate || "", endDate: result.calendar?.teachingPeriods.at(-1)?.endDate || "", breaks: (result.calendar ? scheduleImport.nonTeachingRanges(result.calendar) : []).map((pause) => `${pause.startDate} / ${pause.endDate}`).join("\n"), timeZone: result.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone };
       state.scheduleImportStatus = result.items.length ? ui.message`提取到 ${result.items.length} 条待核对安排${result.duplicateCount ? ui.message`，发现 ${result.duplicateCount} 项重复，已标记已有安排并默认取消勾选` : ""}。请在下方核对并确认。` : result.duplicateCount ? ui.message`识别的安排已存在，已跳过 ${result.duplicateCount} 项重复，无需再次添加。` : ui.text("未找到可提取的时间点。请尝试更清晰的文件或分批上传，也可以手动添加。");
       if (result.courses?.length) state.scheduleImportStatus += ui.message` ${result.createdCourses?.length ? ui.message`已自动添加 ${result.createdCourses.length} 门课程；` : ""}已识别课程可直接在「对话与课程」中打开。`;
-    } catch (error) { state.scheduleImportStatus = error.message; }
-    finally { clearInterval(timer); scheduleExtractionRequest = null; state.scheduleImportBusy = false; render(); if (state.scheduleDrafts.length) revealScheduleReview(); }
+    } catch (error) {
+      if (!controller.signal.aborted) state.scheduleImportStatus = error.message;
+    } finally {
+      clearInterval(timer);
+      if (scheduleExtractionRequest === controller) {
+        scheduleExtractionRequest = null;
+        state.scheduleImportBusy = false;
+        render();
+        if (state.scheduleDrafts.length) revealScheduleReview();
+      }
+    }
   }
 
   function scheduleSaveProgressHtml() {
@@ -2020,14 +2068,7 @@
         const message = state.scheduleImportStatus;
         state.scheduleImportOpen = false;
         state.scheduleImportStatus = "";
-        state.scheduleSource = "";
-        state.scheduleImportedCourses = [];
-        state.scheduleCalendar = null;
-        state.scheduleCalendarNotice = "";
-        state.scheduleCalendarDraft = { startDate: "", endDate: "", breaks: "", timeZone: "" };
-        state.scheduleCalendarEditing = false;
-        state.scheduleCalendarOpen = false;
-        state.scheduleFromDate = "";
+        clearScheduleFilePreview();
         setToast(message);
       }
     } catch (error) {
@@ -3242,14 +3283,15 @@
       }
       if (action === "parse-schedule-text") { await parseScheduleQuick(); return; }
       if (action === "match-schedule-calendar") { await matchScheduleCalendar(); return; }
+      if (action === "remove-schedule-file") { removeScheduleFile(); return; }
       if (action === "extract-schedule") { await extractScheduleFile(); return; }
       if (action === "focus-schedule-issue") { focusScheduleDraftIssue(); return; }
       if (action === "collapse-schedule-review") { collapseScheduleReview(); return; }
       if (action === "confirm-schedule") { await confirmScheduleImport(); return; }
       if (action === "cancel-schedule") {
         if (state.scheduleImportBusy) return;
+        if (state.scheduleDraftOrigin === "file") { removeScheduleFile(); return; }
         state.scheduleDrafts = [];
-        if (state.scheduleDraftOrigin === "file") state.scheduleUploadFile = null;
         setScheduleImportStatus(ui.text("已取消，未添加待确认项目。原文已保留，可修改后重新整理。"));
         render(); return;
       }
@@ -3672,9 +3714,13 @@
     if (event.target?.id === "postAnon") { state.communityDraft.anonymous = event.target.checked; return; }
     if (["englishTerms", "englishAnswers", "chineseExplanations"].includes(event.target?.id)) { scheduleLearningStyleSave(); return; }
     if (event.target?.id === "scheduleFile") {
-      state.scheduleUploadFile = event.target.files?.[0] || state.scheduleUploadFile;
-      const name = $("scheduleFileName");
-      if (name) name.textContent = state.scheduleUploadFile?.name || ui.text("选择课程文件");
+      const file = event.target.files?.[0];
+      if (!file) return;
+      state.scheduleUploadFile = file;
+      state.scheduleImportStatus = "";
+      $("scheduleFileName").textContent = file.name;
+      root.querySelector('[data-action="remove-schedule-file"]').hidden = false;
+      root.querySelector("#scheduleImportPanel .schedule-import-status")?.remove();
       return;
     }
     if (event.target?.id === "studyMode") {

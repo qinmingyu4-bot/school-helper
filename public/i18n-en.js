@@ -751,6 +751,9 @@ StudyBridge 会把学校写入 AI 学习上下文|StudyBridge includes your scho
 核对时间|Review dates
 开始倒计时|Start countdown
 选择课程文件|Choose course file
+移除文件|Remove file
+已移除文件，可以重新选择。|File removed. You can select another file.
+已移除文件和导入预览。已识别并加入的课程仍可在「对话与课程」中管理。|File and import preview removed. You can manage courses already added in Chats and courses.
 课表截图、PDF、Word、PPT、Excel 或文字文件|Timetable image, PDF, Word, PPT, Excel or text file
 PDF ≤ 8 MB · 其他文件 ≤ 12 MB|PDF ≤ 8 MB · Other files ≤ 12 MB
 月历和新增安排使用当前时区：{0} · 导入课程按学校时区换算|Calendar and new events use {0} · Imported classes use the school’s time zone

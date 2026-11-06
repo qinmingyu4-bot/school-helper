@@ -524,7 +524,29 @@ single-question, hints-only, one-at-a-time and quiz requests still take preceden
 Short PDF tutoring tasks and retained multipart course sources select the complex
 model even below the generic long-attachment threshold. The immediate upload's text
 has priority over older background when retrieval is needed, and recent long replies
-retain their completion summary for follow-up questions.
+retain their working for follow-up questions. History has a 40,000-character budget:
+numbered follow-ups first select matching problem sections from up to 80 saved
+messages, then include recent conversation, with up to 24,000 characters per
+assistant reply. Genuine omissions are marked explicitly; no historical messages
+are rewritten.
+
+Background whole-paper jobs require an explicit solving/teaching scope. Hint-only,
+interactive, single-question, counting and time-budget requests stay conversational;
+the complete “一步步教” shortcut still requests the whole paper. Numbering resets
+and gaps are preserved, section givens remain attached to their questions, and
+function arguments such as `f(x)` are not subpart headings. Follow-ups reuse the
+whole most recent upload group, or explicitly named sources.
+
+Every PDF/image and otherwise unrecognized attachment in a background task must
+receive an explicit inventory check. Missing/oversized inputs cannot silently fall
+back to the readable subset. Partially readable sources remain visible as unresolved
+items and prevent a completed status. A separate model review checks each batch's
+calculations, requested working and evidence before results are saved. Rejected
+questions retry within the existing two-attempt/120-second-per-batch bounds;
+completed questions are preserved. Review failure never approves an answer by
+default. These extra calls add latency and usage; model review is not a mathematical
+proof or a guarantee of correctness. Ordinary streamed single-question replies
+continue to use the teaching prompt rather than this background review stage.
 
 Mock-exam mode defaults to the format and structure of previously uploaded questions
 available in the current conversation or shared course materials. It follows observable

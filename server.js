@@ -1184,14 +1184,7 @@ function buildStudyPrompt({ user, course, documents, history, scheduleItems, wea
   const docContext = materialContext ?? buildMaterialContext({ documents, attachments, currentAttachments, history, message, searchQueries });
   const inventory = buildExerciseCoverage({ documents, attachments, currentAttachments, message });
   const visuals = selectStudyVisuals([...documentPdfs, ...attachments], message, currentAttachments);
-  const recent = history
-    .slice(-16)
-    .map((item) => {
-      const content = String(item.content || "");
-      const excerpt = item.role === "assistant" && content.length > 2000 ? content.slice(0, 700) + "\n[Middle of earlier reply omitted; its completion summary follows.]\n" + content.slice(-1300) : content.slice(0, 2000);
-      return `${item.role}${item.interrupted ? " (interrupted, incomplete)" : ""}: ${excerpt}`;
-    })
-    .join("\n");
+  const recent = require("./lib/study-history").buildRecentStudyHistory(history, message);
   return [
     {
       role: "system",
@@ -3338,10 +3331,12 @@ if (directMessageMatch && method === "POST") {
       const context = { user: effectiveUser, course, conversationId, message, mode, attachments };
       if (body.background === true && course.chatType !== "general" && process.env.OPENAI_API_KEY) {
         let sources = attachments.map((item, index) => ({ ...item, id: `upload:${index}` }));
-        if (!sources.length && /解答|解题|做.*题|讲解.*题|这套|全部|整套|作答|solve|problem.set|all.*questions/i.test(message)) {
+        if (!sources.length && require("./lib/problem-set").wantsWholeSet(message, mode)) {
           const available = await studySources({ userId: user.id, courseId, conversationId });
           const named = available.filter((source) => message.includes(source.name));
-          sources = named.length ? named : available.filter((source) => source.id.startsWith("attachment:")).slice(-1);
+          const retained = available.filter((source) => source.id.startsWith("attachment:"));
+          const latestGroup = retained.at(-1)?.materialId;
+          sources = named.length ? named : retained.filter((source) => source.materialId === latestGroup);
         }
         const detected = studyJobs.detectSet({ message, mode, sources });
         if (detected) {

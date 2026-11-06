@@ -36,9 +36,15 @@ async function fixture(t, options = {}) {
       },
       finalize: (job, content, interrupted) => db.saveStudyMessage({ id: job.assistantId, userId: job.userId, courseId: job.courseId, conversationId: job.conversationId,
         role: "assistant", content, interrupted, createdAt: new Date(Date.parse(job.createdAt) + 1).toISOString(), studyJobId: job.id }),
-      plan: async (messages) => {
+      plan: async (messages, visuals) => {
+        if (options.plan) return options.plan(messages, visuals);
         const request = JSON.parse(messages[1].content);
         return JSON.stringify({ questions: request.questions.map((question) => ({ id: question.id, queries: ["opportunity cost", "机会成本"], dependsOn: [] })) });
+      },
+      verify: async (messages, visuals, signal) => {
+        if (options.verify) return options.verify(messages, visuals, signal);
+        const request = JSON.parse(messages[1].content);
+        return JSON.stringify({ checks: request.proposedAnswers.map(({ id }) => ({ id, valid: true })) });
       },
       answer: async (messages, visuals, signal) => {
         current++; maximum = Math.max(maximum, current);
@@ -120,4 +126,62 @@ test("an incompletely readable multi-image inventory cannot silently report the 
   const done = await waitFor(() => service.get("alice", "math", job.id), (job) => job.status === "failed");
   assert.equal((await service.publicJob(done)).content, "");
   assert.equal((await f.db.listChatAttachmentGroups("alice", "math", "default"))[0].attachments.length, 10, "All uploads are still accepted and retained");
+});
+
+test("two numbered sections are fully solved rather than reporting only the longest section", async (t) => {
+  const f = await fixture(t), service = f.service();
+  const paper = { name: "sections.txt", kind: "text", text: "Section A\n" + Array.from({ length: 6 }, (_, i) => `${i + 1}. Explain A${i + 1}.`).join("\n") + "\nSection B\n1. Explain B1.\n2. Explain B2." };
+  const context = { ...f.context, attachments: [paper] };
+  const detected = detectSet({ message: context.message, sources: [{ ...paper, id: "upload:0" }] });
+  const job = await service.create(context, detected, "all-sections-review");
+  const done = await waitFor(() => service.get("alice", "math", job.id), (job) => job.status === "completed");
+  const view = await service.publicJob(done);
+  assert.equal(view.total, 8); assert.equal(view.completed, 8);
+  assert(view.content.includes("Section B")); assert.equal(f.calls.get("q8"), 1);
+});
+
+for (const status of ["complete", "unreadable", "omitted"]) {
+  test(`mixed text and scan inventory: ${status} cannot hide an attachment`, async (t) => {
+    let sawScan = false;
+    const f = await fixture(t, {
+      loadVisual: async () => ({ name: "extra.png", kind: "image", dataUrl: "data:image/png;base64,fixture" }),
+      plan: async (messages, visuals) => {
+        const input = JSON.parse(messages[1].content), sourceId = input.reviewSourceIds[0];
+        sawScan = visuals.some((file) => file.name === "extra.png");
+        assert.match(sourceId, /^attachment:/);
+        return JSON.stringify({ sourceChecks: status === "omitted" ? [] : [{ sourceId, status, reason: "The lower half of extra.png is blurred." }],
+          questions: [...input.questions, ...(status === "complete" ? [{ id: "q21", sourceId, number: 21, text: "Extra question from image", parts: ["a", "b"], pages: [] }] : [])] });
+      }
+    });
+    const service = f.service(), context = { ...f.context, message: "请解答所有题目", attachments: [...f.context.attachments, { name: "extra.png", kind: "image", dataUrl: "data:image/png;base64,fixture" }] };
+    const detected = detectSet({ message: context.message, sources: context.attachments.map((item, n) => ({ ...item, id: `upload:${n}` })) });
+    const job = await service.create(context, detected, `mixed-scan-${status}`);
+    const done = await waitFor(() => service.get("alice", "math", job.id), (job) => ["completed", "needs_input", "failed"].includes(job.status));
+    assert(sawScan);
+    const view = await service.publicJob(done);
+    assert.equal(done.status, status === "complete" ? "completed" : status === "unreadable" ? "needs_input" : "failed");
+    if (status === "complete") { assert.equal(view.completed, 21); assert.equal(f.calls.get("q21"), 1); }
+    if (status === "unreadable") { assert.equal(view.completed, 20); assert.match(view.content, /extra.png is blurred/); assert.equal(f.calls.get("q21"), undefined); }
+    if (status === "omitted") assert.equal(view.completed, 0);
+  });
+}
+
+test("independent review rejects a wrong solution and retries only that question", async (t) => {
+  let attempts = 0;
+  const f = await fixture(t, { verify: async (messages) => {
+    const input = JSON.parse(messages[1].content);
+    return JSON.stringify({ checks: input.proposedAnswers.map(({ id }) => ({ id, valid: id !== "q3" || ++attempts > 1 })) });
+  } }), service = f.service();
+  const job = await service.create(f.context, f.detected, "independent-review-retry");
+  const done = await waitFor(() => service.get("alice", "math", job.id), (job) => job.status === "completed");
+  assert.equal((await service.publicJob(done)).completed, 20);
+  assert.equal(f.calls.get("q3"), 2); assert.equal(f.calls.get("q1"), 1);
+});
+
+test("unavailable or incomplete review cannot publish unverified solutions as completed", async (t) => {
+  const f = await fixture(t, { verify: async () => JSON.stringify({ checks: [] }) }), service = f.service();
+  const job = await service.create(f.context, f.detected, "independent-review-failed");
+  const done = await waitFor(() => service.get("alice", "math", job.id), (job) => job.status === "partial");
+  assert.equal((await service.publicJob(done)).completed, 0);
+  assert.equal((await service.publicJob(done)).content, "");
 });

@@ -12,6 +12,12 @@ globalThis.fetch = async (url, options) => {
     return Response.json({ text: "明天下午三点到四点在图书馆复习。" });
   }
   const body = JSON.parse(options.body);
+  if (body.messages?.[0]?.content.startsWith("StudyBridge answer-review/v1")) {
+    if (body.store !== false || !options.signal || body.stream) throw new Error("Answer review must be bounded and private.");
+    const content = body.messages[1].content;
+    const input = JSON.parse(typeof content === "string" ? content : content.find((part) => part.type === "text").text);
+    return Response.json({ choices: [{ message: { content: JSON.stringify({ checks: input.proposedAnswers.map(({ id }) => ({ id, valid: true })) }) } }] });
+  }
   if (body.messages?.[0]?.content.startsWith("StudyBridge problem-set")) {
     if (body.store !== false || !options.signal || body.stream) throw new Error("Problem-set workers must be bounded and private.");
     const last = body.messages[1].content;

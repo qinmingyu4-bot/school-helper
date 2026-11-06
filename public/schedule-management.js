@@ -29,18 +29,15 @@
     }
     return [...result.values()].sort((a, b) => a.name.localeCompare(b.name));
   }
-  function instant(item) {
-    try { return Date.parse(schedule.validTime(item.startsAt) && item.timeZone ? schedule.toUtc(item.startsAt, item.timeZone) : item.startsAt); }
-    catch { return NaN; }
-  }
   function select(items, { scope = "future", kind = "all", now = Date.now() } = {}) {
-    return items.filter((item) => (scope === "all" || instant(item) >= now) && (kind === "all" || schedule.kind(item.kind) === kind));
+    return items.filter((item) => (scope === "all" || schedule.instant(item) >= now) && (kind === "all" || schedule.kind(item.kind) === kind));
   }
   function localParts(value, timeZone) {
-    if (schedule.validTime(value)) return { date: value.slice(0, 10), time: value.slice(11, 16) };
-    const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(value)).map((part) => [part.type, part.value]));
-    return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` };
+    const local = schedule.wallTime(value, timeZone);
+    if (!local) throw new Error("日期或时间无效。");
+    return { date: local.slice(0, 10), time: local.slice(11) };
   }
+
   function validatePatch(patch) {
     const limits = { title: 160, date: 10, startTime: 5, endTime: 5, location: 2000, notes: 10000 };
     if (!patch || typeof patch !== "object" || Array.isArray(patch) || !Object.keys(patch).length) throw new Error("请勾选至少一个要修改的字段。");
@@ -61,11 +58,11 @@
       const start = localParts(item.startsAt, timeZone);
       const end = item.endsAt ? localParts(item.endsAt, timeZone) : null;
       const date = patch.date || start.date;
-      result.startsAt = schedule.toUtc(`${date}T${patch.startTime || start.time}`, timeZone);
+      result.startsAt = `${date}T${patch.startTime || start.time}`;
       const endTime = Object.hasOwn(patch, "endTime") ? patch.endTime : end?.time;
       const days = end ? Math.round((Date.parse(end.date) - Date.parse(start.date)) / 86400000) : 0;
       const endDate = new Date(Date.parse(date) + days * 86400000).toISOString().slice(0, 10);
-      result.endsAt = endTime ? schedule.toUtc(`${endDate}T${endTime}`, timeZone) : "";
+      result.endsAt = endTime ? `${endDate}T${endTime}` : "";
       if (result.endsAt && result.endsAt <= result.startsAt) throw new Error(`“${item.title}”的结束时间应晚于开始时间，请同时修改起止时间。`);
       // Occurrences have already been expanded. Old extraction rules no longer describe an edited meeting.
       delete result.recurrence;

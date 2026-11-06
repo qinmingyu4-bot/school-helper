@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const calendar = require("../public/schedule-calendar");
 const importer = require("../public/schedule-import");
 const context = { now: "2026-10-26T15:30:00Z", timeZone: "America/Toronto" };
-const row = (title, startsAt, kind = "LEC", extra = {}) => ({ title, startsAt, kind, docId: title, courseId: "planner", ...extra });
+const row = (title, startsAt, kind = "LEC", extra = {}) => ({ title, startsAt, kind, timeZone: "America/Toronto", docId: title, courseId: "planner", ...extra });
 
 test("date cells show three entries before counting overflow and retain all day details", () => {
   const items = Array.from({ length: 5 }, (_, index) => row(`Task ${index + 1}`, `2026-10-28T${10 + index}:00Z`, "EVENT"));

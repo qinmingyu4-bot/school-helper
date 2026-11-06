@@ -11,8 +11,8 @@ const normalize = (items) => normalizeBatch({ items, source: "syllabus.pdf", tim
 
 test("batch validation preserves complete information and rejects malformed rows before any writes", () => {
   const [item] = normalize([{ ...meeting, notes: "完整备注".repeat(500), completedAt: "already done", userId: "someone-else" }]);
-  assert.equal(item.startsAt, "2026-11-02T15:00:00.000Z");
-  assert.equal(item.endsAt, "2026-11-02T16:00:00.000Z");
+  assert.equal(item.startsAt, "2026-11-02T10:00");
+  assert.equal(item.endsAt, "2026-11-02T11:00");
   assert.equal(item.notes, "完整备注".repeat(500));
   assert.deepEqual(item.recurrence, meeting.recurrence);
   assert.equal(item.evidence, meeting.evidence);
@@ -23,7 +23,7 @@ test("batch validation preserves complete information and rejects malformed rows
   assert.throws(() => normalize(Array(81).fill(meeting)));
   assert.throws(() => normalize([meeting, { ...meeting, startsAt: "2026-02-30T10:00" }]));
   assert.throws(() => normalize([{ ...meeting, endsAt: meeting.startsAt }]));
-  assert.throws(() => normalize([{ ...meeting, startsAt: "2026-03-08T02:30", endsAt: "" }]));
+  assert.equal(normalize([{ ...meeting, startsAt: "2026-03-08T02:30", endsAt: "" }])[0].startsAt, "2026-03-08T02:30");
   assert.throws(() => normalizeBatch({ items: [meeting], timeZone: "Invalid/Zone" }));
 });
 

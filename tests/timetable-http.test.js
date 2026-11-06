@@ -61,7 +61,7 @@ test("timetable images/PDFs retain layout, use school calendars and return recur
   assert.ok(unknownSchool.data.items[0].weekly);
   assert.match(unknownSchool.data.calendarNotice, /一次/);
   const planner = (await request("/api/courses", { name: "Schedule & Deadlines" }, cookie)).data.course;
-  const lecture = { kind: "LEC", title: "MAT101H1F LEC0101", course: "MAT101H1F", startsAt: "2026-11-02T15:00:00.000Z", endsAt: "2026-11-02T16:00:00.000Z", completedAt: "2026-11-02T16:00:00Z" };
+  const lecture = { timeZone: "America/Toronto", kind: "LEC", title: "MAT101H1F LEC0101", course: "MAT101H1F", startsAt: "2026-11-02T15:00:00.000Z", endsAt: "2026-11-02T16:00:00.000Z", completedAt: "2026-11-02T16:00:00Z" };
   await request(`/api/courses/${planner.id}/documents`, { title: `[SCHEDULE_ITEM] ${lecture.title}`, type: "Schedule", text: JSON.stringify(lecture) }, cookie);
   const syllabusFile = { fileName: "syllabus-assessments-fixture.txt", fileData: Buffer.from("Course outline with lecture, Quiz 1, midterm and Assignment 1").toString("base64"), timeZone: "America/Toronto" };
   const syllabus = await request("/api/schedule/extract", syllabusFile, cookie);

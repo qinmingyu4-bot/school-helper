@@ -1829,6 +1829,7 @@ AI 仍在整理，请稍候；也可取消后重试。|AI is still processing. P
 整理超时，原文已保留，可重试或手动填写。|Processing timed out. Text is kept. Retry or enter details manually.
 已取消整理，原文已保留。|Processing canceled. Text is kept.
 {0} · 尚未加入日程。勾选要加入的项目，点开卡片可编辑并查看完整备注与原文。{1}{2}|{0} · Not added yet. Select items and open cards to edit or review notes and sources.{1}{2}
+日程按录入的日期和钟点显示，出国或切换时区后保持一致。|Schedules keep the date and clock time you entered when you travel or change time zones.
 已使用存档中经大学官网核对的校历。|Using an archived calendar verified against official university sources.
 已从大学官网核对授课日期和停课假期。|Teaching dates and breaks were checked against official university sources.
 课表未注明完整学期，已按当前学期匹配；请核对上方校历。|The timetable does not specify a complete term. Review the calendar selected for the current term.

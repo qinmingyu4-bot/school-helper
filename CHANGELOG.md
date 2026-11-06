@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — Stable schedule clock times
+
+- Keep timetable imports, manual plans, deadlines and learning reviews at their entered dates and clock times across device time-zone changes. Recover older UTC entries through their saved original time zone, with a stable UTC fallback when that metadata is absent.
+- Align calendar grouping, editing, duplicate detection, countdowns and automatic class completion with those clock times. Update existing device push subscriptions to the locally reported time zone when the app is used.
+
 ## Unreleased — Academic calendar archive
 
 - Reuse verified university teaching calendars across timetable imports and server restarts. Include 2026–27 regular undergraduate fall and winter/spring calendars for Waterloo, UC Berkeley and HKUST, with official links, holidays and weekday substitutions where applicable.

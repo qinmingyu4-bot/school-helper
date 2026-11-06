@@ -384,7 +384,7 @@ Schedule extraction retains a known date even when no clock time is supplied. Dr
 
 The full agenda supports multi-select type filters alongside pending/all/completed status. An empty selection means all types; users can combine Lecture, Tutorial, assignment/deadline, Quiz, exam and personal categories. Status counts reflect selected types, type counts reflect the current status, and the month calendar remains unfiltered. Historical DDL assessments are classified by their titles (Quiz/小测/测验 and exam/test/midterm/final/考试); stored kinds and completion rules remain unchanged.
 
-**日程 → 按课程管理日程** provides bulk editing and deletion across every month, including legacy planner entries and course-owned schedule documents. Review the number and sample of affected entries, choose not-yet-started or all entries (including history), and optionally restrict to Lecture, Tutorial, assignments/exams or personal plans. Each agenda/day item also has edit/delete actions with a single-entry scope. Bulk edits change only checked time, room/link or notes fields; single-entry edits also support title/date. Local dates and per-entry time zones survive time changes, including daylight-saving offsets; legacy entries without a time zone use UTC. Course materials and chats remain intact. Named courses group by normalized course code/name; a short code joins a full code only when its campus match is unambiguous. Unnamed personal plans remain individually manageable.
+**日程 → 按课程管理日程** provides bulk editing and deletion across every month, including legacy planner entries and course-owned schedule documents. Review the number and sample of affected entries, choose not-yet-started or all entries (including history), and optionally restrict to Lecture, Tutorial, assignments/exams or personal plans. Each agenda/day item also has edit/delete actions with a single-entry scope. Bulk edits change only checked time, room/link or notes fields; single-entry edits also support title/date. Edits preserve the displayed dates and clock times across travel. Legacy UTC entries recover their original clock from the saved time zone, defaulting to UTC when unavailable. Course materials and chats remain intact. Named courses group by normalized course code/name; a short code joins a full code only when its campus match is unambiguous. Unnamed personal plans remain individually manageable.
 
 `POST /api/schedule/manage` accepts an authenticated, explicit snapshot of up to 80 `{courseId, docId}` targets and an edit/delete operation. Every batch validates ownership and schedule-document type before writing, with atomic local persistence or conditional DynamoDB transactions. The dialog prevalidates edits for the entire selection and processes larger selections in batches; failed requests retain the reviewed snapshot and retry only outstanding batches. Deleting already-removed targets is safe to retry. Concurrent DynamoDB changes return 409 instead of overwriting them. This endpoint never deletes course workspaces.
 
@@ -651,15 +651,22 @@ Initial records and refresh targets live in `lib/academic-calendar-seeds.js`.
 Confirmation expands selected weekly patterns from the import date through the
 last teaching day, excluding reading weeks, closures, holidays, exam/vacation
 gaps and dates outside teaching periods. Official weekday substitutions are
-supported. Review stays grouped by pattern, not by every occurrence. School-local
-wall times are converted to UTC with DST handling. Up to 200 source patterns and
+supported. Review stays grouped by pattern, not by every occurrence. Schedule dates and clock times are stored as floating local values. A 10:00 class
+stays at 10:00 when the device moves between Canada and China. Older UTC records
+are read using their saved original time zone to recover the entered clock.
+Records without that metadata use UTC as a stable fallback. Display, editing,
+duplicate detection, countdowns and class completion use the same clock rules.
+System reminders follow each subscribed device’s last reported local time zone,
+updated on app use and while the page is active. After travelling, open StudyBridge
+once to update background reminder timing. During a daylight-saving gap the
+written clock remains visible and its reminder moves forward with the clock. Up to 200 source patterns and
 1500 generated occurrences are allowed. Syllabus extraction prioritizes explicit
 quiz, test/midterm/final-exam and assignment dates as DDL tasks, including quizzes
 held during a lecture. Missing dates/times remain editable rather than invented.
 Re-imports compare saved items during review and again at confirmation. Ordinary
-Lecture/Tutorial meetings match by normalized course code, kind and actual UTC
+Lecture/Tutorial meetings match by normalized course code, kind and recorded local clock
 start time even when their titles differ; conflicting explicit section identifiers
-remain distinct. UofT term suffixes and school-local DST conversions are normalized.
+remain distinct. UofT term suffixes and legacy clocks are normalized.
 Assessments keep their titles in the duplicate key so a quiz and assignment at the
 same course/time both survive, and a quiz never merges with its host lecture.
 
@@ -688,7 +695,7 @@ adapt to the width of the content area, including narrow side panels.
 Confirmation saves reminders in the existing per-user planner, skips duplicates,
 and preserves remaining drafts if saving fails. Countdown labels refresh every
 15 seconds while the page is open, without replacing the student's draft inputs.
-Dates are displayed in the browser's time zone and saved as UTC instants.
+Dates and clock times retain the entered values in storage and display.
 AI extraction requires the server's existing `OPENAI_API_KEY` and uses
 `OPENAI_COMPLEX_MODEL`. Official calendar lookup also requires `OPENAI_WEB_SEARCH`
 and Responses API web search. Scanned PDFs are sent with their original pages;

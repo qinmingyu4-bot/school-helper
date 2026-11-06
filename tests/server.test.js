@@ -364,7 +364,7 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     assert.equal(saved.data.duplicates, 1);
     assert.equal(saved.data.items[0].notes, item.notes);
     assert.equal(saved.data.items[0].source, "outline.pdf");
-    assert.equal(saved.data.items[0].endsAt, "2027-01-12T16:00:00.000Z");
+    assert.equal(saved.data.items[0].endsAt, "2027-01-12T11:00");
     assert.equal(saved.data.items[0].evidence, item.evidence);
     const retry = await request("/api/schedule/import", { method: "POST", cookie: alice.cookie, body });
     assert.equal(retry.data.saved, 0);

@@ -1430,7 +1430,7 @@
         ${state.scheduleDraftOrigin === "file" ? scheduleReviewHtml() : ""}
         </details>
         <div id="scheduleAgendaView" class="planner-view">${parts.agenda}</div>
-        <p class="schedule-timezone">月历和新增安排使用当前时区：${esc(model.timeZone)} · 导入课程按学校时区换算<br>Lecture / Tutorial 按结束时间自动完成；未填写结束时间时，按课表记录的开始时间处理。</p>
+        <p class="schedule-timezone">日程按录入的日期和钟点显示，出国或切换时区后保持一致。<br>Lecture / Tutorial 按结束时间自动完成；未填写结束时间时，按课表记录的开始时间处理。</p>
       </section>
     `;
   }
@@ -1703,10 +1703,10 @@
     let count = null;
     try { if (calendar) count = scheduleImport.deduplicate(scheduleImport.expandWeekly(state.scheduleDrafts.filter((item) => item.selected), calendar, { fromDate: state.scheduleFromDate }), state.scheduleItems).items.length; } catch {}
     return ui.html`<section class="schedule-calendar" aria-label="学期与停课规则"><h3>本学期循环规则</h3><p>${esc(ui.text(state.scheduleCalendarNotice))}</p>
-      ${calendar ? ui.html`<p><strong>${esc([calendar.school, calendar.campus, calendar.faculty, calendar.label].filter(Boolean).join(" · "))}</strong></p><p>授课范围：${calendar.teachingPeriods.map((period) => `${esc(period.startDate)} — ${esc(period.endDate)}`).join("；")}<br>从 ${esc(state.scheduleFromDate)} 起生成；时区 ${esc(calendar.timeZone)} · <span data-schedule-preview-count>${count !== null ? ui.message`新增 ${count} 次安排（自动跳过重复）` : ui.text("请补全课程规则")}</span></p>
+      ${calendar ? ui.html`<p><strong>${esc([calendar.school, calendar.campus, calendar.faculty, calendar.label].filter(Boolean).join(" · "))}</strong></p><p>授课范围：${calendar.teachingPeriods.map((period) => `${esc(period.startDate)} — ${esc(period.endDate)}`).join("；")}<br>从 ${esc(state.scheduleFromDate)} 起生成 · <span data-schedule-preview-count>${count !== null ? ui.message`新增 ${count} 次安排（自动跳过重复）` : ui.text("请补全课程规则")}</span></p>
       <p>停课：${calendar.breaks.length ? calendar.breaks.map((pause) => `${esc(pause.startDate)}${pause.endDate !== pause.startDate ? ` — ${esc(pause.endDate)}` : ""} ${esc(pause.label)}`).join("；") : ui.text("本次校历未列出范围内的停课日")}</p>
       ${(calendar.sources || []).map((source) => `<a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a>`).join(" · ")}` : ui.html`<p class="schedule-warning">只需填写一次学期范围，所有已识别的每周课程都会使用它。</p>`}
-      <details ${!calendar || state.scheduleCalendarEditing ? "open" : ""}><summary>手动确认或调整本学期</summary><div class="inline-fields"><label>授课开始<input type="date" data-calendar-field="startDate" value="${esc(draft.startDate)}"></label><label>最后授课日<input type="date" data-calendar-field="endDate" value="${esc(draft.endDate)}"></label></div><label>停课日期（每行一个日期或起止范围）<textarea data-calendar-field="breaks" placeholder="2026-10-12&#10;2026-10-26 / 2026-10-30">${esc(draft.breaks)}</textarea></label><label>学校时区<input data-calendar-field="timeZone" value="${esc(draft.timeZone)}" placeholder="America/Toronto"></label></details>
+      <details ${!calendar || state.scheduleCalendarEditing ? "open" : ""}><summary>手动确认或调整本学期</summary><div class="inline-fields"><label>授课开始<input type="date" data-calendar-field="startDate" value="${esc(draft.startDate)}"></label><label>最后授课日<input type="date" data-calendar-field="endDate" value="${esc(draft.endDate)}"></label></div><label>停课日期（每行一个日期或起止范围）<textarea data-calendar-field="breaks" placeholder="2026-10-12&#10;2026-10-26 / 2026-10-30">${esc(draft.breaks)}</textarea></label></details>
     </section>`;
   }
 
@@ -1998,8 +1998,8 @@
       title: data.title || String(doc.title || "").replace(SCHEDULE_PREFIX, "").trim() || "Schedule item",
       kind: data.kind || "DDL",
       course: data.course || (course.name === SCHEDULE_COURSE ? "" : course.name),
-      startsAt: data.startsAt || doc.createdAt,
-      endsAt: data.endsAt || "",
+      startsAt: scheduleImport.wallTime(data.startsAt || doc.createdAt, data.timeZone),
+      endsAt: scheduleImport.wallTime(data.endsAt, data.timeZone),
       timeZone: data.timeZone || "",
       recurrence: data.recurrence,
       location: data.location || "",
@@ -2088,7 +2088,7 @@
     const data = await api("/api/schedule/items");
     if (state.user?.id !== userId || !isCurrent()) return;
     if (refreshCourses) state.courses = data.courses || [];
-    state.scheduleItems = data.items || [];
+    state.scheduleItems = (data.items || []).map(scheduleImport.floating);
   }
 
   async function ensureScheduleCourse() {
@@ -3019,8 +3019,8 @@
         if (endClock && (!scheduleImport.validClock(endClock) || endClock <= startsAt.slice(11))) throw new Error(ui.text("结束时间应晚于开始时间；跨天安排请分天添加。"));
         cancelScheduleVoice();
         const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        const payload = { title, kind: scheduleImport.kind($("scheduleKind")?.value) || "EVENT", course: $("scheduleCourse")?.value || "", startsAt: scheduleImport.toUtc(startsAt, timeZone),
-          endsAt: endClock ? scheduleImport.toUtc(`${day}T${endClock}`, timeZone) : "", timeZone, location: $("scheduleLocation")?.value || "", notes: $("scheduleNotes")?.value || "", completedAt: "" };
+        const payload = { title, kind: scheduleImport.kind($("scheduleKind")?.value) || "EVENT", course: $("scheduleCourse")?.value || "", startsAt,
+          endsAt: endClock ? `${day}T${endClock}` : "", timeZone, location: $("scheduleLocation")?.value || "", notes: $("scheduleNotes")?.value || "", completedAt: "" };
         button.disabled = true;
         state.scheduleSaving = true;
         try {
@@ -3082,7 +3082,7 @@
           onBatch: ({ operation, batch, items }) => {
             const selected = new Set(batch.map((entry) => `${entry.courseId}/${entry.docId}`));
             state.scheduleItems = state.scheduleItems.filter((entry) => !selected.has(`${entry.courseId}/${entry.docId}`));
-            if (operation === "edit") state.scheduleItems.push(...items);
+            if (operation === "edit") state.scheduleItems.push(...items.map(scheduleImport.floating));
             if (state.page === "schedule") render();
           },
           onDone: (message) => { setToast(message); if (state.page === "schedule") render(); }
@@ -3209,7 +3209,12 @@
     });
   }
 
+  const syncScheduleTimeZone = window.StudyBridgePush.createTimeZoneSync({ api, getUser: () => state.user });
+  setInterval(() => { if (!document.hidden) void syncScheduleTimeZone(); }, 60000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) void syncScheduleTimeZone(); });
+
   function render() {
+    void syncScheduleTimeZone();
     scheduleManagementUi.closeIfStale();
     const renameInput = $("conversationRename");
     if (renameInput && state.renamingConversation?.courseId === renameInput.dataset.course && state.renamingConversation.id === renameInput.dataset.conversation) state.renamingConversation.title = renameInput.value;

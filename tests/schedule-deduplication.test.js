@@ -1,7 +1,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const importer = require("../public/schedule-import");
-const saved = { kind: "LEC", title: "FOR200H1F LEC0101", course: "FOR200H1F", startsAt: "2026-11-02T15:00:00.000Z", completedAt: "2026-11-02T16:00:00Z" };
+const saved = { timeZone: "America/Toronto", kind: "LEC", title: "FOR200H1F LEC0101", course: "FOR200H1F", startsAt: "2026-11-02T15:00:00.000Z", completedAt: "2026-11-02T16:00:00Z" };
 const syllabus = { kind: "lecture", title: "Course lecture", course: "FOR 200H1", startsAt: "2026-11-02T10:00", timeZone: "America/Toronto" };
 
 test("syllabus lectures match timetable occurrences despite renamed titles, course formatting and UTC conversion", () => {

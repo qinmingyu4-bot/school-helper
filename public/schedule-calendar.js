@@ -31,7 +31,6 @@
     return selected.length ? items.filter((item) => selected.includes(agendaType(item))) : items;
   }
   const dateFormatters = new Map();
-  const clockFormatters = new Map();
   const dateFormatter = (weekday) => new Intl.DateTimeFormat(ui.locale(), { timeZone: "UTC", year: "numeric", month: "long", day: "numeric", ...(weekday ? { weekday: "long" } : {}) });
   function dayKey(timestamp, timeZone) {
     if (!dateFormatters.has(timeZone)) dateFormatters.set(timeZone, new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }));
@@ -44,22 +43,19 @@
     const result = new Date(Date.UTC(year, number - 1 + offset, 1)).toISOString().slice(0, 7);
     return result >= "2000-01" && result <= "2200-12" ? result : month;
   }
-  function timestamp(value, timeZone) {
-    try { return Date.parse(importer.validTime(value) && timeZone ? importer.toUtc(value, timeZone) : value); }
-    catch { return NaN; }
-  }
   function buildModel({ items = [], month = "", selectedDate = "", timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone, now = Date.now() } = {}) {
     now = Number(new Date(now));
     const today = dayKey(now, timeZone);
     month = /^\d{4}-(0[1-9]|1[0-2])$/.test(month) && month >= "2000-01" && month <= "2200-12" ? month : today.slice(0, 7);
     selectedDate = importer.validDate(selectedDate) && selectedDate.startsWith(month) ? selectedDate : today.startsWith(month) ? today : `${month}-01`;
     const rows = items.flatMap((item) => {
-      const start = timestamp(item.startsAt, item.timeZone);
+      const start = importer.instant(item, "startsAt", timeZone);
       if (!Number.isFinite(start)) return [];
-      const candidateEnd = timestamp(item.endsAt, item.timeZone);
+      const candidateEnd = importer.instant(item, "endsAt", timeZone);
       const end = Number.isFinite(candidateEnd) && candidateEnd > start ? candidateEnd : start;
-      const startDay = dayKey(start, timeZone);
-      return [{ ...item, ...importer.completion(item, now), start, end, startDay, endDay: end > start ? dayKey(end - 1, timeZone) : startDay }];
+      const local = importer.floating(item);
+      const startDay = local.startsAt.slice(0, 10);
+      return [{ ...item, ...importer.completion(item, now, timeZone), start, end, startDay, endDay: end > start ? new Date(Date.parse(local.endsAt + ":00Z") - 1).toISOString().slice(0, 10) : startDay }];
     }).sort((first, second) => first.start - second.start || String(first.title).localeCompare(String(second.title)));
     const firstDay = new Date(`${month}-01T12:00:00Z`);
     const gridStart = firstDay.getTime() - firstDay.getUTCDay() * 86400000;
@@ -77,15 +73,12 @@
   function dateLabel(date, weekday = true) {
     return dateFormatter(weekday).format(new Date(`${date}T12:00:00Z`));
   }
-  function clock(timestamp, timeZone) {
-    if (!clockFormatters.has(timeZone)) clockFormatters.set(timeZone, new Intl.DateTimeFormat("zh-CN", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }));
-    return clockFormatters.get(timeZone).format(new Date(timestamp));
-  }
-  function timeLabel(item, timeZone) {
-    const start = clock(item.start, timeZone);
-    if (item.end <= item.start) return start;
-    const endDate = dayKey(item.end, timeZone);
-    return `${start}–${item.startDay === endDate ? "" : `${dateLabel(endDate, false)} `}${clock(item.end, timeZone)}`;
+  function timeLabel(item) {
+    const local = importer.floating(item);
+    const start = local.startsAt.slice(11);
+    if (!local.endsAt || local.endsAt <= local.startsAt) return start;
+    const endDate = local.endsAt.slice(0, 10);
+    return `${start}–${item.startDay === endDate ? "" : `${dateLabel(endDate, false)} `}${local.endsAt.slice(11)}`;
   }
   function badge(item) { const category = agendaType(item); const [label, name] = category === "QUIZ" ? [ui.text("Quiz / 小测"), "deadline"] : category === "EXAM" ? [ui.text("考试"), "deadline"] : type(item.kind); return `<span class="planner-badge planner-${name}">${ui.text(label)}</span>`; }
   function itemHtml(item, model, countdown) {
@@ -94,7 +87,7 @@
     const ongoing = item.start <= model.now && item.end > model.now;
     const status = overdue ? ui.text("已过截止时间") : ongoing ? item.classMeeting ? ui.text("上课中") : ui.text("正在进行") : item.start < model.now ? ui.text("时间已过") : countdown(instant);
     return ui.html`<div class="planner-item ${item.completedAt ? "is-completed" : ""}">
-      <div class="planner-item-time"><time datetime="${escape(item.startsAt)}">${escape(timeLabel(item, model.timeZone))}</time>${badge(item)}</div>
+      <div class="planner-item-time"><time datetime="${escape(item.startsAt)}">${escape(timeLabel(item))}</time>${badge(item)}</div>
       <div class="planner-item-content"><b>${escape(item.title)}</b>${item.course || item.location ? `<small>${escape([item.course, item.location].filter(Boolean).join(" · "))}</small>` : ""}${item.learningTopicId ? ui.html`<button data-action="learning-start" data-topic="${escape(item.learningTopicId)}" data-course="${escape(item.courseId)}" data-doc="${escape(item.docId)}">开始复习</button>` : ""}${item.notes ? ui.html`<details class="planner-notes"><summary>查看备注</summary><p>${escape(item.notes)}</p></details>` : ""}</div>
       <div class="planner-item-actions">${item.completedAt ? `<span class="planner-completed-label">✓ ${item.automatic ? ui.text("已上完") : ui.text("已完成")}</span>` : `<small class="${overdue ? "planner-overdue" : ""}" ${item.start < model.now || ongoing ? "" : `data-countdown="${instant}"`}>${escape(status)}</small>${item.classMeeting ? "" : ui.html`<button data-action="complete-schedule" data-course="${escape(item.courseId)}" data-doc="${escape(item.docId)}" aria-label="完成 ${escape(item.title)}">完成</button>`}`}<div class="planner-manage-actions"><button data-action="edit-schedule" data-doc="${escape(item.docId)}" data-course="${escape(item.courseId)}" aria-label="编辑 ${escape(item.title)}">编辑</button><button data-action="delete-schedule" data-doc="${escape(item.docId)}" data-course="${escape(item.courseId)}" aria-label="删除 ${escape(item.title)}">删除</button></div></div>
     </div>`;
@@ -102,7 +95,7 @@
   function nextHtml(model, countdown) {
     const item = model.next;
     const instant = item ? new Date(item.start).toISOString() : "";
-    return ui.html`<div class="planner-next-heading"><span class="schedule-kicker">UP NEXT</span><h2>下一项安排</h2></div><div class="planner-next-content">${item ? `${badge(item)}<b>${escape(item.title)}</b><small>${escape(dateLabel(item.startDay))} · ${escape(timeLabel(item, model.timeZone))}${item.location ? ` · ${escape(item.location)}` : ""}</small>` : ui.html`<b>暂无即将开始的安排</b><small>选择日期，添加课程、作业或自己的计划。</small>`}</div>${item ? ui.html`<strong data-countdown="${instant}">${escape(countdown(instant))}</strong><button data-action="schedule-day" data-date="${escape(item.startDay)}">查看当天</button>` : ""}${model.ongoing.length ? ui.html`<p class="planner-ongoing">正在进行：${escape(model.ongoing.map((entry) => entry.title).join("、"))}</p>` : ""}`;
+    return ui.html`<div class="planner-next-heading"><span class="schedule-kicker">UP NEXT</span><h2>下一项安排</h2></div><div class="planner-next-content">${item ? `${badge(item)}<b>${escape(item.title)}</b><small>${escape(dateLabel(item.startDay))} · ${escape(timeLabel(item))}${item.location ? ` · ${escape(item.location)}` : ""}</small>` : ui.html`<b>暂无即将开始的安排</b><small>选择日期，添加课程、作业或自己的计划。</small>`}</div>${item ? ui.html`<strong data-countdown="${instant}">${escape(countdown(instant))}</strong><button data-action="schedule-day" data-date="${escape(item.startDay)}">查看当天</button>` : ""}${model.ongoing.length ? ui.html`<p class="planner-ongoing">正在进行：${escape(model.ongoing.map((entry) => entry.title).join("、"))}</p>` : ""}`;
   }
   function courseManagementHtml(items) {
     const groups = management.groups(items);
@@ -129,7 +122,7 @@
           <div class="planner-month-meta"><button data-action="schedule-today">回到今天 · ${escape(dateLabel(model.today))}</button><label>跳至<input type="month" id="scheduleMonthPicker" aria-label="选择月份" min="2000-01" max="2200-12" value="${escape(model.month)}"></label></div>
           <div class="planner-weekdays" aria-hidden="true">${(ui.getLanguage() === "en" ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] : ["日", "一", "二", "三", "四", "五", "六"]).map((day) => `<span>${day}</span>`).join("")}</div>
           <div class="planner-grid">${model.days.map((day) => ui.html`<button class="planner-day ${day.inMonth ? "" : "is-outside"} ${day.today ? "is-today" : ""} ${day.selected ? "is-selected" : ""}" data-action="schedule-day" data-date="${day.date}" aria-label="${escape(dateLabel(day.date))}${day.today ? ui.text("，今天") : ""}，${day.items.length} 项安排" aria-pressed="${day.selected}" ${day.today ? 'aria-current="date"' : ""}>
-            <span class="planner-day-number">${Number(day.date.slice(8))}</span><span class="planner-day-events" aria-hidden="true">${day.items.slice(0, 3).map((item) => `<span class="planner-chip planner-${type(item.kind)[1]} ${item.completedAt ? "is-completed" : ""}"><i></i><span>${escape(clock(item.start, model.timeZone))} ${escape(item.title)}</span></span>`).join("")}${day.items.length > 3 ? ui.html`<small>+${day.items.length - 3} 项</small>` : ""}</span>${day.items.length ? ui.html`<span class="planner-mobile-count" aria-hidden="true">${day.items.length}项</span>` : ""}</button>`).join("")}</div>
+            <span class="planner-day-number">${Number(day.date.slice(8))}</span><span class="planner-day-events" aria-hidden="true">${day.items.slice(0, 3).map((item) => `<span class="planner-chip planner-${type(item.kind)[1]} ${item.completedAt ? "is-completed" : ""}"><i></i><span>${escape(importer.wallTime(item.startsAt, item.timeZone).slice(11))} ${escape(item.title)}</span></span>`).join("")}${day.items.length > 3 ? ui.html`<small>+${day.items.length - 3} 项</small>` : ""}</span>${day.items.length ? ui.html`<span class="planner-mobile-count" aria-hidden="true">${day.items.length}项</span>` : ""}</button>`).join("")}</div>
           <div class="planner-legend">${Object.values(types).map(([label, name]) => `<span><i class="planner-dot planner-${name}"></i>${ui.text(label)}</span>`).join("")}</div>
         </article>
         <article class="card planner-day-detail" aria-label="当天详情"><span class="schedule-kicker">DAY DETAILS</span><h2>${Number(model.selectedDate.slice(5, 7))}月${Number(model.selectedDate.slice(8))}日${model.selectedDate === model.today ? ui.html`<span class="planner-today-label">今天</span>` : ""}</h2><p class="planner-day-subtitle">${escape(dateLabel(model.selectedDate))} · ${model.selectedItems.length} 项安排</p>

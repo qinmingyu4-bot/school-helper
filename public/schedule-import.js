@@ -129,6 +129,36 @@
     }
     throw new Error("该时间处于夏令时切换的不存在时段，请核对。");
   }
+  // Local clock strings are authoritative. Older UTC records retain their original
+  // clock through the time zone saved with the item; missing legacy zones use UTC.
+  function wallTime(value, timeZone = "UTC") {
+    if (validTime(value)) return value;
+    if (typeof value !== "string" || !validTime(value.slice(0, 16))) return "";
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:[0-5]\d(?:\.\d{1,3})?$/.test(value)) return value.slice(0, 16);
+    if (!/T.*(?:Z|[+-]\d{2}:?\d{2})$/.test(value) || !Number.isFinite(Date.parse(value))) return "";
+    try {
+      const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: timeZone || "UTC",
+        year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+      }).formatToParts(new Date(value)).map((part) => [part.type, part.value]));
+      return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+    } catch { return ""; }
+  }
+  function floating(item) {
+    return { ...item, startsAt: wallTime(item.startsAt, item.timeZone), endsAt: wallTime(item.endsAt, item.timeZone) };
+  }
+  function instant(item, field = "startsAt", timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone) {
+    const value = wallTime(item[field], item.timeZone);
+    if (!value) return NaN;
+    try { return Date.parse(toUtc(value, timeZone)); }
+    catch {
+      // When clocks skip forward, remind at the next real occurrence of that clock.
+      // Display and storage still retain the user's exact entered date and time.
+      try {
+        const previousDay = new Date(Date.parse(value + ":00Z") - 86400000).toISOString().slice(0, 16);
+        return Date.parse(toUtc(previousDay, timeZone)) + 86400000;
+      } catch { return NaN; }
+    }
+  }
   function expandWeekly(items, calendar, { fromDate = "", limit = 1500 } = {}) {
     const result = [];
     const normalized = items.some((item) => item.weekly) ? normalizeCalendar(calendar) : null;
@@ -153,7 +183,7 @@
     }
     return result;
   }
-  function fingerprint(item) { return [kind(item.kind) || item.kind, String(item.title || "").trim().toLowerCase(), String(item.course || "").trim().toLowerCase(), new Date(item.timeZone && validTime(item.startsAt) ? toUtc(item.startsAt, item.timeZone) : item.startsAt).getTime()].join("|"); }
+  function fingerprint(item) { return [kind(item.kind) || item.kind, String(item.title || "").trim().toLowerCase(), String(item.course || "").trim().toLowerCase(), (wallTime(item.startsAt, item.timeZone) || "invalid")].join("|"); }
   function duplicateIndex(existing = []) {
     const exact = new Set();
     const meetings = new Map();
@@ -167,7 +197,7 @@
     };
     const keys = (item) => {
       let instant;
-      try { instant = new Date(item.timeZone && validTime(item.startsAt) ? toUtc(item.startsAt, item.timeZone) : item.startsAt).getTime(); }
+      try { const local = wallTime(item.startsAt, item.timeZone); instant = local ? Date.parse(local + ":00Z") : NaN; }
       catch { return null; }
       if (!Number.isFinite(instant)) return null;
       const itemKind = kind(item.kind) || item.kind;
@@ -212,18 +242,15 @@
       const comparison = { timeZone: item.timeZone || timeZone || "UTC", teachingPeriods: [{ startDate, endDate }], breaks: [] };
       return { occurrences: expandWeekly([item], comparison, { fromDate }), coverageUnknown: false, weekdaysCovered: true };
     }
-    const occurrences = [], seen = new Set(), days = new Set(), formatters = new Map();
+    const occurrences = [], seen = new Set(), days = new Set();
     for (const saved of existing) {
       try {
-        const zone = item.timeZone || timeZone || saved.timeZone || "UTC";
-        const instant = validTime(saved.startsAt) ? toUtc(saved.startsAt, saved.timeZone || zone) : saved.startsAt;
-        if (!Number.isFinite(Date.parse(instant))) continue;
-        if (!formatters.has(zone)) formatters.set(zone, new Intl.DateTimeFormat("en-CA", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }));
-        const parts = Object.fromEntries(formatters.get(zone).formatToParts(new Date(instant)).map((part) => [part.type, part.value]));
-        const date = `${parts.year}-${parts.month}-${parts.day}`;
+        const local = wallTime(saved.startsAt, saved.timeZone);
+        if (!local) continue;
+        const date = local.slice(0, 10);
         const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
-        if (fromDate && date < fromDate || validDate(startDate) && date < startDate || validDate(endDate) && date > endDate || !item.weekly.weekdays.includes(weekday) || `${parts.hour}:${parts.minute}` !== item.weekly.startTime) continue;
-        const candidate = { ...item, weekly: undefined, startsAt: new Date(instant).toISOString(), timeZone: zone };
+        if (fromDate && date < fromDate || validDate(startDate) && date < startDate || validDate(endDate) && date > endDate || !item.weekly.weekdays.includes(weekday) || local.slice(11) !== item.weekly.startTime) continue;
+        const candidate = { ...item, weekly: undefined, startsAt: local };
         if (!duplicateIndex([saved]).has(candidate) || seen.has(candidate.startsAt)) continue;
         seen.add(candidate.startsAt); days.add(weekday); occurrences.push(candidate);
       } catch { /* An invalid saved row cannot establish a matching weekly pattern. */ }
@@ -257,21 +284,17 @@
     if (review.duplicate) return `${review.existingCount ? "日历中已有" : "本次导入中已有"} · 默认不勾选，可手动勾选；保存时仍会检查重复`;
     return `其中 ${review.existingCount + review.batchCount} 次安排已有，仅添加 ${review.newCount} 次新增安排`;
   }
-  function completion(item, now = Date.now()) {
+  function completion(item, now = Date.now(), timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone) {
     const classMeeting = ["LEC", "TUT"].includes(kind(item.kind));
     const result = { classMeeting, automatic: false, completedAt: item.completedAt || "" };
     if (!classMeeting || result.completedAt) return result;
-    const instant = (value) => {
-      try { return Date.parse(item.timeZone && validTime(value) ? toUtc(value, item.timeZone) : value); }
-      catch { return NaN; }
-    };
-    const start = instant(item.startsAt);
-    const end = instant(item.endsAt);
+    const start = instant(item, "startsAt", timeZone);
+    const end = instant(item, "endsAt", timeZone);
     const finish = Number.isFinite(end) && end > start ? end : start;
     if (Number.isFinite(start) && finish <= Number(new Date(now))) return { classMeeting, automatic: true, completedAt: new Date(finish).toISOString() };
     return result;
   }
-  const api = { draftIssues, duplicateNotice, draftDateTime, withDatePart, kind, validTime, validDate, validClock, validWeekly, parse, parseExtraction, normalizeCalendar, nonTeachingRanges, todayInZone, toUtc, expandWeekly, fingerprint, duplicateIndex, deduplicate, reviewDuplicates, completion };
+  const api = { wallTime, floating, instant, draftIssues, duplicateNotice, draftDateTime, withDatePart, kind, validTime, validDate, validClock, validWeekly, parse, parseExtraction, normalizeCalendar, nonTeachingRanges, todayInZone, toUtc, expandWeekly, fingerprint, duplicateIndex, deduplicate, reviewDuplicates, completion };
   if (typeof module === "object" && module.exports) module.exports = api;
   else scope.StudyBridgeScheduleImport = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

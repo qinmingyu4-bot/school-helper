@@ -85,7 +85,7 @@ for (const cloud of [false, true]) {
     await Promise.all([service.plan(user.id, course, body), service.plan(user.id, course, body)]);
     let tasks = (await db.listDocuments(user.id, course.id)).filter((doc) => doc.type === "Schedule");
     assert.equal(tasks.length, 1);
-    assert.equal(JSON.parse(tasks[0].text).startsAt, "2026-11-05T00:00:00.000Z");
+    assert.equal(JSON.parse(tasks[0].text).startsAt, "2026-11-04T19:00");
     assert.equal((await f.read()).topics[0].status, "untested");
     await assert.rejects(service.plan(user.id, course, { ...body, requestId: "overlapping-plan" }), { statusCode: 409 });
     await assert.rejects(service.plan(user.id, course, { ...body, requestId: "invalid-duration", minutes: 3 }), { statusCode: 400 });

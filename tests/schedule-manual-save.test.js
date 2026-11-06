@@ -32,6 +32,9 @@ function harness({ saveFails = false, refreshFails = false, invalid = false } = 
 
 test("manual save clears and collapses before calendar refresh, preserving other pending input", async () => {
   const h = harness(); await h.run();
+  const saved = JSON.parse(h.requests[0].request.body.text);
+  assert.equal(saved.startsAt, "2026-11-03T09:00");
+  assert.equal(saved.endsAt, "2026-11-03T10:00");
   assert.equal(h.state.scheduleManualOpen, false);
   assert.equal(Object.keys(h.state.scheduleManualDraft).length, 0);
   assert.equal(h.state.scheduleSelectedDate, "2026-11-03");

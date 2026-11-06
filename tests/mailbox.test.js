@@ -104,7 +104,7 @@ for (const dynamo of [false, true]) test(`mailbox ${dynamo ? "DynamoDB" : "local
   const results = await Promise.all([service.resolve("alice", draft.id, body), service.resolve("alice", draft.id, body)]);
   assert.equal(results.reduce((sum, result) => sum + result.saved, 0), 1);
   const courses = await db.listCourses("alice"), docs = await db.listDocuments("alice", courses[0].id);
-  assert.equal(docs.length, 1); assert.equal(JSON.parse(docs[0].text).startsAt, "2026-11-16T23:00:00.000Z");
+  assert.equal(docs.length, 1); assert.equal(JSON.parse(docs[0].text).startsAt, "2026-11-16T18:00");
   const notice = status.drafts.find((row) => !row.items.length);
   await service.resolve("alice", notice.id, { action: "dismiss", generation: notice.generation });
   // Resume a durable queue; replaying source IDs retains the already-reviewed draft.

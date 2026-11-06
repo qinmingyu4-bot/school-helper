@@ -5,6 +5,8 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+制作功能范围|Creation capabilities
+StudyBridge 不支持任何形式的视频制作。|StudyBridge does not support video production in any form.
 系统推送|System push notifications
 仅对此设备生效。锁屏通知不显示日程标题或课程内容。|Applies to this device only. Lock screen notifications hide schedule titles and course details.
 提醒时间|Reminder time

@@ -558,7 +558,8 @@ Tools now creates downloadable Word/PDF, Excel, PowerPoint and PNG images with
 preview, source uploads, optional owned-course context, revision history and
 cancellation. Document files use hosted Code Interpreter rather than executing
 model-generated code on the app server; image revisions use the actual prior image.
-Video infrastructure is present but closed by default at both UI/API levels.
+StudyBridge does not support video production in any form. Video creation is
+permanently rejected by the API, and legacy video environment settings cannot enable it.
 See [Creative Tools](docs/creative-tools.md) for model configuration, quality
 limits, billing/concurrency controls, authenticated file storage and backup needs.
 

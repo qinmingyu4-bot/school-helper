@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — video production restriction
+
+- Make video production permanently unsupported. Remove the video provider implementation and configuration, reject direct creation requests even with legacy enable flags, and restrict generated files to documents and static PNG images.
+- Remove the video tool tab, reject stale video contexts, and explain the fixed restriction in Settings → Help & about in Chinese and English. Apply the same product rule to chat, Office assistance and creative instructions.
+- Verify 538 automated tests, 288 JavaScript/source asset checks, and Chrome/WebKit desktop/mobile bilingual settings and legacy-selection recovery.
+
 ## 1.2.11 — Classmate system notifications
 
 - Publish the owner-authorized classmate system notifications from `a931776`, retaining the existing `43640a7` (1.2.10) schedule push release, persistent private VAPID keys, accounts and user data. Refresh package/frontend/cache versions to 1.2.11; use the verified private backup and automatic code/environment recovery.

@@ -1882,7 +1882,7 @@
     return ui.html`
       ${pageHeader("STUDY TOOLS", ui.text("工具"), ui.text("文档、表格、演示和图片"))}
       <section class="tools-tabs" aria-label="工具选择">
-        ${["docs", "sheets", "slides", "images", "cheatsheet", "video"].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" aria-pressed="${(state.tool || "docs") === tool}" data-action="tool-mode" data-tool="${tool}" ${tool === "video" && !creativeTools.videoEnabled() ? ui.text('disabled title="视频生成暂未开放"') : ""}>${({ docs: "SB Docs", sheets: "SB Sheets", slides: "SB Slides", images: ui.text("图片"), cheatsheet: "Cheatsheet PDF", video: creativeTools.videoEnabled() ? ui.text("视频") : ui.text("视频 · 未开放") })[tool]}</button>`).join("")}
+        ${["docs", "sheets", "slides", "images", "cheatsheet"].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" aria-pressed="${(state.tool || "docs") === tool}" data-action="tool-mode" data-tool="${tool}">${({ docs: "SB Docs", sheets: "SB Sheets", slides: "SB Slides", images: ui.text("图片"), cheatsheet: "Cheatsheet PDF" })[tool]}</button>`).join("")}
       </section>
       ${officeTools.supports(state.tool || "docs") ? ui.html`<nav class="office-view-switch" aria-label="工作方式"><button data-action="office-view-edit" aria-pressed="${state.toolView !== "generate"}">自主编辑</button><button data-action="office-view-generate" aria-pressed="${state.toolView === "generate"}">AI 文件生成</button></nav>` : ""}
       ${officeTools.supports(state.tool || "docs") && state.toolView !== "generate" ? officeTools.html(state.tool || "docs") : creativeTools.html(creativeContext())}
@@ -3099,7 +3099,7 @@
         return;
       }
       if (action === "tool-mode") {
-        if (button.dataset.tool === "video" && !creativeTools.videoEnabled()) return;
+        if (!["docs", "sheets", "slides", "images", "cheatsheet"].includes(button.dataset.tool)) return;
         creativeTools.capture();
         officeTools.capture();
         state.tool = button.dataset.tool || "docs";

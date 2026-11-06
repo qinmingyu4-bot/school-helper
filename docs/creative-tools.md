@@ -7,10 +7,13 @@ decks, and PNG image generation/editing. Revisions produce a new version without
 overwriting the original. Sources can include up to four uploaded files and an
 explicitly selected owned course. These requests do not pollute course chat history.
 
-The prepared video provider uses asynchronous create/status/content endpoints,
-but `STUDYBRIDGE_VIDEO_ENABLED` defaults to false. The UI is disabled and direct
-API requests are rejected before any provider call. Enable it only after an
-explicitly approved launch, account access verification, and pricing review.
+StudyBridge does not support video production in any form, including text-to-video,
+image-to-video, editing, conversion and animated video export. There is no video
+creation tab or user/admin switch. Video requests receive HTTP 403 before any
+provider call, even if legacy `STUDYBRIDGE_VIDEO_ENABLED=true` is present.
+`OPENAI_VIDEO_MODEL` is ignored. Generated outputs accept only documents and static
+PNG images. Chat and creative instructions explain this fixed product restriction.
+Settings → Help & about displays the restriction in Chinese and English.
 
 ## Cheatsheet Printing
 
@@ -68,8 +71,7 @@ dialog. The application cannot override the user's printer settings.
 The server uses its existing private `OPENAI_API_KEY`. Document generation uses
 `OPENAI_DOCUMENT_MODEL`, falling back to the configured complex-task model.
 The model must support Responses API Code Interpreter. Images use
-`OPENAI_IMAGE_MODEL` (default `gpt-image-2`); video uses `OPENAI_VIDEO_MODEL`
-(default `sora-2`) only when enabled. These APIs have separate permissions and
+`OPENAI_IMAGE_MODEL` (default `gpt-image-2`). These APIs have separate permissions and
 usage charges. A missing key or permission error produces an explicit failure,
 not a simulated successful artifact. ChatGPT subscription access does not
 configure the application's API access.
@@ -84,7 +86,6 @@ Official API references:
 - https://developers.openai.com/api/docs/guides/tools-code-interpreter
 - https://developers.openai.com/api/reference/resources/images/methods/edit
 - https://developers.openai.com/api/docs/guides/image-generation
-- https://developers.openai.com/api/docs/guides/video-generation
 
 ## Quality And Limits
 

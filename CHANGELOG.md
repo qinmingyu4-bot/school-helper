@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — Email password reset
+## 1.2.22 — Email password reset
 
 - Open a bilingual password reset form from the sign-in page. Use the six-digit code delivered to the account email, confirm a new password, and return to sign in.
 - Replace the previous password and invalidate existing sessions. Reset codes expire, are limited to five incorrect attempts, and are tied to the current account and password version. Code requests return the same response for registered and unregistered addresses.

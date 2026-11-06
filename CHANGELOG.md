@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — Faster page refresh and static delivery
+
+- Combine each entry’s ordered scripts and full CSS cascade into two content-addressed bundles. Defer JavaScript until parsing finishes and request authentication configuration and identity concurrently. Keep Office loading on demand and stop preloading the large Chinese font before it is needed.
+- Cache fingerprinted public assets for one year; revalidate legacy URLs with ETags. Keep entry HTML, authentication redirects and the push worker uncached. New file contents automatically produce new bundle URLs without relying on a manual version bump.
+- Negotiate and reuse Brotli/gzip representations for static assets only; retain API/AI event-stream behavior. Local app entry measurement: 67 script/style requests → 2, approximately 1.28 MB uncompressed external assets → 354 KB Brotli bundles, including the former inline CSS (about 72% less transferred). These are payload measurements, not a production latency guarantee.
+- Prepare HTTP/2 for the existing domain and IP Nginx hosts, including a locked, validated, backup-and-restore installer invoked by an authorized future deployment. No server migration, private-data changes or production deployment in this task.
+- See [verification and release notes](docs/page-load-performance.md) for cache behavior, streaming protection and tests.
+
 ## 1.2.16 — Smooth streamed answers without reducing AI quality
 
 - Publish the owner-authorized rendering optimization on production baseline `887c6ba` (1.2.15), retaining all existing AI quality, allowance, billing and video restrictions.

@@ -96,6 +96,11 @@ assert.equal(health.schedulePush?.workerEnabled, true, 'Schedule push worker is 
 assert.equal(health.db, manifest.mode, 'Application switched database mode.');
 assert.ok(fs.readFileSync(path.join(backup, 'live-app.js')).equals(fs.readFileSync('public/app.js')), 'Application is not serving the expected release.');
 NODE
+# Apply to existing app virtual hosts only, after application verification. The
+# installer validates and restores Nginx on failure; recover() restores app code.
+if [ -f /etc/nginx/sites-available/studybridge-domain ] || [ -f /etc/nginx/sites-available/studybridge-ip ]; then
+  sudo python3 aws/web-performance.py
+fi
 pm2 save
 restore_needed=0
 echo "Deployed $(node -p "require('./package.json').version") at $(git rev-parse HEAD). Private backup: $backup"

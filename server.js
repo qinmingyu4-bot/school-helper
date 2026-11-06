@@ -5,6 +5,7 @@ const fsSync = require("fs");
 const fs = require("fs/promises");
 const os = require("os");
 const path = require("path");
+const { createStaticAssets } = require("./lib/static-assets");
 const {
   SESSION_COOKIE,
   SESSION_TTL_MS,
@@ -246,6 +247,8 @@ const mimeTypes = {
   ".b64": "text/plain; charset=utf-8"
 };
 
+const staticAssets = createStaticAssets(publicDir, mimeTypes);
+
 const staticAssetExtensions = new Set([
   ".css",
   ".js",
@@ -477,20 +480,15 @@ async function serveStatic(req, res) {
     return sendError(res, 403, "Forbidden");
   }
   const extension = path.extname(filePath).toLowerCase();
+  requested = "/" + relativePath.split(path.sep).join("/");
   try {
-    const file = await fs.readFile(filePath);
-    res.writeHead(200, {
-      "content-type": mimeTypes[extension] || "application/octet-stream",
-      "cache-control": extension === ".woff2" ? "public, max-age=31536000, immutable" : "no-store"
-    });
-    res.end(file);
-  } catch {
+    return await staticAssets.send(req, res, requested, url);
+  } catch (error) {
+    if (error.code !== "ENOENT" && error.code !== "EISDIR") throw error;
     if (staticAssetExtensions.has(extension)) {
       return sendError(res, 404, `Static asset not found: ${requested}`);
     }
-    const fallback = await fs.readFile(path.join(publicDir, "index.html"));
-    res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
-    res.end(fallback);
+    return await staticAssets.send(req, res, "/index.html", url);
   }
 }
 
@@ -3388,7 +3386,7 @@ const server = http.createServer((req, res) => aiUsage.run(null, async () => {
   }
 }));
 
-server.listen(port, () => {
+staticAssets.prepare().then(() => server.listen(port, () => {
   console.log(`StudyBridge cloud app running on http://localhost:${server.address().port}`);
   scheduleLocalDatabaseBackups();
   mailbox.start();
@@ -3396,7 +3394,7 @@ server.listen(port, () => {
   studyJobs.start();
   if (webSearchEnabled && process.env.OPENAI_API_KEY && process.env.NODE_ENV === "production" && process.env.ACADEMIC_CALENDAR_REFRESH !== "false") academicCalendars.start(complexAiModel);
   void db.compactStudyMaterials().catch(() => console.warn("Private material compaction deferred; legacy data remains readable."));
-});
+})).catch((error) => { console.error("Static asset preparation failed:", error); process.exit(1); });
 
 let shuttingDown = false;
 async function shutdown() {

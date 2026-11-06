@@ -3373,10 +3373,13 @@
   async function boot() {
     const entryUrl = new URL(location.href);
     try {
-      const [google, authConfig] = await Promise.all([api("/api/auth/google/config").catch(() => ({ enabled: false })), api("/api/auth/config").catch(() => null)]);
+      const [google, authConfig, data] = await Promise.all([
+        api("/api/auth/google/config").catch(() => ({ enabled: false })),
+        api("/api/auth/config").catch(() => null),
+        api("/api/me").catch(() => null)
+      ]);
       state.authConfig = authConfig;
       state.googleEnabled = Boolean(google.enabled);
-      const data = await api("/api/me").catch(() => null);
       if (!data?.user) {
         history.replaceState(null, "", `/login${location.search}`);
         const authError = new URL(location.href).searchParams.get("authError");

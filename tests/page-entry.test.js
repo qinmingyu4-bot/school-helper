@@ -50,14 +50,18 @@ test("homepage, authenticated entry, legacy bookmarks and OAuth use distinct pag
     assert.match(html, /连接学习的每一步/);
     assert.match(html, /进入 StudyBridge/);
     assert.doesNotMatch(html, /<script[^>]+src="\/app\.js|id="root"/);
-    assert.match(html, /src="\/i18n\.js/);
+    const bundle = html.match(/<script src="(\/assets\/landing\.[a-f0-9]+\.js)" defer>/);
+    assert.ok(bundle, "homepage loads its ordered, deferred language/interaction bundle");
+    const bundleResponse = await request(bundle[1]);
+    assert.equal(bundleResponse.status, 200);
+    assert.match(await bundleResponse.text(), /StudyBridgeI18n/);
     assert.ok([...html.matchAll(/class="[^"]*button[^"\n]*" href="([^"]+)"/g)].every((match) => match[1] === "/app"));
     for (const file of ["landing.css", "typography.css", "brand.css"]) assert.equal((await request(`/${file}`)).status, 200);
     for (const name of ["book-bridge-monochrome", "book-bridge-color", "icon-monochrome", "icon-color"]) {
       const asset = await request(`/brand/${name}.svg`);
       assert.equal(asset.status, 200); assert.equal(asset.headers.get("content-type"), "image/svg+xml");
     }
-    assert.match(html, /src="\/brand\/book-bridge-monochrome\.svg"/);
+    assert.match(html, /src="\/brand\/book-bridge-monochrome\.svg\?asset=[a-f0-9]+"/);
     const login = await request("/login");
     assert.equal(login.status, 200);
     assert.match(await login.text(), /id="root"/);

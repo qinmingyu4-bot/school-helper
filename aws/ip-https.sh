@@ -104,7 +104,7 @@ fi
 write_http > "$SITE"
 cat >> "$SITE" <<'NGINX'
 server {
-    listen 443 ssl default_server;
+    listen 443 ssl http2 default_server;
     server_name 3.98.63.195;
     ssl_certificate /etc/letsencrypt-studybridge/live/3.98.63.195/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt-studybridge/live/3.98.63.195/privkey.pem;

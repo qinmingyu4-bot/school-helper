@@ -1,0 +1,35 @@
+name: Web performance regression
+on:
+  push:
+    branches: ['codex/**']
+    paths:
+      - 'lib/static-assets.js'
+      - 'aws/*https.sh'
+      - 'aws/web-performance.py'
+      - 'public/**'
+      - 'server.js'
+      - 'tests/*performance*'
+      - 'tests/static-assets.test.js'
+      - '.github/workflows/performance.yml'
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: sudo apt-get update && sudo apt-get install -y nginx
+      - run: npm run check
+      - run: bash -n scripts/deploy-release.sh aws/domain-https.sh aws/ip-https.sh
+      - run: npm test
+        env:
+          TZ: UTC
+          NGINX_BIN: /usr/sbin/nginx
+          REQUIRE_NGINX_TEST: '1'

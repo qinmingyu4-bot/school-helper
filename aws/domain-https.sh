@@ -112,7 +112,7 @@ NGINX
   if [[ -f $CERTROOT/live/$DOMAIN/fullchain.pem && -f $CERTROOT/live/$DOMAIN/privkey.pem ]]; then
     cat <<'NGINX'
 server {
-    listen 443 ssl;
+    listen 443 ssl http2;
     server_name www.studybridge.ink;
     ssl_certificate /etc/letsencrypt-studybridge/live/studybridge.ink/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt-studybridge/live/studybridge.ink/privkey.pem;
@@ -120,7 +120,7 @@ server {
     return 308 https://studybridge.ink$request_uri;
 }
 server {
-    listen 443 ssl;
+    listen 443 ssl http2;
     server_name studybridge.ink;
     ssl_certificate /etc/letsencrypt-studybridge/live/studybridge.ink/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt-studybridge/live/studybridge.ink/privkey.pem;

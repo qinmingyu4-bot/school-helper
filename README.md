@@ -942,3 +942,14 @@ does not roll over. The planned month pass is C$19.99 for 30 days.
 The upgrade action appears only when live Alipay checkout is configured and open
 for that account. Full accounting, supported models, and failure/recovery behavior
 are documented in [AI usage](docs/ai-usage.md).
+
+
+### Page loading and public asset cache
+
+The server prepares an ordered JavaScript bundle and CSS bundle for each public/app
+entry at startup. Content-derived URLs permit long-lived public caching; HTML and
+the push worker remain uncached, while old unversioned URLs revalidate using ETags.
+Static text supports cached Brotli/gzip representations. Restart the Node process
+after changing files in `public/`, including during local development. No generated
+bundle directory or extra build/install step is required. See
+[page-load performance](docs/page-load-performance.md) for validation and Nginx HTTP/2 rollout.

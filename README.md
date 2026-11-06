@@ -698,6 +698,16 @@ and preserves the last verified copy if the school has yet to publish dates or
 lookup fails. Set `ACADEMIC_CALENDAR_REFRESH=false` to disable background checks.
 Initial records and refresh targets live in `lib/academic-calendar-seeds.js`.
 
+If automatic calendar lookup fails, the retained preview offers an explicit
+saved-calendar match by year, term and known campus/faculty scope. The authenticated
+`POST /api/schedule/calendar` endpoint reads only the account school's archive;
+it does not re-upload a file, call AI/web search, create courses or save reminders.
+Unknown years/scopes stay unresolved, and mixed or conflicting Toronto course
+campus codes are rejected. Matching keeps draft edits and selections and rechecks
+duplicates. Manual date entry remains available behind its own disclosure.
+Calendar lookup failures log a safe category instead of silently disappearing;
+raw provider responses and timetable content are not logged.
+
 File imports report real server stages (recognition, archive match or official
 calendar search, then duplicate review) and elapsed waiting time. The endpoint
 supports opt-in SSE via `Accept: text/event-stream`, retaining JSON for existing

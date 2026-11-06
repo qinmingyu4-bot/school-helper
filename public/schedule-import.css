@@ -114,7 +114,7 @@
 .schedule-calendar h3 { margin: 0; font-size: 15px; }
 .schedule-calendar p, .schedule-calendar a, .schedule-calendar summary { font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
 .schedule-calendar label { display: grid; gap: 6px; margin-top: 10px; font-size: 12px; }
-.schedule-calendar input, .schedule-calendar textarea { width: 100%; min-width: 0; font-size: 14px; }
+.schedule-calendar input, .schedule-calendar textarea, .schedule-calendar select { width: 100%; min-width: 0; font-size: 14px; }
 .schedule-calendar .inline-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .schedule-weekdays { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
 .schedule-draft .schedule-weekdays label { display: flex; align-items: center; gap: 5px; margin: 0; }

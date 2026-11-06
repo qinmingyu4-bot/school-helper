@@ -92,6 +92,31 @@ test("timetable images/PDFs retain layout, use school calendars and return recur
   const unknownDay = await request("/api/schedule/extract", { fileName: "weekly-missing-day-fixture.txt", fileData: Buffer.from("Weekly timetable; weekday heading unreadable").toString("base64") }, cookie);
   assert.deepEqual(unknownDay.data.items[0].weekly.weekdays, []);
   assert.match(unknownDay.data.items[0].warning, /星期/);
+  await context.test("a missing calendar can be recovered from an explicit scope without re-reading the file or creating reminders", async () => {
+    const extracted = await request("/api/schedule/extract", { fileName: "calendar-recovery-fixture.txt", fileData: Buffer.from("Winter 2027; St. George; faculty not shown").toString("base64") }, cookie);
+    assert.equal(extracted.data.calendar, null);
+    assert.equal(extracted.data.items.length, 6);
+    assert.equal(extracted.data.termHint.year, 2027);
+    const scope = extracted.data.calendarScopes.find((item) => item.campus === "St. George");
+    const input = { scopeId: scope.id, year: 2027, season: "winter", courseCodes: ["MAT137H1", "CSC108H1", "STA130H1"] };
+    const before = (await request("/api/courses", null, cookie, "GET")).data;
+    assert.equal((await request("/api/schedule/calendar", input)).status, 401);
+    const matched = await request("/api/schedule/calendar", input, cookie);
+    assert.equal(matched.status, 200);
+    assert.equal(matched.data.calendar.teachingPeriods[0].endDate, "2027-04-09");
+    assert.match(matched.data.notice, /存档/);
+    assert.deepEqual((await request("/api/courses", null, cookie, "GET")).data, before);
+    for (const change of [{ scopeId: "invalid" }, { year: "2027" }, { year: 2200 }, { season: "" }, { courseCodes: ["MATA31H3", "MAT137H1"] }, { courseCodes: ["MATA31H3"] }]) {
+      assert.equal((await request("/api/schedule/calendar", { ...input, ...change }, cookie)).status, 400);
+    }
+    assert.equal((await request("/api/schedule/calendar", { ...input, year: 2028 }, cookie)).data.calendar, null);
+    await request("/api/me/profile", { name: "Timetable test", school: "University of Waterloo" }, cookie, "PUT");
+    assert.equal((await request("/api/schedule/calendar", input, cookie)).status, 400, "a scope must belong to the account's school");
+    const waterloo = await request("/api/schedule/calendar", { ...input, scopeId: ":undergraduate", courseCodes: ["MATH135"] }, cookie);
+    assert.equal(waterloo.status, 200);
+    assert.equal(waterloo.data.calendar.school, "University of Waterloo");
+    await request("/api/me/profile", { name: "Timetable test", school: "University of Toronto" }, cookie, "PUT");
+  });
   await request("/api/me/profile", { name: "Timetable test", school: "Unlisted test school" }, cookie, "PUT");
   const unknownSchool = await request("/api/schedule/extract", imageFile, cookie);
   assert.equal(unknownSchool.status, 200);

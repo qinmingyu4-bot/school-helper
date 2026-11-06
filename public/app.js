@@ -204,6 +204,10 @@
     scheduleImportStatus: "",
     scheduleCalendar: null,
     scheduleCalendarNotice: "",
+    scheduleCalendarScopes: [],
+    scheduleCalendarMatch: { year: "", season: "", scopeId: "" },
+    scheduleCalendarMatchNotice: "",
+    scheduleCalendarMatching: false,
     scheduleCalendarDraft: { startDate: "", endDate: "", breaks: "", timeZone: "" },
     scheduleCalendarEditing: false,
     scheduleCalendarOpen: false,
@@ -1729,7 +1733,7 @@
     const pending = state.scheduleDrafts.filter((item) => item.selected && scheduleImport.draftIssues(item).length);
     const needsCalendar = !state.scheduleCalendar && state.scheduleDrafts.some((item) => item.selected && item.weekly);
     notice.hidden = !pending.length && !needsCalendar && !state.scheduleReviewError;
-    notice.querySelector("[data-review-validation-text]").textContent = state.scheduleReviewError || (needsCalendar ? ui.text("请补充一次学期范围，再加入每周课程。") : pending.length ? ui.message`已选项目中有 ${pending.length} 项待补充，点开修改或取消勾选。` : "");
+    notice.querySelector("[data-review-validation-text]").textContent = state.scheduleReviewError || (needsCalendar ? ui.text(state.scheduleCalendarScopes.length ? "请先匹配校历，或手动确认学期范围，再加入每周课程。" : "请补充一次学期范围，再加入每周课程。") : pending.length ? ui.message`已选项目中有 ${pending.length} 项待补充，点开修改或取消勾选。` : "");
     notice.querySelector('[data-action="focus-schedule-issue"]').hidden = !pending.length && !needsCalendar;
   }
 
@@ -1737,9 +1741,11 @@
     if (!state.scheduleCalendar && state.scheduleDrafts.some((item) => item.selected && item.weekly)) {
       const calendar = root.querySelector("#scheduleCalendarDetails");
       if (calendar) {
-        state.scheduleCalendarOpen = true; state.scheduleCalendarEditing = true;
-        calendar.open = true; calendar.querySelector("details").open = true;
-        const fields = [...calendar.querySelectorAll("input")];
+        state.scheduleCalendarOpen = true;
+        calendar.open = true;
+        const matcher = calendar.querySelector("[data-calendar-matcher]");
+        if (!matcher) { state.scheduleCalendarEditing = true; calendar.querySelector("details").open = true; }
+        const fields = [...(matcher || calendar).querySelectorAll("input, select")];
         (fields.find((field) => !field.value) || fields[0])?.focus({ preventScroll: true });
         calendar.scrollIntoView({ block: "center" }); return;
       }
@@ -1775,13 +1781,68 @@
     let count = null;
     try { if (calendar) count = scheduleImport.deduplicate(scheduleImport.expandWeekly(state.scheduleDrafts.filter((item) => item.selected), calendar, { fromDate: state.scheduleFromDate }), state.scheduleItems).items.length; } catch {}
     return ui.html`<details class="schedule-calendar" id="scheduleCalendarDetails" ${state.scheduleCalendarOpen ? "open" : ""}>
-      <summary class="schedule-calendar-summary"><span><strong>学期与停课规则</strong>${calendar?.campus || calendar?.faculty ? `<span class="schedule-calendar-count">${esc([calendar.campus, calendar.faculty].filter(Boolean).join(" · "))}</span>` : ""}<span class="schedule-calendar-range">${calendar ? calendar.teachingPeriods.map((period) => `${esc(period.startDate)} — ${esc(period.endDate)}`).join("；") : ui.text("待补充学期范围")}</span><span class="schedule-calendar-count" data-schedule-preview-count>${calendar ? count !== null ? ui.message`新增 ${count} 次安排（自动跳过重复）` : ui.text("课程信息补齐后显示安排数量") : ui.text("所有每周课程共用，只需填写一次。")}</span></span><span class="schedule-review-toggle"><span class="schedule-review-edit-label">查看 / 修改</span><span class="schedule-review-close-label">收起</span><span class="schedule-review-chevron" aria-hidden="true">⌄</span></span></summary>
-      <div class="schedule-calendar-details"><p>${esc(ui.text(state.scheduleCalendarNotice))}</p>
+      <summary class="schedule-calendar-summary"><span><strong>学期与停课规则</strong>${calendar?.campus || calendar?.faculty ? `<span class="schedule-calendar-count">${esc([calendar.campus, calendar.faculty].filter(Boolean).join(" · "))}</span>` : ""}<span class="schedule-calendar-range">${calendar ? calendar.teachingPeriods.map((period) => `${esc(period.startDate)} — ${esc(period.endDate)}`).join("；") : ui.text(state.scheduleCalendarScopes.length ? "待匹配校历" : "待补充学期范围")}</span><span class="schedule-calendar-count" data-schedule-preview-count>${calendar ? count !== null ? ui.message`新增 ${count} 次安排（自动跳过重复）` : ui.text("课程信息补齐后显示安排数量") : ui.text(state.scheduleCalendarScopes.length ? "确认学期和校区 / 学院，自动读取存档。" : "所有每周课程共用，只需填写一次。")}</span></span><span class="schedule-review-toggle"><span class="schedule-review-edit-label">查看 / 修改</span><span class="schedule-review-close-label">收起</span><span class="schedule-review-chevron" aria-hidden="true">⌄</span></span></summary>
+      <div class="schedule-calendar-details"><p>${esc(ui.text(!calendar && state.scheduleCalendarScopes.length ? "课程识别已完成，但校历尚未匹配。请确认下方学期及校区 / 学院。" : state.scheduleCalendarNotice))}</p>
       ${calendar ? ui.html`<p><strong>${esc([calendar.school, calendar.campus, calendar.faculty, calendar.label].filter(Boolean).join(" · "))}</strong></p><p>从 ${esc(state.scheduleFromDate)} 起生成；自动跳过停课日期。</p>
       <p>停课：${calendar.breaks.length ? calendar.breaks.map((pause) => `${esc(pause.startDate)}${pause.endDate !== pause.startDate ? ` — ${esc(pause.endDate)}` : ""} ${esc(pause.label)}`).join("；") : ui.text("本次校历未列出范围内的停课日")}</p>
-      ${(calendar.sources || []).map((source) => `<a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a>`).join(" · ")}` : ui.html`<p class="schedule-warning">只需填写一次学期范围，所有已识别的每周课程都会使用它。</p>`}
-      <details id="scheduleCalendarEditor" ${!calendar || state.scheduleCalendarEditing ? "open" : ""}><summary>手动确认或调整本学期</summary><div class="inline-fields"><label>授课开始<input type="date" data-calendar-field="startDate" value="${esc(draft.startDate)}"></label><label>最后授课日<input type="date" data-calendar-field="endDate" value="${esc(draft.endDate)}"></label></div><label>停课日期（每行一个日期或起止范围）<textarea data-calendar-field="breaks" placeholder="2026-10-12&#10;2026-10-26 / 2026-10-30">${esc(draft.breaks)}</textarea></label></details>
+      ${(calendar.sources || []).map((source) => `<a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a>`).join(" · ")}` : !state.scheduleCalendarScopes.length ? ui.html`<p class="schedule-warning">只需填写一次学期范围，所有已识别的每周课程都会使用它。</p>` : ""}
+      ${!calendar && state.scheduleCalendarScopes.length ? scheduleCalendarMatcherHtml() : ""}
+      <details id="scheduleCalendarEditor" ${state.scheduleCalendarEditing || !calendar && !state.scheduleCalendarScopes.length ? "open" : ""}><summary>手动确认或调整本学期</summary><div class="inline-fields"><label>授课开始<input type="date" data-calendar-field="startDate" value="${esc(draft.startDate)}"></label><label>最后授课日<input type="date" data-calendar-field="endDate" value="${esc(draft.endDate)}"></label></div><label>停课日期（每行一个日期或起止范围）<textarea data-calendar-field="breaks" placeholder="2026-10-12&#10;2026-10-26 / 2026-10-30">${esc(draft.breaks)}</textarea></label></details>
       </div></details>${calendar?.notice ? `<p class="schedule-warning">${esc(ui.text(calendar.notice))}</p>` : ""}`;
+  }
+
+  function scheduleCalendarMatcherHtml() {
+    const match = state.scheduleCalendarMatch;
+    return ui.html`<div data-calendar-matcher>
+      <p>课程已识别。确认学期和校区 / 学院，即可重新匹配存档，无需上传或手填日期。</p>
+      <div class="inline-fields"><label>年份<input type="number" min="2000" max="2100" data-calendar-match="year" value="${esc(match.year)}" placeholder="2027"></label>
+      <label>学期<select data-calendar-match="season"><option value="">请选择学期</option>${["winter", "spring", "summer", "fall", "full-year"].map((value) => `<option value="${value}" ${match.season === value ? "selected" : ""}>${{ winter: "Winter", spring: "Spring", summer: "Summer", fall: "Fall", "full-year": "Fall–Winter" }[value]}</option>`).join("")}</select></label></div>
+      <label>校区 / 学院<select data-calendar-match="scopeId"><option value="">请选择课表所属校区 / 学院</option>${state.scheduleCalendarScopes.map((scope) => `<option value="${esc(scope.id)}" ${match.scopeId === scope.id ? "selected" : ""}>${esc(scope.label)}</option>`).join("")}</select></label>
+      <p><button type="button" data-action="match-schedule-calendar" ${state.scheduleCalendarMatching ? "disabled" : ""}>${state.scheduleCalendarMatching ? ui.text("正在匹配存档…") : ui.text("匹配校历存档")}</button></p>
+      ${state.scheduleCalendarMatchNotice ? `<p class="schedule-warning" role="status">${esc(ui.text(state.scheduleCalendarMatchNotice))}</p>` : ""}
+      </div>`;
+  }
+
+  async function matchScheduleCalendar() {
+    if (state.scheduleImportBusy || !state.scheduleDrafts.length) return;
+    const match = state.scheduleCalendarMatch;
+    if (!match.year || !match.season || !match.scopeId) {
+      state.scheduleCalendarMatchNotice = ui.text("请选择课表所属校区 / 学院、年份和学期。");
+      state.scheduleCalendarOpen = true;
+      render(); focusScheduleDraftIssue(); return;
+    }
+    const userId = state.user.id;
+    const drafts = state.scheduleDrafts;
+    state.scheduleCalendarMatching = true;
+    state.scheduleImportBusy = true;
+    state.scheduleCalendarMatchNotice = "";
+    render();
+    try {
+      const courseCodes = [...new Set(drafts.map((item) => item.course).join(" ").match(/\b[A-Z]{2,4}\d{2,4}(?:[A-Z]\d[A-Z]?)?\b/g) || [])];
+      const result = await api("/api/schedule/calendar", { method: "POST", body: { ...match, year: Number(match.year), courseCodes } });
+      if (state.user?.id !== userId || state.scheduleDrafts !== drafts) return;
+      if (!result.calendar) {
+        state.scheduleCalendarMatchNotice = ui.text("存档中暂时没有这个学期的校历。请核对所选范围，或展开下方手动填写；已识别的课程仍保留。");
+        return;
+      }
+      const calendar = result.calendar;
+      state.scheduleCalendar = calendar;
+      state.scheduleCalendarNotice = result.notice || "";
+      state.scheduleCalendarDraft = { startDate: calendar.teachingPeriods[0].startDate, endDate: calendar.teachingPeriods.at(-1).endDate,
+        breaks: scheduleImport.nonTeachingRanges(calendar).map((pause) => `${pause.startDate} / ${pause.endDate}`).join("\n"), timeZone: calendar.timeZone };
+      state.scheduleCalendarOpen = false;
+      state.scheduleCalendarEditing = false;
+      state.scheduleReviewError = "";
+      refreshScheduleDuplicateReview();
+    } catch (error) {
+      if (state.user?.id === userId && state.scheduleDrafts === drafts) state.scheduleCalendarMatchNotice = error.message;
+    } finally {
+      if (state.user?.id === userId) {
+        state.scheduleCalendarMatching = false;
+        state.scheduleImportBusy = false;
+        render();
+      }
+    }
   }
 
   function applyScheduleCalendarDraft() {
@@ -1872,6 +1933,10 @@
       state.scheduleSource = result.fileName;
       state.scheduleCalendar = result.calendar || null;
       state.scheduleCalendarNotice = result.calendarNotice || "";
+      state.scheduleCalendarScopes = result.calendarScopes || [];
+      const hint = result.termHint || {};
+      state.scheduleCalendarMatch = { year: hint.year || "", season: hint.season || "", scopeId: state.scheduleCalendarScopes.find((scope) => scope.campus === hint.campus && scope.faculty === hint.faculty)?.id || "" };
+      state.scheduleCalendarMatchNotice = "";
       state.scheduleFromDate = result.importFromDate || scheduleImport.todayInZone(result.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone);
       state.scheduleCalendarEditing = false;
       state.scheduleCalendarOpen = false;
@@ -3175,6 +3240,7 @@
         return;
       }
       if (action === "parse-schedule-text") { await parseScheduleQuick(); return; }
+      if (action === "match-schedule-calendar") { await matchScheduleCalendar(); return; }
       if (action === "extract-schedule") { await extractScheduleFile(); return; }
       if (action === "focus-schedule-issue") { focusScheduleDraftIssue(); return; }
       if (action === "collapse-schedule-review") { collapseScheduleReview(); return; }
@@ -3586,6 +3652,7 @@
       if (scheduleImport.validDate(`${event.target.value}-01`)) { state.scheduleMonth = event.target.value; state.scheduleSelectedDate = `${event.target.value}-01`; render(); $("scheduleMonthPicker")?.focus({ preventScroll: true }); }
       return;
     }
+    if (event.target.dataset?.calendarMatch) { state.scheduleCalendarMatch[event.target.dataset.calendarMatch] = event.target.value; return; }
     if (event.target.dataset?.calendarField) { state.scheduleCalendarDraft[event.target.dataset.calendarField] = event.target.value; applyScheduleCalendarDraft(); return; }
     if (event.target.dataset?.weekday) {
       const draft = state.scheduleDrafts[Number(event.target.closest("[data-draft]")?.dataset.draft)];
@@ -3638,6 +3705,7 @@
       return;
     }
     if (event.target?.id === "scheduleQuickText") { state.scheduleQuickText = event.target.value; return; }
+    if (event.target.dataset?.calendarMatch) { state.scheduleCalendarMatch[event.target.dataset.calendarMatch] = event.target.value; return; }
     if (event.target.dataset?.calendarField) { state.scheduleCalendarDraft[event.target.dataset.calendarField] = event.target.value; return; }
     if (event.target.dataset?.weeklyField) { const section = event.target.closest("[data-draft]"); const draft = state.scheduleDrafts[Number(section?.dataset.draft)]; if (draft?.weekly) { draft.weekly[event.target.dataset.weeklyField] = event.target.value; refreshScheduleDraftSummary(section, draft); } return; }
     if (event.target.dataset?.communityReply) { communityReplies.thread(event.target.dataset.communityReply).draft = event.target.value; return; }

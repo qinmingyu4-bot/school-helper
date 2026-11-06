@@ -43,3 +43,31 @@ test("import client supports older JSON servers and rejects failed or incomplete
   const caller = client(async () => Response.json({ items: [] }));
   assert.equal((await caller.api("/api/schedule/extract", { method: "POST", onProgress: () => assert.fail("JSON has no progress events") })).items.length, 0);
 });
+
+test("calendar recovery preserves edited drafts and selections and releases busy state after duplicate review", async () => {
+  const scheduleImport = require("../public/schedule-import");
+  const calendar = require("../lib/academic-calendar-seeds").seeds.find((item) => item.school === "University of Toronto" && item.campus === "St. George");
+  const state = { user: { id: "student" }, scheduleDrafts: [
+    { title: "Edited lecture", course: "MAT137H1", kind: "LEC", selected: true, weekly: { weekdays: [1], startTime: "12:00", endTime: "13:00" } },
+    { title: "Tutorial", course: "MAT137H1", kind: "TUT", selected: false, selectionTouched: true, weekly: { weekdays: [2], startTime: "14:00", endTime: "15:00" } }
+  ], scheduleItems: [], scheduleCalendarMatch: { year: "2027", season: "winter", scopeId: "stgeorge:artsscience" }, scheduleFromDate: "2026-11-06" };
+  let renders = 0;
+  const context = vm.createContext({ state, scheduleImport, scheduleDraftDisclosure: new WeakMap(), root: { querySelectorAll: () => [] },
+    ui: { text: (text) => text }, render: () => { renders++; }, api: async (path, { body }) => {
+      assert.equal(path, "/api/schedule/calendar");
+      assert.equal(body.year, 2027);
+      assert.equal(body.courseCodes.join(), "MAT137H1");
+      return { calendar, notice: "Archived calendar" };
+    } });
+  const match = source.slice(source.indexOf("  async function matchScheduleCalendar("), source.indexOf("  function applyScheduleCalendarDraft("));
+  const review = source.slice(source.indexOf("  function refreshScheduleDuplicateReview("), source.indexOf("  function updateSchedulePreviewCount("));
+  await vm.runInContext(`${review}\n${match}\nmatchScheduleCalendar()`, context);
+  assert.equal(state.scheduleDrafts[0].title, "Edited lecture");
+  assert.equal(state.scheduleDrafts[0].weekly.startTime, "12:00");
+  assert.equal(state.scheduleDrafts[1].selected, false);
+  assert.equal(state.scheduleImportBusy, false);
+  assert.equal(state.scheduleCalendarMatching, false);
+  assert.equal(state.scheduleCalendarOpen, false);
+  assert.equal(state.scheduleCalendarDraft.endDate, "2027-04-09");
+  assert.equal(renders, 2);
+});

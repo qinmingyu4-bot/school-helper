@@ -57,7 +57,7 @@ const scheduleBatch = require("./lib/schedule-batch");
 const courseConversations = require("./public/course-conversations");
 const scheduleInput = require("./lib/schedule-input");
 const scheduleTranscription = require("./lib/schedule-transcription");
-const { createCalendarService, timetableScope } = require("./lib/academic-calendar");
+const { createCalendarService, timetableScope, calendarScopes } = require("./lib/academic-calendar");
 const { readEvents } = require("./public/chat-stream");
 const { createCreativeService } = require("./lib/creative-service");
 const { VIDEO_POLICY } = require("./lib/product-policy");
@@ -3091,6 +3091,23 @@ if (directMessageMatch && method === "POST") {
     } catch (error) { if (error.usageError) throw error; return sendError(res, 502, error.name === "TimeoutError" ? "语音转写超时，请重试或输入文字。" : "没有成功转成文字，请检查录音是否清晰后重试；尚未添加安排。"); }
   }
 
+  if (url.pathname === "/api/schedule/calendar" && method === "POST") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const body = await readJson(req, 16000);
+    if (!body || typeof body !== "object" || Array.isArray(body)) return sendError(res, 400, "校历匹配信息无效。");
+    const scope = calendarScopes(user.profile?.school).find((item) => item.id === body.scopeId);
+    if (!scope || !Number.isInteger(body.year) || body.year < 2000 || body.year > 2100 || !["fall", "winter", "spring", "summer", "full-year"].includes(body.season)) {
+      return sendError(res, 400, "请选择课表所属校区 / 学院、年份和学期。");
+    }
+    if (!Array.isArray(body.courseCodes) || body.courseCodes.length > 200 || body.courseCodes.some((code) => typeof code !== "string" || code.length > 100)) return sendError(res, 400, "课程信息无效，请重试。");
+    const termHint = timetableScope(user.profile?.school, { year: body.year, season: body.season, campus: scope.campus, faculty: scope.faculty }, body.courseCodes);
+    if ((termHint.campus || "") !== scope.campus) return sendError(res, 400, "所选校区与课程代码不一致，或课表包含多个校区；请检查课程和校区后再匹配。");
+    const result = await academicCalendars.lookup({ school: user.profile?.school, termHint, courseCodes: body.courseCodes,
+      today: new Date().toISOString().slice(0, 10), allowSearch: false });
+    return sendJson(res, 200, result, { "cache-control": "private, no-store" });
+  }
+
   if (url.pathname === "/api/schedule/extract" && method === "POST") {
     const user = await requireUser(req, res);
     if (!user) return;
@@ -3170,7 +3187,7 @@ if (directMessageMatch && method === "POST") {
       const previewCount = calendar ? scheduleImport.deduplicate(scheduleImport.expandWeekly(items.filter((item) => !item.weekly || scheduleImport.validWeekly(item.weekly)), calendar, { fromDate: importFromDate }).map((item) => ({ ...item, timeZone: item.timeZone || timeZone })), existing).items.length : null;
       if (/\.(doc|ppt|xls)$/i.test(file.fileName)) items.forEach((item) => { item.warning = `${item.warning} 旧版 Office 文件可能漏读，请核对原件；建议另存为 DOCX / PPTX / XLSX 后提取。`.trim(); });
       timings.totalMs = Math.round(performance.now() - started);
-      const result = { timings, items, courses: imported.courses, createdCourses: imported.createdCourses, duplicateCount: review.duplicateCount, fileName: file.fileName, timeZone: calendar?.timeZone || timeZone, calendar, calendarNotice, importFromDate, previewCount };
+      const result = { timings, items, courses: imported.courses, createdCourses: imported.createdCourses, duplicateCount: review.duplicateCount, fileName: file.fileName, timeZone: calendar?.timeZone || timeZone, calendar, calendarNotice, termHint, calendarScopes: calendarScopes(user.profile?.school), importFromDate, previewCount };
       console.info("Schedule extraction timings:", JSON.stringify(timings));
       if (!streaming) return sendJson(res, 200, result);
       send("result", result);

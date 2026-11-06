@@ -6,6 +6,8 @@
 - Add campus/faculty profile fields and prefer timetable campus evidence. Share verified regular undergraduate archives across course sets using campus/faculty scope, while rejecting mixed-campus reuse.
 - Preload official St. George Arts & Science Winter 2027 and UTSC Fall 2026 / Winter 2027 dates. Preserve reading weeks, holidays and UTSC makeup days; explain the instructor-optional St. George April 12 makeup without automatically scheduling it.
 
+- When calendar lookup fails, retain extracted drafts and offer year/term/campus/faculty archive matching before manual date entry. Retry reads saved calendars only, preserves edits and selections, and blocks conflicting campus codes. Log failure categories without exposing provider responses or timetable data.
+
 ## 1.2.19 — Faster page refresh and static delivery
 
 - Combine each entry’s ordered scripts and full CSS cascade into two content-addressed bundles. Defer JavaScript until parsing finishes and request authentication configuration and identity concurrently. Keep Office loading on demand and stop preloading the large Chinese font before it is needed.

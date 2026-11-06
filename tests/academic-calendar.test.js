@@ -168,3 +168,10 @@ test("timetable scope uses source campus before profile and rejects mixed or con
   assert.equal(timetableScope("uoft", {}, ["MATA31H3", "MAT137H1"], profile).campus, "Multiple campuses");
   assert.equal(timetableScope("uoft", { campus: "St. George" }, ["MATA31H3"], profile).campus, "Conflicting campus evidence");
 });
+
+test("calendar failures record safe categories without leaking provider or timetable content", async () => {
+  const messages = [];
+  const service = createCalendarService({ onError: (message) => messages.push(message), request: async () => { throw new Error("PRIVATE_PROVIDER_RESPONSE"); } });
+  assert.equal((await service.lookup(input)).calendar, null);
+  assert.deepEqual(messages, ["Academic calendar lookup failed (request-or-verification-failed)."]);
+});

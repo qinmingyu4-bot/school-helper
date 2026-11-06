@@ -164,7 +164,9 @@ test("account security: Google-first setup and password changes retain one accou
     assert.equal((await request("/api/me", await google())).data.user.id, original.id);
   });
   await t.test("repeated current-password guessing is throttled per account", async () => {
-    for (let index = 0; index < 5; index++) assert.equal((await save(cookie, security, passwordValues(original.id, initialPassword, "incorrect"))).status, 400);
+    const burst = await Promise.all(Array.from({ length: 8 }, () => save(cookie, security, passwordValues(original.id, initialPassword, "incorrect"))));
+    assert.equal(burst.filter((item) => item.status === 400).length, 5);
+    assert.equal(burst.filter((item) => item.status === 429).length, 3);
     assert.equal((await save(cookie, security, passwordValues(original.id, initialPassword, changedPassword))).status, 429);
   });
   await t.test("existing email accounts use change-password mode and manual recovery still invalidates old sessions", async () => {

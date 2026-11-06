@@ -92,6 +92,19 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     assert.equal((await request("/api/auth/register", { method: "POST", body: registration("Standard", "standard@example.test", "") })).status, 201);
   });
 
+  await t.test("malformed cookies and login values cannot turn authentication into a server error", async () => {
+    for (const password of [null, {}, [], 42, "", "x".repeat(1025)]) {
+      const response = await request("/api/auth/login", { method: "POST", body: { email: "standard@example.test", password } });
+      assert.equal(response.status, 401);
+      assert.doesNotMatch(JSON.stringify(response.data), /ERR_INVALID|scrypt|passwordHash/);
+    }
+    assert.equal((await request("/api/me", { cookie: "sb_session=%ZZ" })).status, 401);
+    const signed = await request("/api/auth/login", { method: "POST", body: registration("Standard", "standard@example.test", "") });
+    assert.equal(signed.status, 200);
+    assert.equal((await request("/api/me", { cookie: `analytics=%ZZ; ${signed.cookie}` })).status, 200);
+    assert.equal((await request("/app", { cookie: `analytics=%ZZ; ${signed.cookie}` })).status, 200);
+  });
+
   const admin = await request("/api/auth/register", { method: "POST", body: registration("Admin", "admin@example.test", "health-owner-invite") });
   assert.equal(admin.status, 201);
   assert.equal(admin.data.user.role, "admin");

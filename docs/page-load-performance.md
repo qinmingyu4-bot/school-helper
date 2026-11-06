@@ -1,7 +1,10 @@
 # Page-load performance
 
-Baseline: production `974a751` (1.2.16). Changes are prepared on a task branch;
-production deployment requires a separate release authorization.
+Initial optimization baseline: `974a751` (1.2.16). The owner authorized production
+release 1.2.19 on 2026-11-06. The release incorporates the latest production
+`7a6f0b1` (1.2.18), retaining compact timetable review, aligned reminder settings, failed-login protection, asynchronous password
+verification, private API headers, dependency fix and unchanged-allowance-write fix.
+The original performance branch passed all 600 Linux/Nginx regressions before integration.
 
 ## Delivery and invalidation
 

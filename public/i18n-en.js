@@ -437,6 +437,9 @@ Google 可直接进入，首次使用将自动创建普通账号。|Continue wit
 忘记密码？|Forgot password?
 发送中…|Sending…
 {0} 秒后重发|Resend in {0}s
+登录尝试过于频繁，请稍后再试。|Too many sign-in attempts. Please try again later.
+登录尝试过于频繁，请在 {0} 秒后重试。|Too many sign-in attempts. Try again in {0} seconds.
+登录服务繁忙，请稍后重试。|Sign-in is busy. Please try again shortly.
 用户端|Student view
 ‹ 返回学习|‹ Back to Study
 课程与资料|Courses and materials
@@ -742,6 +745,21 @@ AI 整理安排|Organize with AI
 结束录音后会转成文字，可修改后再整理。录音最多 2 分钟，语音文件最多 8 MB。|Recording is transcribed for review. Maximum recording: 2 minutes; audio file: 8 MB.
 直接录音需要安全连接和浏览器支持；可导入语音文件，或点手机键盘的麦克风输入。|Recording requires a secure connection and browser support. You can import audio or use keyboard dictation.
 核对提取结果（{0} 条）|Review extracted events ({0})
+先看课程和时间，勾选要加入的项目；需要更改时再点「修改」。|Review the courses and times, select what to add, and choose Edit only when needed.
+全选|Select all
+收起全部|Collapse all
+查看 / 修改|View / edit
+待补充学期范围|Term dates needed
+课程信息补齐后显示安排数量|Event count appears after course details are complete
+所有每周课程共用，只需填写一次。|Set this once for all weekly classes.
+请补充一次学期范围，再加入每周课程。|Set the term dates once before adding weekly classes.
+已选项目中有 {0} 项待补充，点开修改或取消勾选。|{0} selected items need details. Open to edit or deselect them.
+待补充：{0}|Details needed: {0}
+有待核对信息，展开查看|Needs review — open for details
+已有安排，默认不选|Already scheduled, unselected by default
+有重复安排，学期范围待核对|Some events already exist; check term dates
+仅添加 {0} 次新增安排|Add only {0} new events
+从 {0} 起生成；自动跳过停课日期。|Generate from {0}, skipping breaks automatically.
 定位待补充项|Find incomplete items
 已选 {0} 项|{0} selected
 已识别的课程已自动加入「对话与课程」，取消预览不会删除课程。|Recognized courses were added to Chats and courses. Canceling the preview keeps them.

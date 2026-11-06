@@ -10,6 +10,32 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.2.19 - 2026-11-06
+
+Purpose:
+- Publish the owner-authorized page-load optimization from `e68dc5c` on `7a6f0b1` (1.2.18), preserving timetable review, reminder alignment, login protection and all audit fixes.
+- Content-addressed JS/CSS bundles, immutable public caching, Brotli/gzip static compression, concurrent startup requests and HTTP/2 on the existing TLS hosts. No private-data migration or AI behavior change.
+
+Validation:
+- The original performance branch passed 600 Linux regressions, including actual Nginx HTTP/2 negotiation, compression and incremental streaming; merged release checks run again before publishing.
+- Retain the existing verified private backup, unchanged-data/configuration checks and code rollback. Compare the same authenticated schedule page before/after on the existing VPN route, with three ordinary refreshes to visible saved data.
+
+Rollback target:
+- `7a6f0b1` (1.2.18). Restore code only, retaining current private data and configuration. The Nginx installer separately backs up and restores its two managed virtual-host files on failure.
+
+### 1.2.18 - 2026-11-06
+
+Purpose:
+- Publish the owner-authorized reminder-button alignment (`ac51ebf`) and summary-first timetable review (`19a7d5f`) together on the latest `45aaadc` (1.2.17), preserving its login protection, security and dependency fixes.
+- Keep individual editors and shared term details collapsed until needed, retaining selections, edits, duplicate checks, missing-information guidance and save retries. Refresh package/frontend/cache versions to 1.2.18.
+
+Validation:
+- Chrome/WebKit checks cover desktop/mobile, Chinese/English, light/dark mode, selection, keyboard editing, targeted validation, actual isolated saves and failed-save retries with simulated extraction.
+- All 615 merged regressions, 307-file source/assets/package checks and deployment-shell syntax pass; the production dependency audit reports no vulnerabilities. Require verified private backup and unchanged-data/configuration checks, then verify the exact deployed commit, health and actual frontend assets with read-only requests.
+
+Rollback target:
+- `45aaadc` (1.2.17). Restore application code only and retain current account data, schedules, private configuration and backups.
+
 ### 1.2.15 - 2026-11-06
 
 Purpose:

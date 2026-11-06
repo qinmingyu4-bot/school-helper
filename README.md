@@ -658,26 +658,30 @@ The Schedule page accepts timetable JPG/PNG/WebP images, PDF (up to 8 MB), Word,
 PowerPoint, Excel, TXT, MD, CSV, and JSON (other files up to 12 MB). Native images
 and PDF pages accompany extracted text so the AI can use weekday columns and
 the time axis rather than losing the grid layout. An authenticated request reads
-the selected file and returns editable DDL, LEC, and TUT drafts. It does not
-create a course, document, chat message, or reminder until the student confirms
+the selected file and returns editable DDL, LEC, and TUT drafts. Recognized courses
+can be created during extraction; reminders are saved only after the student confirms
 selected rows. Missing dates/times remain blank for review; original evidence
-and genuine ambiguity notes appear beside each draft. Standard timetable LEC/TUT
+and genuine ambiguity notes remain available inside each editor. Standard timetable LEC/TUT
 meetings default to one weekly pattern per section; DDL/exam dates stay one-off.
 Missing semester boundaries no longer require editing every class occurrence.
-Pending imports use compact expandable cards with selection, title/type/time,
-course/location and a two-line notes preview. Expand a card for the complete notes
-(including tutorial topics), evidence and editable fields. Missing required
-information opens for correction; draft edits, selections and disclosure state
-survive calendar navigation. A sticky selected-count confirmation bar reduces
-mobile scrolling without truncating saved content or paginating the preview.
+Pending imports use compact rows with selection, title/type/time, course/location
+and short missing-information or duplicate labels. Every row starts collapsed;
+choose Edit to see full notes, evidence and editable fields. Missing information
+stays visible as a label until the student opens the row or confirms the selection,
+which focuses the first required correction. Select-all includes every row, with
+duplicate checks still applied at saving; collapse-all preserves edits and selections.
+Shared term dates and event counts appear once, with breaks, official sources and
+manual term editing inside a separate disclosure. Draft edits, selections and
+disclosure state survive calendar navigation. A sticky selected-count confirmation
+bar reduces mobile scrolling without truncating saved content or paginating the preview.
 
 For weekly patterns, the server checks its academic calendar archive before
 searching. The included 2026–27 records cover regular undergraduate fall and
 winter/spring teaching at Waterloo, UC Berkeley and HKUST. A shared calendar
 requires an explicit year and term, a regular undergraduate scope and a
 compatible campus. Separate winter and spring terms keep their school-specific
-names. The preview shows the scope, teaching dates, breaks, time zone and
-official sources.
+names. The preview summarizes teaching dates; open the term section to inspect
+its scope, breaks and official sources.
 
 On an archive miss, the server can look up the official calendar using the Profile
 school, year, term, campus/faculty and course codes. It saves verified results to
@@ -953,3 +957,10 @@ Static text supports cached Brotli/gzip representations. Restart the Node proces
 after changing files in `public/`, including during local development. No generated
 bundle directory or extra build/install step is required. See
 [page-load performance](docs/page-load-performance.md) for validation and Nginx HTTP/2 rollout.
+
+## Operational audit
+
+See [the 2026-11-06 whole-site audit](docs/full-site-audit-2026-11-06.md) for tested
+coverage, authentication and background-write fixes, dependency verification and
+the remaining real-provider acceptance work. [Login protection](docs/login-protection.md)
+documents the failed-login policy, trusted proxy boundary and multi-instance limits.

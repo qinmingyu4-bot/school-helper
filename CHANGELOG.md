@@ -1,12 +1,33 @@
 # Changelog
 
-## Unreleased — Faster page refresh and static delivery
+## 1.2.19 — Faster page refresh and static delivery
 
 - Combine each entry’s ordered scripts and full CSS cascade into two content-addressed bundles. Defer JavaScript until parsing finishes and request authentication configuration and identity concurrently. Keep Office loading on demand and stop preloading the large Chinese font before it is needed.
 - Cache fingerprinted public assets for one year; revalidate legacy URLs with ETags. Keep entry HTML, authentication redirects and the push worker uncached. New file contents automatically produce new bundle URLs without relying on a manual version bump.
 - Negotiate and reuse Brotli/gzip representations for static assets only; retain API/AI event-stream behavior. Local app entry measurement: 67 script/style requests → 2, approximately 1.28 MB uncompressed external assets → 354 KB Brotli bundles, including the former inline CSS (about 72% less transferred). These are payload measurements, not a production latency guarantee.
-- Prepare HTTP/2 for the existing domain and IP Nginx hosts, including a locked, validated, backup-and-restore installer invoked by an authorized future deployment. No server migration, private-data changes or production deployment in this task.
+- Publish the owner-authorized performance update on 1.2.18, retaining compact timetable review, reminder layout, failed-login protection and all audit fixes. Enable HTTP/2 for the existing domain and IP Nginx hosts with a locked, validated backup-and-restore installer. Retain private data, configuration, AI quality and existing release rollback; no database migration.
 - See [verification and release notes](docs/page-load-performance.md) for cache behavior, streaming protection and tests.
+
+## 1.2.18 — Compact timetable review and aligned reminder settings
+
+- Publish both owner-authorized layout improvements (`ac51ebf`, `19a7d5f`) on the latest `45aaadc` (1.2.17) baseline, preserving its login protection, security and dependency fixes. Refresh package/frontend/cache versions to 1.2.18 through the existing verified-backup AWS workflow.
+- Show extracted classes, times, course/location and selection as compact rows. Keep every editor closed initially, including incomplete items; open only the requested item or the first required correction when confirming.
+- Summarize shared term dates and generated event counts once, with holidays, official sources and manual term editing behind a disclosure. Mark missing details visibly, retain duplicate checks, and add select-all and collapse-all controls without losing edits or selections.
+- Chrome/WebKit checks cover collapsed defaults, keyboard editing, selection, missing details, language changes, actual saves and failed-save retries, plus 320–1280 px light/dark layouts with simulated extraction.
+
+- Place the system-reminder settings action inside the schedule content column, aligning its right edge with the calendar cards and sharing their responsive margins and vertical spacing. Use a compact desktop button and retain a 44 px touch target on phones.
+- Verify Chrome/WebKit alignment and settings navigation across 320–1920 px, Chinese/English and light/dark appearances. Release validation passes all 615 merged regressions, 307-file source/assets/package checks and deployment-shell syntax; the production dependency audit reports no vulnerabilities.
+
+## 1.2.17 — Whole-site audit and failed-login protection
+
+- Add a separate sign-in failure budget: ten failures per normalized email/client-address pair in a 15-minute window, counting pending attempts. Successful login clears that pair; system failures do not count. Return a non-cacheable 429 with Retry-After and bilingual feedback while retaining form input, existing sessions and other users on the same network.
+- Trust forwarded client addresses only from the loopback Nginx proxy, canonicalize IPv4/IPv6, bound memory and login payloads, and cover expiry, concurrent attempts, proxy spoofing, shared networks and transient service failures.
+- Pin Nodemailer 10.1.4 to fix the three moderate recipient-parser advisories; retain simulated mail coverage and add recipient-boundary regressions.
+- Stop unchanged AI allowance polling from writing the full local database or transacting in DynamoDB. Keep expired-hold reconciliation, weekly rollover, reservations, pricing and AI behavior unchanged.
+- Move password work off the HTTP event loop with the same scrypt strength and existing hashes; bound work/queue sizes and preserve the account-security attempt limit under concurrency. Reject malformed login values and ignore malformed unrelated cookies safely.
+- Mark API responses private/non-cacheable and add same-origin framing and MIME-sniffing protection. No production data or configuration migration.
+- Validate 614 full-suite tests, 307-file source/assets/package checks, 84 Chrome/WebKit page/language/viewport combinations and 24 bilingual login limit/overload feedback checks, including retained inputs and successful sign-in. Official advisory lookup reports no advisories for 261 production dependency names; CI independently gates the production dependency audit.
+- Publish the owner-authorized audit fixes and login protection together using the existing backup, unchanged-data/configuration verification and code rollback workflow. Update package/frontend versions to 1.2.17; keep AI models, reasoning, prompts, retrieval, context and independent review unchanged. See [the audit report](docs/full-site-audit-2026-11-06.md) and [login protection operations](docs/login-protection.md) for scope and limits.
 
 ## 1.2.16 — Smooth streamed answers without reducing AI quality
 

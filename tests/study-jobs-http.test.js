@@ -72,7 +72,7 @@ test("HTTP problem sets persist through restart, restore progress and isolate ac
   assert.deepEqual((await request(route + `/study-jobs?conversationId=${interactive.data.conversation.id}`, "GET", null, alice.cookie)).data.jobs, []);
   const grouped = await request(route + "/conversations", "POST", { title: "Retained upload group" }, alice.cookie);
   await request(route + "/chat", "POST", { message: "Save these files", conversationId: grouped.data.conversation.id, attachments: [body.attachments[0], { ...body.attachments[0], name: "second-paper.txt" }] }, alice.cookie);
-  const continued = await request(route + "/chat", "POST", { ...body, conversationId: grouped.data.conversation.id, attachments: [], requestId: "retained-whole-group" }, alice.cookie);
+  const continued = await request(route + "/chat", "POST", { ...body, conversationId: grouped.data.conversation.id, attachments: [], message: "参考 Lecture 0.txt，解答上传的整套题", requestId: "retained-whole-group" }, alice.cookie);
   assert.equal(continued.status, 202);
   let planned;
   for (let attempt = 0; attempt < 100; attempt++) {

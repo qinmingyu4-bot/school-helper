@@ -526,8 +526,9 @@ model even below the generic long-attachment threshold. The immediate upload's t
 has priority over older background when retrieval is needed, and recent long replies
 retain their working for follow-up questions. History has a 40,000-character budget:
 numbered follow-ups first select matching problem sections from up to 80 saved
-messages, then include recent conversation, with up to 24,000 characters per
-assistant reply. Genuine omissions are marked explicitly; no historical messages
+messages, keeping up to three matching replies within a combined 24,000-character
+budget so a short clarification does not hide the earlier derivation. Recent
+conversation is then included, with up to 24,000 characters per ordinary assistant reply. Genuine omissions are marked explicitly; no historical messages
 are rewritten.
 
 Background whole-paper jobs require an explicit solving/teaching scope. Hint-only,
@@ -535,12 +536,19 @@ interactive, single-question, counting and time-budget requests stay conversatio
 the complete “一步步教” shortcut still requests the whole paper. Numbering resets
 and gaps are preserved, section givens remain attached to their questions, and
 function arguments such as `f(x)` are not subpart headings. Follow-ups reuse the
-whole most recent upload group, or explicitly named sources.
+whole most recent upload group, or explicitly named solving targets. A filename
+mentioned as a reference (for example, “based on notes.pdf”) does not narrow the
+requested paper.
 
 Every PDF/image and otherwise unrecognized attachment in a background task must
 receive an explicit inventory check. Missing/oversized inputs cannot silently fall
 back to the readable subset. Partially readable sources remain visible as unresolved
-items and prevent a completed status. A separate model review checks each batch's
+items and prevent a completed status. Detected subparts cannot be removed by
+planning, reviewed original-page selections are retained, and required question
+visuals are checked again before solving. Dependent questions run in later batches
+and receive verified prerequisite results; unreadable prerequisites remain explicit
+instead of being guessed. Mixed unreadable/failed tasks keep their retry action.
+A separate model review checks each batch's
 calculations, requested working and evidence before results are saved. Rejected
 questions retry within the existing two-attempt/120-second-per-batch bounds;
 completed questions are preserved. Review failure never approves an answer by

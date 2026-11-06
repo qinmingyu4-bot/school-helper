@@ -9,8 +9,8 @@ globalThis.fetch = async (url, options) => {
   if (body.store !== false || !options.signal || body.stream) throw new Error("Learning generation must be bounded and private.");
   const context = JSON.parse(body.messages[1].content);
   if (body.messages[0].content.startsWith("StudyBridge quiz-review/v1")) {
-    if (context.questions.some((question) => Object.hasOwn(question, "answerIndex"))) throw new Error("Review must independently choose the answer.");
-    return Response.json({ choices: [{ message: { content: JSON.stringify({ checks: context.questions.map(({ id }) => ({ id, correctIndices: [0], grounded: true, explanationsValid: true })) }) } }] });
+    if (context.questions.some((question) => (Object.hasOwn(question, "answerIndex") || Object.hasOwn(question, "explanations")))) throw new Error("Review must independently choose the answer.");
+    return Response.json({ choices: [{ message: { content: JSON.stringify({ checks: context.questions.map(({ id }) => ({ id, correctIndices: [0], grounded: true, explanations: ["A p-value assumes the null is true, then assesses the observed data or more extreme data.", "It is not the probability the null is true.", "It does not establish certainty.", "It is not an effect size."] })) }) } }] });
   }
   const quote = "A p-value is calculated assuming the null hypothesis is true.";
   const value = body.messages[0].content.includes("topics/v1") ? { topics: [{ title: "Understanding p-values", documentId: context[0].documentId, quote }] }

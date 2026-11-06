@@ -31,7 +31,7 @@ async function setup(t, cloud = false) {
     learningInstruction: () => "RESOLVED_LANGUAGES",
     generate: async (messages) => {
       calls.push(messages);
-      if (messages[0].content.startsWith("StudyBridge quiz-review/v1")) return review ? review(messages) : JSON.stringify({ checks: JSON.parse(messages[1].content).questions.map(({ id }) => ({ id, correctIndices: [0], grounded: true, explanationsValid: true })) });
+      if (messages[0].content.startsWith("StudyBridge quiz-review/v1")) return review ? review(messages) : JSON.stringify({ checks: JSON.parse(messages[1].content).questions.map(({ id }) => ({ id, correctIndices: [0], grounded: true, explanations: ["Assume the null is true.", "This reverses the conditional.", "Not the probability of the null.", "Not a causal claim."] })) });
       if (custom) return custom(messages);
       if (messages[0].content.includes("topics/v1")) return JSON.stringify({ topics: ["P-values", "Hypothesis testing"].map((title) => ({ title, documentId: document.id, quote: QUOTE })) });
       return JSON.stringify({ questions: Array.from({ length: 3 }, (_, question) => ({ prompt: `Practice ${++index} / ${question}`, choices: ["Right", "Wrong A", "Wrong B", "Wrong C"], answerIndex: 0, explanations: ["Assume the null is true.", "This reverses the conditional.", "Not the probability of the null.", "Not a causal claim."], documentId: document.id, quote: QUOTE })) });
@@ -167,7 +167,7 @@ test("new practice targets the selected wrong answer and its misconception, not 
 
 test("a quiz failing semantic review is not saved and cannot affect learning evidence", async (t) => {
   const f = await setup(t), topic = await f.confirm(), before = await f.read();
-  f.setReview((messages) => JSON.stringify({ checks: JSON.parse(messages[1].content).questions.map(({ id }) => ({ id, correctIndices: [0, 1], grounded: true, explanationsValid: true })) }));
+  f.setReview((messages) => JSON.stringify({ checks: JSON.parse(messages[1].content).questions.map(({ id }) => ({ id, correctIndices: [0, 1], grounded: true, explanations: ["Assume the null is true.", "This reverses the conditional.", "Not the probability of the null.", "Not a causal claim."] })) }));
   await assert.rejects(f.service.quiz(f.user, f.course.id, { requestId: "ambiguous-quiz", topicId: topic.id }), { statusCode: 502 });
   assert.equal(await f.db.getLearningQuiz(f.user.id, f.course.id, "quiz_ambiguous-quiz"), null);
   const after = await f.read();

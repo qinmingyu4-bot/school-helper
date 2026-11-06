@@ -2,11 +2,13 @@
 
 ## Unreleased — Reliable AI tutoring and practice review
 
+- Second review: preserve detected subparts and inspected PDF pages; distinguish reference filenames from solving targets; pass verified prerequisite results across batches and block dependent answers when prerequisites are unreadable. Keep retry actions on mixed unresolved/failed tasks and reject missing visuals at solve time. Retain earlier full derivations alongside later clarifications.
+- Hide both proposed answer indices and author explanations during quiz review; store independently derived explanations in the resolved learning languages.
 - Respect hint-only, interactive, specific-question and time-budget requests before routing whole-paper jobs. Preserve the complete-teaching shortcut and all files in a retained upload group.
 - Keep every numbered section and numbering gap, distinguish subpart headings from function arguments, and preserve section givens. Explicitly inspect mixed text/PDF/image inventories; unreadable or uninspected attachments cannot be reported as a completed paper.
 - Preserve relevant middle calculations for follow-up questions within a bounded history budget, including older numbered sections and scoped background-task context.
 - Independently review background solutions before saving them and retry only rejected questions. Review generated quizzes without revealing the proposed answer index; reject ambiguous, unsupported or inconsistent questions before creating learning records.
-- Validate 563 full-suite regressions with the complete Node runtime path under UTC, followed by 39 focused regressions covering two final partial-scan/nested-heading cases; source/assets/package checks cover 293 JavaScript files. AI transports are simulated.
+- Second-review validation: all 574 full-suite regressions pass with the complete Node runtime path under UTC, plus the strengthened reference-filename HTTP regression. Source/assets/package checks cover 293 JavaScript files. AI transports are simulated.
 - Use selected wrong answers and their explanations to target follow-up practice. Add regression coverage for scope routing, full inventories, missing visuals, failed reviews, persistence, history and misconception feedback. Additional model reviews add latency/usage and do not guarantee correctness.
 
 ## 1.2.12 — Academic calendar archive and stable schedule clock times

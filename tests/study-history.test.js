@@ -25,3 +25,12 @@ test("retrieved problem sections retain method and calculation subheadings", () 
   const result = buildRecentStudyHistory(history, "第3题(a)为什么？");
   assert(result.includes("RULE")); assert(result.includes("CALCULATION")); assert(!result.includes("UNRELATED"));
 });
+
+test("a short follow-up cannot hide the earlier full derivation of the same part", () => {
+  const history = [{ role: "assistant", content: "### 3(a)\nORIGINAL_DERIVATION" },
+    { role: "assistant", content: "### 3(a)\nSHORT_CLARIFICATION" },
+    ...Array.from({ length: 18 }, () => ({ role: "user", content: "other" }))];
+  const result = buildRecentStudyHistory(history, "第3题(a)原来怎么算？");
+  assert(result.includes("ORIGINAL_DERIVATION")); assert(result.includes("SHORT_CLARIFICATION"));
+  assert(result.length <= 40000);
+});

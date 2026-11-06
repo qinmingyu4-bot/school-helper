@@ -18,9 +18,9 @@ test("dependencies are topologically grouped, complex problems split and cycles 
   const questions = detectSet({ sources: [source], message: "请解答整套题" }).questions;
   questions[0].dependsOn = ["q7"];
   const groups = groupQuestions(questions);
-  assert.equal(groups.length, 4);
+  assert.ok(groups.length >= 4);
   const first = groups.findIndex((group) => group.questionIds.includes("q7")), second = groups.findIndex((group) => group.questionIds.includes("q1"));
-  assert.ok(first <= second);
+  assert.ok(first < second, "Dependencies must be verified in an earlier batch");
   questions[6].dependsOn = ["q1"];
   assert.throws(() => groupQuestions(questions), /cycle/);
   assert.ok(groupQuestions([{ ...questions[1], text: "Prove the theorem." }, questions[2]]).length === 2);
@@ -101,4 +101,38 @@ test("partially readable scans retain readable new questions and an unresolved r
     questions: [...detected.questions.map(({ id }) => ({ id })), { id: "q21", sourceId: scan.id, number: 21, text: "Readable problem", parts: ["answer"], pages: [] }] }, [source, scan]);
   assert.equal(questions.length, 22);
   assert.equal(questions[20].text, "Readable problem"); assert.equal(questions[21].unreadable, true);
+});
+
+test("visual planning cannot erase detected subparts and retains inspected PDF pages", () => {
+  const pdf = { ...source, kind: "pdf", pages: 3 };
+  const detected = detectSet({ message: "解答整套题", sources: [pdf] });
+  const plan = { sourceChecks: [{ sourceId: pdf.id, status: "complete" }], questions: detected.questions.map((q) => ({ id: q.id, parts: ["a"], pages: [2, 3] })) };
+  const result = enrichPlan(detected, plan, [pdf]);
+  assert.deepEqual(result[0].parts, ["a", "b"]);
+  assert.deepEqual(result[0].pages, [2, 3]);
+  plan.questions[0].pages = [4];
+  assert.throws(() => enrichPlan(detected, plan, [pdf]), /Invalid reviewed source pages/);
+});
+
+test("a named reference does not replace the requested paper, while explicit targets still work", () => {
+  const { selectProblemSources } = require("../lib/problem-set");
+  const paper = { ...source, name: "paper.pdf", kind: "pdf" };
+  const notes = { id: "notes", name: "notes.pdf", kind: "pdf", text: "Reference notes" };
+  for (const message of ["参考 notes.pdf，解答上传的整套题", "解答整套题，参考 notes.pdf", "Solve all uploaded questions based on notes.pdf"])
+    assert.deepEqual(detectSet({ message, sources: [paper, notes] }).sourceIds, [paper.id, notes.id], message);
+  assert.deepEqual(selectProblemSources([paper, notes], "参考 notes.pdf，解答整套题", [paper]), [paper]);
+  assert.deepEqual(selectProblemSources([paper, notes], "Solve paper.pdf using notes.pdf", [notes]), [paper]);
+  assert.deepEqual(selectProblemSources([paper, notes], "根据 notes.pdf 解答 paper.pdf 中全部题目", [notes]), [paper]);
+});
+
+test("implicit previous-question dependencies become persisted ids without crossing files", () => {
+  const questions = [
+    { id: "q1", sourceId: "paperA", text: "Compute", parts: ["answer"], dependsOn: [] },
+    { id: "q2", sourceId: "paperA", text: "Use the previous question result", parts: ["answer"], dependsOn: [] },
+    { id: "q3", sourceId: "paperB", text: "上一题", parts: ["answer"], dependsOn: [] }
+  ];
+  const batches = groupQuestions(questions);
+  assert.deepEqual(questions[1].dependsOn, ["q1"]);
+  assert.deepEqual(questions[2].dependsOn, []);
+  assert(batches.find((b) => b.questionIds.includes("q2")).dependencies.includes(batches[0].id));
 });

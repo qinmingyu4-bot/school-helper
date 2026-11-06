@@ -3333,10 +3333,9 @@ if (directMessageMatch && method === "POST") {
         let sources = attachments.map((item, index) => ({ ...item, id: `upload:${index}` }));
         if (!sources.length && require("./lib/problem-set").wantsWholeSet(message, mode)) {
           const available = await studySources({ userId: user.id, courseId, conversationId });
-          const named = available.filter((source) => message.includes(source.name));
           const retained = available.filter((source) => source.id.startsWith("attachment:"));
           const latestGroup = retained.at(-1)?.materialId;
-          sources = named.length ? named : retained.filter((source) => source.materialId === latestGroup);
+          sources = require("./lib/problem-set").selectProblemSources(available, message, retained.filter((source) => source.materialId === latestGroup));
         }
         const detected = studyJobs.detectSet({ message, mode, sources });
         if (detected) {

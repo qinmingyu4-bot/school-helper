@@ -618,6 +618,10 @@
 
   function studySidebarHtml() {
     const courses = courseChats.visibleCourses(state.courses);
+    const materials = state.docs.filter((doc) =>
+      String(doc.type || "").toLowerCase() !== "schedule" &&
+      !String(doc.title || "").startsWith(SCHEDULE_PREFIX) &&
+      !String(doc.title || "").startsWith("[SCHEDULE ITEM]"));
     return ui.html`
       <section class="side-section study-course-directory" data-doc-dropzone="true">
         <div class="section-title"><b>对话与课程</b><button data-action="add-course">新增</button></div>
@@ -629,7 +633,7 @@
         </div>
       </section>
       ${isGeneralChat() ? "" : ui.html`<section class="side-section study-materials">
-        <div class="section-title"><b>课程资料</b><span>${state.docs.length}</span></div>
+        <div class="section-title"><b>课程资料</b><span>${materials.length}</span></div>
         <textarea id="docText" aria-label="课程资料内容" rows="3" placeholder="粘贴课程大纲、笔记或作业要求"></textarea>
         <div class="study-material-row">
           <input id="docTitle" aria-label="资料标题" placeholder="资料标题（选填）">
@@ -639,7 +643,7 @@
           <input id="docFile" type="file" aria-label="选择课程资料文件" accept="${SUPPORTED_UPLOAD_ACCEPT}" multiple>
           <button class="study-side-icon" data-action="upload-doc" title="上传所选文件" aria-label="上传所选文件"><svg aria-hidden="true"><use href="/classmates-icons.svg#upload"></use></svg></button>
         </div>
-        <div class="study-material-list">${state.docs.length ? state.docs.map((doc) => `<div class="mini-row"><b>${esc(doc.title)}</b><small>${esc(doc.type || "Note")}</small></div>`).join("") : ui.html`<p class="muted">暂无课程资料</p>`}</div>
+        <div class="study-material-list">${materials.length ? materials.map((doc) => `<div class="mini-row"><b>${esc(doc.title)}</b><small>${esc(doc.type || "Note")}</small></div>`).join("") : ui.html`<p class="muted">暂无课程资料</p>`}</div>
         <p class="muted">课程资料每个文件最多 50 MB，多文件逐个上传。较大 PDF 优先使用提取文字；扫描件建议拆分或先做文字识别。</p>
         <p id="courseUploadStatus" class="muted" role="status" aria-live="polite"></p>
       </section>`}

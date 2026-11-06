@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Exclude timetable meetings and other schedule entries from the Study sidebar’s course materials list and count.
+
 ## 1.2.21 — Faster and lower-cost timetable imports
 
 - Reduce AI allowance use for timetable images and short course documents by starting with the lightweight model and retrying incomplete extraction with the complex model when needed.

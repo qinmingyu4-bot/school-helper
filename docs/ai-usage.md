@@ -81,8 +81,13 @@ and tax need separate reconciliation before commercial rollout.
 ## Interface and payment gates
 
 `GET /api/me/ai-usage` requires a current session and returns private, no-store
-account-scoped balances. Study and Settings display the balance and browser-local
-reset time. Visible tabs refresh every 15 seconds and after mutations or chat
+account-scoped balances. A collapsed-by-default allowance row in the desktop
+sidebar and mobile main menu shows the remaining percentage. Expanding it reveals
+the balance, browser-local reset time and existing actions within navigation; it
+does not resize the chat or composer. The current account’s expanded state survives
+in-app navigation and resets on account changes. Keyboard users can toggle the
+summary or press Escape inside the details to collapse and return focus. Settings
+also retains its full allowance page. Visible tabs refresh every 15 seconds and after mutations or chat
 completion. Account switches discard old responses. Pending allowance is identified
 separately from settled spending. The USD limit is distinct from the CAD pass price.
 

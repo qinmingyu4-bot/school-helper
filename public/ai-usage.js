@@ -21,13 +21,31 @@
       ${error ? `<p role="status">${esc(error)}</p>` : ""}`;
   }
   function create({ request, getUser, openBilling, doc = document }) {
-    let userId = null, data = null, error = "", generation = 0, pending = false, updated = 0;
+    let userId = null, data = null, error = "", generation = 0, pending = false, updated = 0, expanded = false;
+    function disclosureHtml() {
+      return `<details class="ai-usage-disclosure" data-usage-disclosure${expanded ? " open" : ""}>
+        <summary><span>${ui.text("AI 额度")}</span><span data-usage-summary></span><svg aria-hidden="true" viewBox="0 0 16 16"><path d="m4 6 4 4 4-4"/></svg></summary>
+        <div data-ai-usage></div>
+      </details>`;
+    }
     function render() {
-      for (const element of doc.querySelectorAll("[data-ai-usage]")) element.innerHTML = markup(data, error);
+      for (const disclosure of doc.querySelectorAll("[data-usage-disclosure]")) {
+        disclosure.open = expanded;
+        disclosure.querySelector("[data-usage-summary]").textContent = data
+          ? `${ui.text("剩余")} ${Math.floor(data.remainingUsd / data.limitUsd * 100)}%` : "—";
+      }
+      for (const element of doc.querySelectorAll("[data-ai-usage]")) {
+        const html = markup(data, error);
+        if (element.innerHTML === html) continue;
+        const focusedAction = element.contains(doc.activeElement)
+          ? ["data-usage-refresh", "data-usage-upgrade"].find((name) => doc.activeElement.hasAttribute(name)) : null;
+        element.innerHTML = html;
+        if (focusedAction) element.querySelector(`[${focusedAction}]`)?.focus({ preventScroll: true });
+      }
     }
     async function refresh(force = false) {
       const current = getUser()?.id || null;
-      if (current !== userId) { userId = current; data = null; error = ""; pending = false; updated = 0; generation++; render(); }
+      if (current !== userId) { userId = current; data = null; error = ""; pending = false; updated = 0; expanded = false; generation++; render(); }
       if (!userId || pending || (!force && Date.now() - updated < 15000)) return;
       const token = ++generation, expectedUser = userId; pending = true;
       try {
@@ -38,15 +56,28 @@
       } catch (cause) { if (token === generation && getUser()?.id === expectedUser) error = ui.text(cause.message); }
       finally { if (token === generation) { pending = false; if (getUser()?.id === expectedUser) render(); } }
     }
+    doc.addEventListener("toggle", (event) => {
+      const disclosure = event.target;
+      if (!disclosure.matches?.("[data-usage-disclosure]") || !disclosure.isConnected) return;
+      expanded = disclosure.open;
+      if (expanded) void refresh();
+    }, true);
+    doc.addEventListener("keydown", (event) => {
+      const disclosure = event.target.closest?.("[data-usage-disclosure]");
+      if (event.key !== "Escape" || !disclosure?.open) return;
+      expanded = false; disclosure.open = false;
+      disclosure.querySelector("summary").focus({ preventScroll: true });
+      event.preventDefault();
+    });
     doc.addEventListener("click", (event) => {
       if (event.target.closest("[data-usage-refresh]")) void refresh(true);
-      if (event.target.closest("[data-usage-upgrade]") && data?.canUpgrade && getUser()?.id === userId) openBilling();
+      if (event.target.closest("[data-usage-upgrade]") && data?.canUpgrade && getUser()?.id === userId) { expanded = false; render(); openBilling(); }
       if (event.target.closest('[data-settings-section="usage"]')) { render(); void refresh(true); }
     });
     const timer = setInterval(() => { if (!doc.hidden) void refresh(); }, 15000);
     doc.addEventListener("visibilitychange", () => { if (!doc.hidden) void refresh(true); });
     ui.subscribe(render);
-    return { sync() { void refresh(); render(); }, refresh, stop() { clearInterval(timer); generation++; data = null; } };
+    return { disclosureHtml, sync() { void refresh(); render(); }, refresh, stop() { clearInterval(timer); generation++; data = null; expanded = false; } };
   }
   return { create, markup };
 });

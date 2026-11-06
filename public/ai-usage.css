@@ -1,8 +1,13 @@
-[data-ai-usage] { min-width: 0; padding: 12px; border: 1px solid var(--border, #dce3ea); border-radius: 12px; color: inherit; font-size: 12px; }
+[data-ai-usage] { min-width: 0; padding: 12px; border: 1px solid var(--line, #dce3ea); border-radius: 12px; color: inherit; font-size: 12px; }
 [data-ai-usage] p { margin: 6px 0; overflow-wrap: anywhere; line-height: 1.5; }
 .ai-usage-title, .ai-usage-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 [data-ai-usage] progress { width: 100%; height: 6px; accent-color: var(--accent, #168a79); }
-.ai-usage-actions button, [data-usage-refresh] { cursor: pointer; padding: 6px 10px; border: 1px solid var(--border, #dce3ea); border-radius: 8px; background: transparent; color: inherit; font: inherit; }
-.composer [data-ai-usage] { margin: 0 0 8px; padding: 8px 10px; }
-.composer [data-ai-usage] progress { display: none; }
-.composer .ai-usage-actions { font-size: 11px; }
+.ai-usage-actions button, [data-usage-refresh] { cursor: pointer; padding: 6px 10px; border: 1px solid var(--line, #dce3ea); border-radius: 8px; background: transparent; color: inherit; font: inherit; }
+.ai-usage-disclosure { min-width: 0; margin: 12px 0; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); }
+.ai-usage-disclosure > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 12px; list-style: none; cursor: pointer; font-size: 12px; font-weight: 500; }
+.ai-usage-disclosure > summary::-webkit-details-marker { display: none; }
+.ai-usage-disclosure > summary [data-usage-summary] { margin-left: auto; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.ai-usage-disclosure > summary svg { flex: 0 0 16px; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.ai-usage-disclosure[open] > summary svg { transform: rotate(180deg); }
+.ai-usage-disclosure > summary:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; border-radius: 9px; }
+.ai-usage-disclosure > [data-ai-usage] { padding: 0 12px 12px; border: 0; }

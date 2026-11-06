@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Collapsible AI allowance in navigation
+
+- Move the weekly AI allowance out of the Study composer into a compact disclosure in the desktop sidebar and mobile main menu. Default to a single row showing the remaining percentage; expand only inside navigation to view the balance, reset time, refresh and eligible upgrade action.
+- Preserve the chosen expanded state during in-app navigation and reset it when accounts change. Support keyboard expansion and Escape to collapse; retain refresh-button focus during updates and keep Settings → AI allowance available.
+- Keep the chat, input area and document workspace dimensions unchanged when allowance details open or close.
+- Validate all 553 automated tests and 296-file source/assets/package checks. Browser checks cover 1280 px desktop and 390/320 px mobile navigation, Chinese/English, unchanged work-area geometry, retained drafts, keyboard toggling/Escape, refresh focus and the existing Settings allowance page.
+
 ## 1.2.13 — Weekly AI allowances and video production restriction
 
 - Publish the owner-approved weekly allowance and video restriction together, retaining the 1.2.12 calendar archive and stable schedule clock times.

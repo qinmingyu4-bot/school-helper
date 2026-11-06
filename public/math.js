@@ -6,13 +6,33 @@
 
   function install(markdown) {
     const escape = markdown.utils.escapeHtml;
+    // A streamed reply revisits completed formulas many times. Reuse their exact
+    // safe HTML, with bounded, in-memory storage (never persisted or sent to AI).
+    const cache = new Map();
+    let cacheSize = 0;
     function render(tex, display) {
       if (tex.length > 8000) return escape(tex);
+      const key = `${display ? "display" : "inline"}:${tex}`;
+      if (cache.has(key)) {
+        const html = cache.get(key);
+        cache.delete(key); cache.set(key, html);
+        return html;
+      }
       try {
-        return `<span class="math-${display ? "display" : "inline"}">${katex.renderToString(tex, {
+        const html = `<span class="math-${display ? "display" : "inline"}">${katex.renderToString(tex, {
           displayMode: display, throwOnError: true, trust: false, strict: "ignore",
           maxExpand: 500, maxSize: 20, output: "htmlAndMathml", macros: {}
         })}</span>`;
+        const size = key.length + html.length;
+        if (size <= 1024 * 1024) {
+          cache.set(key, html); cacheSize += size;
+          while (cache.size > 256 || cacheSize > 1024 * 1024) {
+            const oldest = cache.keys().next().value;
+            cacheSize -= oldest.length + cache.get(oldest).length;
+            cache.delete(oldest);
+          }
+        }
+        return html;
       } catch {
         // Incomplete streamed formulas and unsupported commands remain readable and inert.
         return `<span class="math-fallback">${escape(tex)}</span>`;

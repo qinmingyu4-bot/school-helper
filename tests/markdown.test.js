@@ -63,3 +63,14 @@ test("self-hosted browser bundle matches the pinned package and renderer output"
   assert.equal(browser.StudyBridgeMarkdown.render(source), markdown.render(source));
   assert.ok(fs.readFileSync(path.join(__dirname, "../public/vendor/markdown-it-LICENSE.txt"), "utf8").includes("Redistribution and use"));
 });
+
+test("incremental blocks exactly match full Markdown, including late definitions and incomplete syntax", () => {
+  const source = '# 标题\n\n[稍后定义][source]\n\n- **完整推理**\n  - 子步骤 \\(\\sqrt{9}\\)\n\n> 引用\n>\n> 第二段\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\n```js\nconst value = "<tag>";\n```\n\n\\[\\int_0^1 x^2 dx=\\frac13\\]\n\n[source]: https://example.test/verified\n\n![private](https://example.test/pixel)\n<script>bad()</script>';
+  for (let i = 0; i <= source.length; i++) {
+    const partial = source.slice(0, i);
+    assert.equal(markdown.renderBlocks(partial).join(""), markdown.render(partial), `prefix ${i}`);
+  }
+  for (const source of ['---\n\ntext', 'title\n===\n\ntext', '    code\n\ntext', '<div>raw</div>', '- first\n\n- second\n\nend', '[id]: https://example.test\n', '']) {
+    assert.equal(markdown.renderBlocks(source).join(""), markdown.render(source));
+  }
+});

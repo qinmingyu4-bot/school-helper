@@ -20,7 +20,7 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, op
 - Expandable course folders with multiple independently titled chats, first-question titles and manual renaming. Course documents are shared; each chat keeps its own messages, uploads, input drafts and streaming reply. Historical course messages remain in the default conversation.
 - Timetable/syllabus extraction automatically adds recognized courses and reuses existing ones; calendar entries are saved only after confirmation and filed under the corresponding course.
 - Backend AI calls using `OPENAI_API_KEY`
-- Incremental Study Area replies with animated activity states and a stop-generation control
+- Incremental Study Area replies with animated activity states and a stop-generation control. Streamed display updates reuse unchanged blocks and formulas without reducing AI reasoning, context or review; see [rendering performance verification](docs/render-performance.md).
 - Self-hosted Inter Variable and Noto Sans SC interface fonts, with bundled licenses and source notes in `public/fonts/SOURCES.md`
 - Shared book-and-bridge logo on the homepage, login and app, defaulting to monochrome. **设置 → 个性化 → 品牌 Logo** offers the approved indigo/mint alternative with immediate preview and account-scoped saving, independent of interface palette and dark mode. Both original design proofs and scalable assets are documented in `docs/branding/README.md`.
 - Six Study Area modes with mode-specific question shortcuts and AI workflows: preview, guided learning, review, assignment help, mock exams, and exam cramming

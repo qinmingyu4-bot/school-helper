@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.2.15";
+  const VERSION = "1.2.16";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -893,7 +893,7 @@
       body.insertAdjacentHTML("afterbegin", '<div class="reply-content"></div>');
       content = body.querySelector(".reply-content");
     }
-    content.innerHTML = window.StudyBridgeMarkdown.render(reply.assistant.content);
+    window.StudyBridgeMarkdown.renderInto(content, reply.assistant.content);
     if (reply.assistant.content) reply.hasDisplayedText = true;
     const status = body.querySelector(".reply-status");
     if (reply.assistant.pending && status) status.lastElementChild.textContent = ui.text(replyPhases[reply.assistant.phase] || replyPhases.thinking);
@@ -935,11 +935,18 @@
   }
 
   function scheduleStudyReply(reply) {
-    if (reply.frame) return;
-    reply.frame = requestAnimationFrame(() => {
-      reply.frame = 0;
-      updateStudyReply(reply);
-    });
+    if (reply.frame || reply.renderTimer) return;
+    // Coalesce network bursts without changing the accumulated answer. Leave
+    // time for typing/scrolling between paints, especially on slower devices.
+    const delay = Math.max(0, (reply.lastPaintAt || 0) + 80 - performance.now());
+    reply.renderTimer = setTimeout(() => {
+      reply.renderTimer = 0;
+      reply.frame = requestAnimationFrame(() => {
+        reply.frame = 0;
+        updateStudyReply(reply);
+        reply.lastPaintAt = performance.now();
+      });
+    }, delay);
   }
 
   function mergeStudyReply(messages, reply) {
@@ -1054,6 +1061,8 @@
       void usageView.refresh(true);
       reply.assistant.pending = false;
       studyReplies.delete(reply.key);
+      clearTimeout(reply.renderTimer);
+      reply.renderTimer = 0;
       cancelAnimationFrame(reply.frame);
       reply.frame = 0;
       updateStudyReply(reply);

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.16 — Smooth streamed answers without reducing AI quality
+
+- Publish the owner-authorized rendering optimization on production baseline `887c6ba` (1.2.15), retaining all existing AI quality, allowance, billing and video restrictions.
+- Reuse unchanged answer blocks and bounded in-memory formula output instead of rebuilding the whole reply on every streamed update. Preserve complete Markdown semantics, late reference links, math, code and table scrolling.
+- Coalesce visual updates at 80 ms intervals; terminal events still flush the complete answer immediately and cancel queued paints. Keep all received text, input drafts, stop-generation and navigation behavior.
+- Leave AI models, reasoning, prompts, retrieval, context, answer length and independent review unchanged. This reduces browser rendering overhead, not model thinking time.
+- Local Chrome stress test (4× CPU slowdown, 16,162 characters / 180 formulas / 100 updates): total update work 11,781 → 824 ms, p95 215 → 11 ms, updates over 50 ms 81 → 0; final HTML identical. These are controlled local measurements, not production latency guarantees. See [performance verification](docs/render-performance.md).
+- Validate 594 merged automated regressions, 302-file source/assets/package checks, deployment-shell syntax, and isolated Chrome/WebKit streaming, navigation, draft, stop and mobile-display checks. The production dependency audit remains a required CI deployment gate.
+
 ## 1.2.15 — Compact percentage-only AI allowance
 
 - Publish the owner-approved allowance interface from `4b60516` on the latest 1.2.14 production baseline `6fbb226`, preserving the tutoring reliability and recovery updates.

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.15 — Compact percentage-only AI allowance
+
+- Publish the owner-approved allowance interface from `4b60516` on the latest 1.2.14 production baseline `6fbb226`, preserving the tutoring reliability and recovery updates.
+- Move AI allowance into a collapsed-by-default row in the desktop sidebar and mobile main menu. Show remaining percentage and local reset time without dollar budgets; keep the Study composer and document workspace clear.
+- Retain expansion across navigation, reset it on account changes, support keyboard toggling/Escape and keep the full allowance page in Settings.
+- Give refresh a pressed state, spinning/loading feedback and brief completion checkmark even when the balance is unchanged. Keep its width and focus stable, honor reduced motion, share in-flight requests and offer retry after failure.
+- Preserve internal metering, weekly limits, membership pricing and existing payment eligibility. Refresh package/frontend cache versions to 1.2.15 and use the existing verified private backup, unchanged-data/configuration checks and code rollback workflow.
+- Release validation: all 592 merged regression tests, 302-file source/assets/package checks and deployment-shell syntax pass. The production dependency audit passes the high-severity gate with one pre-existing moderate Nodemailer advisory. Test-branch browser checks cover desktop/mobile, Chinese/English, unchanged workspace geometry, retained drafts, keyboard handling, Settings and refresh feedback.
+
 ## 1.2.14 — Reliable AI tutoring and practice review
 
 - Publish all three owner-approved tutoring review rounds together on `fe7f8a3` (1.2.13), retaining weekly allowances, video restrictions, calendar updates and payment settings. Meter independent background reviews to the task owner, stop on allowance errors without accepting unverified answers, and refresh package/frontend cache versions to 1.2.14.

@@ -10,6 +10,20 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.2.15 - 2026-11-06
+
+Purpose:
+- Publish the owner-approved compact allowance interface from `4b60516` on the 1.2.14 production baseline `6fbb226`.
+- Show remaining percentage and reset time in collapsible account navigation and Settings, with visible refresh feedback and no dollar budgets in those panels.
+- Preserve tutoring fixes, internal accounting, membership/payment configuration, video restrictions and user data. Refresh package/frontend cache versions to 1.2.15.
+
+Validation:
+- All 592 merged regressions, 302-file source/assets/package checks, deployment-shell syntax and the high-severity production dependency audit gate pass; one pre-existing moderate Nodemailer advisory remains. Test-branch browser checks cover desktop/mobile, Chinese/English, unchanged workspace geometry, retained drafts, keyboard handling and refresh feedback.
+- Require the production dependency audit, verified private backup and unchanged data/configuration checks before publishing. Verify the exact deployed commit, runtime health and actual frontend assets with read-only requests.
+
+Rollback target:
+- `6fbb226` (1.2.14). Restore application code only and retain current user data, task results, allowance records and private backups.
+
 ### 1.2.14 - 2026-11-06
 
 Purpose:

@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.2.14";
+  const VERSION = "1.2.15";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -531,6 +531,7 @@
             </div>
             <span class="profile-card-arrow" aria-hidden="true">↗</span>
           </button>
+          ${usageView.disclosureHtml()}
           <nav class="side-nav">${userNav}</nav>
         ` : ""}
         ${ui.selector()}
@@ -796,7 +797,6 @@
   function composerHtml() {
     return ui.html`
       <footer class="composer composer-light" data-chat-dropzone="true">
-        <div data-ai-usage></div>
         <div class="study-toolbar${isGeneralChat() ? " general-toolbar" : ""}">
           ${isGeneralChat() ? "" : ui.html`<label class="study-mode-control"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 7v14M3 3h3a6 6 0 0 1 6 3 6 6 0 0 1 6-3h3v16h-3a6 6 0 0 0-6 2 6 6 0 0 0-6-2H3z"/></svg><select id="studyMode" aria-label="学习模式" title="学习模式">
             ${Object.entries(studyModes.modes).map(([id, mode]) => `<option value="${id}" ${state.studyMode === id ? "selected" : ""}>${esc(ui.text(mode.label))}</option>`).join("")}

@@ -81,10 +81,18 @@ and tax need separate reconciliation before commercial rollout.
 ## Interface and payment gates
 
 `GET /api/me/ai-usage` requires a current session and returns private, no-store
-account-scoped balances. Study and Settings display the balance and browser-local
-reset time. Visible tabs refresh every 15 seconds and after mutations or chat
+account-scoped balances. A collapsed-by-default allowance row in the desktop
+sidebar and mobile main menu shows the remaining percentage. Expanding it reveals
+the browser-local reset time and existing actions within navigation; it
+does not resize the chat or composer. The current account’s expanded state survives
+in-app navigation and resets on account changes. Keyboard users can toggle the
+summary or press Escape inside the details to collapse and return focus. Settings
+also retains its full allowance page. Manual refresh shows pressed/loading feedback and a brief success checkmark even when the balance is unchanged; failures show a retry action. The button keeps a stable width, honors reduced motion and shares any in-flight status request. Background refreshes do not trigger the manual confirmation. Visible tabs refresh every 15 seconds and after mutations or chat
 completion. Account switches discard old responses. Pending allowance is identified
-separately from settled spending. The USD limit is distinct from the CAD pass price.
+separately from settled spending. User-facing allowance panels and account-tier
+copy omit dollar budgets; they show the remaining percentage and reset time.
+Internal accounting remains in USD. The upgrade action opens Subscription & billing,
+where membership pricing is still shown before purchase.
 
 The upgrade button follows Alipay's existing account-specific eligibility and
 requires real-charge mode. It opens the existing billing screen for review and

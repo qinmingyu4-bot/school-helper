@@ -87,7 +87,7 @@ the balance, browser-local reset time and existing actions within navigation; it
 does not resize the chat or composer. The current account’s expanded state survives
 in-app navigation and resets on account changes. Keyboard users can toggle the
 summary or press Escape inside the details to collapse and return focus. Settings
-also retains its full allowance page. Visible tabs refresh every 15 seconds and after mutations or chat
+also retains its full allowance page. Manual refresh shows pressed/loading feedback and a brief success checkmark even when the balance is unchanged; failures show a retry action. The button keeps a stable width, honors reduced motion and shares any in-flight status request. Background refreshes do not trigger the manual confirmation. Visible tabs refresh every 15 seconds and after mutations or chat
 completion. Account switches discard old responses. Pending allowance is identified
 separately from settled spending. The USD limit is distinct from the CAD pass price.
 

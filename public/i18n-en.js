@@ -10,6 +10,10 @@ AI 额度|AI allowance
 额度每 7 天恢复，未用完的额度不结转。|Allowance resets every 7 days. Unused allowance does not roll over.
 正在读取 AI 额度…|Loading AI allowance…
 刷新额度|Refresh allowance
+刷新中…|Refreshing…
+已刷新|Refreshed
+重试刷新|Try again
+刷新失败，请重试。|Refresh failed. Please try again.
 恢复时间|Resets
 首次使用 AI 后，每 7 天恢复额度。|Allowance resets every 7 days after your first AI use.
 本周 AI 额度|Weekly AI allowance

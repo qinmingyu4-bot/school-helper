@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Allowance refresh feedback
+
+- Give the allowance refresh button a pressed state, rotating refresh icon, visible loading label and brief checkmark confirmation even when the balance is unchanged. Show a retry state after failures and politely announce the result to assistive technology.
+- Keep the control width stable across states and languages, retain keyboard focus, honor reduced motion, reuse in-flight refreshes and prevent repeat clicks while loading. Background updates stay quiet, and account changes discard stale feedback.
+- Validate 28 focused regressions and 296-file source/assets/package checks. The local browser verifies the loading spinner, unchanged-balance success confirmation, stable button dimensions and retained focus.
+
 ## Unreleased — Collapsible AI allowance in navigation
 
 - Move the weekly AI allowance out of the Study composer into a compact disclosure in the desktop sidebar and mobile main menu. Default to a single row showing the remaining percentage; expand only inside navigation to view the balance, reset time, refresh and eligible upgrade action.

@@ -625,16 +625,28 @@ information opens for correction; draft edits, selections and disclosure state
 survive calendar navigation. A sticky selected-count confirmation bar reduces
 mobile scrolling without truncating saved content or paginating the preview.
 
-For weekly patterns, the server uses the Profile school and the extracted year,
-term, campus/faculty and course codes to search the university's allowlisted
-official domain. Calendar ranges are accepted only with matching year/term,
-confirmed campus scope, confirmed no-class dates and consulted source URLs for
-each teaching range, break or makeup day. The UI shows the sources and school
-time zone. Calendar results are cached for six hours. No calendar dates are
-hardcoded or guessed; an unsupported school, ambiguous scope, disabled search or
-lookup failure leaves a single shared semester form for manual confirmation.
-The default term is the current term only when the file omits it, with an explicit
-review notice. Registry entries are in `lib/academic-calendar.js`.
+For weekly patterns, the server checks its academic calendar archive before
+searching. The included 2026–27 records cover regular undergraduate fall and
+winter/spring teaching at Waterloo, UC Berkeley and HKUST. A shared calendar
+requires an explicit year and term, a regular undergraduate scope and a
+compatible campus. Separate winter and spring terms keep their school-specific
+names. The preview shows the scope, teaching dates, breaks, time zone and
+official sources.
+
+On an archive miss, the server can look up the official calendar using the Profile
+school, year, term, campus/faculty and course codes. It saves verified results to
+the local database or DynamoDB, keyed to the same timetable scope and course set.
+Calendar lookup requires confirmed scope, confirmed no-class dates and consulted
+official sources for each teaching period, break or makeup day. The archive
+works with web lookup disabled. Missing dates or uncertain scope can be entered
+once in the shared semester form. An inferred current term is flagged for review.
+
+With web lookup and an OpenAI key configured, the production server checks the
+configured undergraduate scopes on startup and weekly. It looks ahead through
+the following calendar year, rechecks active and upcoming terms after 90 days
+and preserves the last verified copy if the school has yet to publish dates or
+lookup fails. Set `ACADEMIC_CALENDAR_REFRESH=false` to disable background checks.
+Initial records and refresh targets live in `lib/academic-calendar-seeds.js`.
 
 Confirmation expands selected weekly patterns from the import date through the
 last teaching day, excluding reading weeks, closures, holidays, exam/vacation

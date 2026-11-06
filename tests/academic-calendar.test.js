@@ -56,3 +56,69 @@ test("unsupported schools do not trigger arbitrary internet requests and outages
   assert.equal((await service.lookup(input)).calendar, null);
   assert.equal(calls, 1);
 });
+
+test("verified calendars survive a new service instance and match only the same timetable scope", async (context) => {
+  const fs = require("node:fs/promises");
+  const path = require("node:path");
+  const os = require("node:os");
+  const { LocalStore } = require("../lib/local-store");
+  const { StudyBridgeDatabase } = require("../lib/database");
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "studybridge-calendar-"));
+  context.after(() => fs.rm(directory, { recursive: true, force: true }));
+  function archive() {
+    const db = new StudyBridgeDatabase();
+    db.dynamo = null;
+    db.local = new LocalStore(path.join(directory, "calendar.json"));
+    return { get: (key) => db.getAcademicCalendar(key), put: (key, value) => db.putAcademicCalendar(key, value) };
+  }
+  const first = createCalendarService({ archive: archive(), request: async () => payload() });
+  const original = await first.lookup({ ...input, courseCodes: ["FOR200H1F", "MAT100H1F"] });
+  const second = createCalendarService({ archive: archive(), request: async () => assert.fail("Archived lookup must stay offline") });
+  const archived = await second.lookup({ ...input, courseCodes: ["MAT100H1F", "FOR200H1F"], allowSearch: false });
+  assert.deepEqual(archived.calendar, original.calendar);
+  assert.match(archived.notice, /存档/);
+  assert.equal((await second.lookup({ ...input, allowSearch: false })).calendar, null);
+});
+
+test("preloaded undergraduate terms retain official closures and stay separate from special programs and winter sessions", async () => {
+  const service = createCalendarService({ request: async () => assert.fail("Preloaded lookup must stay offline") });
+  const base = { today: "2026-11-06", allowSearch: false };
+  const waterloo = await service.lookup({ ...base, school: "waterloo", termHint: { year: 2027, season: "winter", faculty: "Undergraduate" } });
+  assert.deepEqual(waterloo.calendar.replacements.map(({ date, weekday }) => [date, weekday]), [["2027-04-12", 5]]);
+  const berkeley = await service.lookup({ ...base, school: "UC Berkeley", termHint: { year: 2026, season: "fall", faculty: "Undergraduate" } });
+  assert.equal(berkeley.calendar.teachingPeriods[0].endDate, "2026-12-04");
+  const hkust = { ...base, school: "香港科技大學", termHint: { year: 2027, season: "spring", faculty: "Undergraduate" } };
+  assert.equal((await service.lookup(hkust)).calendar.timeZone, "Asia/Hong_Kong");
+  for (const hint of [{ season: "winter" }, { faculty: "MBA" }, { campus: "Guangzhou" }, { season: "" }]) {
+    assert.equal((await service.lookup({ ...hkust, termHint: { ...hkust.termHint, ...hint } })).calendar, null);
+  }
+});
+
+test("scheduled prefetch skips recent records and stores newly verified terms without replacing good data on failure", async () => {
+  const records = new Map();
+  const archive = { get: async (key) => records.get(key), put: async (key, value) => records.set(key, value) };
+  let now = new Date("2026-11-07T12:00:00Z");
+  const requests = [];
+  const sourceUrl = "https://uwaterloo.ca/important-dates/undergraduate";
+  const request = async (body) => {
+    const { school, term, courseCodes } = JSON.parse(body.input[1].content);
+    requests.push({ school, ...term });
+    assert.deepEqual(courseCodes, []);
+    if (school !== "University of Waterloo" || term.year !== 2027 || term.season !== "fall" || now.getUTCFullYear() !== 2026) {
+      throw new Error("Official dates unavailable");
+    }
+    return { output_text: JSON.stringify({
+      ...term, timeZone: "America/Toronto", scopeConfirmed: true, breaksConfirmed: true,
+      teachingPeriods: [{ startDate: "2027-09-08", endDate: "2027-12-07", sourceUrl }], sources: [{ url: sourceUrl }]
+    }), output: [{ type: "web_search_call", action: { sources: [{ url: sourceUrl }] } }] };
+  };
+  const service = createCalendarService({ archive, request, now: () => now });
+  await Promise.all([service.refresh("test-model"), service.refresh("test-model")]);
+  assert.deepEqual(requests.filter((entry) => entry.school === "University of Waterloo").map(({ year, season }) => [year, season]), [[2027, "fall"]]);
+  const term = { school: "waterloo", termHint: { year: 2027, season: "fall", faculty: "Undergraduate" }, today: "2027-09-01", allowSearch: false };
+  const saved = await service.lookup(term);
+  assert.equal(saved.calendar.teachingPeriods[0].startDate, "2027-09-08");
+  now = new Date("2027-08-01T12:00:00Z");
+  await service.refresh("test-model");
+  assert.deepEqual(await service.lookup(term), saved);
+});

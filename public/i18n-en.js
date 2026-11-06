@@ -1829,6 +1829,10 @@ AI 仍在整理，请稍候；也可取消后重试。|AI is still processing. P
 整理超时，原文已保留，可重试或手动填写。|Processing timed out. Text is kept. Retry or enter details manually.
 已取消整理，原文已保留。|Processing canceled. Text is kept.
 {0} · 尚未加入日程。勾选要加入的项目，点开卡片可编辑并查看完整备注与原文。{1}{2}|{0} · Not added yet. Select items and open cards to edit or review notes and sources.{1}{2}
+已使用存档中经大学官网核对的校历。|Using an archived calendar verified against official university sources.
+已从大学官网核对授课日期和停课假期。|Teaching dates and breaks were checked against official university sources.
+课表未注明完整学期，已按当前学期匹配；请核对上方校历。|The timetable does not specify a complete term. Review the calendar selected for the current term.
+存档中没有匹配的校历，联网校历检索未启用。请补充一次授课起止和停课日期。|No archived calendar matches and online lookup is off. Enter the teaching dates and breaks once for this import.
 正在读取课表版面与时间；识别到每周课程后将自动核对学校官网校历…|Reading the timetable. Weekly classes will be checked against the official school calendar…
 提取到 {0} 条待核对安排{1}。请在下方核对并确认。|Extracted {0} events{1}. Review and confirm below.
 ，发现 {0} 项重复，已标记已有安排并默认取消勾选|, including {0} duplicates, marked and deselected

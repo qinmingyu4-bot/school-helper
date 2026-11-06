@@ -77,7 +77,7 @@
     });
     const hint = !Array.isArray(payload) && payload.termHint || {};
     return { items, termHint: { year: Number.isInteger(hint.year) && hint.year >= 2000 && hint.year <= 2200 ? hint.year : null,
-      season: ["fall", "winter", "summer", "full-year"].includes(hint.season) ? hint.season : "",
+      season: ["fall", "winter", "spring", "summer", "full-year"].includes(hint.season) ? hint.season : "",
       campus: String(hint.campus || "").trim().slice(0, 100), faculty: String(hint.faculty || "").trim().slice(0, 100) } };
   }
   function parse(text) { return parseExtraction(text).items; }

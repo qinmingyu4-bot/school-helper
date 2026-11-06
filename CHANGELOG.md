@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — Academic calendar archive
+
+- Reuse verified university teaching calendars across timetable imports and server restarts. Include 2026–27 regular undergraduate fall and winter/spring calendars for Waterloo, UC Berkeley and HKUST, with official links, holidays and weekday substitutions where applicable.
+- Check configured upcoming terms in the background and keep previously verified dates when an update cannot be confirmed. Retain live lookup and one shared manual calendar form for unmatched imports.
+
 ## 1.2.11 — Classmate system notifications
 
 - Publish the owner-authorized classmate system notifications from `a931776`, retaining the existing `43640a7` (1.2.10) schedule push release, persistent private VAPID keys, accounts and user data. Refresh package/frontend/cache versions to 1.2.11; use the verified private backup and automatic code/environment recovery.

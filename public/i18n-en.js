@@ -986,7 +986,7 @@ Logo、界面色调与显示|Logo, colors and display
 例如 adam2026|For example: adam2026
 学校、专业和 SB ID 会用于个人资料与同学功能。|Your school, major and SB ID are used in your profile and classmate features.
 账号类型|Account type
-普通用户每周 US$0.50 AI 额度，Plus 每周 US$2.00。|Standard accounts receive US$0.50 of AI allowance each week. Plus accounts receive US$2.00.
+AI 额度每 7 天恢复，Plus 享有 4 倍额度。|AI allowance resets every 7 days. Plus includes 4× the allowance.
 补填邀请码|Redeem an invitation
 输入有效邀请码，升级为 Plus|Enter a valid code to become Plus
 注册时没填邀请码，也可以在这里兑换。账号资料、课程和登录方式会保留。|Redeem a code here if you skipped it during registration. Your profile, courses and sign-in methods are kept.

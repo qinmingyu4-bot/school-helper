@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Percentage-only allowance display
+
+- Show remaining percentage and reset time in the sidebar and Settings allowance panel without displaying dollar budgets. Replace account-tier budget amounts with the weekly reset and 4× Plus allowance explanation.
+- Keep the quota-area upgrade action concise; membership prices remain in Subscription & billing. Preserve internal metering, remaining-percentage precision, refresh feedback and payment eligibility.
+- Validation: 13 focused tests and 296 source checks passed; local browser verification confirmed percentage and reset time in both the navigation disclosure and Settings, with refresh feedback retained.
+
 ## Unreleased — Allowance refresh feedback
 
 - Give the allowance refresh button a pressed state, rotating refresh icon, visible loading label and brief checkmark confirmation even when the balance is unchanged. Show a retry state after failures and politely announce the result to assistive technology.

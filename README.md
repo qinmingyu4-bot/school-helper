@@ -889,8 +889,8 @@ Selected import drafts with missing or invalid title/date/time/weekday/end-time 
 Standard accounts receive US$0.50 and effective Plus accounts US$2.00 per seven-day
 cycle, starting with their first reserved AI request. A compact **AI 额度 / AI
 allowance** row in the desktop sidebar or mobile main menu expands to show the
-remaining allowance and next reset in local time without taking space from the
-Study composer. Full details also remain in Settings → **AI allowance**. Running requests reserve allowance until settlement. An upgrade raises
+remaining percentage and next reset in local time. It omits dollar amounts and
+keeps the Study composer clear. Full details also remain in Settings → **AI allowance**. Running requests reserve allowance until settlement. An upgrade raises
 the current weekly limit while retaining spending and reset time. Unused allowance
 does not roll over. The planned month pass is C$19.99 for 30 days.
 

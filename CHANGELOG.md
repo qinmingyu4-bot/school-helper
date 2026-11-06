@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.24 — Themed course and chat dialogs
 
 - Use themed StudyBridge dialogs when creating courses or deleting courses and chats. Keep validation and request errors in the dialog.
 

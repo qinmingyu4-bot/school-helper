@@ -34,3 +34,5 @@ global.fetch = async (input, options = {}) => {
   if (["localhost", "127.0.0.1"].includes(url.hostname)) return original(input, options);
   throw new Error(`Unexpected mailbox fixture host: ${url.hostname}`);
 };
+
+require("./usage-transport").install();

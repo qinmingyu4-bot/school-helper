@@ -558,7 +558,8 @@ Tools now creates downloadable Word/PDF, Excel, PowerPoint and PNG images with
 preview, source uploads, optional owned-course context, revision history and
 cancellation. Document files use hosted Code Interpreter rather than executing
 model-generated code on the app server; image revisions use the actual prior image.
-Video infrastructure is present but closed by default at both UI/API levels.
+StudyBridge does not support video production in any form. Video creation is
+permanently rejected by the API, and legacy video environment settings cannot enable it.
 See [Creative Tools](docs/creative-tools.md) for model configuration, quality
 limits, billing/concurrency controls, authenticated file storage and backup needs.
 
@@ -882,3 +883,16 @@ When calendar lookup fails, duplicate review can compare a bounded weekly source
 Selected import drafts with missing or invalid title/date/time/weekday/end-time fields use amber highlighting and inline accessible explanations. A persistent footer counts affected items; confirmation opens and focuses the first issue before starting any save. Correcting fields or deselecting incomplete items clears the relevant highlights. Source review warnings remain nonblocking, and API/calendar/save errors stay visible in the preview.
 
 日程后台系统推送的设备支持、私有配置与验收步骤见 [系统推送说明](docs/system-push.md)。
+
+### Weekly AI allowance
+
+Standard accounts receive US$0.50 and effective Plus accounts US$2.00 per seven-day
+cycle, starting with their first reserved AI request. Settings → **AI 额度 / AI
+allowance** and the Study composer show remaining allowance and the next reset in
+local time. Running requests reserve allowance until settlement. An upgrade raises
+the current weekly limit while retaining spending and reset time. Unused allowance
+does not roll over. The planned month pass is C$19.99 for 30 days.
+
+The upgrade action appears only when live Alipay checkout is configured and open
+for that account. Full accounting, supported models, and failure/recovery behavior
+are documented in [AI usage](docs/ai-usage.md).

@@ -96,8 +96,7 @@ account responses overlay valid paid membership without rewriting profile,
 invitation, password or administrator role. Expiry/refunds remove only this paid
 overlay. Existing manual/invitation Plus remains in force. Administrative manual
 membership records remain the underlying classification; paid validity is visible
-in billing. **AI quotas, usage credits and paid-only feature gates are not implemented
-by this change** and must be agreed and implemented before public charging.
+in billing. **Weekly AI allowances are implemented on the `codex/weekly-ai-usage` test branch**. Standard accounts receive US$0.50 and effective Plus accounts receive US$2.00 every seven days. See [AI usage](ai-usage.md) for accounting and reset rules. Public charging still requires owner-authorized activation.
 The current bounded ledger allows at most 100 orders and 250 KB; it blocks new
 purchases for operator review at its limit. Do not remove purchase history to reset it.
 

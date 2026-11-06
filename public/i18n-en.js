@@ -5,6 +5,30 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+AI 额度|AI allowance
+剩余额度与恢复时间|Remaining allowance and reset time
+额度每 7 天恢复，未用完的额度不结转。|Allowance resets every 7 days. Unused allowance does not roll over.
+正在读取 AI 额度…|Loading AI allowance…
+刷新额度|Refresh allowance
+恢复时间|Resets
+首次使用 AI 后，每 7 天恢复额度。|Allowance resets every 7 days after your first AI use.
+本周 AI 额度|Weekly AI allowance
+剩余|Remaining
+剩余 AI 额度|Remaining AI allowance
+正在生成的任务已暂留部分额度，完成后按实际用量结算。|Running tasks temporarily reserve allowance and settle against actual usage when complete.
+部分中断请求缺少实际用量，暂按预估扣减，可联系管理员核对。|Some interrupted requests have estimated charges because usage was unavailable. Contact the administrator for review.
+本周 AI 额度已用完，将在恢复时间自动补充。|Your weekly AI allowance is used up. It will refill at the reset time.
+升级 Plus|Upgrade to Plus
+30 天|30 days
+充值开放后可升级 Plus，获得 4 倍每周额度。|When payments open, upgrade to Plus for 4× the weekly allowance.
+本周 AI 额度不足，请查看剩余额度和恢复时间。充值开放后可升级 Plus。|Your weekly AI allowance is insufficient. Check your remaining allowance and reset time. Upgrade to Plus when payments open.
+额度正在更新，请稍后重试。|Your allowance is being updated. Please try again shortly.
+AI 请求缺少所属账号。|The AI request has no account associated with it.
+当前模型尚未配置额度计费，请联系管理员。|Usage pricing is unavailable for this model. Please contact the administrator.
+暂时无法估算本次 AI 用量，请稍后重试。|Unable to estimate AI usage. Please try again shortly.
+
+制作功能范围|Creation capabilities
+StudyBridge 不支持任何形式的视频制作。|StudyBridge does not support video production in any form.
 系统推送|System push notifications
 仅对此设备生效。锁屏通知不显示日程标题或课程内容。|Applies to this device only. Lock screen notifications hide schedule titles and course details.
 提醒时间|Reminder time
@@ -390,7 +414,7 @@ Google 可直接进入，首次使用将自动创建普通账号。|Continue wit
 再输入一次密码|Enter your password again
 邀请码（选填）|Invitation code (optional)
 有邀请码可成为 Plus 用户|Invitation code for Plus
-留空即可注册普通用户，也可登录后在设置中补填。Plus 目前仅作分类。|Leave blank for a standard account. You can redeem a code in Settings later. Plus currently only labels account type.
+留空即可注册普通用户，也可登录后在设置中补填。Plus 享有 4 倍每周 AI 额度。|Leave blank for a standard account. You can redeem a code in Settings later. Plus includes 4× the weekly AI allowance.
 邮箱验证码|Email verification code
 输入 6 位验证码|Enter the 6-digit code
 发送验证码|Send code
@@ -958,7 +982,7 @@ Logo、界面色调与显示|Logo, colors and display
 例如 adam2026|For example: adam2026
 学校、专业和 SB ID 会用于个人资料与同学功能。|Your school, major and SB ID are used in your profile and classmate features.
 账号类型|Account type
-目前仅作用户分类，普通用户与 Plus 暂无功能差异。|Account types currently have the same features.
+普通用户每周 US$0.50 AI 额度，Plus 每周 US$2.00。|Standard accounts receive US$0.50 of AI allowance each week. Plus accounts receive US$2.00.
 补填邀请码|Redeem an invitation
 输入有效邀请码，升级为 Plus|Enter a valid code to become Plus
 注册时没填邀请码，也可以在这里兑换。账号资料、课程和登录方式会保留。|Redeem a code here if you skipped it during registration. Your profile, courses and sign-in methods are kept.

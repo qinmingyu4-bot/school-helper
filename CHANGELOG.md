@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.13 — Weekly AI allowances and video production restriction
+
+- Publish the owner-approved weekly allowance and video restriction together, retaining the 1.2.12 calendar archive and stable schedule clock times.
+- Give standard accounts US$0.50 and effective Plus accounts US$2.00 per seven-day cycle. Show remaining allowance, pending usage and the local reset time in Study and Settings. Keep spending and reset time on upgrade; unused allowance does not roll over.
+- Meter account AI requests through durable reservations and actual usage settlement, retain estimated usage for interrupted requests, and block exhausted accounts without an unmetered fallback.
+- Retain the C$19.99 / 30-day membership price and existing payment activation settings. Show the upgrade action only when live checkout is open for that account.
+- Permanently disable video production, remove its tool/provider paths, reject legacy enable flags, and show the Chinese/English restriction in Settings → Help & about. Apply the same rule to assistant and creative instructions.
+- Refresh package/frontend/cache versions to 1.2.13 and use the existing verified private backup, unchanged-data/configuration checks and automatic code rollback workflow.
+- Validate all 553 regression tests, 296-file source/assets/package checks, deployment shell syntax, Chrome/WebKit desktop/mobile bilingual screens, and schedule fixtures in UTC, Shanghai and Toronto. Production dependency auditing passes the high-severity gate with one existing moderate Nodemailer advisory.
+
 ## 1.2.12 — Academic calendar archive and stable schedule clock times
 
 - Keep timetable imports, manual plans, deadlines and learning reviews at their entered dates and clock times across device time-zone changes. Recover older UTC entries through their saved original time zone, with a stable UTC fallback when that metadata is absent.

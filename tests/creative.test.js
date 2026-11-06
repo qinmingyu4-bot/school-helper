@@ -55,8 +55,6 @@ async function setup(t, options = {}) {
     }
     if (route.startsWith("containers/")) return new Response(payloads.get(route.split("/")[3]));
     if (route === "images/generations" || route === "images/edits") return Response.json({ data: [{ b64_json: options.badImage ? Buffer.from("<svg/>").toString("base64") : png.toString("base64") }] });
-    if (route === "videos") return Response.json({ id: "video_fixture", status: "completed" });
-    if (route === "videos/video_fixture/content") return new Response(Buffer.from("0000ftypisom0000"));
     throw new Error(`Unexpected provider route ${route}`);
   };
   const service = createCreativeService({ db, request, documentModel: () => "test-document-model", contextFor: async (userId, courseId) => {
@@ -187,14 +185,16 @@ test("image generation and edits use real image bytes and keep source images pri
   assert.deepEqual((await service.file("alice", revision.id, revision.files[0].id)).bytes, png);
 });
 
-test("video is gated before provider calls; prepared route can deliver a video when explicitly enabled", async (t) => {
+test("video production is permanently rejected even when legacy configuration enables it", async (t) => {
   const { service, calls } = await setup(t);
-  assert.equal(service.capabilities().video, false);
-  await assert.rejects(service.create({ id: "alice" }, { kind: "video", prompt: "A scene" }), (failure) => failure.statusCode === 403);
+  for (const enabled of ["false", "true"]) {
+    process.env.STUDYBRIDGE_VIDEO_ENABLED = enabled;
+    assert.equal(service.capabilities().video, false);
+    for (const prompt of ["Create a video", "Animate this image", "Edit or convert a video"]) {
+      await assert.rejects(service.create({ id: "alice" }, { kind: "video", prompt }), { statusCode: 403, message: "StudyBridge 不支持任何形式的视频制作。" });
+    }
+  }
   assert.equal(calls.length, 0);
-  process.env.STUDYBRIDGE_VIDEO_ENABLED = "true";
-  const video = await done(service, await service.create({ id: "alice" }, { kind: "video", prompt: "A scene" }));
-  assert.equal(video.status, "ready"); assert.equal(video.files[0].extension, "mp4");
 });
 
 test("cancellation bounds concurrent work and never publishes partial files", async (t) => {

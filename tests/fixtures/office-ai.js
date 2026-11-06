@@ -28,3 +28,5 @@ global.fetch = async (url, options) => {
   }
   return original(url, options);
 };
+
+require("./usage-transport").install();

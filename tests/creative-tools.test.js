@@ -104,3 +104,24 @@ test("remembered tools course takes priority over study course and falls back af
   state.courses = [];
   assert.equal(context.creativeContext().courseId, "");
 });
+
+test("stale video contexts cannot render or submit video production", async () => {
+  const document = { addEventListener() {}, getElementById() { return null; } };
+  const window = { StudyBridgeCheatsheetPrint: require("../public/cheatsheet-print") };
+  vm.runInNewContext(fs.readFileSync(require.resolve("../public/creative-tools"), "utf8"), { StudyBridgeI18n: require("../public/i18n"), window, document, setTimeout, clearTimeout });
+  const tools = window.StudyBridgeCreativeTools;
+  let calls = 0;
+  const ctx = { tool: "video", api: async () => { calls++; }, esc: (text) => text };
+  assert.match(tools.html(ctx), /不支持任何形式的视频制作/);
+  assert.doesNotMatch(tools.html(ctx), /textarea|creative-generate/);
+  await tools.handle({ dataset: { action: "creative-generate" } }, ctx);
+  assert.equal(calls, 0);
+  assert.equal(tools.videoEnabled(), false);
+});
+
+test("video output is rejected and the fixed rule reaches AI creation instructions", () => {
+  const { validateFile } = require("../lib/creative-files");
+  assert.throws(() => validateFile("movie.mp4", Buffer.from("0000ftypisom000000")), /格式/);
+  const { DOCUMENT_INSTRUCTION } = require("../lib/creative-service");
+  assert.match(DOCUMENT_INSTRUCTION, /does not support video production in any form/);
+});

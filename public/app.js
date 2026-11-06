@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.2.12";
+  const VERSION = "1.2.13";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -116,6 +116,8 @@
       navigate: (page) => loadPage(page)
     })
   });
+  const usageView = window.StudyBridgeAiUsage.create({ request: api, getUser: () => state.user,
+    openBilling: () => { appearanceController.open(); document.querySelector('[data-settings-section="billing"]')?.click(); } });
   let settingsProfileSave = Promise.resolve();
   let membershipGeneration = 0;
   const adminMembershipPending = new Set();
@@ -304,6 +306,7 @@
     }
     const response = await fetch(path, init);
     const data = await response.json().catch(() => ({}));
+    if (path !== "/api/me/ai-usage" && init.method && init.method !== "GET") void usageView.refresh(true);
     if (!response.ok) throw Object.assign(new Error(data.error || data.message || ui.message`请求失败 (${response.status})`), { status: response.status, retryAfter: Number(response.headers.get("retry-after")) || 0 });
     return data;
   }
@@ -454,7 +457,7 @@
           <label>密码<input id="authPassword" type="password" autocomplete="${register ? "new-password" : "current-password"}" placeholder="至少 8 位"></label>
           ${register ? ui.html`
             <label>确认密码<input id="authPasswordConfirm" type="password" autocomplete="new-password" placeholder="再输入一次密码"></label>
-            <label>邀请码（选填）<input id="authInvite" placeholder="有邀请码可成为 Plus 用户" aria-describedby="authInviteHelp"></label><p id="authInviteHelp" class="auth-code-help">留空即可注册普通用户，也可登录后在设置中补填。Plus 目前仅作分类。</p>
+            <label>邀请码（选填）<input id="authInvite" placeholder="有邀请码可成为 Plus 用户" aria-describedby="authInviteHelp"></label><p id="authInviteHelp" class="auth-code-help">留空即可注册普通用户，也可登录后在设置中补填。Plus 享有 4 倍每周 AI 额度。</p>
             ${state.authConfig?.emailVerificationRequired !== false ? ui.html`<label for="authEmailCode">邮箱验证码</label>
             <div class="inline-fields">
               <input id="authEmailCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" aria-describedby="authCodeHelp" placeholder="输入 6 位验证码">
@@ -793,6 +796,7 @@
   function composerHtml() {
     return ui.html`
       <footer class="composer composer-light" data-chat-dropzone="true">
+        <div data-ai-usage></div>
         <div class="study-toolbar${isGeneralChat() ? " general-toolbar" : ""}">
           ${isGeneralChat() ? "" : ui.html`<label class="study-mode-control"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 7v14M3 3h3a6 6 0 0 1 6 3 6 6 0 0 1 6-3h3v16h-3a6 6 0 0 0-6 2 6 6 0 0 0-6-2H3z"/></svg><select id="studyMode" aria-label="学习模式" title="学习模式">
             ${Object.entries(studyModes.modes).map(([id, mode]) => `<option value="${id}" ${state.studyMode === id ? "selected" : ""}>${esc(ui.text(mode.label))}</option>`).join("")}
@@ -1047,6 +1051,7 @@
         root.insertAdjacentHTML("beforeend", `<div class="toast">${esc(error.message)}</div>`);
       }
     } finally {
+      void usageView.refresh(true);
       reply.assistant.pending = false;
       studyReplies.delete(reply.key);
       cancelAnimationFrame(reply.frame);
@@ -1882,7 +1887,7 @@
     return ui.html`
       ${pageHeader("STUDY TOOLS", ui.text("工具"), ui.text("文档、表格、演示和图片"))}
       <section class="tools-tabs" aria-label="工具选择">
-        ${["docs", "sheets", "slides", "images", "cheatsheet", "video"].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" aria-pressed="${(state.tool || "docs") === tool}" data-action="tool-mode" data-tool="${tool}" ${tool === "video" && !creativeTools.videoEnabled() ? ui.text('disabled title="视频生成暂未开放"') : ""}>${({ docs: "SB Docs", sheets: "SB Sheets", slides: "SB Slides", images: ui.text("图片"), cheatsheet: "Cheatsheet PDF", video: creativeTools.videoEnabled() ? ui.text("视频") : ui.text("视频 · 未开放") })[tool]}</button>`).join("")}
+        ${["docs", "sheets", "slides", "images", "cheatsheet"].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" aria-pressed="${(state.tool || "docs") === tool}" data-action="tool-mode" data-tool="${tool}">${({ docs: "SB Docs", sheets: "SB Sheets", slides: "SB Slides", images: ui.text("图片"), cheatsheet: "Cheatsheet PDF" })[tool]}</button>`).join("")}
       </section>
       ${officeTools.supports(state.tool || "docs") ? ui.html`<nav class="office-view-switch" aria-label="工作方式"><button data-action="office-view-edit" aria-pressed="${state.toolView !== "generate"}">自主编辑</button><button data-action="office-view-generate" aria-pressed="${state.toolView === "generate"}">AI 文件生成</button></nav>` : ""}
       ${officeTools.supports(state.tool || "docs") && state.toolView !== "generate" ? officeTools.html(state.tool || "docs") : creativeTools.html(creativeContext())}
@@ -3099,7 +3104,7 @@
         return;
       }
       if (action === "tool-mode") {
-        if (button.dataset.tool === "video" && !creativeTools.videoEnabled()) return;
+        if (!["docs", "sheets", "slides", "images", "cheatsheet"].includes(button.dataset.tool)) return;
         creativeTools.capture();
         officeTools.capture();
         state.tool = button.dataset.tool || "docs";
@@ -3276,6 +3281,7 @@
     for (const id of ["emailOriginal", "emailGoal", "emailTone", "emailOutput"]) {
       if ($(id) && emailDraft[id] !== undefined) $(id).value = emailDraft[id];
     }
+    usageView.sync();
     creativeTools.restoreFocus();
     void officeTools.mount(creativeContext());
     if (state.toast && state.user) root.insertAdjacentHTML("beforeend", `<div class="toast">${esc(state.toast)}</div>`);

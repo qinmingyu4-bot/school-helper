@@ -14,3 +14,5 @@ globalThis.fetch = async (url, options) => {
       explanations: ["A p-value assumes the null is true, then assesses the observed data or more extreme data.", "It is not the probability the null is true.", "It does not establish certainty.", "It is not an effect size."], documentId: context.context[0].documentId, quote })) };
   return Response.json({ choices: [{ finish_reason: "stop", message: { content: JSON.stringify(value) } }] });
 };
+
+require("./usage-transport").install();

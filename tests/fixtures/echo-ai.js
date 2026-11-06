@@ -69,8 +69,9 @@ globalThis.fetch = async (url, options) => {
       if (question.includes("STREAM_TRUNCATED") || question.includes("STREAM_ABORT")) break;
     }
     if (!["STREAM_FAIL_AFTER", "STREAM_TRUNCATED", "STREAM_ABORT"].some((marker) => question.includes(marker))) {
-      frames.push(responses ? { type: "response.completed", response: { output_text: answer } } : { choices: [{ delta: {}, finish_reason: "stop" }] });
+      frames.push(responses ? { type: "response.completed", response: { output_text: answer, usage: { input_tokens: 100, output_tokens: 50 } } } : { choices: [{ delta: {}, finish_reason: "stop" }] });
     }
+    if (!responses && frames.at(-1)?.choices?.[0]?.finish_reason === "stop") frames.push({ choices: [], usage: { prompt_tokens: 100, completion_tokens: 50 } });
     let index = 0;
     let aborted = false;
     const encoder = new TextEncoder();
@@ -136,3 +137,5 @@ globalThis.fetch = async (url, options) => {
     : { choices: [{ message: { content } }] };
   return new Response(JSON.stringify(payload), { status: 200 });
 };
+
+require("./usage-transport").install();

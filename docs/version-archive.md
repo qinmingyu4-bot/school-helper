@@ -10,6 +10,20 @@ This file records stable StudyBridge versions so a broken update can be rolled b
 
 ## Stable Versions
 
+### 1.2.13 - 2026-11-06
+
+Purpose:
+- Publish the owner-approved weekly allowance (`171f5b1`) and permanent video restriction (`84eae5a`) together on the latest production baseline `5ea29ce` (1.2.12).
+- Standard US$0.50/week and Plus US$2.00/week, visible remaining allowance and reset time, C$19.99 / 30-day pricing, and an upgrade entry gated by existing live-payment eligibility. Preserve private configuration, accounts, data and calendar fixes.
+- Remove video production and its legacy enable flag; show the fixed policy in bilingual Help & about.
+
+Validation:
+- All 553 regression tests, 296-file source/assets/package checks and deployment shell syntax pass. Chrome and WebKit verify desktop/mobile allowance and video settings in Chinese/English with isolated accounts. Schedule fixture checks pass in UTC, Shanghai and Toronto. The production dependency audit passes the high-severity gate; one pre-existing moderate Nodemailer advisory remains.
+- Verify the exact AWS deployment, healthy runtime and live assets using read-only requests; retain verified private backup and unchanged-data/configuration checks.
+
+Rollback target:
+- `5ea29ce` (1.2.12). Restore application code only and retain current user data, allowance records and private backups.
+
 ### 1.2.8 - 2026-10-31
 
 Purpose:

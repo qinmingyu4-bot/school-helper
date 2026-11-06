@@ -65,7 +65,7 @@ test("review retains missing times and source evidence without inventing a date"
 
 test("duplicate detection matches confirmed UTC dates and legacy local reminders", () => {
   const local = { kind: "class", title: "MAT101 Lecture", course: "MAT101", startsAt: "2026-10-12T10:00" };
-  const saved = { ...local, kind: "LEC", startsAt: new Date(local.startsAt).toISOString() };
+  const saved = { ...local, kind: "LEC", startsAt: importer.toUtc(local.startsAt, "America/Toronto"), timeZone: "America/Toronto" };
   assert.equal(importer.fingerprint(local), importer.fingerprint(saved));
   assert.notEqual(importer.fingerprint(local), importer.fingerprint({ ...local, kind: "TUT" }));
 });

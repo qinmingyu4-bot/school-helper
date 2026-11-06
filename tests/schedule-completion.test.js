@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const importer = require("../public/schedule-import");
 const calendar = require("../public/schedule-calendar");
+// Legacy timestamps without saved zone metadata use the UTC clock fallback.
 const start = "2026-11-02T15:00:00.000Z";
 const end = "2026-11-02T16:00:00.000Z";
 const meeting = (kind = "LEC") => ({ title: kind, kind, startsAt: start, endsAt: end, docId: kind, courseId: "planner" });
@@ -11,10 +12,10 @@ const meeting = (kind = "LEC") => ({ title: kind, kind, startsAt: start, endsAt:
 test("lectures and tutorials finish at their end, never at the start of a known duration", () => {
   for (const kind of ["LEC", "TUT", "lecture", "tutorial", "class"]) {
     const item = meeting(kind);
-    assert.equal(importer.completion(item, start).completedAt, "");
-    assert.equal(importer.completion(item, "2026-11-02T15:59:59Z").completedAt, "");
-    assert.deepEqual(importer.completion(item, end), { classMeeting: true, automatic: true, completedAt: end });
-    assert.equal(importer.completion(item, "2026-12-01T00:00Z").completedAt, end);
+    assert.equal(importer.completion(item, start, "UTC").completedAt, "");
+    assert.equal(importer.completion(item, "2026-11-02T15:59:59Z", "UTC").completedAt, "");
+    assert.deepEqual(importer.completion(item, end, "UTC"), { classMeeting: true, automatic: true, completedAt: end });
+    assert.equal(importer.completion(item, "2026-12-01T00:00Z", "UTC").completedAt, end);
     assert.equal(item.completedAt, undefined);
   }
 });
@@ -22,8 +23,8 @@ test("lectures and tutorials finish at their end, never at the start of a known 
 test("legacy classes without a usable end fall back to the recorded time", () => {
   for (const endsAt of [undefined, "", "invalid", "2026-11-02T14:00Z", start]) {
     const item = { ...meeting(), endsAt };
-    assert.equal(importer.completion(item, "2026-11-02T14:59:59Z").completedAt, "");
-    assert.equal(importer.completion(item, start).completedAt, start);
+    assert.equal(importer.completion(item, "2026-11-02T14:59:59Z", "UTC").completedAt, "");
+    assert.equal(importer.completion(item, start, "UTC").completedAt, start);
   }
   assert.equal(importer.completion({ ...meeting(), startsAt: "invalid" }, end).completedAt, "");
 });

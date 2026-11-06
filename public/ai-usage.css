@@ -1,0 +1,8 @@
+[data-ai-usage] { min-width: 0; padding: 12px; border: 1px solid var(--border, #dce3ea); border-radius: 12px; color: inherit; font-size: 12px; }
+[data-ai-usage] p { margin: 6px 0; overflow-wrap: anywhere; line-height: 1.5; }
+.ai-usage-title, .ai-usage-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+[data-ai-usage] progress { width: 100%; height: 6px; accent-color: var(--accent, #168a79); }
+.ai-usage-actions button, [data-usage-refresh] { cursor: pointer; padding: 6px 10px; border: 1px solid var(--border, #dce3ea); border-radius: 8px; background: transparent; color: inherit; font: inherit; }
+.composer [data-ai-usage] { margin: 0 0 8px; padding: 8px 10px; }
+.composer [data-ai-usage] progress { display: none; }
+.composer .ai-usage-actions { font-size: 11px; }

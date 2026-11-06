@@ -10,7 +10,7 @@ test("creative HTTP jobs, private downloads, revisions, cancellation and video g
   const root = path.resolve(__dirname, "..");
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "studybridge-creative-http-"));
   const child = spawn(process.execPath, ["--require", "./tests/fixtures/creative-ai.js", "server.js"], {
-    cwd: root, env: { ...process.env, PORT: "0", NODE_ENV: "test", STUDYBRIDGE_DB: "local", LOCAL_DB_FILE: path.join(directory, "db.json"), LOCAL_DB_BACKUP_DISABLED: "true", OWNER_INVITE_CODE: "creative-owner", REQUIRE_INVITE_CODE: "true", REQUIRE_EMAIL_VERIFICATION: "false", OPENAI_API_KEY: "test-only-key", OPENAI_DOCUMENT_MODEL: "test-document-model", STUDYBRIDGE_VIDEO_ENABLED: "false", ADMIN_EMAILS: "owner@example.test", GOOGLE_CLIENT_ID: "", GOOGLE_CLIENT_SECRET: "", SMTP_HOST: "", SMTP_USER: "", SMTP_PASS: "" }, stdio: ["ignore", "pipe", "pipe"]
+    cwd: root, env: { ...process.env, PORT: "0", NODE_ENV: "test", STUDYBRIDGE_DB: "local", LOCAL_DB_FILE: path.join(directory, "db.json"), LOCAL_DB_BACKUP_DISABLED: "true", OWNER_INVITE_CODE: "creative-owner", REQUIRE_INVITE_CODE: "true", REQUIRE_EMAIL_VERIFICATION: "false", OPENAI_API_KEY: "test-only-key", OPENAI_DOCUMENT_MODEL: "gpt-6.1-sol", STUDYBRIDGE_VIDEO_ENABLED: "false", ADMIN_EMAILS: "owner@example.test", GOOGLE_CLIENT_ID: "", GOOGLE_CLIENT_SECRET: "", SMTP_HOST: "", SMTP_USER: "", SMTP_PASS: "" }, stdio: ["ignore", "pipe", "pipe"]
   });
   child.stderr.on("data", (chunk) => t.diagnostic(String(chunk)));
   t.after(async () => { const exited = once(child, "exit"); child.kill(); await exited; await fs.rm(directory, { recursive: true, force: true }); });

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — weekly AI allowance test branch
+
+- Add US$0.50 weekly allowance for standard accounts and US$2.00 for effective Plus accounts, with seven-day cycles, no rollover, and retained spending on upgrade or expiry.
+- Show remaining USD allowance, percentage, pending reservations and local reset time in Study and Settings, in Chinese and English. Link to the C$19.99 / 30-day payment flow only when live checkout is open for the current account.
+- Meter chat, streamed answers, problem-set workers, document/image creation, transcription, learning tools and mailbox analysis through durable local/DynamoDB reservations. Count model input before generation, cap output, settle actual provider usage, and preserve account isolation across workers/restarts.
+- Retain estimated charges when interrupted upstream calls cannot report usage, expose that condition to users, and prevent quota errors from falling through to an unmetered model route. Shared calendar lookups and operator health probes remain operator costs.
+- Validate 542 automated tests and 293 JavaScript/source asset checks. Chrome and WebKit checks cover Chinese/English, 320/390/1280 px layouts, Study draft retention, and closed/open upgrade navigation with simulated AI/payment states. Keep deployment on a task branch for review.
+
 ## 1.2.11 — Classmate system notifications
 
 - Publish the owner-authorized classmate system notifications from `a931776`, retaining the existing `43640a7` (1.2.10) schedule push release, persistent private VAPID keys, accounts and user data. Refresh package/frontend/cache versions to 1.2.11; use the verified private backup and automatic code/environment recovery.

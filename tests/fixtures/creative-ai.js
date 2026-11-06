@@ -31,3 +31,5 @@ globalThis.fetch = async (url, options) => {
   }
   throw new Error("Unexpected creative provider route");
 };
+
+require("./usage-transport").install();

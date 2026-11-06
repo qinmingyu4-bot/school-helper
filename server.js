@@ -26,6 +26,7 @@ const { createPushService } = require("./lib/push-service");
 const mailboxProviders = require("./lib/mailbox-providers");
 const { createMailboxService } = require("./lib/mailbox-service");
 const { membershipTier } = require("./lib/membership");
+const { createAiUsage } = require("./lib/ai-usage");
 const { createBillingService } = require("./lib/billing-service");
 const { createAlipayService } = require("./lib/alipay-service");
 const studyModes = require("./public/study-modes");
@@ -112,6 +113,7 @@ function loadEnvFile(filePath = path.join(__dirname, ".env")) {
 loadEnvFile();
 
 const db = new StudyBridgeDatabase();
+const aiUsage = createAiUsage({ db, entitlement: (userId) => alipay.entitlement(userId) });
 const office = createOfficeService(db);
 const schedulePush = createPushService({ db, listSchedule: (userId) => listUserScheduleItems(userId, { includeCompleted: true }) });
 const publicDir = path.join(__dirname, "public");
@@ -138,15 +140,15 @@ const complexAiModel =
 const webSearchEnabled = process.env.OPENAI_WEB_SEARCH !== "false";
 const googleClientId = String(process.env.GOOGLE_CLIENT_ID || "").trim();
 const googleClientSecret = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();
-const mailbox = createMailboxService({ db, analyze: (messages) => {
+const mailbox = createMailboxService({ db, analyze: (messages, userId) => aiUsage.run(userId, () => {
   if (!process.env.OPENAI_API_KEY) throw new Error("邮件识别尚未配置。");
   return callAiWithChatCompletions(messages, complexAiModel, null, { signal: AbortSignal.timeout(60000), store: false });
-} });
+}) });
 let cachedAiHealth = null;
 let lastAiRequest = null;
 const classmateStreams = new Map();
 const creative = createCreativeService({
-  db,
+  db, request: (...args) => aiUsage.fetch(...args),
   documentModel: () => process.env.OPENAI_DOCUMENT_MODEL || complexAiModel,
   contextFor: (userId, courseId, message, cheatsheet) => courseContext(db, userId, courseId, message, cheatsheet)
 });
@@ -173,11 +175,11 @@ async function studyVisual(job, source) {
   return Array.isArray(value) ? value[source.attachmentIndex] : value;
 }
 function studyProvider(model) {
-  return (messages, visuals, signal) => {
+  return (messages, visuals, signal, userId) => aiUsage.run(userId, () => {
     const parts = visuals.flatMap((file) => file.kind === "pdf" && file.dataUrl ? [{ type: "file", file: { filename: file.name, file_data: file.dataUrl } }]
       : file.kind === "image" && file.dataUrl ? [{ type: "image_url", image_url: { url: file.dataUrl, detail: "high" } }] : []);
     return callAiWithChatCompletions(messages.map((item) => item.role === "user" && parts.length ? { ...item, content: [{ type: "text", text: item.content }, ...parts] } : item), model, null, { signal, store: false });
-  };
+  });
 }
 const studyJobs = createStudyJobs({ db, index: studyIndex, loadSources: studySources, loadVisual: studyVisual,
   plan: studyProvider(simpleAiModel), answer: studyProvider(complexAiModel), saveQuestion: saveChatQuestion,
@@ -497,6 +499,7 @@ async function currentUser(req) {
   }
   const user = await db.getUser(session.userId, { consistent: true });
   if (!user || Number(session.passwordVersion || 0) !== Number(user.passwordVersion || 0)) return null;
+  if (aiUsage.context.getStore()) aiUsage.context.getStore().userId = user.id;
   const paidMembershipExpiresAt = await alipay.entitlement(user.id);
   return { user: withEffectiveRole({ ...user, paidMembershipExpiresAt }), tokenHash, session };
 }
@@ -1299,7 +1302,7 @@ async function readAiEvents(response, kind, stream) {
         content += delta;
         await stream.onDelta(delta);
       }
-      if (completed) return false;
+      if (completed && kind === "responses") return false;
     });
     if (!completed) throw new Error("AI stream ended before completion.");
     if (!content) {
@@ -1314,7 +1317,7 @@ async function readAiEvents(response, kind, stream) {
 }
 
 async function callAiWithResponses(messages, model, toolType = "web_search", stream = null) {
-  const response = await fetch("https://api.openai.com/v1/responses", {
+  const response = await aiUsage.fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
       authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -1351,7 +1354,7 @@ async function callAiWithResponses(messages, model, toolType = "web_search", str
 }
 
 async function callAiWithChatCompletions(messages, model, stream = null, { signal, store } = {}) {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await aiUsage.fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -1390,13 +1393,13 @@ async function callAi(messages, model = simpleAiModel, stream = null) {
     try {
       return await callAiWithResponses(messages, model, "web_search", stream);
     } catch (error) {
-      if (stream?.signal.aborted || error.delivered) throw error;
+      if (error.usageError || stream?.signal.aborted || error.delivered) throw error;
       const message = String(error?.message || error);
       if (message.includes("web_search")) {
         try {
           return await callAiWithResponses(messages, model, "web_search_preview", stream);
         } catch (previewError) {
-          if (stream?.signal.aborted || previewError.delivered) throw previewError;
+          if (previewError.usageError || stream?.signal.aborted || previewError.delivered) throw previewError;
           console.warn(`StudyBridge preview web route failed, falling back to chat completions: ${previewError?.message || previewError}`);
         }
       } else {
@@ -1509,7 +1512,7 @@ async function streamCourseChat(req, res, context) {
         console.error("StudyBridge interrupted reply could not be saved:", saveError);
       }
     }
-    send("error", { error: "回复已中断，请重新提问。", messages: [userMessage, assistantMessage].filter(Boolean) });
+    send("error", { error: error.usageError ? error.message : "回复已中断，请重新提问。", messages: [userMessage, assistantMessage].filter(Boolean) });
   } finally {
     clearInterval(heartbeat);
     clearTimeout(timeout);
@@ -1952,6 +1955,15 @@ async function signInWithGoogle(req, res, url) {
 }
 
 async function routeApi(req, res) {
+  if (req.url.split("?")[0] === "/api/me/ai-usage" && req.method === "GET") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const usage = await aiUsage.status(user.id);
+    const payment = await alipay.status(user.id).catch(() => null);
+    return sendJson(res, 200, { usage: { ...usage, canUpgrade: usage.tier === "standard" && Boolean(payment?.canCheckout && payment.realCharges),
+      upgradePrice: { currency: "CAD", amount: payment?.passes?.plans?.find((plan) => plan.id === "month")?.amount || 1999, days: 30 } } }, { "cache-control": "private, no-store" });
+  }
+
   const url = new URL(req.url, "http://localhost");
   const method = req.method || "GET";
 
@@ -3040,9 +3052,9 @@ if (directMessageMatch && method === "POST") {
     catch (error) { return sendError(res, 400, error.message); }
     if (!process.env.OPENAI_API_KEY) return sendError(res, 503, "AI 语音服务尚未配置，仍可使用文字或手机键盘语音输入。");
     try {
-      const text = await scheduleTranscription.transcribeAudio(file, { apiKey: process.env.OPENAI_API_KEY, model: process.env.OPENAI_TRANSCRIBE_MODEL || "gpt-transcribe" });
+      const text = await scheduleTranscription.transcribeAudio(file, { request: (...args) => aiUsage.fetch(...args), apiKey: process.env.OPENAI_API_KEY, model: process.env.OPENAI_TRANSCRIBE_MODEL || "gpt-transcribe" });
       return sendJson(res, 200, { text });
-    } catch (error) { return sendError(res, 502, error.name === "TimeoutError" ? "语音转写超时，请重试或输入文字。" : "没有成功转成文字，请检查录音是否清晰后重试；尚未添加安排。"); }
+    } catch (error) { if (error.usageError) throw error; return sendError(res, 502, error.name === "TimeoutError" ? "语音转写超时，请重试或输入文字。" : "没有成功转成文字，请检查录音是否清晰后重试；尚未添加安排。"); }
   }
 
   if (url.pathname === "/api/schedule/extract" && method === "POST") {
@@ -3358,7 +3370,7 @@ if (directMessageMatch && method === "POST") {
   return sendError(res, 404, "API route not found.");
 }
 
-const server = http.createServer(async (req, res) => {
+const server = http.createServer((req, res) => aiUsage.run(null, async () => {
   try {
     if (req.url.startsWith("/api/")) return await routeApi(req, res);
     return await serveStatic(req, res);
@@ -3368,7 +3380,7 @@ const server = http.createServer(async (req, res) => {
     if (res.headersSent) return res.end();
     return sendError(res, status, error.message || "Server error.");
   }
-});
+}));
 
 server.listen(port, () => {
   console.log(`StudyBridge cloud app running on http://localhost:${server.address().port}`);

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Use themed StudyBridge dialogs when creating courses or deleting courses and chats. Keep validation and request errors in the dialog.
+
 ## 1.2.23 — Keep schedule entries out of course materials
 
 - Exclude timetable meetings and other schedule entries from the Study sidebar’s course materials list and count.

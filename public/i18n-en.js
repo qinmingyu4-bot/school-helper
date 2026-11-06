@@ -533,6 +533,15 @@ Plus 用户|Plus member
 新增对话|New chat
 删除课程 {0}|Delete course {0}
 删除课程|Delete course
+新增课程|Add course
+创建课程|Create course
+课程名称|Course name
+例如 ECO101|e.g. ECO101
+这门课程|this course
+请输入课程名称。|Enter a course name.
+创建课程后，就可以添加资料并开始对话。|Add materials and start chats once the course is created.
+删除“{0}”会一并移除这门课程的资料、对话和日程安排。此操作无法撤销。|Deleting “{0}” also removes its materials, chats, and scheduled events. This cannot be undone.
+删除“{0}”会移除其中的消息和附件。课程资料和其他对话会保留。|Deleting “{0}” removes its messages and attachments. Course materials and other chats are kept.
 收起|Collapse
 展开|Expand
 对话标题|Chat title

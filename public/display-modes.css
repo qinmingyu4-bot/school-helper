@@ -43,7 +43,7 @@
 :root[data-sb-mode="dark"] .study-workspace .chat-area { background: #1e2023; }
 :root[data-sb-mode="dark"] .sidebar { background: #242629; }
 /* The learning surfaces own every control state using the shared theme tokens. */
-:root[data-sb-mode="dark"] :is(button, input, textarea, select):not(.office-grid input):not(:where(.learning-dialog *, .learning-prompt *)) {
+:root[data-sb-mode="dark"] :is(button, input, textarea, select):not(.office-grid input):not(:where(.learning-dialog *, .learning-prompt *, .study-course-dialog *)) {
   background: var(--soft); color: var(--ink); border-color: var(--line);
 }
 :root[data-sb-mode="dark"] ::placeholder { color: var(--muted); opacity: 1; }

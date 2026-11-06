@@ -691,6 +691,77 @@
     `;
   }
 
+  function studyCourseDialog({ title, description, submitLabel, askName = false, submit }) {
+    if (document.querySelector(".study-course-dialog[open]")) return Promise.resolve(null);
+    const opener = document.activeElement;
+    const dialog = document.createElement("dialog");
+    dialog.className = "study-course-dialog";
+    dialog.setAttribute("aria-labelledby", "studyCourseDialogTitle");
+    dialog.setAttribute("aria-describedby", "studyCourseDialogDescription");
+    dialog.innerHTML = ui.html`
+      <form novalidate>
+        <header>
+          <h2 id="studyCourseDialogTitle">${esc(title)}</h2>
+          <p id="studyCourseDialogDescription">${esc(description)}</p>
+        </header>
+        ${askName ? ui.html`<label>课程名称<input name="courseName" maxlength="120" placeholder="例如 ECO101" aria-describedby="studyCourseDialogError" required autofocus></label>` : ""}
+        <p id="studyCourseDialogError" class="study-dialog-error" role="alert" hidden></p>
+        <footer>
+          <button type="button" data-study-dialog-cancel ${askName ? "" : "autofocus"}>取消</button>
+          <button type="submit" class="${askName ? "study-dialog-primary" : "study-dialog-danger"}">${esc(submitLabel)}</button>
+        </footer>
+      </form>
+    `;
+    const form = dialog.querySelector("form");
+    const nameField = form.elements.namedItem("courseName");
+    const errorMessage = dialog.querySelector(".study-dialog-error");
+    const cancelButton = dialog.querySelector("[data-study-dialog-cancel]");
+    const submitButton = dialog.querySelector('button[type="submit"]');
+    let result = null;
+    let pending = false;
+    const showError = (message) => {
+      errorMessage.hidden = !message;
+      errorMessage.textContent = message;
+    };
+    nameField?.addEventListener("input", () => { nameField.removeAttribute("aria-invalid"); showError(""); });
+    cancelButton.addEventListener("click", () => dialog.close());
+    dialog.addEventListener("cancel", (event) => { if (pending) event.preventDefault(); });
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (pending) return;
+      const name = nameField?.value.trim();
+      if (askName && !name) {
+        nameField.setAttribute("aria-invalid", "true");
+        showError(ui.text("请输入课程名称。"));
+        nameField.focus();
+        return;
+      }
+      showError("");
+      pending = cancelButton.disabled = submitButton.disabled = true;
+      if (nameField) nameField.readOnly = true;
+      form.setAttribute("aria-busy", "true");
+      try {
+        result = await submit(name);
+        dialog.close();
+      } catch (error) {
+        showError(ui.text(error.message));
+      } finally {
+        pending = cancelButton.disabled = submitButton.disabled = false;
+        if (nameField) nameField.readOnly = false;
+        form.removeAttribute("aria-busy");
+      }
+    });
+    return new Promise((resolve) => {
+      dialog.addEventListener("close", () => {
+        dialog.remove();
+        if (opener?.isConnected) opener.focus({ preventScroll: true });
+        resolve(result);
+      }, { once: true });
+      document.body.append(dialog);
+      dialog.showModal();
+    });
+  }
+
   function prefBox(key, label) {
     const checked = getLearningStyleEditor().saver.snapshot().draft[key] ? "checked" : "";
     return `<label class="check"><input id="${key}" type="checkbox" ${checked}>${esc(label)}</label>`;
@@ -2845,9 +2916,12 @@
         return;
       }
       if (action === "add-course") {
-        const name = prompt(ui.text("课程名称，例如 ECO101"));
-        if (!name) return;
-        const data = await api("/api/courses", { method: "POST", body: { name, term: "Current term" } });
+        const data = await studyCourseDialog({
+          title: ui.text("新增课程"), description: ui.text("创建课程后，就可以添加资料并开始对话。"),
+          submitLabel: ui.text("创建课程"), askName: true,
+          submit: (name) => api("/api/courses", { method: "POST", body: { name, term: "Current term" } })
+        });
+        if (!data) return;
         await selectConversation(data.course.id, "default");
         return;
       }
@@ -2891,12 +2965,19 @@
       if (action === "delete-conversation") {
         const courseId = button.dataset.id, conversationId = button.dataset.conversation;
         const title = state.courseConversations[courseId]?.find((chat) => chat.id === conversationId)?.title || ui.text("此对话");
-        if (!confirm(ui.message`确定删除“${title}”及其中的消息和对话附件吗？课程资料和其他对话会保留。`)) return;
-        button.disabled = true;
         const key = studyReplyKey(state.user.id, courseId, conversationId);
-        studyReplies.get(key)?.controller.abort();
+        const deleted = await studyCourseDialog({
+          title: ui.text("删除对话"),
+          description: ui.message`删除“${title}”会移除其中的消息和附件。课程资料和其他对话会保留。`,
+          submitLabel: ui.text("删除对话"),
+          submit: () => {
+            studyReplies.get(key)?.controller.abort();
+            return api(`/api/courses/${courseId}/conversations/${conversationId}`, { method: "DELETE" });
+          }
+        });
+        if (!deleted) return;
+        button.disabled = true;
         try {
-          await api(`/api/courses/${courseId}/conversations/${conversationId}`, { method: "DELETE" });
           studyReplies.delete(key); studyDrafts.delete(key);
           state.renamingConversation = null;
           const chats = await refreshCourseConversations(courseId);
@@ -2909,9 +2990,18 @@
         return;
       }
       if (action === "delete-course") {
-        if (!confirm(ui.text("确定删除这门课程吗？"))) return;
-        for (const reply of studyReplies.values()) if (reply.userId === state.user.id && reply.courseId === button.dataset.id) reply.controller.abort();
-        await api(`/api/courses/${button.dataset.id}`, { method: "DELETE" });
+        const courseId = button.dataset.id;
+        const name = state.courses.find((course) => course.id === courseId)?.name || ui.text("这门课程");
+        const deleted = await studyCourseDialog({
+          title: ui.text("删除课程"),
+          description: ui.message`删除“${name}”会一并移除这门课程的资料、对话和日程安排。此操作无法撤销。`,
+          submitLabel: ui.text("删除课程"),
+          submit: () => {
+            for (const reply of studyReplies.values()) if (reply.userId === state.user.id && reply.courseId === courseId) reply.controller.abort();
+            return api(`/api/courses/${courseId}`, { method: "DELETE" });
+          }
+        });
+        if (!deleted) return;
         if (state.activeCourseId === button.dataset.id) state.activeCourseId = "";
         delete state.courseConversations[button.dataset.id]; delete state.expandedCourses[button.dataset.id];
         for (const key of studyDrafts.keys()) if (JSON.parse(key)[1] === button.dataset.id) studyDrafts.delete(key);

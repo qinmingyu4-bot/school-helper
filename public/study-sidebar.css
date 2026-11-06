@@ -23,3 +23,30 @@
 .study-instruction-label span { color: var(--muted); font-size: 11px; font-weight: 400; }
 .study-preference-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .study-preference-footer small { font-size: 11px; }
+
+.study-course-dialog {
+  width: min(420px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  overflow: auto;
+}
+.study-course-dialog::backdrop { background: #10192266; }
+.study-course-dialog form { display: grid; gap: 16px; }
+.study-course-dialog h2 { margin: 0 0 8px; font-size: 20px; }
+.study-course-dialog p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
+.study-course-dialog label { display: grid; gap: 6px; color: var(--ink); font-size: 13px; }
+.study-course-dialog input { min-height: 44px; background: var(--soft); color: var(--ink); }
+.study-course-dialog footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.study-course-dialog button { min-height: 44px; background: var(--panel); color: var(--ink); }
+.study-course-dialog .study-dialog-primary { border-color: var(--green); background: var(--green); color: #fff; }
+:root[data-sb-mode="dark"] .study-course-dialog .study-dialog-primary { color: var(--panel); }
+.study-course-dialog .study-dialog-danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 60%, var(--line)); }
+.study-course-dialog .study-dialog-danger:hover { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 9%, var(--panel)); }
+.study-course-dialog .study-dialog-error { color: var(--danger); }
+.study-course-dialog [aria-invalid="true"] { border-color: var(--danger); }
+.study-course-dialog :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }

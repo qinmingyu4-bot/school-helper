@@ -6,8 +6,11 @@
   "use strict";
   return Object.freeze(Object.fromEntries(`
 常规授课至 4 月 9 日。4 月 12 日为教师自行决定的周五补课日，未自动加入；若老师确认补课，请另行添加当天安排。|Regular classes end April 9. The April 12 Friday makeup depends on your instructor and is not added automatically; add it separately if confirmed.
-课程识别已完成，但校历尚未匹配。请确认下方学期及校区 / 学院。|Your courses have been recognized, but no calendar has been matched. Confirm the term and campus / faculty below.
-课程已识别。确认学期和校区 / 学院，即可重新匹配存档，无需上传或手填日期。|Confirm the term and campus / faculty to match a saved calendar. Your recognized courses stay here; no need to upload again or enter dates.
+课程已识别。补齐下方信息，即可匹配校历存档。|Your courses are ready to review. Complete the missing fields below to match a saved calendar.
+已确定校区|Confirmed campus
+学院|Faculty
+请选择课表所属学院|Choose the timetable faculty
+请补齐上方缺少的信息。|Complete the missing fields above.
 请选择课表所属校区 / 学院、年份和学期。|Select the timetable's campus / faculty, year and term.
 请选择课表所属校区 / 学院|Select the timetable's campus / faculty
 请选择学期|Select a term
@@ -17,7 +20,7 @@
 正在匹配存档…|Matching a saved calendar…
 匹配校历存档|Match saved calendar
 待匹配校历|Calendar not yet matched
-确认学期和校区 / 学院，自动读取存档。|Confirm the term and campus / faculty to load a saved calendar.
+补齐缺少的信息，即可读取校历存档。|Complete the missing fields to load a saved calendar.
 请先匹配校历，或手动确认学期范围，再加入每周课程。|Match a saved calendar or confirm term dates before adding weekly classes.
 存档中暂时没有这个学期的校历。请核对所选范围，或展开下方手动填写；已识别的课程仍保留。|No saved calendar matches this term. Check your selection or enter dates manually below; your recognized courses are still here.
 所选校区与课程代码不一致，或课表包含多个校区；请检查课程和校区后再匹配。|The selected campus conflicts with the course codes, or the timetable spans campuses. Check the courses and campus before matching again.

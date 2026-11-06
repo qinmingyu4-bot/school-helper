@@ -93,12 +93,20 @@ test("timetable images/PDFs retain layout, use school calendars and return recur
   assert.deepEqual(unknownDay.data.items[0].weekly.weekdays, []);
   assert.match(unknownDay.data.items[0].warning, /星期/);
   await context.test("a missing calendar can be recovered from an explicit scope without re-reading the file or creating reminders", async () => {
-    const extracted = await request("/api/schedule/extract", { fileName: "calendar-recovery-fixture.txt", fileData: Buffer.from("Winter 2027; St. George; faculty not shown").toString("base64") }, cookie);
+    await request("/api/me/profile", { name: "Timetable test", school: "University of Toronto", campus: "UTSG" }, cookie, "PUT");
+    const extract = (text) => request("/api/schedule/extract", { fileName: "calendar-recovery-fixture.txt", fileData: Buffer.from(text).toString("base64") }, cookie);
+    const extracted = await extract("Winter 2027; campus and faculty not shown");
     assert.equal(extracted.data.calendar, null);
     assert.match(extracted.data.calendarNotice, /已有可选的校历存档/);
     assert.equal(extracted.data.items.length, 6);
     assert.equal(extracted.data.termHint.year, 2027);
-    const scope = extracted.data.calendarScopes.find((item) => item.campus === "St. George");
+    assert.deepEqual(extracted.data.calendarMatch, { year: 2027, season: "winter", scopeId: "", campus: "St. George" });
+    assert.deepEqual(extracted.data.calendarScopes.map((scope) => scope.label), ["St. George · Arts & Science"]);
+    const [scope] = extracted.data.calendarScopes;
+    await request("/api/me/profile", { name: "Timetable test", school: "University of Toronto", campus: "UTSG", faculty: "Faculty of Arts and Science" }, cookie, "PUT");
+    const withFaculty = await extract("Winter 2027; Undergraduate");
+    assert.equal(withFaculty.data.calendarMatch.scopeId, scope.id);
+    assert.equal(withFaculty.data.calendar.teachingPeriods[0].endDate, "2027-04-09");
     const input = { scopeId: scope.id, year: 2027, season: "winter", courseCodes: ["MAT137H1", "CSC108H1", "STA130H1"] };
     const before = (await request("/api/courses", null, cookie, "GET")).data;
     assert.equal((await request("/api/schedule/calendar", input)).status, 401);

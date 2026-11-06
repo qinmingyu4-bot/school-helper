@@ -57,7 +57,7 @@ const scheduleBatch = require("./lib/schedule-batch");
 const courseConversations = require("./public/course-conversations");
 const scheduleInput = require("./lib/schedule-input");
 const scheduleTranscription = require("./lib/schedule-transcription");
-const { createCalendarService, timetableScope, calendarScopes } = require("./lib/academic-calendar");
+const { createCalendarService, timetableScope, calendarScopes, calendarRecovery } = require("./lib/academic-calendar");
 const { readEvents } = require("./public/chat-stream");
 const { createCreativeService } = require("./lib/creative-service");
 const { VIDEO_POLICY } = require("./lib/product-policy");
@@ -3187,7 +3187,7 @@ if (directMessageMatch && method === "POST") {
       const previewCount = calendar ? scheduleImport.deduplicate(scheduleImport.expandWeekly(items.filter((item) => !item.weekly || scheduleImport.validWeekly(item.weekly)), calendar, { fromDate: importFromDate }).map((item) => ({ ...item, timeZone: item.timeZone || timeZone })), existing).items.length : null;
       if (/\.(doc|ppt|xls)$/i.test(file.fileName)) items.forEach((item) => { item.warning = `${item.warning} 旧版 Office 文件可能漏读，请核对原件；建议另存为 DOCX / PPTX / XLSX 后提取。`.trim(); });
       timings.totalMs = Math.round(performance.now() - started);
-      const result = { timings, items, courses: imported.courses, createdCourses: imported.createdCourses, duplicateCount: review.duplicateCount, fileName: file.fileName, timeZone: calendar?.timeZone || timeZone, calendar, calendarNotice, termHint, calendarScopes: calendarScopes(user.profile?.school), importFromDate, previewCount };
+      const result = { timings, items, courses: imported.courses, createdCourses: imported.createdCourses, duplicateCount: review.duplicateCount, fileName: file.fileName, timeZone: calendar?.timeZone || timeZone, calendar, calendarNotice, termHint, ...calendarRecovery(user.profile?.school, termHint), importFromDate, previewCount };
       console.info("Schedule extraction timings:", JSON.stringify(timings));
       if (!streaming) return sendJson(res, 200, result);
       send("result", result);

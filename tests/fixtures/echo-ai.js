@@ -121,7 +121,7 @@ globalThis.fetch = async (url, options) => {
       options.signal.addEventListener("abort", () => { clearTimeout(timer); reject(options.signal.reason); }, { once: true });
       options.signal.throwIfAborted();
     });
-    if (source.includes("calendar-recovery-fixture")) content = JSON.stringify({ termHint: { year: 2027, season: "winter", campus: "St. George" }, items: ["MAT137H1", "CSC108H1", "STA130H1"].flatMap((course, index) => ["LEC", "TUT"].map((kind) => ({
+    if (source.includes("calendar-recovery-fixture")) content = JSON.stringify({ termHint: { year: 2027, season: "winter", faculty: source.includes("Undergraduate") ? "Undergraduate" : "" }, items: ["MAT137", "CSC108", "STA130"].flatMap((course, index) => ["LEC", "TUT"].map((kind) => ({
       kind, title: `${course} ${kind}0101`, course, weekly: { weekdays: [index + 1], startTime: kind === "LEC" ? "10:00" : "14:00", endTime: kind === "LEC" ? "11:00" : "15:00" }
     }))) });
     else if (source.includes("winter-timetable-fixture")) content = JSON.stringify({ termHint: { year: 2027, season: "winter", faculty: "Arts & Science" }, items: [

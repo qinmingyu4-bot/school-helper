@@ -1781,8 +1781,8 @@
     let count = null;
     try { if (calendar) count = scheduleImport.deduplicate(scheduleImport.expandWeekly(state.scheduleDrafts.filter((item) => item.selected), calendar, { fromDate: state.scheduleFromDate }), state.scheduleItems).items.length; } catch {}
     return ui.html`<details class="schedule-calendar" id="scheduleCalendarDetails" ${state.scheduleCalendarOpen ? "open" : ""}>
-      <summary class="schedule-calendar-summary"><span><strong>学期与停课规则</strong>${calendar?.campus || calendar?.faculty ? `<span class="schedule-calendar-count">${esc([calendar.campus, calendar.faculty].filter(Boolean).join(" · "))}</span>` : ""}<span class="schedule-calendar-range">${calendar ? calendar.teachingPeriods.map((period) => `${esc(period.startDate)} — ${esc(period.endDate)}`).join("；") : ui.text(state.scheduleCalendarScopes.length ? "待匹配校历" : "待补充学期范围")}</span><span class="schedule-calendar-count" data-schedule-preview-count>${calendar ? count !== null ? ui.message`新增 ${count} 次安排（自动跳过重复）` : ui.text("课程信息补齐后显示安排数量") : ui.text(state.scheduleCalendarScopes.length ? "确认学期和校区 / 学院，自动读取存档。" : "所有每周课程共用，只需填写一次。")}</span></span><span class="schedule-review-toggle"><span class="schedule-review-edit-label">查看 / 修改</span><span class="schedule-review-close-label">收起</span><span class="schedule-review-chevron" aria-hidden="true">⌄</span></span></summary>
-      <div class="schedule-calendar-details"><p>${esc(ui.text(!calendar && state.scheduleCalendarScopes.length ? "课程识别已完成，但校历尚未匹配。请确认下方学期及校区 / 学院。" : state.scheduleCalendarNotice))}</p>
+      <summary class="schedule-calendar-summary"><span><strong>学期与停课规则</strong>${calendar?.campus || calendar?.faculty ? `<span class="schedule-calendar-count">${esc([calendar.campus, calendar.faculty].filter(Boolean).join(" · "))}</span>` : ""}<span class="schedule-calendar-range">${calendar ? calendar.teachingPeriods.map((period) => `${esc(period.startDate)} — ${esc(period.endDate)}`).join("；") : ui.text(state.scheduleCalendarScopes.length ? "待匹配校历" : "待补充学期范围")}</span><span class="schedule-calendar-count" data-schedule-preview-count>${calendar ? count !== null ? ui.message`新增 ${count} 次安排（自动跳过重复）` : ui.text("课程信息补齐后显示安排数量") : ui.text(state.scheduleCalendarScopes.length ? "补齐缺少的信息，即可读取校历存档。" : "所有每周课程共用，只需填写一次。")}</span></span><span class="schedule-review-toggle"><span class="schedule-review-edit-label">查看 / 修改</span><span class="schedule-review-close-label">收起</span><span class="schedule-review-chevron" aria-hidden="true">⌄</span></span></summary>
+      <div class="schedule-calendar-details"><p>${esc(ui.text(!calendar && state.scheduleCalendarScopes.length ? "课程已识别。补齐下方信息，即可匹配校历存档。" : state.scheduleCalendarNotice))}</p>
       ${calendar ? ui.html`<p><strong>${esc([calendar.school, calendar.campus, calendar.faculty, calendar.label].filter(Boolean).join(" · "))}</strong></p><p>从 ${esc(state.scheduleFromDate)} 起生成；自动跳过停课日期。</p>
       <p>停课：${calendar.breaks.length ? calendar.breaks.map((pause) => `${esc(pause.startDate)}${pause.endDate !== pause.startDate ? ` — ${esc(pause.endDate)}` : ""} ${esc(pause.label)}`).join("；") : ui.text("本次校历未列出范围内的停课日")}</p>
       ${(calendar.sources || []).map((source) => `<a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a>`).join(" · ")}` : !state.scheduleCalendarScopes.length ? ui.html`<p class="schedule-warning">只需填写一次学期范围，所有已识别的每周课程都会使用它。</p>` : ""}
@@ -1794,10 +1794,10 @@
   function scheduleCalendarMatcherHtml() {
     const match = state.scheduleCalendarMatch;
     return ui.html`<div data-calendar-matcher>
-      <p>课程已识别。确认学期和校区 / 学院，即可重新匹配存档，无需上传或手填日期。</p>
+      ${match.campus ? ui.html`<p>已确定校区 <strong>${esc(match.campus)}</strong></p>` : ""}
       <div class="inline-fields"><label>年份<input type="number" min="2000" max="2100" data-calendar-match="year" value="${esc(match.year)}" placeholder="2027"></label>
       <label>学期<select data-calendar-match="season"><option value="">请选择学期</option>${["winter", "spring", "summer", "fall", "full-year"].map((value) => `<option value="${value}" ${match.season === value ? "selected" : ""}>${{ winter: "Winter", spring: "Spring", summer: "Summer", fall: "Fall", "full-year": "Fall–Winter" }[value]}</option>`).join("")}</select></label></div>
-      <label>校区 / 学院<select data-calendar-match="scopeId"><option value="">请选择课表所属校区 / 学院</option>${state.scheduleCalendarScopes.map((scope) => `<option value="${esc(scope.id)}" ${match.scopeId === scope.id ? "selected" : ""}>${esc(scope.label)}</option>`).join("")}</select></label>
+      <label>${ui.text(match.campus ? "学院" : "校区 / 学院")}<select data-calendar-match="scopeId"><option value="">${ui.text(match.campus ? "请选择课表所属学院" : "请选择课表所属校区 / 学院")}</option>${state.scheduleCalendarScopes.map((scope) => `<option value="${esc(scope.id)}" ${match.scopeId === scope.id ? "selected" : ""}>${esc(match.campus ? scope.faculty : scope.label)}</option>`).join("")}</select></label>
       <p><button type="button" data-action="match-schedule-calendar" ${state.scheduleCalendarMatching ? "disabled" : ""}>${state.scheduleCalendarMatching ? ui.text("正在匹配存档…") : ui.text("匹配校历存档")}</button></p>
       ${state.scheduleCalendarMatchNotice ? `<p class="schedule-warning" role="status">${esc(ui.text(state.scheduleCalendarMatchNotice))}</p>` : ""}
       </div>`;
@@ -1807,7 +1807,7 @@
     if (state.scheduleImportBusy || !state.scheduleDrafts.length) return;
     const match = state.scheduleCalendarMatch;
     if (!match.year || !match.season || !match.scopeId) {
-      state.scheduleCalendarMatchNotice = ui.text("请选择课表所属校区 / 学院、年份和学期。");
+      state.scheduleCalendarMatchNotice = ui.text("请补齐上方缺少的信息。");
       state.scheduleCalendarOpen = true;
       render(); focusScheduleDraftIssue(); return;
     }
@@ -1819,7 +1819,7 @@
     render();
     try {
       const courseCodes = [...new Set(drafts.map((item) => item.course).join(" ").match(/\b[A-Z]{2,4}\d{2,4}(?:[A-Z]\d[A-Z]?)?\b/g) || [])];
-      const result = await api("/api/schedule/calendar", { method: "POST", body: { ...match, year: Number(match.year), courseCodes } });
+      const result = await api("/api/schedule/calendar", { method: "POST", body: { year: Number(match.year), season: match.season, scopeId: match.scopeId, courseCodes } });
       if (state.user?.id !== userId || state.scheduleDrafts !== drafts) return;
       if (!result.calendar) {
         state.scheduleCalendarMatchNotice = ui.text("存档中暂时没有这个学期的校历。请核对所选范围，或展开下方手动填写；已识别的课程仍保留。");
@@ -1935,7 +1935,7 @@
       state.scheduleCalendarNotice = result.calendarNotice || "";
       state.scheduleCalendarScopes = result.calendarScopes || [];
       const hint = result.termHint || {};
-      state.scheduleCalendarMatch = { year: hint.year || "", season: hint.season || "", scopeId: state.scheduleCalendarScopes.find((scope) => scope.campus === hint.campus && scope.faculty === hint.faculty)?.id || "" };
+      state.scheduleCalendarMatch = result.calendarMatch || { year: hint.year || "", season: hint.season || "", scopeId: state.scheduleCalendarScopes.find((scope) => scope.campus === hint.campus && scope.faculty === hint.faculty)?.id || "" };
       state.scheduleCalendarMatchNotice = "";
       state.scheduleFromDate = result.importFromDate || scheduleImport.todayInZone(result.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone);
       state.scheduleCalendarEditing = false;

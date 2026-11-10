@@ -5,6 +5,9 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+成绩|Grades
+成绩规划|Grade planner
+成绩记录、评分规则与目标预测|Grade records, grading rules and targets
 常规授课至 4 月 9 日。4 月 12 日为教师自行决定的周五补课日，未自动加入；若老师确认补课，请另行添加当天安排。|Regular classes end April 9. The April 12 Friday makeup depends on your instructor and is not added automatically; add it separately if confirmed.
 课程已识别。补齐下方信息，即可匹配校历存档。|Your courses are ready to review. Complete the missing fields below to match a saved calendar.
 已确定校区|Confirmed campus

@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.2.24";
+  const VERSION = "1.2.25";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -22,7 +22,7 @@
   let learningStyleTimer = 0;
   let lastInteractionAt = Date.now();
   let activityReport = { userId: "", time: 0, pending: false };
-  const STUDENT_PAGES = ["community", "classmates", "schedule", "study", "tools", "email", "profile"];
+  const STUDENT_PAGES = ["community", "classmates", "schedule", "study", "grades", "tools", "email", "profile"];
   const ADMIN_PAGES = ["admin"];
   const SCHEDULE_COURSE = "Schedule & Deadlines";
   const SCHEDULE_PREFIX = "[SCHEDULE_ITEM]";
@@ -272,6 +272,7 @@
     classmates: ["友", "同学", "SB ID 申请和聊天"],
     schedule: ["时", "日程", "Deadline 和课程提醒"],
     study: ["学", "学习", "课程资料、AI 对话和复习计划"],
+    grades: ["分", "成绩", "成绩记录、评分规则与目标预测"],
     tools: ["工", "工具", "Docs、Sheets、Slides 和创作"],
     email: ["邮", "邮箱助手", "学习邮件、通知与日程确认"],
     profile: ["人", "个人资料", "头像、学校、专业和 SB ID"],
@@ -549,7 +550,7 @@
 
   function sidebarHtml(mobileOnly = false) {
     const p = profile();
-    const navOrder = ["community", "classmates", "schedule", "study", "tools", "email"];
+    const navOrder = ["community", "classmates", "schedule", "study", "grades", "tools", "email"];
     const userNav = navOrder.map((page) => navButton(page)).join("");
     const devSwitch = isAdmin()
       ? ui.html`<div class="mode-switch">
@@ -596,6 +597,7 @@
     classmates: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/><circle cx="9" cy="7" r="4"/>',
     schedule: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h2M14 14h2"/>',
     study: '<path d="M12 7v14M3 3h3a6 6 0 0 1 6 3 6 6 0 0 1 6-3h3v16h-3a6 6 0 0 0-6 2 6 6 0 0 0-6-2H3z"/>',
+    grades: '<path d="M4 20h16M7 16v-5M12 16V5M17 16V8"/>',
     tools: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 17.5h7M17.5 14v7"/>',
     email: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>'
   });
@@ -820,7 +822,7 @@
     return ui.html`
       <div class="app-shell${fullChat ? " classmate-chat-shell" : ""}${admin ? " admin-shell" : ""}">
         ${sidebarHtml(fullChat)}
-        <main class="workspace${state.mode !== "admin" && state.page === "study" ? " study-workspace" : ""}${state.mode !== "admin" && state.page === "classmates" ? " classmates-workspace" : ""}${fullChat ? " classmate-chat-workspace" : ""}${admin ? " admin-workspace" : ""}" id="workspace" data-course-id="${esc(state.activeCourseId)}" data-conversation-id="${esc(state.activeConversationId)}">
+        <main class="workspace${state.mode !== "admin" && state.page === "study" ? " study-workspace" : state.page === "grades" ? " grades-workspace" : ""}${state.mode !== "admin" && state.page === "classmates" ? " classmates-workspace" : ""}${fullChat ? " classmate-chat-workspace" : ""}${admin ? " admin-workspace" : ""}" id="workspace" data-course-id="${esc(state.activeCourseId)}" data-conversation-id="${esc(state.activeConversationId)}">
           <header class="mobile-page-bar"><button type="button" data-mobile-action="menu" aria-label="${esc(ui.text(classmateNotifications.hasUnread() ? "返回主菜单，有同学未读消息" : "返回主菜单"))}">${esc(ui.text("‹ 主菜单"))}${classmateUnreadDot()}</button><strong>${esc(ui.text(pageLabels[state.page]?.[1] || "StudyBridge"))}</strong>${state.page === "study" ? ui.markup('<button type="button" data-mobile-action="study-panel" aria-expanded="false">课程与资料</button>') : "<span></span>"}</header>
           ${content}
         </main>
@@ -842,6 +844,7 @@
     if (state.mode === "admin") return shellHtml(adminPage());
     const pages = {
       study: studyPage,
+      grades: () => `<iframe class="grade-planner-frame" src="/grades.html" title="${esc(ui.text("成绩规划"))}"></iframe>`,
       community: communityPage,
       classmates: classmatesPage,
       schedule: schedulePage,
@@ -2419,6 +2422,10 @@
   }
 
   async function loadPage(page) {
+    if (state.page === "grades" && page !== "grades") {
+      const planner = root.querySelector(".grade-planner-frame")?.contentWindow?.StudyBridgeGradePage;
+      if (planner && !await planner.flush()) return;
+    }
     const pageGeneration = ++pageLoadGeneration;
     const generation = ++classmatesGeneration;
     setPage(page);

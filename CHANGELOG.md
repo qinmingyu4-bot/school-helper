@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.25 — 2026-11-10
+
+- Add Grades to the student application, using existing courses and private account-backed grade records. Each assignment and quiz has an individual score, with category weights, graded average, earned course points and pending weight.
+- Support reviewed syllabus grading breakdowns, manual rules and grade entry, screenshot extraction with editable destination matching, and linked assessment/target sliders. Extraction does not save records; confirmation is required.
+- Carry the approved restrained interface through records, rules and screenshot review; follow account themes, dark mode, Chinese/English and mobile layouts. Keep sample data in the isolated local preview.
+- Guard writes with account ownership, CSRF and revision checks; meter AI extraction through the existing allowance. Preserve production configuration and existing user data through the standard AWS release backup and verification process.
+
+
 ## 1.2.24 — Themed course and chat dialogs
 
 - Use themed StudyBridge dialogs when creating courses or deleting courses and chats. Keep validation and request errors in the dialog.

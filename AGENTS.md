@@ -1,5 +1,32 @@
 # Project Instructions
 
+## Lasting Design Preference
+
+The owner's standing preference is a simple, restrained interface that matches
+StudyBridge's existing approved style. Apply this to future modules, pages,
+components and design proposals without requiring the owner to repeat it.
+
+- Use the current product as the visual baseline. Before designing a new module,
+  inspect the relevant existing page and shared styles rather than inventing a
+  separate visual identity. A discussion demo is not an approved replacement for
+  the product's design system.
+- Favor clear typography, generous but purposeful whitespace, thin dividers,
+  compact controls and restrained accents and shadows. Keep primary actions clear;
+  avoid decorative gradients, excessive cards, oversized metrics and unnecessary
+  animation or dashboard chrome.
+- Keep prominent controls integrated with the product rather than oversized,
+  generic form styling. Favor direct manipulation and linked values over
+  explanation-heavy mode switches when that makes the task easier to understand.
+- Reuse existing navigation, components, typography and theme variables. Reference
+  `public/typography.css`, `public/appearance.css`, `public/display-modes.css`, and
+  the quiet course-workspace treatment in `public/learning-loop.css`, together
+  with the relevant page styles.
+- Respect the user's selected account palette and independent light/dark mode;
+  do not hardcode a new module to one palette. Preserve Chinese/English support,
+  readable contrast and mobile usability.
+- Make focused, consistent improvements within the established style. Introduce
+  a different visual direction only when the owner explicitly asks for it.
+
 ## GitHub Synchronization
 
 The project owner requests automatic GitHub synchronization after completed

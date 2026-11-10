@@ -1009,3 +1009,24 @@ See [the 2026-11-06 whole-site audit](docs/full-site-audit-2026-11-06.md) for te
 coverage, authentication and background-write fixes, dependency verification and
 the remaining real-provider acceptance work. [Login protection](docs/login-protection.md)
 documents the failed-login policy, trusted proxy boundary and multi-instance limits.
+
+## Grades (1.2.25)
+
+The student menu includes **Grades** (`/app?page=grades`). Existing courses start
+with empty grading rules. Manually set up rules or upload a PDF/TXT/image syllabus;
+review extracted weights, assessment counts and special rules before saving.
+Record each assessment manually or upload a PNG/JPG/WebP screenshot (up to 8 MB),
+check scores/maxima and match destinations, then confirm. AI reads never save
+records automatically. Uploads are sent only after starting recognition and are
+not stored in the grade plan. Recognition uses the existing configured complex
+model and account AI allowance. Manual entry works without an AI key.
+
+Plans persist privately in the existing database per account/course. Concurrent
+edits are revision checked and stale edits are rejected. Incomplete plans and
+unsupported special rules suspend precise totals/forecasts. Blank scores remain
+pending, and actual zeroes count as zero. Equal or total-points category weighting
+is supported; simulation never changes recorded grades. Account appearance and
+interface language apply to the module.
+
+`npm run preview:grades` keeps the separate loopback-only sample preview at port
+4317. Its browser-only example grades are never imported into account records.

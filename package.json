@@ -1,12 +1,13 @@
 {
     "name": "studybridge-cloud",
-    "version": "1.2.24",
+    "version": "1.2.25",
     "private": true,
     "description": "StudyBridge cloud app with login, database-backed student data, and AI backend.",
     "type": "commonjs",
     "scripts": {
         "start": "node server.js",
         "dev": "node server.js",
+        "preview:grades": "node scripts/grade-planner-preview.js",
         "test": "node --test tests/*.test.js",
         "check": "node scripts/check.js",
         "vendor:markdown": "node scripts/vendor-markdown.js",

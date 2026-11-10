@@ -948,8 +948,8 @@ function chatAttachmentMetadata(courseId, reference, attachments) {
   }));
 }
 
-async function chatMessagesForDisplay(userId, courseId, conversationId = courseConversations.DEFAULT_ID) {
-  const messages = await db.listMessages(userId, courseId, 80, conversationId);
+async function chatMessagesForDisplay(userId, courseId, conversationId = courseConversations.DEFAULT_ID, limit = 80) {
+  const messages = await db.listMessages(userId, courseId, limit, conversationId);
   const missing = messages.filter((item) => item.role === "user" && !item.attachments && String(item.content).includes("\n\nAttachments:\n"));
   if (!missing.length) return messages;
   // Older retained uploads already encode their originating message ID.
@@ -3085,7 +3085,7 @@ if (directMessageMatch && method === "POST") {
     if (!user) return;
     const courses = await db.listCourses(user.id);
     const documents = (await Promise.all(courses.map((course) => db.listDocuments(user.id, course.id)))).flat();
-    return sendJson(res, 200, { courses, items: scheduleBatch.storedItems(courses, documents, user.id) });
+    return sendJson(res, 200, { courses: courses.filter((course) => !course.archivedAt), items: scheduleBatch.storedItems(courses, documents, user.id) });
   }
 
   if (url.pathname === "/api/schedule/manage" && method === "POST") {
@@ -3281,7 +3281,9 @@ if (directMessageMatch && method === "POST") {
   if (url.pathname === "/api/courses" && method === "GET") {
     const user = await requireUser(req, res);
     if (!user) return;
-    return sendJson(res, 200, { courses: await db.listCourses(user.id) });
+    const archived = url.searchParams.get("archived") === "true";
+    const courses = (await db.listCourses(user.id)).filter((course) => Boolean(course.archivedAt) === archived);
+    return sendJson(res, 200, { courses });
   }
 
   if (url.pathname === "/api/courses" && method === "POST") {
@@ -3310,6 +3312,38 @@ if (directMessageMatch && method === "POST") {
     if (!course) return sendError(res, 404, "Course not found.");
     if (course.chatType === "general" && ((!child && method === "DELETE") || (child === "documents" && method !== "GET"))) {
       return sendError(res, 403, "General chat is not a course. Upload attachments with a chat message instead.");
+    }
+
+    if (child === "archive" && !childId && method === "PUT") {
+      if (course.chatType === "general" || course.name === scheduleCourseName) return sendError(res, 400, "请先选择一门课程。");
+      const body = await readJson(req, 4096);
+      if (!body || typeof body.archived !== "boolean") return sendError(res, 400, "课程存档状态无效。");
+      const updated = await db.setCourseArchived(user.id, courseId, body.archived);
+      return updated ? sendJson(res, 200, { course: updated }) : sendError(res, 404, "Course not found.");
+    }
+
+    if (child === "history" && !childId && method === "GET") {
+      if (!course.archivedAt) return sendError(res, 409, "这门课程尚未存档。");
+      const documentId = url.searchParams.get("documentId");
+      if (documentId) {
+        const document = (await db.listDocuments(user.id, courseId)).find((item) => item.id === documentId);
+        if (!document?.hasSourcePdf) return sendError(res, 404, "Document not found.");
+        const pdf = await db.readMaterial(user.id, courseId, `DOCFILE#${document.id}#PDF`);
+        const bytes = decodeBase64Data(pdf.dataUrl);
+        res.writeHead(200, { "content-type": "application/pdf", "content-length": bytes.length,
+          "cache-control": "private, no-store", "x-content-type-options": "nosniff",
+          "content-security-policy": "default-src 'none'; sandbox",
+          "content-disposition": `inline; filename*=UTF-8''${encodeURIComponent(document.title)}` });
+        return res.end(bytes);
+      }
+      const conversationId = url.searchParams.get("conversationId");
+      if (conversationId !== null) {
+        if (!await db.getConversation(user.id, courseId, conversationId)) return sendError(res, 404, "Conversation not found.");
+        return sendJson(res, 200, { messages: await chatMessagesForDisplay(user.id, courseId, conversationId, Infinity) });
+      }
+      const [documents, conversations] = await Promise.all([db.listDocuments(user.id, courseId), db.listConversations(user.id, courseId)]);
+      return sendJson(res, 200, { course, documents: documents.filter((item) =>
+        String(item.type || "").toLowerCase() !== "schedule" && !/^\[SCHEDULE[_ ]ITEM\]/.test(item.title || "")), conversations });
     }
 
     if (child === "learning-loop") {

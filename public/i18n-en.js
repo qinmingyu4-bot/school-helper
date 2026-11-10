@@ -5,6 +5,26 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+历史课程|Archived courses
+存档课程|Archive course
+存档课程 {0}|Archive course {0}
+将“{0}”收入历史课程。资料和对话会保存在账号里，可在「设置 → 账号与资料 → 历史课程」查看或恢复。|Archive “{0}”. Its materials and chats stay in your account. View or restore it in Settings → Account and profile → Archived courses.
+课程已存档，可在设置的账号页面查看。|Course archived. Find it in the account section of Settings.
+学期结束后，可在课程旁选择存档。在这里查看过去的资料和对话，或恢复到学习区。|Archive a course when the term ends. View its materials and chats here, or restore it to Study.
+正在读取历史课程…|Loading archived courses…
+‹ 所有历史课程|‹ All archived courses
+恢复到学习区|Restore to Study
+暂无可显示的文字|No text to display
+查看原始 PDF ↗|View original PDF ↗
+对话记录|Chat history
+读取对话|Read chat
+正在读取对话…|Loading chat…
+这段对话还没有消息。|There are no messages in this chat.
+查看历史|View history
+还没有存档课程|No archived courses yet
+课程状态刚刚发生变化，请刷新后重试。|The course status changed. Refresh and try again.
+课程存档状态无效。|Invalid archive status.
+这门课程尚未存档。|This course has not been archived.
 成绩|Grades
 成绩规划|Grade planner
 成绩记录、评分规则与目标预测|Grade records, grading rules and targets

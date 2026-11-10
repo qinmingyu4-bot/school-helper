@@ -28,7 +28,7 @@
   }
 
   function createView({ document: doc = document, themes, logos, version, getUser, getContext, getAppearance, flushAppearance,
-    learning, saveProfile, loadMembership, redeemMembershipInvite, loadSecurity, savePassword, requestPasswordReset, loadMailboxes, changeMailbox, billingRequest, pushRequest, navigate, logout }) {
+    learning, saveProfile, loadMembership, redeemMembershipInvite, loadSecurity, savePassword, requestPasswordReset, loadMailboxes, changeMailbox, billingRequest, pushRequest, courseRequest, onCoursesChanged, navigate, logout }) {
     const dialog = doc.createElement("dialog");
     dialog.className = "settings-dialog";
     dialog.setAttribute("aria-labelledby", "settings-title");
@@ -44,6 +44,7 @@
       <div class="settings-content"><button type="button" class="settings-back">‹ 返回设置</button>
         <section id="settings-panel-account" class="settings-panel" aria-labelledby="settings-account-heading">${heading("account", ui.text("管理你的个人信息，让学习与交流更贴近你。"))}
           <form class="settings-profile-form"><div class="settings-block"><h4>基本资料</h4><div class="settings-fields"><label>显示姓名<input name="name" required maxlength="80" autocomplete="name"></label><label>SB ID<input name="sbId" placeholder="例如 adam2026" required maxlength="8" pattern="[A-Za-z0-9]{1,8}" title="1–8 位数字或字母，区分大小写"></label><label>学校<input name="school" maxlength="160" autocomplete="organization"></label><label>专业<input name="major" maxlength="160"></label></div><p class="settings-caption">学校、专业和 SB ID 会用于个人资料与同学功能。</p><div class="settings-form-actions"><span class="settings-profile-status" role="status"></span><button type="submit" class="settings-primary">保存资料</button></div></div></form>
+          <div class="settings-block settings-course-archive"></div>
           <div class="settings-block"><h4>账号类型</h4><div class="settings-row"><div><strong class="settings-membership-name"></strong><small>AI 额度每 7 天恢复，Plus 享有 4 倍额度。</small></div></div>
             <form class="settings-invite-form"><fieldset class="settings-invite-fields" disabled><label>补填邀请码<input name="inviteCode" autocomplete="off" maxlength="128" required placeholder="输入有效邀请码，升级为 Plus"></label><p class="settings-caption">注册时没填邀请码，也可以在这里兑换。账号资料、课程和登录方式会保留。</p><div class="settings-form-actions"><span class="settings-invite-status" role="status" aria-live="polite"></span><button type="submit" class="settings-primary">兑换邀请码</button></div></fieldset></form><p class="settings-membership-status settings-caption" role="status" aria-live="polite"></p><button type="button" class="settings-membership-retry" hidden>重新读取账号类型</button>
           </div>
@@ -88,6 +89,9 @@
     let membership = null, membershipGeneration = 0, invitePending = false;
     const currentUserId = String(getUser().id);
     const active = () => !disposed && String(getUser()?.id || "") === currentUserId;
+    const archivePanel = courseRequest && globalThis.StudyBridgeCourseArchive?.mount({
+      root: dialog.querySelector(".settings-course-archive"), request: courseRequest, getUser, onRestore: onCoursesChanged
+    });
     const billingPanel = globalThis.StudyBridgeBilling?.mount({ container: dialog.querySelector(".settings-billing"), request: billingRequest, getUser });
     dialog.addEventListener("close", () => billingPanel?.suspend());
     dialog.addEventListener("cancel", () => billingPanel?.suspend());
@@ -273,7 +277,7 @@
       dialog.dataset.detail = "true"; dialog.querySelector(".settings-content").scrollTop = 0;
       refreshUser(); refreshLearning();
       if (button.dataset.settingsSection === "security" && !passwordPending) void readSecurity();
-      if (button.dataset.settingsSection === "account" && !invitePending) void readMembership();
+      if (button.dataset.settingsSection === "account") { if (!invitePending) void readMembership(); void archivePanel?.activate(); }
       if (button.dataset.settingsSection === "mailbox" && !mailboxPending) void readMailboxes();
       if (button.dataset.settingsSection === "reminders") void pushPanel?.activate();
       if (button.dataset.settingsSection === "billing") void billingPanel?.activate();
@@ -309,7 +313,7 @@
       setTimeout(() => doc.defaultView.URL.revokeObjectURL(url), 1000);
       setStatus(".settings-export-status", ui.text("已导出当前选择的偏好副本。"));
     });
-    dialog.refreshSettings = () => { refreshUser(); refreshLearning(); if (dialog.querySelector('[data-settings-section="account"]').hasAttribute("aria-current") && !invitePending) void readMembership(); if (dialog.querySelector('[data-settings-section="security"]').hasAttribute("aria-current") && !passwordPending) void readSecurity(); if (dialog.querySelector('[data-settings-section="billing"]').hasAttribute("aria-current")) void billingPanel?.activate(); };
+    dialog.refreshSettings = () => { refreshUser(); refreshLearning(); void archivePanel?.activate(); if (dialog.querySelector('[data-settings-section="account"]').hasAttribute("aria-current") && !invitePending) void readMembership(); if (dialog.querySelector('[data-settings-section="security"]').hasAttribute("aria-current") && !passwordPending) void readSecurity(); if (dialog.querySelector('[data-settings-section="billing"]').hasAttribute("aria-current")) void billingPanel?.activate(); };
     dialog.refreshMembership = (tier) => {
       if (!active()) return;
       if (membership) membership = { ...membership, tier };
@@ -317,7 +321,7 @@
       if (!invitePending) setStatus(".settings-membership-status", tier === "plus" ? ui.text("你已是 Plus 用户，无需重复兑换邀请码。") : ui.text("可以补填有效邀请码，升级为 Plus 用户。"));
     };
     dialog.refreshLearning = refreshLearning;
-    dialog.disposeSettings = () => { pushPanel?.dispose(); billingPanel?.dispose(); unbindLanguage(); disposed = true; ++securityGeneration; ++membershipGeneration; inviteForm.reset(); clearPasswords(); clearTimeout(learningTimer); };
+    dialog.disposeSettings = () => { archivePanel?.dispose(); pushPanel?.dispose(); billingPanel?.dispose(); unbindLanguage(); disposed = true; ++securityGeneration; ++membershipGeneration; inviteForm.reset(); clearPasswords(); clearTimeout(learningTimer); };
     refreshUser(); refreshLearning();
     return dialog;
   }

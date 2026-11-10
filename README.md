@@ -1065,3 +1065,19 @@ a category's additional rules. Recognition from text-readable files checks propo
 destinations against the actual supplied source. Images/scans still require the
 user's review of extracted addresses. Scanned course materials without readable
 text/links may not yield a location. Querying grade locations does not change recorded scores.
+
+### Archived courses
+
+Use the archive action next to a course in Study to move it into Settings →
+Account and profile → Archived courses. Archiving is an explicit choice, so term
+dates do not automatically hide a course. The history view reads saved course
+materials, retained source PDFs and every message in each selected chat. Restore
+returns the same course to Study with its original data. Schedule records remain
+available in the calendar. New timetable imports resolve against active courses,
+keeping previous terms in their archive.
+
+The account-scoped `PUT /api/courses/:id/archive` accepts a boolean `archived`.
+`GET /api/courses` lists active courses and `?archived=true` lists archived
+courses. Archive history is available through `GET /api/courses/:id/history`,
+with `conversationId` for a full chat or `documentId` for a retained PDF.
+Existing course records without an archive timestamp are active.

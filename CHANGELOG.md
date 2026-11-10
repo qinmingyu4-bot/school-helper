@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.29 — Archived courses and account history
+
+- Archive courses from Study, keep their materials and full chat histories in Settings → Account and profile, and restore them to Study when needed.
+
 ## 1.2.28 — Course-focused homepage and practical start guide
 
 - Present four reviewed strengths in the existing restrained style: AI grounded in

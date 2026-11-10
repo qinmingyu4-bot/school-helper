@@ -4,7 +4,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   const DEFAULT_ID = "default";
   // Keep the planner in the full course collection: schedule storage still owns it.
-  const visibleCourses = (courses) => courses.filter((course) => course.name !== "Schedule & Deadlines");
+  const visibleCourses = (courses) => courses.filter((course) => course.name !== "Schedule & Deadlines" && !course.archivedAt);
   const key = (userId, courseId, conversationId = DEFAULT_ID) => JSON.stringify([userId, courseId, conversationId]);
   function title(value) {
     if (typeof value !== "string" || !value.trim() || value.trim().length > 120) throw new Error("对话标题需为 1–120 个字符。");

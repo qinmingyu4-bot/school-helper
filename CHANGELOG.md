@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Archive completed courses from Study and view their preserved materials, PDFs and full chat histories in Settings → Account and profile. Restore a course to Study at any time. Archived course records remain separate when importing a new term.
+
 ## 1.2.27 — 2026-11-10
 
 - Add category-specific grade lookup links and source citations to grade records, using saved course materials, syllabus text and original PDF URI annotations. Show source filenames, verified physical PDF pages and locating quotes; preserve directions without inventing a URL.

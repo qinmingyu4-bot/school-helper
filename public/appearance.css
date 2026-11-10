@@ -266,3 +266,18 @@
   .settings-invite-fields input { font-size: 16px; }
   .settings-invite-fields .settings-form-actions { align-items: flex-start; flex-direction: column; }
 }
+
+.settings-course-archive .course-archive-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin: 14px 0; }
+.settings-course-archive .course-archive-heading h4 { margin: 0; }
+.settings-course-archive .course-archive-heading strong { font-size: 14px; overflow-wrap: anywhere; }
+.settings-course-archive small { display: block; color: var(--muted); font-size: 11px; margin-top: 4px; }
+.settings-course-archive button { font-size: 12px; min-height: 36px; background: var(--panel); color: var(--ink); border-color: var(--line); }
+.settings-course-archive h5 { margin: 22px 0 8px; font-size: 13px; }
+.settings-course-archive details { border-top: 1px solid var(--line); padding: 12px 0; }
+.settings-course-archive summary { font-size: 13px; cursor: pointer; overflow-wrap: anywhere; }
+.settings-course-archive .course-archive-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.8; margin: 12px 0; }
+.settings-course-archive .course-archive-message { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.settings-course-archive .course-archive-message > strong { color: var(--muted); font-size: 11px; }
+.settings-course-archive a { font-size: 12px; color: var(--green); }
+.settings-course-archive :focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+@media (pointer: coarse) { .settings-course-archive button, .settings-course-archive summary { min-height: 44px; } }

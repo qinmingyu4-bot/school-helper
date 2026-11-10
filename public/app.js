@@ -59,8 +59,8 @@
   const appearanceController = window.StudyBridgeAppearance.createController({
     load: async () => (await api("/api/me/appearance")).appearance,
     save: async (_userId, appearance) => { await api("/api/me/appearance", { method: "PUT", body: appearance }); },
-    createSettingsView: (appearance) => window.StudyBridgeSettings.createView({ ...appearance, version: VERSION, pushRequest: api,
-      getUser: () => state.user, getContext: () => ({ courseCount: state.courses.length }),
+    createSettingsView: (appearance) => window.StudyBridgeSettings.createView({ ...appearance, version: VERSION, pushRequest: api, courseRequest: api, onCoursesChanged: () => loadPage(state.page),
+      getUser: () => state.user, getContext: () => ({ courseCount: courseChats.visibleCourses(state.courses).length }),
       learning: {
         snapshot: () => getLearningStyleEditor().saver.snapshot(),
         setDraft: (draft) => {
@@ -693,7 +693,7 @@
     `;
   }
 
-  function studyCourseDialog({ title, description, submitLabel, askName = false, submit }) {
+  function studyCourseDialog({ title, description, submitLabel, askName = false, destructive = true, submit }) {
     if (document.querySelector(".study-course-dialog[open]")) return Promise.resolve(null);
     const opener = document.activeElement;
     const dialog = document.createElement("dialog");
@@ -710,7 +710,7 @@
         <p id="studyCourseDialogError" class="study-dialog-error" role="alert" hidden></p>
         <footer>
           <button type="button" data-study-dialog-cancel ${askName ? "" : "autofocus"}>取消</button>
-          <button type="submit" class="${askName ? "study-dialog-primary" : "study-dialog-danger"}">${esc(submitLabel)}</button>
+          <button type="submit" class="${askName || !destructive ? "study-dialog-primary" : "study-dialog-danger"}">${esc(submitLabel)}</button>
         </footer>
       </form>
     `;
@@ -863,6 +863,7 @@
         <button data-action="toggle-course" data-id="${esc(course.id)}" aria-expanded="${open}" aria-label="${open ? ui.text("收起") : ui.text("展开")}${esc(course.name)}">${open ? "▾" : "▸"}</button>
         <button class="course-folder-name" data-action="select-course" data-id="${esc(course.id)}"><b>${esc(course.name)}</b>${course.term && course.term !== "Current term" ? `<small>${esc(course.term)}</small>` : ""}</button>
         <button data-action="new-conversation" data-id="${esc(course.id)}" aria-label="在 ${esc(course.name)} 下新增对话" title="新增对话">＋</button>
+        <button class="course-archive-action" data-action="archive-course" data-id="${esc(course.id)}" aria-label="存档课程 ${esc(course.name)}" title="存档课程"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 9h16v11H4zM3 4h18v5H3zM9 13h6"/></svg></button>
         <button data-action="delete-course" data-id="${esc(course.id)}" aria-label="删除课程 ${esc(course.name)}" title="删除课程">×</button>
       </div>
       ${open ? `<div class="course-chat-list">${rows.map((chat) => {
@@ -2994,6 +2995,22 @@
             studyDrafts.delete(key);
           } else render();
         } finally { button.disabled = false; }
+        return;
+      }
+      if (action === "archive-course") {
+        const courseId = button.dataset.id;
+        const course = state.courses.find((item) => item.id === courseId);
+        if (!course) return;
+        const archived = await studyCourseDialog({
+          title: ui.text("存档课程"), destructive: false,
+          description: ui.message`将“${course.name}”收入历史课程。资料和对话会保存在账号里，可在「设置 → 账号与资料 → 历史课程」查看或恢复。`,
+          submitLabel: ui.text("存档课程"),
+          submit: () => api(`/api/courses/${courseId}/archive`, { method: "PUT", body: { archived: true } })
+        });
+        if (!archived) return;
+        delete state.expandedCourses[courseId];
+        await loadPage("study");
+        setToast(ui.text("课程已存档，可在设置的账号页面查看。"));
         return;
       }
       if (action === "delete-course") {

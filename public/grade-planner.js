@@ -3,6 +3,7 @@
   async function start(scope, host) {
   "use strict";
   const G = window.StudyBridgeGrades;
+  const GL = window.StudyBridgeGradeLocations;
   const root = scope.getElementById("grade-app");
   const dialog = scope.getElementById("grade-dialog");
   let bootstrap;
@@ -57,6 +58,57 @@
   let capabilities = { ...bootstrap, ready:true };
   let toastTimer;
   const course = () => courses.find((c) => c.id === state.courseId);
+  const materialLocations = new Map();
+  function categoryLocations(category) {
+    const saved = [...(category.gradeLinks || []).map((link)=>GL.normalizeLink(link,link.origin)),...(category.gradeDirections || []).map(GL.normalizeDirection)].filter(Boolean);
+    const discovered = GL.forCategory(materialLocations.get(state.courseId)?.data?.locations || [],category);
+    return [...saved,...discovered].filter((link,index,array)=>array.findIndex((other)=>other.url === link.url && other.sourceName === link.sourceName && other.quote === link.quote)===index);
+  }
+  const sourceLabel = (link) => `${link.sourceName || t("手动填写", "Manually added")}${link.page ? t(` · 第 ${link.page} 页`, ` · p. ${link.page}`) : ""}`;
+  function locationRow(category) {
+    const links = categoryLocations(category);
+    if (!links.length) return "";
+    const first = links.find((link)=>GL.safeUrl(link.url));
+    return `${first ? `<a class="gp-grade-location" href="${esc(GL.safeUrl(first.url))}" target="_blank" rel="noopener noreferrer" aria-label="${esc(category.name)} · ${t("查看成绩", "View grades")}">${t("查看成绩", "View grades")} ↗</a><span class="gp-location-domain">${esc(first.origin === "material" ? new URL(first.url).hostname : first.label || new URL(first.url).hostname)}</span>` : `<button class="gp-text" data-action="location-source" data-location-category="${esc(category.id)}">${t("在哪里查成绩", "Where to find grades")}</button>`}${first ? `<button class="gp-text gp-location-origin" data-action="location-source" data-location-category="${esc(category.id)}" title="${esc(sourceLabel(first))}">${t("查看出处", "View source")}${links.length>1 ? ` · ${links.length}` : ""}</button>` : `<span class="gp-location-domain">${esc(sourceLabel(links[0]))}</span>`}`;
+  }
+  function locationStatus() {
+    const value = materialLocations.get(state.courseId);
+    if (value?.loading) return t("正在查找课程资料中的成绩入口…", "Looking for grade locations in course materials…");
+    if (value?.error) return t("课程资料入口读取失败，可以重试。", "Could not read grade locations. Please retry.");
+    if (!value?.data) return "";
+    const {checkedCount,partialCount,locations} = value.data;
+    return (locations.length ? t(`已从 ${checkedCount} 份课程资料查找成绩入口`, `Checked ${checkedCount} course materials for grade locations`) : t(`已检查 ${checkedCount} 份课程资料，暂未找到明确的查询入口`, `Checked ${checkedCount} course materials; no explicit grade location found`))
+      + (partialCount ? t("；部分原件未能读取，已检查可读文字。", "; some originals could not be read; available text was checked.") : "");
+  }
+  function refreshLocationDisplay() {
+    if (!host.isConnected) return;
+    for (const c of course().categories) {
+      const row = root.querySelector(`[data-location-for="${c.id}"]`);
+      if (row) row.innerHTML = locationRow(c);
+    }
+    const status = root.querySelector("[data-location-status]"); if (status) status.textContent = locationStatus();
+    const refresh = root.querySelector('[data-action="refresh-locations"]'); if (refresh) refresh.disabled = !!materialLocations.get(state.courseId)?.loading;
+    if (modal?.kind === "locations") renderDialog();
+  }
+  async function loadLocations(courseId,force=false) {
+    if (!force && materialLocations.has(courseId)) return;
+    const value = { loading:true, data:materialLocations.get(courseId)?.data || null, error:false };
+    materialLocations.set(courseId,value); if (courseId===state.courseId) refreshLocationDisplay();
+    try {
+      const response = await fetch(`/api/grade-planner/${encodeURIComponent(courseId)}/locations`,{cache:"no-store"});
+      if (!response.ok) throw new Error();
+      const result = await response.json();
+      if (materialLocations.get(courseId)!==value) return;
+      value.data = result;
+    } catch { if (materialLocations.get(courseId)===value) value.error = true; }
+    finally { value.loading = false; if (state.courseId===courseId && materialLocations.get(courseId)===value) refreshLocationDisplay(); }
+  }
+  function renderLocationSources() {
+    const c = course().categories.find((c)=>c.id===modal.categoryId); if (!c) return closeDialog();
+    const links = categoryLocations(c);
+    dialogFrame(t(`${c.name} · 成绩查询`, `${c.name} · Grade locations`), `<p class="gp-dialog-intro">${t("按课程资料中的说明查看成绩。", "Follow the directions in your course materials to view grades.")}</p><div class="gp-location-sources">${links.map((link)=>`<article><div>${GL.safeUrl(link.url) ? `<a class="gp-grade-location" href="${esc(GL.safeUrl(link.url))}" target="_blank" rel="noopener noreferrer">${esc(link.origin === "material" ? t("查看成绩", "View grades") : link.label || t("查看成绩", "View grades"))} ↗</a><p class="gp-location-url">${esc(link.url)}</p>` : `<strong>${t("资料中的查询说明", "Directions from the material")}</strong>`}</div><p class="gp-location-citation">${t("来源", "Source")} · ${esc(sourceLabel(link))}</p>${link.quote ? `<blockquote>${esc(link.quote)}</blockquote>` : ""}${!link.url ? `<p class="gp-dialog-caption">${t("原文未提供网址，请按上方说明进入对应平台。", "No URL is given in the source. Follow the directions above in your course platform.")}</p>` : ""}</article>`).join("")}</div>`, `<p>${t("查询不会改动已记录的成绩", "Viewing a source does not change your grades")}</p><button class="gp-primary" data-modal-action="close">${t("完成", "Done")}</button>`);
+  }
+
   function toast(message) {
     clearTimeout(toastTimer);
     const el = scope.getElementById("grade-toast");
@@ -112,7 +164,7 @@
     state.expanded = new Set(course().categories.slice(0, 2).map((c) => c.id));
     state.focus = "";
     state.assumptions = {};
-    render();
+    render(); void loadLocations(courseId);
   }
   function stats(summary) {
     return `<div class="gp-stat"><span class="gp-stat-label">${t("已评分部分均分", "Graded average")}</span><strong class="gp-stat-value">${fmt(summary.average)}<small>%</small></strong><span class="gp-stat-caption">${summary.known ? t(`已出分项目占 ${fmt(summary.gradedWeight, 0)}%`, `${fmt(summary.gradedWeight, 0)}% of course graded`) : t("确认完整评分规则后计算", "Complete the grading rules first")}</span></div><div class="gp-stat"><span class="gp-stat-label">${t("已计入总评", "Earned toward final")}</span><strong class="gp-stat-value">${fmt(summary.earned)}<small>/ 100</small></strong><span class="gp-stat-caption">${t("仅计入真实、已出分的成绩", "Based on recorded grades only")}</span></div><div class="gp-stat"><span class="gp-stat-label">${t("尚未出分占比", "Still to be graded")}</span><strong class="gp-stat-value">${fmt(summary.remaining, 0)}<small>%</small></strong><span class="gp-stat-caption">${summary.known ? t(`还有 ${summary.pending.length} 个项目`, `${summary.pending.length} assessments remaining`) : t("不会把未出分当作零分", "Pending grades are not zeroes")}</span></div>`;
@@ -122,8 +174,8 @@
     return `<div class="gp-record-toolbar"><span data-save-status>${saveText()}</span><button class="gp-text" data-action="retry-save" ${state.saveError ? "" : "hidden"}>${t("重试保存", "Retry save")}</button><label><input type="checkbox" id="pending-only" ${state.pendingOnly ? "checked" : ""}>${t("只看未出分", "Pending only")}</label></div>${summary.categories.map((s) => {
       const c = s.category;
       const visible = c.items.filter((item) => !state.pendingOnly || item.status === "pending");
-      return `<details class="gp-category" data-category="${esc(c.id)}" ${state.expanded.has(c.id) ? "open" : ""}><summary><div class="gp-category-title"><span class="gp-chevron">${icon("chevron")}</span><strong>${esc(c.name)}</strong><small>${fmt(c.weight, 0)}%</small></div><span class="gp-category-progress" data-category-progress="${esc(c.id)}">${t(`已出分 ${s.graded} / ${s.active}`, `${s.graded} / ${s.active} graded`)}</span><span class="gp-category-average"><span data-category-average="${esc(c.id)}">${fmt(s.average)}</span><small>${t("当前类别均分", "Category average")}</small></span></summary><div class="gp-category-inner"><div class="gp-rule-caption"><span>${c.method === "points" ? t("按总得分 / 总满分汇总", "Weighted by available points") : t("每次等权，按百分比汇总", "Equal weight per assessment")}</span><span>${s.known ? t(`本类已计入总评 ${fmt(s.earned)} 分`, `${fmt(s.earned)} points earned toward final`) : t("本类规则待完善", "Rules need completion")}</span></div>${visible.length ? `<div class="gp-grade-head"><span>${t("项目", "Assessment")}</span><span>${t("得分 / 满分", "Score / Max")}</span><span class="gp-state-heading">${t("状态", "Status")}</span><span></span></div>${visible.map((item) => `<div class="gp-grade-row" data-item="${esc(item.id)}"><div class="gp-grade-name"><span>${esc(item.name)}</span><small data-row-caption class="${item.source ? "is-source" : ""}">${item.source === "sample" ? t("示例确认录入", "Confirmed sample") : item.source ? t("截图确认录入", "Confirmed from screenshot") : statusLabel(item)}</small></div><div class="gp-score-field"><input type="number" min="0" step="any" data-score="score" aria-label="${esc(item.name)} ${t("得分", "score")}" value="${item.score ?? ""}" placeholder="—" ${item.status === "excluded" ? "disabled" : ""}><span>/</span><input type="number" min="0.000001" step="any" data-score="max" aria-label="${esc(item.name)} ${t("满分", "maximum")}" value="${item.max ?? ""}" placeholder="—" ${item.status === "excluded" ? "disabled" : ""}></div><span class="gp-status ${G.isGraded(item) ? "graded" : ""}" data-row-status>${statusLabel(item)}</span><button class="gp-row-menu" data-edit="${esc(item.id)}" aria-label="${t("编辑", "Edit")} ${esc(item.name)}">${icon("edit")}</button></div>`).join("")}` : `<p class="gp-note">${t("这一类暂无未出分项目。", "No pending assessments in this category.")}</p>`}<button class="gp-text gp-add-item" data-add="${esc(c.id)}">${icon("plus")}${t("添加项目", "Add assessment")}</button></div></details>`;
-    }).join("")}<p class="gp-note">${t("空白代表未出分，输入 0 才会计为零分。类别权重按照完整项目安排分配，模拟成绩不会写入这里。", "Blank means pending; an entered 0 counts as zero. Category weights use the complete assessment plan. Simulated scores never alter these records.")}</p>`;
+      return `<details class="gp-category" data-category="${esc(c.id)}" ${state.expanded.has(c.id) ? "open" : ""}><summary><div class="gp-category-title"><span class="gp-chevron">${icon("chevron")}</span><strong>${esc(c.name)}</strong><small>${fmt(c.weight, 0)}%</small></div><span class="gp-category-progress" data-category-progress="${esc(c.id)}">${t(`已出分 ${s.graded} / ${s.active}`, `${s.graded} / ${s.active} graded`)}</span><span class="gp-category-average"><span data-category-average="${esc(c.id)}">${fmt(s.average)}</span><small>${t("当前类别均分", "Category average")}</small></span></summary><div class="gp-category-inner"><div class="gp-rule-caption"><span>${c.method === "points" ? t("按总得分 / 总满分汇总", "Weighted by available points") : t("每次等权，按百分比汇总", "Equal weight per assessment")}</span><span>${s.known ? t(`本类已计入总评 ${fmt(s.earned)} 分`, `${fmt(s.earned)} points earned toward final`) : t("本类规则待完善", "Rules need completion")}</span></div><div class="gp-location-row" data-location-for="${esc(c.id)}">${locationRow(c)}</div>${visible.length ? `<div class="gp-grade-head"><span>${t("项目", "Assessment")}</span><span>${t("得分 / 满分", "Score / Max")}</span><span class="gp-state-heading">${t("状态", "Status")}</span><span></span></div>${visible.map((item) => `<div class="gp-grade-row" data-item="${esc(item.id)}"><div class="gp-grade-name"><span>${esc(item.name)}</span><small data-row-caption class="${item.source ? "is-source" : ""}">${item.source === "sample" ? t("示例确认录入", "Confirmed sample") : item.source ? t("截图确认录入", "Confirmed from screenshot") : statusLabel(item)}</small></div><div class="gp-score-field"><input type="number" min="0" step="any" data-score="score" aria-label="${esc(item.name)} ${t("得分", "score")}" value="${item.score ?? ""}" placeholder="—" ${item.status === "excluded" ? "disabled" : ""}><span>/</span><input type="number" min="0.000001" step="any" data-score="max" aria-label="${esc(item.name)} ${t("满分", "maximum")}" value="${item.max ?? ""}" placeholder="—" ${item.status === "excluded" ? "disabled" : ""}></div><span class="gp-status ${G.isGraded(item) ? "graded" : ""}" data-row-status>${statusLabel(item)}</span><button class="gp-row-menu" data-edit="${esc(item.id)}" aria-label="${t("编辑", "Edit")} ${esc(item.name)}">${icon("edit")}</button></div>`).join("")}` : `<p class="gp-note">${t("这一类暂无未出分项目。", "No pending assessments in this category.")}</p>`}<button class="gp-text gp-add-item" data-add="${esc(c.id)}">${icon("plus")}${t("添加项目", "Add assessment")}</button></div></details>`;
+    }).join("")}<div class="gp-location-status"><span data-location-status>${esc(locationStatus())}</span><button class="gp-text" data-action="refresh-locations" ${materialLocations.get(state.courseId)?.loading ? "disabled" : ""}>${t("重新查找", "Check again")}</button></div><p class="gp-note">${t("空白代表未出分，输入 0 才会计为零分。类别权重按照完整项目安排分配，模拟成绩不会写入这里。", "Blank means pending; an entered 0 counts as zero. Category weights use the complete assessment plan. Simulated scores never alter these records.")}</p>`;
   }
   function picker(kind, selected, options, label) {
     return `<details class="gp-picker gp-picker-${kind}" data-picker="${kind}"><summary role="button" aria-label="${esc(label)}"><span>${esc(selected)}</span>${icon("down")}</summary><div class="gp-picker-menu" role="group" aria-label="${esc(label)}">${options.map((option) => `<button type="button" aria-label="${esc(option.label)}${option.detail ? ` · ${esc(option.detail)}` : ""}" data-${kind === "course" ? "course" : "focus"}="${esc(option.id)}" ${option.selected ? 'aria-current="true"' : ""}><span><strong>${esc(option.label)}</strong>${option.detail ? `<small>${esc(option.detail)}</small>` : ""}</span>${option.selected ? icon("check") : ""}</button>`).join("")}</div></details>`;
@@ -237,6 +289,8 @@
       const c = course().categories.find((c) => c.items.some((item) => item.id === button.dataset.edit));
       return openEdit(c.id, button.dataset.edit);
     }
+    if (button.dataset.action === "refresh-locations") return void loadLocations(state.courseId,true);
+    if (button.dataset.action === "location-source") return openDialog({kind:"locations",categoryId:button.dataset.locationCategory,error:""});
     if (button.dataset.action === "retry-save") return void persist();
     if (button.dataset.action === "rules") return openRules();
     if (button.dataset.action === "screenshot") return openUpload("grades");
@@ -345,6 +399,7 @@
     if (focusSelector) dialog.querySelector(focusSelector)?.focus({preventScroll:true});
   }
   function dialogFrame(title, body, footer) {
+    dialog.classList.toggle("gp-location-dialog", modal.kind === "locations");
     dialog.dataset.view = modal.kind === "grades" && modal.phase === "review" ? "review" : modal.kind;
     dialog.innerHTML = `<header class="gp-dialog-header"><div><p class="gp-eyebrow">${esc(course().code)} · ${t("成绩规划", "Grade planner")}</p><h2 id="dialog-heading">${title}</h2></div><button class="gp-close" data-modal-action="close" aria-label="${t("关闭", "Close")}">${icon("close")}</button></header><div class="gp-dialog-body">${body}<p class="gp-error" data-modal-error role="alert" ${modal.error ? "" : "hidden"}>${esc(modal.error)}</p></div><footer class="gp-dialog-footer">${footer}</footer>`;
     dialog.querySelector(".gp-dialog-body").addEventListener("scroll", () => {
@@ -353,6 +408,7 @@
   }
   function renderDialog() {
     if (!modal) return;
+    if (modal.kind === "locations") return renderLocationSources();
     if (modal.kind === "rules") return renderRules();
     if (modal.kind === "edit") {
       const item = modal.item;
@@ -421,7 +477,7 @@
     const existing = course().categories;
     modal.categories = incoming.map((c) => {
       const old = existing.find((entry) => norm(entry.name) === norm(c.name));
-      return { ...c, id: old?.id || id(), items: old ? clone(old.items) : clone(c.items || []), specialRule: c.specialRule || "", evidence: c.evidence || "" };
+      return { ...c, gradeDirections:c.gradeDirections || old?.gradeDirections || [], gradeLinks:[...(old?.gradeLinks || []).filter((link)=>link.origin==="manual"),...(c.gradeLinks || [])].slice(0,5), id: old?.id || id(), items: old ? clone(old.items) : clone(c.items || []), specialRule: c.specialRule || "", evidence: c.evidence || "" };
     });
     for (const c of existing) if (!modal.categories.some((entry) => entry.id === c.id)) modal.categories.push(clone(c));
     modal.kind = "rules"; modal.source = source; modal.fromExtraction = true;
@@ -430,7 +486,7 @@
   function renderRules() {
     const total = modal.categories.reduce((sum, c) => sum + (Number(c.weight) || 0), 0);
     const methods = [{id:"equal",label:t("每次等权", "Equal weight"),detail:t("每次成绩按相同比例计入", "Each assessment has the same weight")}, {id:"points",label:t("按总分汇总", "Total points"),detail:t("累计得分 ÷ 累计满分", "Total earned points / total possible points")}];
-    const body = `<div class="gp-rule-overview"><p class="gp-dialog-intro">${t("设置各类成绩的占比与计算方式。", "Set the weight and method for each category.")}</p><span class="gp-rule-balance ${Math.abs(total-100)<.000001 ? "is-balanced" : ""}" aria-live="polite"><i></i>${t("合计", "Total")} <strong id="rule-total">${fmt(total,1)}%</strong><span>/ 100%</span></span></div>${modal.sample ? `<details class="gp-rule-source" data-disclosure="sample-syllabus"><summary>${t("示例 syllabus · 演示内容", "Sample syllabus · Demonstration")}${icon("down")}</summary><pre>Homework 20% · 10 assignments\nQuiz 10% · 5 quizzes\nMidterm 25% · 1 exam\nFinal 45% · 1 exam</pre></details>` : ""}<div class="gp-rules-table"><div class="gp-rule-head" aria-hidden="true"><span>${t("类别", "Category")}</span><span>${t("占比", "Weight")}</span><span>${t("计算方式", "Method")}</span><span>${t("项目数", "Count")}</span><span></span></div>${modal.categories.map((c,index) => `<div class="gp-rule-row" data-rule-index="${index}"><label class="gp-rule-name"><span class="gp-mobile-label">${t("类别", "Category")}</span><input data-rule="name" maxlength="80" aria-label="${t("类别名称", "Category name")} ${index+1}" value="${esc(c.name)}" placeholder="Homework"></label><label class="gp-rule-weight"><span class="gp-mobile-label">${t("占比", "Weight")}</span><span class="gp-field-with-unit"><input data-rule="weight" type="number" min="0" max="100" step="any" aria-label="${esc(c.name)} ${t("占比", "weight")}" value="${c.weight ?? ""}" placeholder="—"><span>%</span></span></label><div class="gp-rule-method"><span class="gp-mobile-label">${t("计算方式", "Method")}</span>${formPicker("method",index,c.method,methods,`${c.name} · ${t("计算方式", "Method")}`)}</div><label class="gp-rule-count"><span class="gp-mobile-label">${t("项目数", "Count")}</span><input data-rule="plannedCount" type="number" min="1" max="100" step="1" aria-label="${esc(c.name)} ${t("项目数", "assessment count")}" value="${c.plannedCount ?? ""}" placeholder="—"></label><button class="gp-row-menu" data-remove-rule="${index}" ${c.items.some(G.isGraded) ? "disabled" : ""} aria-label="${t("移除类别", "Remove category")} ${esc(c.name)}">${icon("close")}</button><details class="gp-rule-details" data-disclosure="rule-${esc(c.id)}" ${c.specialRule ? "open" : ""}><summary>${c.specialRule ? t("特殊规则待确认", "Special rules need review") : c.evidence ? t("查看原文与补充规则", "Source and additional rules") : t("补充规则", "Additional rules")}${icon("down")}</summary>${c.evidence ? `<blockquote>${esc(c.evidence)}</blockquote>` : ""}<label>${t("特殊规则", "Special rules")}<input data-rule="specialRule" value="${esc(c.specialRule)}" placeholder="${t("例如：去掉最低一次 Quiz", "For example: drop the lowest quiz")}" maxlength="500"></label><p>${t("特殊规则暂不自动计算，填写后暂停总评预测。", "Special rules are not calculated in this preview; entering one pauses forecasts.")}</p></details></div>`).join("")}</div><button class="gp-text gp-add-rule" data-modal-action="add-rule">${icon("plus")}${t("添加类别", "Add category")}</button><p class="gp-dialog-caption">${t("未知次数可留空；按总分汇总时，需补齐各个项目的满分。", "Leave unknown counts blank. Total-points weighting needs every assessment's maximum.")}</p>${modal.source ? `<p class="gp-rule-provenance">${t("来源", "Source")} · ${esc(modal.source)}</p>` : ""}`;
+    const body = `<div class="gp-rule-overview"><p class="gp-dialog-intro">${t("设置各类成绩的占比与计算方式。", "Set the weight and method for each category.")}</p><span class="gp-rule-balance ${Math.abs(total-100)<.000001 ? "is-balanced" : ""}" aria-live="polite"><i></i>${t("合计", "Total")} <strong id="rule-total">${fmt(total,1)}%</strong><span>/ 100%</span></span></div>${modal.sample ? `<details class="gp-rule-source" data-disclosure="sample-syllabus"><summary>${t("示例 syllabus · 演示内容", "Sample syllabus · Demonstration")}${icon("down")}</summary><pre>Homework 20% · 10 assignments\nQuiz 10% · 5 quizzes\nMidterm 25% · 1 exam\nFinal 45% · 1 exam</pre></details>` : ""}<div class="gp-rules-table"><div class="gp-rule-head" aria-hidden="true"><span>${t("类别", "Category")}</span><span>${t("占比", "Weight")}</span><span>${t("计算方式", "Method")}</span><span>${t("项目数", "Count")}</span><span></span></div>${modal.categories.map((c,index) => `<div class="gp-rule-row" data-rule-index="${index}"><label class="gp-rule-name"><span class="gp-mobile-label">${t("类别", "Category")}</span><input data-rule="name" maxlength="80" aria-label="${t("类别名称", "Category name")} ${index+1}" value="${esc(c.name)}" placeholder="Homework"></label><label class="gp-rule-weight"><span class="gp-mobile-label">${t("占比", "Weight")}</span><span class="gp-field-with-unit"><input data-rule="weight" type="number" min="0" max="100" step="any" aria-label="${esc(c.name)} ${t("占比", "weight")}" value="${c.weight ?? ""}" placeholder="—"><span>%</span></span></label><div class="gp-rule-method"><span class="gp-mobile-label">${t("计算方式", "Method")}</span>${formPicker("method",index,c.method,methods,`${c.name} · ${t("计算方式", "Method")}`)}</div><label class="gp-rule-count"><span class="gp-mobile-label">${t("项目数", "Count")}</span><input data-rule="plannedCount" type="number" min="1" max="100" step="1" aria-label="${esc(c.name)} ${t("项目数", "assessment count")}" value="${c.plannedCount ?? ""}" placeholder="—"></label><button class="gp-row-menu" data-remove-rule="${index}" ${c.items.some(G.isGraded) ? "disabled" : ""} aria-label="${t("移除类别", "Remove category")} ${esc(c.name)}">${icon("close")}</button><details class="gp-rule-details" data-disclosure="rule-${esc(c.id)}" ${c.specialRule ? "open" : ""}><summary>${c.specialRule ? t("特殊规则待确认", "Special rules need review") : c.evidence ? t("查看原文与补充规则", "Source and additional rules") : t("补充规则", "Additional rules")}${icon("down")}</summary>${c.evidence ? `<blockquote>${esc(c.evidence)}</blockquote>` : ""}${[...(c.gradeLinks || []).filter((link)=>link.origin!=="manual"),...(c.gradeDirections || [])].map((link)=>`<div class="gp-rule-grade-source">${link.url ? `<a class="gp-grade-location" href="${esc(GL.safeUrl(link.url))}" target="_blank" rel="noopener noreferrer">${t("成绩查询", "Grade location")} ↗</a>` : `<strong>${t("查询说明", "Grade directions")}</strong>`}<span>${esc(sourceLabel(link))}</span>${link.quote ? `<blockquote>${esc(link.quote)}</blockquote>` : ""}</div>`).join("")}<label>${t("成绩查询网址（可选）", "Grade lookup URL (optional)")}<input data-rule="gradeUrl" type="url" maxlength="2000" value="${esc(c.gradeLinks?.find((link)=>link.origin==="manual")?.url || "")}" placeholder="https://…"></label><label>${t("特殊规则", "Special rules")}<input data-rule="specialRule" value="${esc(c.specialRule)}" placeholder="${t("例如：去掉最低一次 Quiz", "For example: drop the lowest quiz")}" maxlength="500"></label><p>${t("特殊规则暂不自动计算，填写后暂停总评预测。", "Special rules are not calculated in this preview; entering one pauses forecasts.")}</p></details></div>`).join("")}</div><button class="gp-text gp-add-rule" data-modal-action="add-rule">${icon("plus")}${t("添加类别", "Add category")}</button><p class="gp-dialog-caption">${t("未知次数可留空；按总分汇总时，需补齐各个项目的满分。", "Leave unknown counts blank. Total-points weighting needs every assessment's maximum.")}</p>${modal.source ? `<p class="gp-rule-provenance">${t("来源", "Source")} · ${esc(modal.source)}</p>` : ""}`;
     dialogFrame(modal.fromExtraction ? t("核对 syllabus 评分规则", "Review syllabus grading rules") : t("课程评分规则", "Course grading rules"), body, `<button class="gp-text" data-modal-action="upload-syllabus">${t("上传 syllabus 识别", "Read from syllabus")}${icon("chevron")}</button><div class="gp-actions"><button class="gp-text" data-modal-action="close">${t("取消", "Cancel")}</button><button class="gp-primary" data-modal-action="save-rules">${t("确认评分规则", "Confirm grading rules")}</button></div>`);
   }
 
@@ -439,6 +495,7 @@
     if (!rows.length || rows.some((c) => !String(c.name).trim() || !Number.isFinite(c.weight) || c.weight < 0 || c.weight > 100 || c.plannedCount !== null && (!Number.isInteger(c.plannedCount) || c.plannedCount < 1 || c.plannedCount > 100))) return modalError(t("请检查类别名称、占比，以及 1–100 之间的总次数。未知次数可留空。", "Check category names, weights and counts from 1 to 100. Unknown counts can remain blank."));
     if (Math.abs(rows.reduce((sum, c) => sum + c.weight, 0) - 100) > .000001) return modalError(t("所有类别的占比需要合计为 100%。", "Category weights must add up to 100%."));
     if (new Set(rows.map((c) => norm(c.name))).size !== rows.length) return modalError(t("类别名称不能重复。", "Category names must be unique."));
+    if (rows.some((c)=>(c.gradeLinks || []).some((link)=>!GL.safeUrl(link.url)))) return modalError(t("请核对成绩查询网址，只支持 http 或 https 地址。", "Check the grade lookup URL; only http or https links are supported."));
     const next = clone(rows);
     for (const c of next) {
       c.name = c.name.trim();
@@ -525,7 +582,8 @@
     }
     if (el.dataset.rule) {
       const row = modal.categories[Number(el.closest("[data-rule-index]").dataset.ruleIndex)];
-      row[el.dataset.rule] = ["weight", "plannedCount"].includes(el.dataset.rule) ? number(el.value) : el.value;
+      if (el.dataset.rule === "gradeUrl") row.gradeLinks = [...(el.value.trim() ? [{url:el.value.trim(),origin:"manual",label:"",quote:"",sourceName:"",page:null}] : []),...(row.gradeLinks || []).filter((link)=>link.origin!=="manual")].slice(0,5);
+      else row[el.dataset.rule] = ["weight", "plannedCount"].includes(el.dataset.rule) ? number(el.value) : el.value;
       const total = dialog.querySelector("#rule-total");
       if (total) {
         const weight = modal.categories.reduce((sum, c) => sum + (Number(c.weight) || 0), 0);
@@ -534,7 +592,7 @@
       }
     }
   });
-  setAppearance(); render();
+  setAppearance(); render(); void loadLocations(state.courseId);
   const observer = new MutationObserver(() => { setAppearance(); render(); if (modal) redrawDialog(); });
   observer.observe(themeRoot, { attributes:true, attributeFilter:["data-sb-theme", "data-sb-mode", "lang"] });
   }

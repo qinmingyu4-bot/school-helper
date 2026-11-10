@@ -1976,6 +1976,8 @@ async function routeApi(req, res) {
     if (!auth) return sendError(res, 401, "登录已过期，请重新登录。");
     const token = hashToken(`grades:${auth.tokenHash}`);
     if (gradeUrl.pathname === "/api/grade-planner" && req.method === "GET") return sendJson(res, 200, { ...await grades.read(auth.user.id), csrfToken: token });
+    const gradeLocations = gradeUrl.pathname.match(/^\/api\/grade-planner\/([^/]+)\/locations$/);
+    if (gradeLocations && req.method === "GET") return sendJson(res,200,await grades.locations(auth.user.id,decodeURIComponent(gradeLocations[1])));
     const supplied = String(req.headers["x-csrf-token"] || "");
     if (!/^[a-f0-9]{64}$/.test(supplied) || !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(token))
       || req.headers.origin && req.headers.origin !== new URL(appBaseUrl(req)).origin) return sendError(res, 403, "请重新打开成绩页面后再试。");

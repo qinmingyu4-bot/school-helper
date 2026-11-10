@@ -1030,3 +1030,19 @@ interface language apply to the module.
 
 `npm run preview:grades` keeps the separate loopback-only sample preview at port
 4317. Its browser-only example grades are never imported into account records.
+
+Grade records can also show **View grades** and **View source** for each category.
+The module scans the selected course's saved material text and original PDF link
+annotations for explicit grade lookup directions; it does not query other courses
+or open external sites automatically. Citations include filenames, original PDF
+pages when known, and source quotes. Platform-only directions are shown as text
+without guessing a URL. Submission pages, grading percentages and unrelated links
+are not treated as grade lookup destinations. **Check again** refreshes changed
+materials; deleting a material removes its discovered locations.
+
+Direct syllabus recognition includes destinations/directions in the editable rules
+review, saved only on confirmation. An optional manual HTTP(S) URL can be added in
+a category's additional rules. Recognition from text-readable files checks proposed
+destinations against the actual supplied source. Images/scans still require the
+user's review of extracted addresses. Scanned course materials without readable
+text/links may not yield a location. Querying grade locations does not change recorded scores.

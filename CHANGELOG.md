@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add category-specific grade lookup links and source citations to grade records, using saved course materials, syllabus text and original PDF URI annotations. Show source filenames, verified physical PDF pages and locating quotes; preserve directions without inventing a URL.
+- Include grade lookup destinations in the syllabus review/confirmation flow, allow optional manual URLs, and refresh discovered destinations when materials change. Keep queries private to the selected account/course and never fetch extracted external destinations automatically.
+
 ## 1.2.26 — 2026-11-10
 
 - Mount the grade planner directly in the application workspace, preserving grades and open review drafts when the shell redraws. Reuse account theme variables without an embedded page.

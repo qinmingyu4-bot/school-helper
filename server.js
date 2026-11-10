@@ -29,6 +29,7 @@ const mailboxProviders = require("./lib/mailbox-providers");
 const { createMailboxService } = require("./lib/mailbox-service");
 const { membershipTier } = require("./lib/membership");
 const { createAiUsage } = require("./lib/ai-usage");
+const { createGradePlanner } = require("./lib/grade-planner-service");
 const { createBillingService } = require("./lib/billing-service");
 const { createAlipayService } = require("./lib/alipay-service");
 const studyModes = require("./public/study-modes");
@@ -148,6 +149,7 @@ const simpleAiModel =
 const complexAiModel =
   String(process.env.OPENAI_COMPLEX_MODEL || process.env.STUDYBRIDGE_COMPLEX_MODEL || "").trim() ||
   "gpt-6.1-sol";
+const grades = createGradePlanner({ db, apiKey: process.env.OPENAI_API_KEY, model: complexAiModel, request: (...args) => aiUsage.fetch(...args) });
 const webSearchEnabled = process.env.OPENAI_WEB_SEARCH !== "false";
 const googleClientId = String(process.env.GOOGLE_CLIENT_ID || "").trim();
 const googleClientSecret = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();
@@ -478,6 +480,8 @@ async function serveStatic(req, res) {
   } else if (requested === "/") {
     requested = "/landing.html";
   }
+  if (requested === "/grades.html" && !await currentUser(req)) return pageRedirect("/login");
+  if (requested === "/grade-planner-preview.html" && process.env.NODE_ENV === "production") return sendError(res, 404, "Not found");
   const filePath = path.normalize(path.join(publicDir, requested));
   const relativePath = path.relative(publicDir, filePath);
   if (relativePath === ".." || relativePath.startsWith(`..${path.sep}`) || path.isAbsolute(relativePath)) {
@@ -1966,6 +1970,29 @@ async function signInWithGoogle(req, res, url) {
 
 async function routeApi(req, res) {
   res.setHeader("Cache-Control", "private, no-store");
+  const gradeUrl = new URL(req.url, "http://localhost");
+  if (gradeUrl.pathname === "/api/grade-planner" || gradeUrl.pathname.startsWith("/api/grade-planner/")) {
+    const auth = await currentUser(req);
+    if (!auth) return sendError(res, 401, "登录已过期，请重新登录。");
+    const token = hashToken(`grades:${auth.tokenHash}`);
+    if (gradeUrl.pathname === "/api/grade-planner" && req.method === "GET") return sendJson(res, 200, { ...await grades.read(auth.user.id), csrfToken: token });
+    const supplied = String(req.headers["x-csrf-token"] || "");
+    if (!/^[a-f0-9]{64}$/.test(supplied) || !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(token))
+      || req.headers.origin && req.headers.origin !== new URL(appBaseUrl(req)).origin) return sendError(res, 403, "请重新打开成绩页面后再试。");
+    const match = gradeUrl.pathname.match(/^\/api\/grade-planner\/([^/]+)(\/recognize)?$/);
+    if (!match) return sendError(res, 404, "成绩操作不存在。");
+    const courseId = decodeURIComponent(match[1]);
+    if (!await db.getCourse(auth.user.id, courseId)) return sendError(res, 404, "课程不存在。");
+    if (!match[2] && req.method === "PUT") return sendJson(res, 200, { plan: await db.saveGradePlan(auth.user.id, courseId, await readJson(req, 300000)) });
+    if (match[2] && req.method === "POST") {
+      const readBody = await readJson(req, 12 * 1024 * 1024);
+      const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 90000);
+      res.on("close", () => { if (!res.writableEnded) controller.abort(); });
+      try { return sendJson(res, 200, await aiUsage.run(auth.user.id, () => grades.recognize(auth.user.id, courseId, readBody, controller.signal))); }
+      finally { clearTimeout(timeout); }
+    }
+    return sendError(res, 405, "不支持此操作。");
+  }
   if (req.url.split("?")[0] === "/api/me/ai-usage" && req.method === "GET") {
     const user = await requireUser(req, res);
     if (!user) return;

@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.2.28 — Course-focused homepage and practical start guide
+
+- Present four reviewed strengths in the existing restrained style: AI grounded in
+  uploaded materials, course-based organization, grade planning and creation in
+  SB Docs/Sheets/Slides. Keep practice, schedule, mailbox and community support.
+- Add a linked sample grade calculator with explicit fixed assumptions and a
+  static fallback; show SB Docs editing and preview-before-apply AI assistance.
+- Add concrete course upload, study mode/question and SB Docs getting-started
+  instructions, a phone navigation note and Chinese/English translations.
+- Retain the latest production application and grading features. Refresh version
+  and asset keys; include an isolated loopback-only homepage preview command.
+- Owner authorized production release on 2026-11-10. No database migration,
+  account changes, real grade writes or private configuration changes.
+
 ## 1.2.27 — 2026-11-10
 
 - Add category-specific grade lookup links and source citations to grade records, using saved course materials, syllabus text and original PDF URI annotations. Show source filenames, verified physical PDF pages and locating quotes; preserve directions without inventing a URL.

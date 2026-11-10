@@ -34,6 +34,25 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, op
 
 ## Website entry paths
 
+Local homepage review: run `npm run preview:landing` and open
+`http://127.0.0.1:4318/` (override with `LANDING_PREVIEW_PORT`). This loopback-only
+server serves an explicit public-page asset allowlist, without reading environment
+files, opening a database, starting workers or exposing account APIs. Entry buttons
+retain the production `/app` paths; account routes are deliberately unavailable in
+this preview. It does not deploy anything.
+
+The introduction now leads with four strengths: AI grounded in uploaded course
+materials, learning organized by course, grade calculation/target planning, and
+creation in SB Docs/Sheets/Slides. Schedule, email, practice and community are
+secondary supporting features. The grade illustration links an expected exam
+score to a course total using fixed sample assumptions (80 × 20% + 65 × 40% +
+final × 40%). It neither reads nor saves grades; the authenticated grade module
+continues to use the existing real-course records. The example has a static
+fallback without JavaScript and preserves values during Chinese/English switching. The getting-started
+section gives concrete Study/course upload, mode/question and Tools → SB Docs
+steps, with a separate phone navigation note. Keep these instructions aligned
+with the current app labels.
+
 The bare domain serves `public/landing.html` with its own responsive styles and
 no application scripts or account requests. Its neutral white/light-gray surfaces,
 charcoal text and thin frames are independent of saved learning-space themes.

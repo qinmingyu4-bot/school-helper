@@ -1686,3 +1686,81 @@ a:focus-visible,summary:focus-visible {
     transform: none;
   }
 }
+
+/* Four product strengths, using the homepage's existing quiet surfaces. */
+.learning-feature > * { min-width: 0; }
+.feature-row {
+  margin-top: 48px;
+  padding-block: 48px;
+  padding-inline: 5px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+.feature-copy .feature-detail { margin-top: 20px; font-size: 13px; }
+.source-demo,.grade-demo,.writing-demo { margin: 0; min-width: 0; align-self: center; }
+.source-demo-file,.demo-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; font-size: 12px; }
+.source-demo-file > span:last-child,.demo-heading > span { color: var(--muted); font-size: 10px; flex-shrink: 0; }
+.source-demo blockquote { margin: 16px 0 22px; padding: 12px 14px; border-left: 2px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.9; background: var(--paper); }
+.source-demo-question { margin: 0 0 16px; font-size: 13px; line-height: 1.8; }
+.source-demo figcaption,.grade-demo figcaption,.writing-demo figcaption,.demo-note { margin: 16px 0 0; font-size: 11px; color: var(--muted); line-height: 1.9; }
+.course-materials { display: grid; gap: 7px; margin: 12px 0 12px 21px; font-size: 11px; color: var(--muted); }
+.feature-row .course-demo { background: #fdfdfd; }
+.demo-heading { padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.demo-heading strong { font-weight: 550; }
+.grade-demo { padding: 24px; border: 1px solid var(--line); border-radius: 8px; background: #fdfdfd; }
+.grade-breakdown { margin: 0; font-size: 12px; }
+.grade-breakdown > div { display: flex; justify-content: space-between; gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--soft); }
+.grade-breakdown dd { display: flex; gap: 28px; margin: 0; font-variant-numeric: tabular-nums; }
+.grade-breakdown dd > span:last-child { width: 35px; text-align: right; color: var(--muted); }
+.grade-controls { margin-top: 22px; }
+.grade-controls[hidden] { display: none; }
+.grade-control + .grade-control { margin-top: 21px; }
+.grade-control > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.grade-control label { font-size: 12px; }
+.grade-value { display: inline-flex; align-items: baseline; gap: 5px; white-space: nowrap; }
+.grade-value > span { font-size: 11px; color: var(--muted); }
+.grade-value input { width: 65px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--ink); font: inherit; font-size: 21px; font-variant-numeric: tabular-nums; text-align: right; padding: 3px; appearance: textfield; -moz-appearance: textfield; }
+.grade-value input::-webkit-inner-spin-button,.grade-value input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.grade-control input[type="range"] { display: block; width: 100%; min-height: 32px; margin: 5px 0 0; background: transparent; accent-color: var(--ink); cursor: pointer; }
+.grade-control input:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+.grade-static { font-size: 12px; color: var(--muted); line-height: 1.9; }
+.grade-demo.is-interactive .grade-static { display: none; }
+.writing-demo { border: 1px solid var(--line); border-radius: 8px; background: #fafafa; overflow: hidden; }
+.writing-demo .demo-heading { padding: 16px 20px; }
+.writing-toolbar { display: flex; gap: 22px; align-items: center; padding: 10px 20px; border-bottom: 1px solid var(--line); font-size: 11px; color: var(--muted); }
+.writing-paper { margin: 18px 24px 0; padding: 28px; background: #fff; border: 1px solid #e3e3e3; min-height: 255px; }
+.writing-kicker { color: var(--muted); font-size: 10px; }
+.writing-paper h4 { margin: 12px 0 18px; font-weight: 550; font-size: 18px; line-height: 1.6; }
+.writing-paper p { font-size: 12px; line-height: 2; margin: 0 0 14px; }
+.writing-selection { background: var(--soft); }
+.writing-ai { display: flex; gap: 10px; align-items: center; font-size: 11px; color: var(--muted); padding-top: 12px; border-top: 1px solid var(--line); }
+.writing-demo figcaption { margin: 0; padding: 14px 20px; }
+.supporting-features { margin-top: 40px; padding-top: 36px; border-top: 1px solid var(--line); }
+.supporting-features .eyebrow { margin-bottom: 20px; }
+.supporting-features .learning-benefits { margin: 0; }
+.supporting-features .learning-benefits li { border-top: 0; padding-top: 0; }
+.supporting-features a { text-decoration: underline; text-underline-offset: 3px; }
+@media(max-width:800px) {
+  .feature-row { margin-top: 32px; padding: 32px 0 0; }
+  .source-demo,.grade-demo,.writing-demo { width: 100%; max-width: 480px; margin-inline: auto; }
+}
+@media(max-width:480px) {
+  .source-demo-file { flex-wrap: wrap; gap: 6px; }
+  .grade-demo { padding: 18px; }
+  .grade-control > div { gap: 8px; }
+  .grade-control label { max-width: 55%; line-height: 1.7; }
+  .grade-value input { width: 60px; font-size: 20px; }
+  .writing-paper { margin: 14px 12px 0; padding: 20px; }
+  .demo-heading { flex-wrap: wrap; gap: 6px 16px; }
+  .grade-breakdown dd { gap: 16px; }
+}
+.grade-control input[type="range"] { appearance: none; -webkit-appearance: none; }
+.grade-control input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: var(--line); }
+.grade-control input[type="range"]::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 13px; height: 13px; border: 1px solid var(--ink); border-radius: 50%; background: var(--ink); margin-top: -5.5px; }
+.grade-control input[type="range"]::-moz-range-track { height: 2px; background: var(--line); }
+.grade-control input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border: 1px solid var(--ink); border-radius: 50%; background: var(--ink); }
+
+.getting-started .guide-intro { margin: -12px 0 32px; color: var(--muted); font-size: 14px; line-height: 2; }
+.getting-started .guide-note { margin: 32px 0 0; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; line-height: 2; }

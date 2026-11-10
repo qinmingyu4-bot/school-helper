@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.2.25";
+  const VERSION = "1.2.26";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -844,7 +844,7 @@
     if (state.mode === "admin") return shellHtml(adminPage());
     const pages = {
       study: studyPage,
-      grades: () => `<iframe class="grade-planner-frame" src="/grades.html" title="${esc(ui.text("成绩规划"))}"></iframe>`,
+      grades: () => `<div id="grade-module" data-user-id="${esc(state.user.id)}" aria-label="${esc(ui.text("成绩规划"))}"></div>`,
       community: communityPage,
       classmates: classmatesPage,
       schedule: schedulePage,
@@ -2423,7 +2423,7 @@
 
   async function loadPage(page) {
     if (state.page === "grades" && page !== "grades") {
-      const planner = root.querySelector(".grade-planner-frame")?.contentWindow?.StudyBridgeGradePage;
+      const planner = root.querySelector("#grade-module")?.gradePlanner;
       if (planner && !await planner.flush()) return;
     }
     const pageGeneration = ++pageLoadGeneration;
@@ -3610,6 +3610,11 @@
     void learningLoop.sync();
     officeTools.capture();
     creativeTools.capture();
+    const previousGrades = root.querySelector("#grade-module");
+    const keepGrades = previousGrades && state.user?.id === previousGrades.dataset.userId && state.page === "grades";
+    const gradeDialog = previousGrades?.shadowRoot?.getElementById("grade-dialog");
+    const gradeDialogOpen = gradeDialog?.open;
+    if (!keepGrades) previousGrades?.gradePlanner?.destroy();
     const previousAdminWorkspace = root.querySelector(".admin-workspace");
     const previousAdminScroll = previousAdminWorkspace?.scrollTop || 0;
     const previousMobilePageScroll = root.querySelector(".workspace")?.scrollTop || 0;
@@ -3656,6 +3661,11 @@
         `)
         : ui.html`<main class="auth-shell"><section class="auth-card"><h1>StudyBridge</h1><p class="notice">${message}</p><button onclick="location.reload()">刷新</button></section></main>`;
     }
+    if (keepGrades && root.querySelector("#grade-module")) {
+      root.querySelector("#grade-module").replaceWith(previousGrades);
+      if (gradeDialogOpen) { gradeDialog.close(); gradeDialog.showModal(); }
+    }
+    if (state.page === "grades") void window.StudyBridgeGradePlanner.mount(root.querySelector("#grade-module"));
     if (state.page === "schedule") updateSchedulePreviewCount();
     if (state.page === "schedule" && previousSchedule && root.querySelector(".schedule-layout")) {
       window.scrollTo(previousPageScroll.x, previousPageScroll.y);

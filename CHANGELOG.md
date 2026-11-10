@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.26 — 2026-11-10
+
+- Mount the grade planner directly in the application workspace, preserving grades and open review drafts when the shell redraws. Reuse account theme variables without an embedded page.
+
 ## 1.2.25 — 2026-11-10
 
 - Add Grades to the student application, using existing courses and private account-backed grade records. Each assignment and quiz has an individual score, with category weights, graded average, earned course points and pending weight.

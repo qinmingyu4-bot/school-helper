@@ -1,15 +1,19 @@
-(async function () {
+(function () {
+  "use strict";
+  async function start(scope, host) {
   "use strict";
   const G = window.StudyBridgeGrades;
-  const root = document.getElementById("grade-app");
-  const dialog = document.getElementById("grade-dialog");
+  const root = scope.getElementById("grade-app");
+  const dialog = scope.getElementById("grade-dialog");
   let bootstrap;
   try {
     const response = await fetch("/api/grade-planner", { cache:"no-store" });
     if (response.status === 401) { window.top.location.href = "/login"; return; }
     if (!response.ok) throw new Error();
     bootstrap = await response.json();
+    if (!host.isConnected) return;
   } catch {
+    if (!host.isConnected) return;
     root.innerHTML = '<main class="gp-empty"><h1>成绩暂时无法加载 / Unable to load grades</h1><p>请刷新重试 / Please refresh and try again.</p><button onclick="location.reload()">刷新 / Refresh</button></main>';
     return;
   }
@@ -39,7 +43,7 @@
     edit: '<path d="m15 4 5 5M4 20l5-1L21 7l-5-5L4 14z"/>'
   };
   const icon = (name) => `<span class="gp-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${paths[name] || paths.file}</svg></span>`;
-  const themeRoot = window.parent.document.documentElement;
+  const themeRoot = document.documentElement;
   let appearance = { palette:themeRoot.dataset.sbTheme || "default", mode:themeRoot.dataset.sbMode || "light", language:themeRoot.lang.startsWith("en") ? "en" : "zh" };
   const t = (zh, en) => appearance.language === "en" ? en : zh;
   const courses = bootstrap.courses;
@@ -55,7 +59,7 @@
   const course = () => courses.find((c) => c.id === state.courseId);
   function toast(message) {
     clearTimeout(toastTimer);
-    const el = document.getElementById("grade-toast");
+    const el = scope.getElementById("grade-toast");
     el.textContent = message;
     el.hidden = false;
     toastTimer = setTimeout(() => { el.hidden = true; }, 4200);
@@ -92,14 +96,16 @@
     updateSaveStatus();
     return pending;
   }
-  window.StudyBridgeGradePage = { flush: () => pending || (dirty.size ? persist() : Promise.resolve(true)) };
-  window.addEventListener("beforeunload", (event) => { if (dirty.size || pending) { event.preventDefault(); event.returnValue = ""; } });
+  const beforeUnload = (event) => { if (dirty.size || pending) { event.preventDefault(); event.returnValue = ""; } };
+  window.addEventListener("beforeunload", beforeUnload);
+  host.gradePlanner = { flush: () => pending || (dirty.size ? persist() : Promise.resolve(true)), destroy: () => {
+    observer.disconnect(); window.removeEventListener("beforeunload", beforeUnload); window.removeEventListener("resize", resize);
+    modal?.controller?.abort(); if (modal?.url) URL.revokeObjectURL(modal.url); if (dialog.open) dialog.close(); clearTimeout(toastTimer);
+  } };
   function setAppearance() {
-    const source = window.parent.document.documentElement;
+    const source = themeRoot;
     appearance = { palette:source.dataset.sbTheme || "default", mode:source.dataset.sbMode || "light", language:source.lang.startsWith("en") ? "en" : "zh" };
-    document.documentElement.dataset.sbTheme = appearance.palette;
-    document.documentElement.dataset.sbMode = appearance.mode;
-    document.documentElement.lang = appearance.language === "en" ? "en" : "zh-CN";
+
   }
   function chooseCourse(courseId) {
     state.courseId = courseId;
@@ -139,7 +145,7 @@
   }
   function projection(activeId) {
     const summary = G.summarize(course());
-    const result = document.getElementById("linked-result");
+    const result = scope.getElementById("linked-result");
     if (!result) return;
     const linked = G.linkedForecast(course(), { driver:state.driver, score:state.exam, goal:state.goal, assumptions:state.assumptions, focus:state.focus });
     if (!linked) return;
@@ -148,13 +154,13 @@
     const displayScore = state.driver === "total" ? Math.ceil((linked.score - 1e-8) * 10) / 10 : linked.score;
     const display = { "assessment-number":fmt(displayScore), "assessment-slider":Math.min(100,displayScore), "total-number":fmt(linked.total), "total-slider":linked.total };
     for (const [key,value] of Object.entries(display)) {
-      const input = document.getElementById(key);
+      const input = scope.getElementById(key);
       if (key !== activeId) { input.value = value; input.removeAttribute("aria-invalid"); }
       input.style.setProperty("--range-progress", `${Math.min(100,Math.max(0,Number(input.value)))}%`);
       if (key.endsWith("-number")) input.style.width = `${Math.max(2.5,input.value.length - .2)}ch`;
     }
-    document.getElementById("assessment-hint").textContent = linked.status === "unreachable" ? t("超过满分", "Above full marks") : state.driver === "total" ? t("至少需要", "Needed") : "";
-    document.getElementById("total-caption").textContent = state.driver === "total" ? t("你的目标", "Your target") : t("随成绩实时更新", "Updates with your score");
+    scope.getElementById("assessment-hint").textContent = linked.status === "unreachable" ? t("超过满分", "Above full marks") : state.driver === "total" ? t("至少需要", "Needed") : "";
+    scope.getElementById("total-caption").textContent = state.driver === "total" ? t("你的目标", "Your target") : t("随成绩实时更新", "Updates with your score");
     result.classList.toggle("is-unreachable", linked.status === "unreachable");
     const focus = summary.pending.find((item) => item.id === state.focus);
     const label = focus?.name || t("剩余项目均分", "Remaining average");
@@ -165,7 +171,7 @@
     } else {
       result.innerHTML = `<span class="gp-result-marker"></span><p>${esc(label)} <strong>${fmt(displayScore)}%</strong><span class="gp-result-arrow">→</span>${t("总评", "Final grade")} <strong>${fmt(linked.total)}</strong>${focus?.max && state.driver === "total" ? `<small>${t(`相当于至少 ${fmt(Math.ceil((linked.score / 100 * focus.max - 1e-8) * 100) / 100,2)} / ${focus.max} 分`, `At least ${fmt(Math.ceil((linked.score / 100 * focus.max - 1e-8) * 100) / 100,2)} / ${focus.max} points`)}</small>` : ""}</p>`;
     }
-    const assumptionSummary = document.getElementById("assumption-summary");
+    const assumptionSummary = scope.getElementById("assumption-summary");
     if (assumptionSummary) {
       const ids = [...new Set(summary.pending.filter((item) => item.id !== state.focus).map((item) => item.categoryId))];
       const scores = ids.map((id) => state.assumptions[id] ?? 85);
@@ -180,7 +186,7 @@
   }
   function refreshRecords(row) {
     const s = G.summarize(course());
-    document.getElementById("grade-stats").innerHTML = stats(s);
+    scope.getElementById("grade-stats").innerHTML = stats(s);
     for (const summary of s.categories) {
       const average = root.querySelector(`[data-category-average="${summary.category.id}"]`);
       if (average) average.textContent = fmt(summary.average);
@@ -258,7 +264,7 @@
     }
   });
 
-  document.addEventListener("click", (event) => {
+  scope.addEventListener("click", (event) => {
     [...root.querySelectorAll(".gp-picker[open]"), ...dialog.querySelectorAll(".gp-picker[open]")].forEach((picker) => {
       const popup = picker.dataset.formPicker && dialog.querySelector(`[data-popup-owner="${picker.dataset.formPicker}"]`);
       if (!picker.contains(event.target) && !popup?.contains(event.target)) picker.open = false;
@@ -274,7 +280,7 @@
       if (picker.dataset.formPicker) positionFormPicker(picker);
       const menu = picker.dataset.formPicker && dialog.querySelector(`[data-popup-owner="${picker.dataset.formPicker}"]`);
       const buttons = [...(menu || picker).querySelectorAll("button")];
-      const current = buttons.indexOf(document.activeElement);
+      const current = buttons.indexOf(scope.activeElement);
       const next = current < 0 ? (event.key === "ArrowDown" ? 0 : buttons.length - 1) : (current + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) % buttons.length;
       buttons[next]?.focus();
     }
@@ -291,7 +297,8 @@
       }
     }
   }, true);
-  window.addEventListener("resize", () => dialog.querySelectorAll("[data-form-picker][open]").forEach(positionFormPicker));
+  const resize = () => dialog.querySelectorAll("[data-form-picker][open]").forEach(positionFormPicker);
+  window.addEventListener("resize", resize);
 
   function openDialog(value) { modal = value; renderDialog(); dialog.showModal(); }
   function closeDialog() { modal?.controller?.abort(); if (modal?.url) URL.revokeObjectURL(modal.url); modal = null; dialog.close(); dialog.innerHTML = ""; }
@@ -528,5 +535,17 @@
     }
   });
   setAppearance(); render();
-  new MutationObserver(() => { setAppearance(); render(); if (modal) redrawDialog(); }).observe(themeRoot, { attributes:true, attributeFilter:["data-sb-theme", "data-sb-mode", "lang"] });
+  const observer = new MutationObserver(() => { setAppearance(); render(); if (modal) redrawDialog(); });
+  observer.observe(themeRoot, { attributes:true, attributeFilter:["data-sb-theme", "data-sb-mode", "lang"] });
+  }
+  window.StudyBridgeGradePlanner = {
+    mount(host) {
+      if (!host || host.dataset.mounted) return;
+      host.dataset.mounted = "true";
+      const scope = host.attachShadow({ mode:"open" });
+      scope.innerHTML = '<link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/grade-planner-preview.css"><style>:host{display:block;min-width:0;min-height:100%;font-family:var(--font-ui,system-ui,sans-serif)}.gp-embedded .gp-shell{min-height:100%}.gp-preview{min-height:100%}</style><div class="gp-preview gp-embedded"><div id="grade-app"></div><dialog id="grade-dialog" aria-labelledby="dialog-heading"></dialog><div id="grade-toast" role="status" aria-live="polite" hidden></div></div>';
+      return start(scope, host);
+    }
+  };
+  if (document.getElementById("grade-app")) void start(document, document.body);
 })();

@@ -1,3 +1,2 @@
-.grades-workspace { padding:0; overflow:hidden; display:flex; flex-direction:column; min-width:0; }
-.grade-planner-frame { width:100%; flex:1; min-height:calc(100dvh - 32px); border:0; display:block; background:var(--panel); }
-@media(max-width:700px) { .grade-planner-frame { min-height:0; height:calc(100dvh - 58px); flex:1; } .grades-workspace { height:100dvh; } }
+.grades-workspace { padding:0; overflow:auto; min-width:0; }
+#grade-module { min-height:100%; }

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Reuse uploaded course materials to extract grading rules and grade lookup locations without uploading the syllabus again. Suggest relevant saved files, show source quotes and verified PDF pages, and require editable review and confirmation before saving.
+- Preserve existing assessment scores when reviewing extracted rules. Reject confirmation if a selected source or the grade plan changed, and guard source revisions in local and AWS database writes. Use retained PDF originals when extracted text is unavailable.
+- Keep homework links and final-grade directions separate when they appear in different sentences of the same course announcement.
+
 ## 1.2.27 — 2026-11-10
 
 - Add category-specific grade lookup links and source citations to grade records, using saved course materials, syllabus text and original PDF URI annotations. Show source filenames, verified physical PDF pages and locating quotes; preserve directions without inventing a URL.

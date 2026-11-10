@@ -26,6 +26,13 @@ test("links on a separate line inherit only the adjacent explicit grade directio
   assert.equal(labelled.length,1); assert.equal(labelled[0].url,"https://lms.example.edu/homework");
 });
 
+test("lookup sentences keep homework links separate from final directions in the same paragraph",()=>{
+  const found=L.discover([{title:"Announcements",text:"Homework grades are posted at https://lms.example.edu/hw. Final grades can be viewed in Quercus > Grades."}]);
+  assert.equal(found.length,2);
+  assert.deepEqual(L.forCategory(found,"Homework").map(ref=>ref.url),["https://lms.example.edu/hw"]);
+  const final=L.forCategory(found,"Final");assert.equal(final.length,1);assert.equal(final[0].url,"");assert.match(final[0].quote,/^Final grades/);
+});
+
 test("unsafe destinations are rejected and reviewed syllabus links preserve only known fields", () => {
   for(const url of ["javascript:alert(1)","data:text/html,hello","//evil.test/grades","https://user:secret@example.edu/grades","https://example.edu/\\evil","https://example.edu/a\nb"]) assert.equal(L.safeUrl(url),"");
   assert.equal(L.safeUrl("www.example.edu/grades"),"https://www.example.edu/grades");

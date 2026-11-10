@@ -1978,19 +1978,22 @@ async function routeApi(req, res) {
     if (gradeUrl.pathname === "/api/grade-planner" && req.method === "GET") return sendJson(res, 200, { ...await grades.read(auth.user.id), csrfToken: token });
     const gradeLocations = gradeUrl.pathname.match(/^\/api\/grade-planner\/([^/]+)\/locations$/);
     if (gradeLocations && req.method === "GET") return sendJson(res,200,await grades.locations(auth.user.id,decodeURIComponent(gradeLocations[1])));
+    const gradeMaterials = gradeUrl.pathname.match(/^\/api\/grade-planner\/([^/]+)\/materials$/);
+    if (gradeMaterials && req.method === "GET") return sendJson(res,200,await grades.materials(auth.user.id,decodeURIComponent(gradeMaterials[1])));
     const supplied = String(req.headers["x-csrf-token"] || "");
     if (!/^[a-f0-9]{64}$/.test(supplied) || !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(token))
       || req.headers.origin && req.headers.origin !== new URL(appBaseUrl(req)).origin) return sendError(res, 403, "请重新打开成绩页面后再试。");
-    const match = gradeUrl.pathname.match(/^\/api\/grade-planner\/([^/]+)(\/recognize)?$/);
+    const match = gradeUrl.pathname.match(/^\/api\/grade-planner\/([^/]+)(\/(?:recognize|extract-materials))?$/);
     if (!match) return sendError(res, 404, "成绩操作不存在。");
     const courseId = decodeURIComponent(match[1]);
     if (!await db.getCourse(auth.user.id, courseId)) return sendError(res, 404, "课程不存在。");
     if (!match[2] && req.method === "PUT") return sendJson(res, 200, { plan: await db.saveGradePlan(auth.user.id, courseId, await readJson(req, 300000)) });
     if (match[2] && req.method === "POST") {
-      const readBody = await readJson(req, 12 * 1024 * 1024);
+      const readBody = await readJson(req, match[2] === "/extract-materials" ? 16000 : 12 * 1024 * 1024);
       const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 90000);
       res.on("close", () => { if (!res.writableEnded) controller.abort(); });
-      try { return sendJson(res, 200, await aiUsage.run(auth.user.id, () => grades.recognize(auth.user.id, courseId, readBody, controller.signal))); }
+      try { return sendJson(res, 200, await aiUsage.run(auth.user.id, () => match[2] === "/extract-materials"
+        ? grades.extractMaterials(auth.user.id,courseId,readBody,controller.signal) : grades.recognize(auth.user.id, courseId, readBody, controller.signal))); }
       finally { clearTimeout(timeout); }
     }
     return sendError(res, 405, "不支持此操作。");

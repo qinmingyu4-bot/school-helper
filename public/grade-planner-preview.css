@@ -435,3 +435,18 @@
 @media(max-width:700px) { .gp-location-row { gap:5px 10px; } .gp-location-status { line-height:1.8; } .gp-location-domain { max-width:28ch; } }
 
 #grade-dialog.gp-location-dialog { width:min(680px,calc(100vw - 40px)); height:fit-content; max-height:min(580px,calc(100dvh - 40px)); min-height:260px; }
+
+#grade-dialog[data-view="materials"] { width:min(740px,calc(100vw - 40px)); height:fit-content; max-height:calc(100dvh - 40px); }
+.gp-material-list { margin-top:22px; border-top:1px solid var(--line); }
+.gp-preview .gp-material-row { display:flex; align-items:flex-start; gap:12px; padding:16px 0; border-bottom:1px solid var(--line); cursor:pointer; }
+.gp-material-row input { flex:0 0 16px; margin-top:2px !important; }
+.gp-material-row > span { min-width:0; display:grid; gap:6px; }
+.gp-material-row strong { font-size:13px; font-weight:500; overflow-wrap:anywhere; }
+.gp-material-row small { color:var(--muted); font-size:11px; line-height:1.7; }
+.gp-material-row.is-unreadable { opacity:.6; cursor:default; }
+.gp-material-empty { padding:35px 0; color:var(--muted); line-height:1.9; font-size:13px; }
+.gp-material-count { color:var(--muted); font-size:11px; margin-right:10px; }
+.gp-rules-source-actions { display:flex; align-items:center; flex-wrap:wrap; gap:12px; }
+.gp-rule-evidence { padding-bottom:8px; }
+.gp-rule-evidence .gp-location-citation { margin-top:8px; }
+@media(max-width:510px) { .gp-rules-source-actions { width:100%; gap:8px 16px; } }

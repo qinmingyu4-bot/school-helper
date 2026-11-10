@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.30 — 2026-11-10
+
+- Reuse uploaded course materials to extract grading rules and grade lookup locations without uploading the syllabus again. Suggest relevant saved files, show source quotes and verified PDF pages, and require editable review and confirmation before saving.
+- Preserve existing assessment scores when reviewing extracted rules. Reject confirmation if a selected source or the grade plan changed, and guard source revisions in local and AWS database writes. Use retained PDF originals when extracted text is unavailable.
+- Keep homework links and final-grade directions separate when they appear in different sentences of the same course announcement.
+
 ## 1.2.29 — Archived courses and account history
 
 - Archive courses from Study, keep their materials and full chat histories in Settings → Account and profile, and restore them to Study when needed.

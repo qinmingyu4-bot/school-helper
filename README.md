@@ -1032,8 +1032,10 @@ documents the failed-login policy, trusted proxy boundary and multi-instance lim
 ## Grades (1.2.25)
 
 The student menu includes **Grades** (`/app?page=grades`). Existing courses start
-with empty grading rules. Manually set up rules or upload a PDF/TXT/image syllabus;
-review extracted weights, assessment counts and special rules before saving.
+with empty grading rules. Choose **Use course materials** in the empty state or
+**Grading rules** to reuse uploaded syllabus/course files, or set rules manually
+and upload a PDF/TXT/image syllabus. Review extracted weights, assessment counts,
+special rules and grade lookup locations before saving.
 Record each assessment manually or upload a PNG/JPG/WebP screenshot (up to 8 MB),
 check scores/maxima and match destinations, then confirm. AI reads never save
 records automatically. Uploads are sent only after starting recognition and are
@@ -1065,6 +1067,18 @@ a category's additional rules. Recognition from text-readable files checks propo
 destinations against the actual supplied source. Images/scans still require the
 user's review of extracted addresses. Scanned course materials without readable
 text/links may not yield a location. Querying grade locations does not change recorded scores.
+
+Saved-material extraction lists only the selected account/course's non-schedule
+documents and suggests syllabus/grading/lookup files (up to 8 per extraction).
+It sends saved readable text, or retained PDF originals when text is unavailable,
+only after **Extract and review**. Long documents use selected grading passages
+and disclose that limit. The draft includes grounded source quotes and PDF pages
+when available; scanned originals require checking the quoted evidence against
+the file. Extraction and cancellation never write a grade plan. Confirmation
+retains existing assessment records, saves reviewed rules/lookup locations, and
+rejects changed/deleted sources or stale grade plans. AWS database transactions
+also guard document and large-text material revisions. Unsupported files remain
+visible with extraction disabled; manual setup stays available without AI.
 
 ### Archived courses
 

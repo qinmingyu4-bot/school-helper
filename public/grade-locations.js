@@ -7,7 +7,7 @@
     homework: /\b(?:homeworks?|assignments?|problem\s*sets?)\b|作业|习题集/i,
     quiz: /\bquizz?(?:es)?\b|小测|随堂测/i,
     midterm: /\bmid[\s-]?terms?\b|期中/i,
-    final: /\bfinal\s+(?:exams?|examinations?|tests?)\b|期末/i,
+    final: /\bfinal(?:\s+(?:exams?|examinations?|tests?))?\b|期末/i,
     lab: /\blabs?\b|实验/i,
     project: /\bprojects?\b|项目|课程设计/i,
     participation: /\bparticipation\b|课堂参与/i
@@ -60,7 +60,13 @@
         while (raw.endsWith(")") && (raw.match(/\)/g)||[]).length > (raw.match(/\(/g)||[]).length) raw = raw.slice(0,-1);
         const url = safeUrl(raw); if (!url) continue;
         const from = text.lastIndexOf("\n", match.index) + 1, next = text.indexOf("\n",match.index), to = next < 0 ? text.length : next;
-        let context = text.slice(from,to).trim();
+        const line=text.slice(from,to), position=match.index-from;
+        let sentenceStart=0,sentenceEnd=line.length;
+        for(const boundary of line.matchAll(/[.!?。！？](?:\s+|$)/g)) {
+          if(boundary.index<position) sentenceStart=boundary.index+boundary[0].length;
+          else {sentenceEnd=boundary.index+1;break;}
+        }
+        let context = line.slice(sentenceStart,sentenceEnd).trim();
         if (!purpose(context,url) && !context.replace(match[0],"").trim()) {
           const previous = text.lastIndexOf("\n",Math.max(0,from-2)) + 1;
           if (from > 0 && text.slice(previous,from).trim()) context = text.slice(previous,to).trim();
@@ -73,8 +79,10 @@
       }
       // Keep useful navigation instructions when a source names a location but gives no URL.
       for (const match of text.matchAll(/[^\n]+/g)) {
-        const line = match[0].trim();
-        if (line.length <= 800 && !/(?:https?:\/\/|www\.)/i.test(line) && purpose(line) && /\b(?:on|in|under|through|via|at)\b|在|进入|前往/i.test(line)) add(source,"",line,pageAt(match.index));
+        for(const sentence of match[0].matchAll(/.*?(?:[.!?。！？](?=\s|$)|$)/g)) {
+          const line = sentence[0].trim();
+          if (line && line.length <= 800 && !/(?:https?:\/\/|www\.)/i.test(line) && purpose(line) && /\b(?:on|in|under|through|via|at)\b|在|进入|前往/i.test(line)) add(source,"",line,pageAt(match.index+sentence.index));
+        }
       }
     }
     return results;

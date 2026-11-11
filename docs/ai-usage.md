@@ -71,8 +71,9 @@ Text rates below are USD per million tokens under Standard processing.
 | gpt-6.1-sol | 2.00 | 10.00 | 0.10 |
 
 Inputs over 272K tokens use 2× input/cache rates and 1.5× output rates.
-Requests explicitly select Standard processing. GPT Image 2 uses US$2.50/million
-text input, US$4/million image input and US$15/million image output tokens.
+Text requests explicitly select Standard processing. GPT Image 2.6 Sunburst
+and Flare use US$5/million text input, US$8/million image input and US$30/million
+image output tokens, verified on 2026-11-11 from the OpenAI pricing page.
 `gpt-transcribe` uses US$0.0045/minute. Search calls cost US$0.01 each and
 1 GB interpreter containers US$0.03 each. Unknown models fail closed until their
 price and accounting are added and verified. Account-specific regional surcharges

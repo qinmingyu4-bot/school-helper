@@ -21,9 +21,10 @@ function office(format, macro = false) {
 
 async function setup(t, options = {}) {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "studybridge-creative-"));
-  const previous = { OPENAI_API_KEY: process.env.OPENAI_API_KEY, STUDYBRIDGE_VIDEO_ENABLED: process.env.STUDYBRIDGE_VIDEO_ENABLED, LOCAL_DB_FILE: process.env.LOCAL_DB_FILE };
+  const previous = { OPENAI_API_KEY: process.env.OPENAI_API_KEY, OPENAI_IMAGE_MODEL: process.env.OPENAI_IMAGE_MODEL, STUDYBRIDGE_VIDEO_ENABLED: process.env.STUDYBRIDGE_VIDEO_ENABLED, LOCAL_DB_FILE: process.env.LOCAL_DB_FILE };
   process.env.OPENAI_API_KEY = "creative-test-key";
   process.env.LOCAL_DB_FILE = path.join(directory, "db.json");
+  delete process.env.OPENAI_IMAGE_MODEL;
   delete process.env.STUDYBRIDGE_VIDEO_ENABLED;
   const db = new StudyBridgeDatabase(); db.dynamo = null;
   const calls = [], payloads = new Map();
@@ -180,9 +181,31 @@ test("image generation and edits use real image bytes and keep source images pri
   const first = await done(service, await service.create({ id: "alice" }, { kind: "image", prompt: "Create a diagram", size: "1536x1024", quality: "high" }));
   const revision = await done(service, await service.create({ id: "alice" }, { kind: "image", prompt: "Change the background", parentId: first.id }));
   assert.equal(first.status, "ready"); assert.equal(revision.status, "ready");
+  const generation = JSON.parse(calls.find((call) => call.url.endsWith("images/generations")).init.body);
+  assert.equal(generation.model, "gpt-image-2.6-sunburst");
+  assert.equal(generation.size, "1536x1024");
+  assert.equal(generation.quality, "high");
+  assert.equal(generation.output_format, "png");
   const edit = calls.find((call) => call.url.endsWith("images/edits"));
-  assert.equal(JSON.parse(edit.init.body).images[0].image_url, `data:image/png;base64,${png.toString("base64")}`);
+  const editBody = JSON.parse(edit.init.body);
+  assert.equal(editBody.model, "gpt-image-2.6-sunburst");
+  assert.equal(editBody.images[0].image_url, `data:image/png;base64,${png.toString("base64")}`);
   assert.deepEqual((await service.file("alice", revision.id, revision.files[0].id)).bytes, png);
+});
+
+test("legacy image overrides migrate and explicit supported overrides still work", async (t) => {
+  const { service, calls } = await setup(t);
+  for (const [configured, expected] of [
+    ["gpt-image-2", "gpt-image-2.6-sunburst"],
+    ["gpt-image-2-2026-04-21", "gpt-image-2.6-sunburst"],
+    ["  ", "gpt-image-2.6-sunburst"],
+    ["gpt-image-2.6-flare", "gpt-image-2.6-flare"]
+  ]) {
+    process.env.OPENAI_IMAGE_MODEL = configured;
+    const result = await done(service, await service.create({ id: "alice" }, { kind: "image", prompt: "Create a study diagram" }));
+    assert.equal(result.status, "ready", result.error);
+    assert.equal(JSON.parse(calls.at(-1).init.body).model, expected);
+  }
 });
 
 test("video production is permanently rejected even when legacy configuration enables it", async (t) => {

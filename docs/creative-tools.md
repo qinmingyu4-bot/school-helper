@@ -71,10 +71,25 @@ dialog. The application cannot override the user's printer settings.
 The server uses its existing private `OPENAI_API_KEY`. Document generation uses
 `OPENAI_DOCUMENT_MODEL`, falling back to the configured complex-task model.
 The model must support Responses API Code Interpreter. Images use
-`OPENAI_IMAGE_MODEL` (default `gpt-image-2`). These APIs have separate permissions and
-usage charges. A missing key or permission error produces an explicit failure,
+`OPENAI_IMAGE_MODEL` (default `gpt-image-2.6-sunburst`) for both generation and
+editing. These APIs have separate permissions and usage charges.
+A missing key or permission error produces an explicit failure,
 not a simulated successful artifact. ChatGPT subscription access does not
 configure the application's API access.
+
+OpenAI will remove `gpt-image-2` and `gpt-image-2-2026-04-21` on February 10,
+2027. An unset or blank `OPENAI_IMAGE_MODEL`, or either of those two legacy
+values, now uses Sunburst. Other explicit overrides remain in effect and must
+have a verified price in the [AI allowance](ai-usage.md) registry. For faster
+iteration, set `OPENAI_IMAGE_MODEL=gpt-image-2.6-flare`. The app still returns one
+static PNG using the existing size and quality controls.
+
+Before release, check the effective server-side `OPENAI_IMAGE_MODEL` without
+printing the full environment or the API key. Remove a legacy override to keep
+the configuration clear. In a test environment using the deployment's OpenAI
+project, generate a simple sample image, edit that image, and confirm both PNGs
+can be opened and downloaded. This verifies access to the selected model and
+both endpoints; the public health check does not verify image generation.
 
 Documents run in a fresh hosted Code Interpreter container. Uploaded source and
 prior-version files are re-uploaded for each task, so revisions do not depend on
@@ -83,6 +98,8 @@ result is downloaded, including failure paths where their IDs are known. Model
 generated code never runs on the StudyBridge host.
 
 Official API references:
+- https://developers.openai.com/api/docs/deprecations#2026-11-10-gpt-image-2
+- https://developers.openai.com/api/docs/models/gpt-image-2.6-sunburst
 - https://developers.openai.com/api/docs/guides/tools-code-interpreter
 - https://developers.openai.com/api/reference/resources/images/methods/edit
 - https://developers.openai.com/api/docs/guides/image-generation

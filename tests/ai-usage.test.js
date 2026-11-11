@@ -51,6 +51,9 @@ test("pricing includes cached input, reasoning totals, long context, searches, c
   assert.equal(cost("gpt-6-luna", { usage: { prompt_tokens: 300000, completion_tokens: 1000 } }), 60750);
   assert.equal(cost("gpt-6.1-sol", { usage: { input_tokens: 0, output_tokens: 0 }, output: [{ type: "web_search_call" }, { type: "code_interpreter_call", container_id: "a" }, { type: "code_interpreter_call", container_id: "a" }] }), 40000);
   assert.equal(cost("gpt-image-2", { usage: { input_tokens_details: { text_tokens: 100, image_tokens: 50 }, output_tokens: 1000 } }), 15450);
+  for (const model of ["gpt-image-2.6-sunburst", "gpt-image-2.6-flare"]) {
+    assert.equal(cost(model, { usage: { input_tokens_details: { text_tokens: 100, image_tokens: 50 }, output_tokens: 1000 } }), 30900);
+  }
   assert.equal(cost("gpt-transcribe", { usage: { seconds: 60 } }), 4500);
 });
 test("provider admission, actual JSON and trailing stream usage, failed requests and missing usage", async (t) => {

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — Image model migration
+
+- Move image generation and editing to GPT Image 2.6 Sunburst by default. Existing configurations that still name GPT Image 2 or its April 2026 snapshot also use Sunburst, ahead of their February 10, 2027 shutdown.
+- Meter Sunburst and the optional GPT Image 2.6 Flare model at their published token rates, with the existing weekly allowance and image reservation.
+
 ## 1.2.30 — 2026-11-10
 
 - Reuse uploaded course materials to extract grading rules and grade lookup locations without uploading the syllabus again. Suggest relevant saved files, show source quotes and verified PDF pages, and require editable review and confirmation before saving.

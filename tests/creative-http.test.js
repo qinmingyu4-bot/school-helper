@@ -10,7 +10,7 @@ test("creative HTTP jobs, private downloads, revisions, cancellation and video g
   const root = path.resolve(__dirname, "..");
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "studybridge-creative-http-"));
   const child = spawn(process.execPath, ["--require", "./tests/fixtures/creative-ai.js", "server.js"], {
-    cwd: root, env: { ...process.env, PORT: "0", NODE_ENV: "test", STUDYBRIDGE_DB: "local", LOCAL_DB_FILE: path.join(directory, "db.json"), LOCAL_DB_BACKUP_DISABLED: "true", OWNER_INVITE_CODE: "creative-owner", REQUIRE_INVITE_CODE: "true", REQUIRE_EMAIL_VERIFICATION: "false", OPENAI_API_KEY: "test-only-key", OPENAI_DOCUMENT_MODEL: "gpt-6.1-sol", STUDYBRIDGE_VIDEO_ENABLED: "true", ADMIN_EMAILS: "owner@example.test", GOOGLE_CLIENT_ID: "", GOOGLE_CLIENT_SECRET: "", SMTP_HOST: "", SMTP_USER: "", SMTP_PASS: "" }, stdio: ["ignore", "pipe", "pipe"]
+    cwd: root, env: { ...process.env, PORT: "0", NODE_ENV: "test", STUDYBRIDGE_DB: "local", LOCAL_DB_FILE: path.join(directory, "db.json"), LOCAL_DB_BACKUP_DISABLED: "true", OWNER_INVITE_CODE: "creative-owner", REQUIRE_INVITE_CODE: "true", REQUIRE_EMAIL_VERIFICATION: "false", OPENAI_API_KEY: "test-only-key", OPENAI_DOCUMENT_MODEL: "gpt-6.1-sol", OPENAI_IMAGE_MODEL: "gpt-image-2-2026-04-21", STUDYBRIDGE_VIDEO_ENABLED: "true", ADMIN_EMAILS: "owner@example.test", GOOGLE_CLIENT_ID: "", GOOGLE_CLIENT_SECRET: "", SMTP_HOST: "", SMTP_USER: "", SMTP_PASS: "" }, stdio: ["ignore", "pipe", "pipe"]
   });
   child.stderr.on("data", (chunk) => t.diagnostic(String(chunk)));
   t.after(async () => { const exited = once(child, "exit"); child.kill(); await exited; await fs.rm(directory, { recursive: true, force: true }); });
@@ -66,6 +66,20 @@ test("creative HTTP jobs, private downloads, revisions, cancellation and video g
   assert.equal((await request(`/api/creative/${slow.data.job.id}/cancel`, { method: "POST", cookie: foreign })).status, 404);
   assert.equal((await request(`/api/creative/${slow.data.job.id}/cancel`, { method: "POST", cookie })).status, 200);
   assert.equal((await wait(slow.data.job.id, cookie)).status, "canceled");
+
+  const imageJob = await json("/api/creative", { method: "POST", cookie: foreign, body: { kind: "image", prompt: "Create a study diagram" } });
+  const generatedImage = await wait(imageJob.data.job.id, foreign);
+  assert.equal(generatedImage.status, "ready", generatedImage.error);
+  const editJob = await json("/api/creative", { method: "POST", cookie: foreign, body: { kind: "image", parentId: generatedImage.id, prompt: "Change the background" } });
+  const editedImage = await wait(editJob.data.job.id, foreign);
+  assert.equal(editedImage.status, "ready", editedImage.error);
+  const imageDownload = await request(`/api/creative/${editedImage.id}/files/${editedImage.files[0].id}`, { cookie: foreign });
+  assert.equal(imageDownload.status, 200);
+  assert.equal(imageDownload.headers.get("content-type"), "image/png");
+  const { data: { usage } } = await json("/api/me/ai-usage", { cookie: foreign });
+  assert.equal(usage.usedUsd, 0.004); // Two responses, each with 100 text input and 50 image output tokens.
+  assert.equal(usage.pendingUsd, 0);
+
   assert.equal((await request(`/api/creative/${job.id}`, { method: "DELETE", cookie })).status, 200);
   assert.equal((await request(route, { cookie })).status, 404);
 

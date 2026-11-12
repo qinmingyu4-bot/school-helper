@@ -120,7 +120,9 @@ test("recognition retains missing values instead of manufacturing grades or plan
   assert.equal(result.rows[1].score, 0);
   const rules = recognition.parseRecognition("syllabus", JSON.stringify({ categories: [{ name: "Homework", weight: 20, method: "unknown", plannedCount: null, items: [], evidence: "Homework 20%" }] }));
   assert.equal(rules.categories[0].plannedCount, null);
-  assert.ok(rules.categories[0].specialRule);
+  assert.equal(rules.categories[0].method, "unknown");
+  assert.equal(rules.categories[0].specialRule, "");
+  assert.equal(G.categorySummary(rules.categories[0]).known, false);
   assert.throws(() => recognition.parseRecognition("grades", "not JSON"));
 });
 test("upload validation checks actual bytes and keeps source input separate from instructions", () => {
@@ -152,4 +154,69 @@ test("local OCR aligns separated name and score columns without turning totals i
   assert.equal(rows[1].score, 0);
   assert.equal(rows[2].max, 100);
   assert.equal(rows[2].score, 90);
+});
+
+
+test("ungraded incomplete categories do not erase known recorded contributions", () => {
+  const course = example();
+  course.categories[2].plannedCount = null;
+  course.categories[2].method = "unknown";
+  const s = G.summarize(course);
+  assert.equal(s.known, false);
+  assert.equal(s.totalsKnown, true);
+  assert.equal(s.earned, 30.6);
+  assert.equal(s.average, 90);
+  assert.equal(s.remaining, 66);
+  assert.deepEqual(s.issues.map(issue => [issue.categoryId, issue.code]), [["final", "count"], ["final", "method"]]);
+  assert.equal(G.forecast(course), null);
+});
+
+test("incomplete recorded categories retain only clearly marked partial contributions", () => {
+  const course = example();
+  course.categories[0].plannedCount = null;
+  const s = G.summarize(course);
+  assert.equal(s.totalsKnown, false);
+  assert.equal(s.earned, 27);
+  assert.equal(s.average, null);
+  assert.equal(s.remaining, null);
+  assert.equal(s.recorded, 3);
+  assert.equal(s.categories[0].average, 90);
+  course.categories[1].specialRule = "Minimum final exam score required to pass";
+  assert.equal(G.summarize(course).earned, null);
+  course.categories[0].weight = 21;
+  assert.equal(G.summarize(course).earned, null);
+  assert.equal(G.summarize(course).issues[0].code, "total");
+});
+
+test("missing maximum diagnostics identify the affected item and clear after correction", () => {
+  const course = example();
+  const category = course.categories[0];
+  category.method = "points";
+  category.items[3].max = null;
+  const issue = G.summarize(course).issues.find(issue => issue.code === "max");
+  assert.deepEqual([issue.categoryId, issue.itemId, issue.count], ["hw", "h3", 1]);
+  category.items[3].max = 20;
+  assert.equal(G.summarize(course).known, true);
+  assert.deepEqual(G.summarize(course).issues, []);
+  category.method = "equal";
+  category.items[3].max = null;
+  assert.equal(G.summarize(course).known, true);
+});
+
+test("a six-of-ten quiz record stays visible even when its plan needs completion", () => {
+  const course = { categories: [{ id: "quiz", name: "Weekly quizzes", weight: 30, method: "equal", plannedCount: null,
+    items: Array.from({ length: 10 }, (_, i) => ({ id: `q${i}`, name: `Quiz ${i + 1}`, max: 100, score: i < 6 ? 85 : null, status: i < 6 ? "graded" : "pending" })) },
+    { id: "rest", name: "Other assessments", weight: 70, method: "unknown", plannedCount: null, items: [] }] };
+  const before = clone(course);
+  const initial = G.summarize(course);
+  assert.equal(initial.categories[0].average, 85);
+  assert.equal(initial.recorded, 6);
+  assert.equal(initial.earned, null);
+  assert.equal(initial.remaining, null);
+  assert.deepEqual(course, before);
+  course.categories[0].plannedCount = 10;
+  const corrected = G.summarize(course);
+  assert.equal(corrected.earned, 15.3);
+  assert.ok(Math.abs(corrected.average - 85) < 1e-9);
+  assert.equal(corrected.remaining, 82);
 });

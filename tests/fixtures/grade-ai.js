@@ -11,5 +11,12 @@ globalThis.fetch = async (url, options) => {
     : body.instructions?.includes('"rows"')
     ? { rows: [{ name: "Homework 1", categoryName: "Homework", score: 18, max: 20, evidence: "Homework 1 18 / 20" }] }
     : { categories: [{ name: "Homework", weight: 40, method: "equal", plannedCount: 2, items: [], evidence: "Homework 40%", specialRule: "" }, { name: "Final", weight: 60, method: "equal", plannedCount: 1, items: [{ name: "Final exam", max: 100 }], evidence: "Final 60%", specialRule: "" }] };
+  const source = body.input?.[0]?.content?.[1]?.text;
+  if (output.categories && source?.includes("Drop the lowest homework")) {
+    output.categories[0].specialRule = "Drop the lowest homework";
+  }
+  if (output.categories && source?.includes("Homework count is unspecified")) {
+    Object.assign(output.categories[0], { method: "unknown", plannedCount: null });
+  }
   return new Response(JSON.stringify({ model: body.model, output: [{ type: "message", content: [{ type: "output_text", text: JSON.stringify(output) }] }], usage: { input_tokens: 100, output_tokens: 100 } }), { status: 200, headers: { "content-type": "application/json" } });
 };

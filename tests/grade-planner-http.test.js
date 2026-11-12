@@ -103,6 +103,41 @@ test("account grades enforce ownership, CSRF, revision checks, private persisten
   current=(await(await req("/api/grade-planner",alice)).json()).courses.find(c=>c.id===course.id);
   assert.equal(current.version,3);assert.equal(current.categories[0].items[0].score,0);assert.equal(current.ruleSources[0].id,savedDoc.id);
   assert.equal(current.categories[0].ruleEvidence[0].quote,"Homework 40%");
+
+  const createCourse = async name => (await (await req("/api/courses", alice, { name })).json()).course;
+  const uploaded = await createCourse("Uploaded syllabus auto-save");
+  const uploadRoute = `/api/grade-planner/${uploaded.id}/recognize`;
+  const upload = async (text, version = 0) => {
+    const response = await req(uploadRoute, alice, {
+      kind: "syllabus", name: "Syllabus.txt", mime: "text/plain", version, autoSave: true,
+      dataUrl: `data:text/plain;base64,${Buffer.from(text).toString("base64")}`
+    }, "POST", headers);
+    assert.equal(response.status, 200);
+    return response.json();
+  };
+  assert.equal((await upload("Homework 40%\nFinal 60%\nDrop the lowest homework")).savedPlan, undefined);
+  assert.equal((await upload("Homework 50%\nFinal 50%")).savedPlan, undefined);
+  const savedUpload = (await upload("Homework 40%\nFinal 60%\nHomework count is unspecified")).savedPlan;
+  assert.equal(savedUpload.version, 1);
+  assert.equal(savedUpload.categories[0].method, "unknown");
+  assert.equal(savedUpload.categories[0].weight, 40);
+  assert.equal(savedUpload.categories[1].items[0].status, "pending");
+  assert.equal((await upload("Homework 40%\nFinal 60%", 1)).savedPlan, undefined);
+
+  const reused = await createCourse("Saved syllabus auto-save");
+  const reusedDoc = (await (await req(`/api/courses/${reused.id}/documents`, alice,
+    { title: "Syllabus.txt", text: savedText })).json()).document;
+  const reusedRoute = `/api/grade-planner/${reused.id}/extract-materials`;
+  const reuse = { version: 0, autoSave: true, documentIds: [reusedDoc.id] };
+  const savedReuse = (await (await req(reusedRoute, alice, reuse, "POST", headers)).json()).savedPlan;
+  assert.equal(savedReuse.version, 1);
+  assert.equal(savedReuse.ruleSources[0].id, reusedDoc.id);
+  assert.equal(savedReuse.categories[0].items.length, 2);
+  assert.equal((await req(reusedRoute, alice, reuse, "POST", headers)).status, 409);
+  const autoPlans = (await (await req("/api/grade-planner", alice)).json()).courses;
+  assert.equal(autoPlans.find(value => value.id === uploaded.id).version, 1);
+  assert.equal(autoPlans.find(value => value.id === reused.id).version, 1);
+  for (const value of [uploaded, reused]) await req(`/api/courses/${value.id}`, alice, undefined, "DELETE");
   await stop(); await start();
   current=(await(await req("/api/grade-planner",alice)).json()).courses.find(c=>c.id===course.id); assert.equal(current.version,3); assert.equal(current.categories[0].items[1].score,null); assert.equal(current.categories[0].ruleEvidence[0].sourceName,"Saved syllabus.txt"); assert.equal(current.categories[1].gradeDirections[0].quote.includes("Quercus"),true);
   assert.equal((await(await req("/api/grade-planner",bob)).json()).courses.length,0);

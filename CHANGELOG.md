@@ -7,6 +7,13 @@
 - Include authored files and checksum manifests in complete scheduled backups; verify release backups, provide isolated restore drills and conservative dry-run retention/orphan maintenance.
 - Add an explicit, verified JSON-to-SQLite migration, transactional changed-record writes, current-state export and deployment backup compatibility. Activation remains a separate offline maintenance step; existing data is never automatically migrated or deleted.
 
+## 1.2.31 — 2026-11-12
+
+- Keep calculable recorded grades visible when another category is incomplete. Label partial contributions and category-only averages, and show specific missing rules with direct edit actions instead of a generic all-empty summary.
+- Exclude medical/absence and unrelated automatic grade links, including older recognized links at display time. Keep lookup rows compact with the destination domain.
+- Save clear, source-verified syllabus weights automatically when setting up a course through Grades. Users can edit the rules afterward. Unclear or special rules and changes to an existing plan open for review.
+- Leave unspecified counts or weighting methods open for the user to complete without guessing course totals.
+
 ## Unreleased — Image model migration
 
 - Move image generation and editing to GPT Image 2.6 Sunburst by default. Existing configurations that still name GPT Image 2 or its April 2026 snapshot also use Sunburst, ahead of their February 10, 2027 shutdown.

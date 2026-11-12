@@ -1,10 +1,9 @@
 # Changelog
 
-## Unreleased — Grading rules
+## 1.2.31 — 2026-11-12
 
 - Keep calculable recorded grades visible when another category is incomplete. Label partial contributions and category-only averages, and show specific missing rules with direct edit actions instead of a generic all-empty summary.
 - Exclude medical/absence and unrelated automatic grade links, including older recognized links at display time. Keep lookup rows compact with the destination domain.
-
 - Save clear, source-verified syllabus weights automatically when setting up a course through Grades. Users can edit the rules afterward. Unclear or special rules and changes to an existing plan open for review.
 - Leave unspecified counts or weighting methods open for the user to complete without guessing course totals.
 

@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.2.30";
+  const VERSION = "1.2.31";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;

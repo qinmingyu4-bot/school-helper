@@ -77,6 +77,7 @@ test("release backup includes immutable private-file snapshots alongside the JSO
   const { db, directory } = await setup(t), root = path.join(directory, "checkout");
   await fs.mkdir(path.join(root, "lib"), { recursive: true });
   await fs.copyFile(path.join(__dirname, "../lib/material-files.js"), path.join(root, "lib/material-files.js"));
+  await fs.copyFile(path.join(__dirname, "../lib/storage.js"), path.join(root, "lib/storage.js"));
   db.local.file = path.join(root, "database.json");
   await db.writeMaterial("alice", "math", "CHAT#date#msg", [{ text: "Private release backup" }]);
   const backup = path.join(directory, "release");

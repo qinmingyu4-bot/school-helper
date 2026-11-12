@@ -673,8 +673,9 @@
           <input id="docFile" type="file" aria-label="选择课程资料文件" accept="${SUPPORTED_UPLOAD_ACCEPT}" multiple>
           <button class="study-side-icon" data-action="upload-doc" title="上传所选文件" aria-label="上传所选文件"><svg aria-hidden="true"><use href="/classmates-icons.svg#upload"></use></svg></button>
         </div>
-        <div class="study-material-list">${materials.length ? materials.map((doc) => `<div class="mini-row"><b>${esc(doc.title)}</b><small>${esc(doc.type || "Note")}</small></div>`).join("") : ui.html`<p class="muted">暂无课程资料</p>`}</div>
+        <div class="study-material-list">${materials.length ? materials.map((doc) => `<div class="mini-row"><b>${esc(doc.title)}</b><small>${esc(doc.type || "Note")}</small>${doc.originalFile || doc.hasSourcePdf ? `<a href="/api/courses/${encodeURIComponent(doc.courseId)}/originals/${encodeURIComponent(doc.id)}">${ui.text("下载原文件")}</a>` : ""}</div>`).join("") : ui.html`<p class="muted">暂无课程资料</p>`}</div>
         <p class="muted">课程资料每个文件最多 50 MB，多文件逐个上传。较大 PDF 优先使用提取文字；扫描件建议拆分或先做文字识别。</p>
+        ${state.storage?.usedBytes != null ? `<p class="muted">${ui.text("账号存储")}: ${(state.storage.usedBytes / 1024 ** 2).toFixed(1)} MiB / ${(state.storage.limitBytes / 1024 ** 3).toFixed(1)} GiB</p>` : ""}
         <p id="courseUploadStatus" class="muted" role="status" aria-live="polite"></p>
       </section>`}
       <section class="side-section study-preferences">
@@ -2279,6 +2280,8 @@
     const cards = s ? [
       [ui.text("当前版本"), s.version?.app || VERSION, `Node ${s.version?.node || ""}`],
       [ui.text("最后部署时间"), formatDate(s.deploy?.lastCodeUpdateAt), ui.text("按服务器文件时间显示。")],
+      [ui.text("服务器可用空间"), s.storage?.availableBytes != null ? `${(s.storage.availableBytes / 1024 ** 3).toFixed(1)} GiB` : "—", s.storage?.warning ? ui.text("存储空间偏低，请检查备份和文件占用。") : ui.text("保留安全余量后才接受新文件。")],
+      [ui.text("用户文件 / 本地备份"), s.storage?.activeFilesBytes != null ? `${(s.storage.activeFilesBytes / 1024 ** 2).toFixed(1)} / ${((s.storage.localBackupBytes + s.storage.releaseBackupBytes) / 1024 ** 2).toFixed(1)} MiB` : "—", ui.text("硬链接只计算一次，用户文件优先。")],
       [ui.text("数据库模式"), s.database?.mode || "local", s.database?.ready ? ui.text("数据库可读取。") : ui.text("需要检查数据库。")],
       [ui.text("普通任务模型"), s.ai?.simpleModel || ui.text("待检测"), ui.text("普通任务的模型配置。")],
       [ui.text("复杂任务模型"), s.ai?.complexModel || ui.text("待检测"), s.ai?.routing === "task-complexity" ? ui.text("复杂任务固定使用此模型。") : ui.message`复杂任务分流比例：${s.ai?.complexRoutePercent ?? 0}%。`],
@@ -2391,6 +2394,7 @@
       ]);
       if (!isCurrent() || courseId !== state.activeCourseId || conversationId !== state.activeConversationId) return;
       state.docs = docsData.documents || [];
+      state.storage = docsData.storage || null;
       state.messages = mergeStudyReply(messagesData.messages || [], activeStudyReply() || replyAtLoad);
       if (studyTasks) { await studyTasks.load({ userId: state.user.id, courseId, conversationId }); if (!isCurrent() || courseId !== state.activeCourseId || conversationId !== state.activeConversationId) return; state.messages = studyTasks.mergeMessages(state.messages); }
     } else {

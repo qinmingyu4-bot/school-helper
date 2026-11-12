@@ -590,3 +590,9 @@ Stripe. Signed Stripe-origin delivery and actual payment acceptance remain untes
 只有所有者授权部署时才更新 main；其他同步写入任务分支。发布后用 SSH
 fetch 获取远端提交并保持发布分支与远端历史一致。普通终端 git push 仍需
 额外的写入凭据；不要把仅可读取的 SSH 配置误认为具备写入权限。
+
+## Storage reliability preparation — 2026-11-12
+
+See [storage operations](storage-operations.md) for measured capacity, SQLite activation,
+complete backup verification, external snapshot approval and conservative cleanup.
+This preparation does not itself authorize a production deployment or enable paid snapshots.

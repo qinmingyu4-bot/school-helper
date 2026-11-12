@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased — Restore scope-based release numbering
+
+- Restore the owner's MAJOR/MINOR/PATCH rules from `dae7ddc`, which remained on
+  the old version-policy branch and never reached main. Important features must
+  increment MINOR; fixes/small optimizations increment PATCH; major redesigns or
+  architecture changes increment MAJOR. Mixed releases use the highest level.
+- Add a required release decision record and deployment guidance, document the
+  feature-as-PATCH drift through `1.2.31`, and clarify the limits of current
+  automated version checks and incomplete historical archive entries.
+- Enforce release decision records before automatic/manual deployment, rejecting
+  feature-as-PATCH decisions, stale baselines, wrong increments and mismatched
+  package/frontend versions. Add policy regression tests and a narrow governance
+  skip so this correction can reach main without deploying AWS.
+- Preserve published version numbers and current runtime `1.2.31`.
+
 ## 1.2.31 — 2026-11-12
 
 - Keep calculable recorded grades visible when another category is incomplete. Label partial contributions and category-only averages, and show specific missing rules with direct edit actions instead of a generic all-empty summary.

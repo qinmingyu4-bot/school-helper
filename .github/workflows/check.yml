@@ -21,6 +21,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - run: python3 -m unittest discover -s tests -p 'test_release_policy.py'
       - run: npm ci
       - run: npm run check
       - run: bash -n scripts/deploy-release.sh

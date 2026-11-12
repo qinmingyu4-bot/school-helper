@@ -2,11 +2,121 @@
 
 This file records stable StudyBridge versions so a broken update can be rolled back safely.
 
-## Policy
+## Version numbering policy
 
-- Every production update should bump `package.json` version.
-- Every production update should add one entry below with the version, date, purpose, and important GitHub commit IDs.
-- If a release breaks the live app, restore the files from the previous stable commit or re-run the previous deployment.
+Future production releases use `MAJOR.MINOR.PATCH` according to the owner's
+2026-10-28 instruction. Keep all already published release numbers unchanged, including `1.2.31`.
+Historical PATCH values were also used as release counters; do not repeat that
+practice for future releases. Always verify the latest production baseline.
+
+| Change scope | Increment | Example from 1.2.31 |
+| --- | --- | --- |
+| Bug fixes and small optimizations, including small layout or performance improvements | PATCH (last number) | `1.2.32` |
+| Important new functionality | MINOR (middle number), reset PATCH to zero | `1.3.0` |
+| Major product redesign or major architectural change | MAJOR (first number), reset MINOR and PATCH to zero | `2.0.0` |
+
+Choose the highest applicable level when a release combines several types of
+changes. Version numbers describe release scope, not the total number of
+releases or commits. Drafts, unreleased work and documentation-only updates do
+not require a product version bump or deployment.
+
+## Release checklist
+
+- Compare the complete release scope with the previous production version and
+  choose PATCH, MINOR or MAJOR using the table above. Record the classification
+  and reason in `CHANGELOG.md` and the stable-version entry below.
+- Before each production update, synchronize `package.json`, both root versions
+  in `package-lock.json`, the frontend version in `public/app.js`, and affected
+  frontend asset cache keys in `public/index.html`, `public/landing.html` and
+  any affected lazy loaders. Rebuild content-addressed assets through the existing
+  release process where applicable. Preserve historical archive
+  entries and unrelated cache identifiers.
+- Run the existing source/assets/version checks, relevant regression tests and
+  deployment checks. Check the chosen version against the previous production
+  version explicitly; matching version strings alone does not validate scope.
+- Record the version, date, purpose, validation, important GitHub commit IDs and
+  previous stable rollback target in the stable-version entry below.
+- If a release breaks the live app, restore the files from the previous stable
+  commit or re-run the previous deployment while retaining current user data.
+- Follow the existing deployment authorization and private backup requirements;
+  a version bump does not itself authorize deployment.
+
+## Version-policy audit — 2026-11-12
+
+- The original policy commit `dae7ddc` is on `codex/version-policy` but is not
+  an ancestor of main `2c361de` (`1.2.31`). Main still had the old generic
+  “bump every production update” policy; the intended scope rules were never
+  integrated there. This audit restores them without renumbering past releases.
+- Important features were shipped as PATCH increments, for example Grades in
+  `1.2.25`, course archiving in `1.2.29`, and grading-rule extraction from saved
+  course materials in `1.2.30`. These scopes call for MINOR under the agreed rule.
+  Fixes and small optimizations can legitimately continue with PATCH increments.
+- From `1.2.31`, the next important feature release is `1.3.0`; a fixes-only
+  release is `1.2.32`; a major redesign/architecture release is `2.0.0`.
+  These are conditional examples, not approval or a reservation of a release.
+- Review the whole difference from the latest production commit, including
+  previously unreleased features bundled with a fix. Use the highest applicable
+  level once per release, not once per feature or commit.
+- `npm run check` currently verifies package/lockfile agreement, not whether
+  a feature deserves MINOR or whether the frontend version matches. A passing
+  check does not replace the scope review or frontend/cache verification.
+- The stable-version entries below are incomplete (the newest recorded entry
+  before this audit is `1.2.19`). For later historical scopes consult
+  `CHANGELOG.md`, `docs/aws-deploy.md` and Git history; do not interpret the top
+  archive entry as the current production version or fabricate deployment checks.
+- Before the next authorized release, ensure this policy is integrated into its
+  source branch, and add a complete archive entry with classification, reason,
+  source commits, validation and rollback target. Documentation/governance-only pushes skip AWS through the enforced gate below.
+
+### Required release decision record
+
+Record these fields in the release changelog and archive entry before deployment:
+
+- Previous production version and exact commit (verify against the deployment).
+- Complete release scope, including features brought in by merges.
+- Classification: PATCH / MINOR / MAJOR, with a concrete reason.
+- Target version and synchronized package/frontend/cache references.
+- Validation results and previous stable code rollback target.
+
+## Enforced deployment gate
+
+The `release-policy` job in `.github/workflows/deploy.yml` runs before installation
+or access to deployment secrets. It requires `release-plan.json` for application
+releases, including manual dispatch. The file is intentionally absent until a
+release is prepared; missing or invalid records stop deployment.
+
+Example for the next important feature release (replace the example commit with
+its verified full production SHA):
+
+```json
+{
+  "previousCommit": "2c361deac25cff982f1b1493b73af69855343bea",
+  "previousVersion": "1.2.31",
+  "version": "1.3.0",
+  "level": "minor",
+  "reason": "Add a new user-facing course workflow",
+  "features": ["Describe the actual new workflow"]
+}
+```
+
+The gate verifies ancestry, baseline version against previous main on push,
+exact numeric increment, explicit feature classification, package/lock/frontend
+agreement and the presence of the target version in release documentation.
+Features require MINOR or MAJOR. Fix-only releases use an empty feature list.
+The record is a human scope decision: automation cannot infer product importance
+or verify that an omitted feature was truthfully disclosed. Review the complete
+release diff and affected asset cache keys as required above. Verify the actual
+production commit before filling the record; main alone is not deployment proof.
+
+Pushes changing only Markdown under `docs/`, root AGENTS/README/CHANGELOG, or the
+explicitly listed policy script/test/check/deploy workflows skip application
+checks and AWS deployment. Mixed changes containing application code must pass
+the release gate. This limited exception permits policy maintenance on main
+without publishing the product. Manual dispatch never uses the docs-only skip.
+Branch/PR checks run the policy regression tests; the main deployment gate is
+mandatory before either automatic or manual deployment through this workflow.
+An existing published commit can be manually redeployed only if it has a valid
+release record; older releases without this gate retain their historical workflow.
 
 ## Stable Versions
 

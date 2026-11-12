@@ -14,7 +14,30 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  release-policy:
+    runs-on: ubuntu-latest
+    outputs:
+      deploy: ${{ steps.policy.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: python3 -m unittest discover -s tests -p 'test_release_policy.py'
+      - name: Validate release classification
+        id: policy
+        env:
+          BEFORE: ${{ github.event.before }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            python3 scripts/check-release-policy.py --manual
+          else
+            python3 scripts/check-release-policy.py --base "$BEFORE"
+          fi
+
   check:
+    needs: release-policy
+    if: needs.release-policy.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,7 +52,8 @@ jobs:
       - run: npm audit --omit=dev --audit-level=high
 
   deploy:
-    needs: check
+    needs: [release-policy, check]
+    if: needs.release-policy.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to Lightsail

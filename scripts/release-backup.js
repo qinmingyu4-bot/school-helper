@@ -37,7 +37,7 @@ async function backupRelease({ root, directory, env, previousCommit, targetCommi
   await fs.mkdir(directory, { recursive: true, mode: 0o700 });
   await fs.chmod(directory, 0o700);
   const manifest = { format: 1, createdAt: new Date().toISOString(), previousCommit, targetCommit,
-    mode: env.STUDYBRIDGE_DB || "local", port: Number(env.PORT || 3000), files: [] };
+    mode: env.STUDYBRIDGE_DB || "local", storeFormat: env.LOCAL_STORE_FORMAT || "json", port: Number(env.PORT || 3000), files: [] };
   if (!Number.isInteger(manifest.port) || manifest.port < 1 || manifest.port > 65535) throw new Error("Invalid application port.");
   async function writeJson(name, value) {
     const bytes = Buffer.from(JSON.stringify(value));
@@ -57,7 +57,11 @@ async function backupRelease({ root, directory, env, previousCommit, targetCommi
 
   if (manifest.mode === "local") {
     const database = path.resolve(root, env.LOCAL_DB_FILE || ".data/studybridge.json");
-    const data = JSON.parse(await fs.readFile(database, "utf8"));
+    let data;
+    if (env.LOCAL_STORE_FORMAT === "sqlite") {
+      const store = new (require(path.join(root, "lib/sqlite-store")).SqliteStore)(database);
+      try { data = await store.load(); } finally { store.close(); }
+    } else data = JSON.parse(await fs.readFile(database, "utf8"));
     for (const key of ["users", "courses", "documents", "messages"]) {
       if (!data[key] || typeof data[key] !== "object" || Array.isArray(data[key])) throw new Error("Existing local database is not valid.");
     }
@@ -72,6 +76,20 @@ async function backupRelease({ root, directory, env, previousCommit, targetCommi
     if (hasCreative) {
       await fs.cp(creative, path.join(directory, "creative-files"), { recursive: true, errorOnExist: true, force: false });
       manifest.creativeFiles = true;
+      manifest.creativeManifest = [];
+      async function verifyCreative(original, saved) {
+        for (const entry of await fs.readdir(original, { withFileTypes: true })) {
+          if (entry.isSymbolicLink()) throw new Error("Unexpected symbolic link in creative files.");
+          const from = path.join(original, entry.name), to = path.join(saved, entry.name);
+          if (entry.isDirectory()) await verifyCreative(from, to);
+          else if (entry.isFile()) {
+            const bytes = await fs.readFile(from), copied = await fs.readFile(to);
+            if (!bytes.equals(copied)) throw new Error("Creative file backup verification failed.");
+            manifest.creativeManifest.push({ name: path.relative(directory, to), bytes: copied.length, sha256: hash(copied) });
+          }
+        }
+      }
+      await verifyCreative(creative, path.join(directory, "creative-files"));
     }
   } else if (manifest.mode === "dynamodb") {
     const store = dynamo || cloudStore(root, env);

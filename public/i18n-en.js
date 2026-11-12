@@ -1083,6 +1083,13 @@ Logo、界面色调与显示|Logo, colors and display
 课程资料与截止日期|Materials and deadlines
 学习空间|Study space
 隐私与数据|Privacy and data
+账号存储|Account storage
+下载原文件|Download original
+服务器可用空间|Available server storage
+存储空间偏低，请检查备份和文件占用。|Storage is low. Review backup and file usage.
+保留安全余量后才接受新文件。|New files require sufficient free space.
+用户文件 / 本地备份|User files / local backups
+硬链接只计算一次，用户文件优先。|Hard links counted once, user files first.
 资料可见性与偏好副本|Profile visibility and preference backup
 帮助与关于|Help and about
 使用说明与版本|Help and version

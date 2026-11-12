@@ -1642,13 +1642,18 @@ async function listLocalBackups() {
 async function purgeOldLocalBackups(backups) {
   await Promise.all(
     backups.slice(localBackupRetention).map(async (backup) => {
-      try { await fs.unlink(backup.filePath); await fs.rm(backup.filePath + ".materials", { recursive: true, force: true }); }
+      try { await fs.unlink(backup.filePath); await fs.rm(backup.filePath + ".materials", { recursive: true, force: true }); await fs.rm(backup.filePath + ".creative", { recursive: true, force: true }); await fs.unlink(backup.filePath + ".manifest").catch(() => {}); }
       catch { /* Retain private files when the matching backup cannot be removed. */ }
     })
   );
 }
 
-async function ensureLocalDatabaseBackup(reason = "auto") {
+let localBackupInFlight = null;
+function ensureLocalDatabaseBackup(reason = "auto") {
+  if (!localBackupInFlight) localBackupInFlight = createLocalDatabaseBackup(reason).finally(() => { localBackupInFlight = null; });
+  return localBackupInFlight;
+}
+async function createLocalDatabaseBackup(reason = "auto") {
   if (db.mode !== "local" || localBackupDisabled) return null;
   const source = localDatabaseFilePath();
   if (!fsSync.existsSync(source)) return null;
@@ -1659,16 +1664,7 @@ async function ensureLocalDatabaseBackup(reason = "auto") {
   const backupDir = localBackupDirectory();
   await fs.mkdir(backupDir, { recursive: true });
   const target = path.join(backupDir, backupFileName(reason));
-  try {
-    await db.local.write(async (state) => {
-      await fs.writeFile(target, JSON.stringify(state), { mode: 0o600, flag: "wx" });
-      await require("./lib/material-files").snapshot(source, state, target + ".materials");
-    }, { skipSave: () => true });
-  } catch (error) {
-    await fs.unlink(target).catch(() => {});
-    await fs.rm(target + ".materials", { recursive: true, force: true }).catch(() => {});
-    throw error;
-  }
+  await require("./lib/local-backup").snapshot(db, target);
   const stat = await fs.stat(target);
   const updated = [{ name: path.basename(target), filePath: target, mtimeMs: stat.mtimeMs, mtime: stat.mtime.toISOString(), bytes: stat.size }, ...backups];
   await purgeOldLocalBackups(updated);
@@ -1755,7 +1751,7 @@ async function databaseStatusClean() {
   const mode = db.mode || process.env.STUDYBRIDGE_DB || "local";
   try {
     const users = await db.listUsers();
-    const localFile = mode === "local" ? localDatabaseFilePath() : "";
+    const localFile = mode === "local" ? localDatabaseFilePath() + (db.local.format === "sqlite" ? ".sqlite" : "") : "";
     const localStat = localFile && fsSync.existsSync(localFile) ? fsSync.statSync(localFile) : null;
     return {
       mode,
@@ -2789,6 +2785,7 @@ async function routeApi(req, res) {
       },
       database: await databaseStatusClean(),
       backup: await localBackupStatusClean(),
+      storage: await require("./lib/storage").report(db),
       ai: { ...ai, lastRequest: lastAiRequest },
       google: {
         enabled: googleAuthEnabled(),
@@ -2881,6 +2878,12 @@ async function routeApi(req, res) {
     if (!appearance.isValid(body)) return sendError(res, 400, "Please choose an available logo, interface theme and display mode.");
     await db.setUserAppearance(user.id, appearance.normalize(body));
     return sendJson(res, 200, { appearance: appearance.normalize(body) });
+  }
+
+  if (url.pathname === "/api/me/storage" && method === "GET") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    return sendJson(res, 200, await require("./lib/storage").report(db, user.id), { "cache-control": "private, no-store" });
   }
 
   if (url.pathname === "/api/me/preferences" && method === "PUT") {
@@ -3378,8 +3381,21 @@ if (directMessageMatch && method === "POST") {
       return sendJson(res, 200, { ok: true });
     }
 
+    if (child === "originals" && childId && method === "GET") {
+      const document = (await db.listDocuments(user.id, courseId)).find(item => item.id === childId);
+      if (!document || !(document.originalFile || document.hasSourcePdf)) return sendError(res, 404, "Original file not available.");
+      const suffix = document.originalFile?.key || "PDF";
+      const original = await db.readMaterial(user.id, courseId, `DOCFILE#${childId}#${suffix}`);
+      if (!original) return sendError(res, 404, "Original file not available.");
+      const bytes = decodeBase64Data(original.dataUrl || original.base64);
+      res.writeHead(200, { "content-type": "application/octet-stream", "content-length": bytes.length,
+        "cache-control": "private, no-store", "x-content-type-options": "nosniff",
+        "content-security-policy": "default-src 'none'; sandbox",
+        "content-disposition": `attachment; filename*=UTF-8''${encodeURIComponent(document.originalFile?.name || original.name || document.title)}` });
+      return res.end(bytes);
+    }
     if (child === "documents" && method === "GET") {
-      return sendJson(res, 200, { documents: await db.listDocuments(user.id, courseId) });
+      return sendJson(res, 200, { documents: await db.listDocuments(user.id, courseId), storage: await require("./lib/storage").report(db, user.id) });
     }
     if (child === "documents" && method === "POST") {
       const body = normalizeUploadBody(await readJson(req, uploadLimits.courseRequestBytes));
@@ -3411,6 +3427,8 @@ if (directMessageMatch && method === "POST") {
       }
       const documentId = createId("doc");
       if (sourcePdf) await db.writeMaterial(user.id, courseId, `DOCFILE#${documentId}#PDF`, sourcePdf);
+      const originalFile = body.fileData ? { key: sourcePdf ? "PDF" : "ORIGINAL", name: cleanAttachmentName(body.fileName || title), size: decodeBase64Data(body.fileData).length } : null;
+      if (originalFile && !sourcePdf) await db.writeMaterial(user.id, courseId, `DOCFILE#${documentId}#ORIGINAL`, { name: originalFile.name, base64: decodeBase64Data(body.fileData).toString("base64") });
       let document;
       try { document = await db.createDocument({
         id: documentId,
@@ -3419,9 +3437,10 @@ if (directMessageMatch && method === "POST") {
         title,
         text,
         ...(sourcePdf ? { hasSourcePdf: true, sourcePages: sourcePdf.sourcePages || [] } : {}),
+        ...(originalFile ? { originalFile } : {}),
         type: uploadedFile ? uploadedDocumentType(body) : String(body.type || "Note").slice(0, 60)
       }); } catch (error) {
-        if (sourcePdf) await db.deleteMaterials(user.id, courseId, `DOCFILE#${documentId}#`).catch(() => {});
+        if (originalFile) await db.deleteMaterials(user.id, courseId, `DOCFILE#${documentId}#`).catch(() => {});
         throw error;
       }
       setImmediate(() => void studyIndex.prepare(user.id, courseId, { id: `doc:${document.id}`, name: document.title, text: document.text, sourcePages: document.sourcePages }).catch(() => {}));
@@ -3442,13 +3461,13 @@ if (directMessageMatch && method === "POST") {
       const document = await db.updateDocument(user.id, courseId, childId, {
         title,
         text,
-        ...(discardPdf ? { hasSourcePdf: false, sourcePages: [] } : {}),
+        ...(discardPdf ? { hasSourcePdf: false, sourcePages: [], originalFile: previous.originalFile || { key: "PDF", name: previous.title } } : {}),
         type: String(body.type || "Note").slice(0, 60)
       });
       if (!document) return sendError(res, 404, "Document not found.");
       studyIndex.invalidate(user.id, courseId);
       setImmediate(() => void studyIndex.prepare(user.id, courseId, { id: `doc:${document.id}`, name: document.title, text: document.text, sourcePages: document.sourcePages }).catch(() => {}));
-      if (discardPdf) await db.deleteMaterials(user.id, courseId, `DOCFILE#${childId}#`);
+
       return sendJson(res, 200, { document });
     }
     if (child === "documents" && childId && method === "DELETE") {
@@ -3583,6 +3602,36 @@ const server = http.createServer((req, res) => aiUsage.run(null, async () => {
 staticAssets.prepare().then(() => server.listen(port, () => {
   console.log(`StudyBridge cloud app running on http://localhost:${server.address().port}`);
   scheduleLocalDatabaseBackups();
+  if (!db.dynamo) {
+    let warned = false;
+    const checkStorage = async () => {
+      try {
+        const space = await require("./lib/storage").disk(path.dirname(localDatabaseFilePath()));
+        const low = space.availableBytes < Math.max(space.totalBytes * .2, space.reserveBytes * 2);
+        if (low && !warned) console.warn("STORAGE_LOW: inspect the authenticated administrator storage panel.");
+        if (!low && warned) console.info("STORAGE_RECOVERED");
+        warned = low;
+      } catch (error) { if (error.code !== "ENOENT") console.warn("STORAGE_CHECK_FAILED"); }
+    };
+    void checkStorage(); setInterval(checkStorage, 15 * 60 * 1000).unref();
+    if (process.env.STORAGE_MAINTENANCE_ENABLED === "true") {
+      let running = false;
+      const maintain = async () => {
+        if (running) return;
+        running = true;
+        try {
+          const maintenance = require("./lib/storage-maintenance");
+          const releaseRoot = process.env.STUDYBRIDGE_RELEASE_BACKUP_ROOT || path.join(os.homedir(), "studybridge-release-backups");
+          await maintenance.releaseRetention(releaseRoot, { apply: true });
+          const result = await maintenance.collectMaterials(db, { apply: true });
+          console.info(`STORAGE_MAINTENANCE_OK: ${result.files} unreferenced files removed.`);
+        } catch { console.warn("STORAGE_MAINTENANCE_FAILED: inspect backup verification before retrying."); }
+        finally { running = false; }
+      };
+      setTimeout(maintain, 5 * 60 * 1000).unref();
+      setInterval(maintain, 24 * 60 * 60 * 1000).unref();
+    }
+  }
   mailbox.start();
   schedulePush.start();
   studyJobs.start();
@@ -3600,6 +3649,8 @@ async function shutdown() {
   await studyJobs.stop();
   server.close();
   server.closeAllConnections();
+  await db.local.pending;
+  db.local.close?.();
   process.exit(0);
 }
 process.once("SIGTERM", () => void shutdown());

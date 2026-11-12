@@ -64,9 +64,16 @@ if (manifest.environmentSha256) {
   assert.equal(current, manifest.environmentSha256, 'Production configuration changed during deployment.');
 }
 if (manifest.mode === 'local') {
-  const current = JSON.parse(fs.readFileSync(manifest.databaseFile, 'utf8'));
+  let current;
+  if (manifest.storeFormat === 'sqlite') {
+    const { DatabaseSync } = require('node:sqlite');
+    const database = new DatabaseSync(manifest.databaseFile + '.sqlite', { readOnly: true });
+    current = {};
+    for (const row of database.prepare('SELECT * FROM records').all()) { current[row.collection] ||= {}; if (row.id) current[row.collection][row.id] = JSON.parse(row.value); }
+    database.close();
+  } else current = JSON.parse(fs.readFileSync(manifest.databaseFile, 'utf8'));
   const saved = JSON.parse(fs.readFileSync(path.join(backup, 'database.json'), 'utf8'));
-  assert.ok(JSON.stringify(current) === JSON.stringify(saved), 'Production data changed during code installation.');
+  assert.deepStrictEqual(current, saved, 'Production data changed during code installation.');
 }
 } catch {
   console.error('Production configuration/data verification failed. Private data is not included in this log.');

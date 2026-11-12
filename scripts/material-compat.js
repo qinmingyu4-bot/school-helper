@@ -26,7 +26,7 @@ if (require.main === module) {
   const [root, manifest] = process.argv.slice(2);
   (async () => {
     const saved = JSON.parse(await fs.readFile(manifest, "utf8"));
-    if (saved.mode === "local") await hydrate(path.resolve(root, saved.databaseFile));
+    if (saved.mode === "local" && saved.storeFormat !== "sqlite") await hydrate(path.resolve(root, saved.databaseFile));
   })().catch(() => { console.error("Private material compatibility conversion failed; do not start an older application."); process.exitCode = 1; });
 }
 module.exports = { hydrate };

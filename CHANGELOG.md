@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Storage reliability
+
+- Preserve and privately download original course uploads of all accepted formats, even after editing extracted notes; show account usage beside uploads.
+- Add configurable local account storage quotas, disk reserve protection, administrator capacity reporting and low-space log warnings.
+- Include authored files and checksum manifests in complete scheduled backups; verify release backups, provide isolated restore drills and conservative dry-run retention/orphan maintenance.
+- Add an explicit, verified JSON-to-SQLite migration, transactional changed-record writes, current-state export and deployment backup compatibility. Activation remains a separate offline maintenance step; existing data is never automatically migrated or deleted.
+
 ## 1.2.31 — 2026-11-12
 
 - Keep calculable recorded grades visible when another category is incomplete. Label partial contributions and category-only averages, and show specific missing rules with direct edit actions instead of a generic all-empty summary.

@@ -1046,7 +1046,12 @@ model and account AI allowance. Manual entry works without an AI key.
 
 Plans persist privately in the existing database per account/course. Concurrent
 edits are revision checked and stale edits are rejected. Incomplete plans and
-unsupported special rules suspend precise totals/forecasts. Blank scores remain
+unsupported special rules pause forecasts. Known recorded contributions remain
+visible even when an ungraded category lacks counts or a method. If recorded
+scores cannot all be weighted, contributions are explicitly partial and the
+remaining percentage waits for correction. The page lists category-specific
+missing details with direct edit actions; a single available category average
+is labeled as that category only, before special rules. Blank scores remain
 pending, and actual zeroes count as zero. Equal or total-points category weighting
 is supported; simulation never changes recorded grades. Account appearance and
 interface language apply to the module.
@@ -1060,7 +1065,9 @@ annotations for explicit grade lookup directions; it does not query other course
 or open external sites automatically. Citations include filenames, original PDF
 pages when known, and source quotes. Platform-only directions are shown as text
 without guessing a URL. Submission pages, grading percentages and unrelated links
-are not treated as grade lookup destinations. **Check again** refreshes changed
+are not treated as grade lookup destinations. Medical certificates and absence
+declarations are excluded from automatic links, including previously saved
+recognition results displayed by the current client. Manual URLs remain editable. **Check again** refreshes changed
 materials; deleting a material removes its discovered locations.
 
 Direct syllabus recognition includes destinations/directions in the editable rules.

@@ -450,3 +450,14 @@
 .gp-rule-evidence { padding-bottom:8px; }
 .gp-rule-evidence .gp-location-citation { margin-top:8px; }
 @media(max-width:510px) { .gp-rules-source-actions { width:100%; gap:8px 16px; } }
+
+/* Keep incomplete-rule guidance within the quiet grade workspace. */
+.gp-stat-value.is-pending { font-size:19px; letter-spacing:0; line-height:2.2; }
+.gp-stat-label { overflow-wrap:anywhere; }
+.gp-rule-notice p { margin:0; }
+.gp-rule-notice ul { list-style:none; padding:0; margin:8px 0 0; }
+.gp-rule-notice li { display:flex; align-items:baseline; justify-content:space-between; gap:8px 20px; padding:4px 0; }
+.gp-rule-notice li > span { min-width:0; overflow-wrap:anywhere; }
+.gp-rule-notice li strong { font-weight:500; }
+.gp-rule-notice button { flex-shrink:0; font-size:inherit; }
+@media(max-width:700px) { .gp-stat-value.is-pending { font-size:15px; } .gp-rule-notice li { flex-wrap:wrap; gap:0 12px; } }

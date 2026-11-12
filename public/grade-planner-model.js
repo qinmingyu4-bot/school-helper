@@ -24,29 +24,51 @@
   function categorySummary(category) {
     const active = category.items.filter((item) => item.status !== "excluded");
     const graded = active.filter(isGraded);
+    const issues = [];
+    const issue = (code, extra = {}) => issues.push({ code, categoryId: category.id, categoryName: category.name, ...extra });
+    if (!finite(category.weight) || category.weight < 0 || category.weight > 100) issue("weight");
+    if (!Number.isInteger(category.plannedCount) || category.plannedCount < 1) issue("count");
+    else if (category.plannedCount !== category.items.length) issue("countMismatch", { expected: category.plannedCount, actual: category.items.length });
+    else if (!active.length) issue("empty");
+    if (!["equal", "points"].includes(category.method)) issue("method");
+    if (category.method === "points") {
+      const missing = active.filter(item => !finite(item.max) || item.max <= 0);
+      if (missing.length) issue("max", { count: missing.length, itemId: missing[0].id, itemName: missing[0].name });
+    }
+    if (String(category.specialRule || "").trim()) issue("special", { rule: category.specialRule });
     const known = Number.isInteger(category.plannedCount) && category.plannedCount === category.items.length && active.length > 0
-      && finite(category.weight) && category.weight >= 0 && !String(category.specialRule || "").trim()
+      && finite(category.weight) && category.weight >= 0 && category.weight <= 100 && !String(category.specialRule || "").trim()
       && ["equal", "points"].includes(category.method)
       && (category.method === "equal" || active.every((item) => finite(item.max) && item.max > 0));
     const maximum = active.reduce((sum, item) => sum + (finite(item.max) ? item.max : 0), 0);
     const weights = new Map(active.map((item) => [item.id, known ? category.weight * (category.method === "points" ? item.max / maximum : 1 / active.length) : null]));
-    const average = !graded.length || category.method === "unknown" ? null : category.method === "points"
+    const average = !graded.length || !["equal", "points"].includes(category.method) ? null : category.method === "points"
       ? graded.reduce((sum, item) => sum + item.score, 0) / graded.reduce((sum, item) => sum + item.max, 0) * 100
       : graded.reduce((sum, item) => sum + item.score / item.max * 100, 0) / graded.length;
     const gradedWeight = known ? graded.reduce((sum, item) => sum + weights.get(item.id), 0) : null;
     const earned = known ? graded.reduce((sum, item) => sum + item.score / item.max * weights.get(item.id), 0) : null;
-    return { known, average, gradedWeight, earned, weights, graded: graded.length, active: active.length };
+    return { known, issues, average, gradedWeight, earned, weights, graded: graded.length, active: active.length };
   }
 
   function summarize(course) {
     const categories = course.categories.map((category) => ({ category, ...categorySummary(category) }));
-    const totalWeight = round(course.categories.reduce((sum, category) => sum + category.weight, 0));
-    const known = categories.length > 0 && Math.abs(totalWeight - 100) < .000001 && categories.every((item) => item.known);
-    if (!known) return { known: false, categories, totalWeight, average: null, earned: null, gradedWeight: null, remaining: null, pending: [] };
-    const earned = round(categories.reduce((sum, item) => sum + item.earned, 0));
-    const gradedWeight = round(categories.reduce((sum, item) => sum + item.gradedWeight, 0));
-    const pending = categories.flatMap(({ category, weights }) => category.items.filter((item) => item.status !== "excluded" && !isGraded(item)).map((item) => ({ ...item, categoryId: category.id, categoryName: category.name, weight: weights.get(item.id) })));
-    return { known, categories, totalWeight, earned, gradedWeight, remaining: round(100 - gradedWeight), average: gradedWeight > 0 ? earned / gradedWeight * 100 : null, pending };
+    const validWeights = categories.length > 0 && categories.every(({ category }) => finite(category.weight) && category.weight >= 0 && category.weight <= 100);
+    const totalWeight = validWeights ? round(categories.reduce((sum, { category }) => sum + category.weight, 0)) : null;
+    const balanced = validWeights && Math.abs(totalWeight - 100) < .000001;
+    const known = balanced && categories.every(item => item.known);
+    // Unknown future assessment counts do not change already earned contributions.
+    // Unknown rules for recorded scores still prevent a complete course total.
+    const totalsKnown = balanced && categories.every(item => item.known || !item.graded && !String(item.category.specialRule || "").trim());
+    const resolved = balanced ? categories.filter(item => item.known) : [];
+    const gradedWeight = round(resolved.reduce((sum, item) => sum + item.gradedWeight, 0));
+    const earned = totalsKnown || resolved.some(item => item.graded) ? round(resolved.reduce((sum, item) => sum + item.earned, 0)) : null;
+    const issues = categories.flatMap(item => item.issues);
+    if (validWeights && !balanced) issues.unshift({ code: "total", totalWeight });
+    const pending = categories.filter(item => item.known).flatMap(({ category, weights }) => category.items.filter(item => item.status !== "excluded" && !isGraded(item)).map(item => ({ ...item, categoryId: category.id, categoryName: category.name, weight: weights.get(item.id) })));
+    return { known, totalsKnown, issues, categories, totalWeight, earned, gradedWeight,
+      recorded: categories.reduce((sum, item) => sum + item.graded, 0),
+      remaining: totalsKnown ? round(100 - gradedWeight) : null,
+      average: totalsKnown && gradedWeight > 0 ? earned / gradedWeight * 100 : null, pending };
   }
 
   function forecast(course, assumptions = {}, focus = "all", score = 80) {

@@ -78,3 +78,17 @@ test("original PDF URI annotations are found even when the visible text only say
   assert.equal(first.locations[0].page,2); assert.deepEqual(second,first); assert.equal(reads,1);
   present=false; assert.equal((await service.locations("alice","course")).locations.length,0);
 });
+
+
+test("medical and absence links are rejected in discovery, AI output and legacy display", () => {
+  const medical = { url: "http://www.illnessverification.utoronto.ca", quote: "Quiz grades are available here. For information on Absence Declaration Tool for A&S https://www.artsci.utoronto.ca", origin: "syllabus" };
+  assert.equal(L.isGradeLocation(medical), false);
+  assert.equal(L.isGradeLocation({ ...medical, url: "https://www.artsci.utoronto.ca" }), false);
+  assert.equal(L.isGradeLocation({ ...medical, origin: "manual" }), true);
+  assert.equal(L.isGradeLocation({ url: "https://www.example.edu", quote: "Course information", origin: "syllabus" }), false);
+  const source = { title: "Syllabus", text: "Quiz grades can be viewed at https://canvas.example.edu/grades; medical certificates use http://www.illnessverification.utoronto.ca. For information on Absence Declaration see https://www.artsci.utoronto.ca.",
+    links: [medical, { url: "https://www.artsci.utoronto.ca", context: medical.quote }] };
+  assert.deepEqual(L.discover([source]).filter(link => link.url).map(link => link.url), ["https://canvas.example.edu/grades"]);
+  const parsed = parseRecognition("syllabus", JSON.stringify({ categories: [{ name: "Quiz", weight: 100, gradeLinks: [medical] }] }));
+  assert.deepEqual(parsed.categories[0].gradeLinks, []);
+});

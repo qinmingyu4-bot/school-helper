@@ -33,9 +33,13 @@
       page: Number.isInteger(link.page) && link.page > 0 && link.page <= 100000 ? link.page : null, origin: origin === "manual" ? "manual" : "syllabus" };
   }
   function purpose(context, url = "") {
+    // Administrative destinations must never inherit nearby gradebook wording.
+    if (/illnessverification|absence[-_/]?(?:declaration|request)|(?:medical|illness)[-_/]?(?:certificate|verification)|accommodations?/i.test(url)) return false;
+    context = String(context || "");
+    if (/\b(?:absence declaration|verification of illness|medical certificate|request (?:an? )?(?:extension|accommodation)|illness verification)\b|请假|病假证明|缺勤申报|延期申请/i.test(context)) return false;
     if (/\b(?:no longer|do not|don't|never|not available)\b|不再|不要|并非|不能在/.test(context.toLowerCase())) return false;
     const grade = /\b(?:grades?|scores?|marks?|gradebook)\b|成绩|分数|得分/i.test(context) || /\bresults?\b/i.test(context) && names(context).length > 0;
-    const view = /\b(?:posted|published|released|available|view(?:ed|ing)?|check(?:ed|ing)?|find|found|access(?:ed)?|see|review(?:ed)?|returned|recorded|gradebook)\b|查询|查看|公布|发布|查阅|成绩簿|可以.*找到/i.test(context);
+    const view = /\b(?:posted|published|released|available|view(?:ed|ing)?|check(?:ed|ing)?|find|found|access(?:ed)?|see|here|review(?:ed)?|returned|recorded|gradebook)\b|查询|查看|公布|发布|查阅|成绩簿|可以.*找到/i.test(context);
     const gradePath = /\/(?:gradebook|grades|scores|results)(?:[/?#]|$)/i.test(url);
     const label = /\b(?:grades?|scores?|marks?|results?)\s*(?:[:：→]|link\b)|(?:成绩|分数)(?:查询)?[：:链接]/i.test(context) && !/\d(?:[.,]\d+)?\s*%/.test(context);
     return grade && (view || label) || gradePath;
@@ -62,7 +66,7 @@
         const from = text.lastIndexOf("\n", match.index) + 1, next = text.indexOf("\n",match.index), to = next < 0 ? text.length : next;
         const line=text.slice(from,to), position=match.index-from;
         let sentenceStart=0,sentenceEnd=line.length;
-        for(const boundary of line.matchAll(/[.!?。！？](?:\s+|$)/g)) {
+        for(const boundary of line.matchAll(/[.!?。！？;；](?:\s+|$)/g)) {
           if(boundary.index<position) sentenceStart=boundary.index+boundary[0].length;
           else {sentenceEnd=boundary.index+1;break;}
         }
@@ -100,5 +104,8 @@
       seen.add(key); return true;
     }).sort((a,b) => Number(a.general)-Number(b.general));
   }
-  return { safeUrl, normalizeLink, normalizeDirection, discover, forCategory };
+  function isGradeLocation(link) {
+    return link?.origin === "manual" || purpose(link?.quote || link?.label || "", link?.url || "");
+  }
+  return { safeUrl, normalizeLink, normalizeDirection, discover, forCategory, isGradeLocation };
 });

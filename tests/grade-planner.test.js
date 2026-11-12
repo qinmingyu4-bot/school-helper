@@ -120,7 +120,9 @@ test("recognition retains missing values instead of manufacturing grades or plan
   assert.equal(result.rows[1].score, 0);
   const rules = recognition.parseRecognition("syllabus", JSON.stringify({ categories: [{ name: "Homework", weight: 20, method: "unknown", plannedCount: null, items: [], evidence: "Homework 20%" }] }));
   assert.equal(rules.categories[0].plannedCount, null);
-  assert.ok(rules.categories[0].specialRule);
+  assert.equal(rules.categories[0].method, "unknown");
+  assert.equal(rules.categories[0].specialRule, "");
+  assert.equal(G.categorySummary(rules.categories[0]).known, false);
   assert.throws(() => recognition.parseRecognition("grades", "not JSON"));
 });
 test("upload validation checks actual bytes and keeps source input separate from instructions", () => {

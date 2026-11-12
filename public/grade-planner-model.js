@@ -6,6 +6,20 @@
   const finite = (value) => typeof value === "number" && Number.isFinite(value);
   const isGraded = (item) => item.status === "graded" && finite(item.score) && finite(item.max) && item.max > 0 && item.score >= 0 && item.score <= item.max;
   const round = (value) => Math.round((value + Number.EPSILON) * 1e8) / 1e8;
+  const normalizeName = (value) => String(value).normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+
+  function completeItems(category, createId) {
+    const items = [...category.items];
+    const names = new Set(items.map(item => normalizeName(item.name)));
+    let number = items.length + 1;
+    while (items.length < category.plannedCount) {
+      let name = `${category.name} ${number++}`;
+      while (names.has(normalizeName(name))) name = `${category.name} ${number++}`;
+      names.add(normalizeName(name));
+      items.push({ id: createId(), name, score: null, max: null, status: "pending" });
+    }
+    return items;
+  }
 
   function categorySummary(category) {
     const active = category.items.filter((item) => item.status !== "excluded");
@@ -16,7 +30,7 @@
       && (category.method === "equal" || active.every((item) => finite(item.max) && item.max > 0));
     const maximum = active.reduce((sum, item) => sum + (finite(item.max) ? item.max : 0), 0);
     const weights = new Map(active.map((item) => [item.id, known ? category.weight * (category.method === "points" ? item.max / maximum : 1 / active.length) : null]));
-    const average = !graded.length ? null : category.method === "points"
+    const average = !graded.length || category.method === "unknown" ? null : category.method === "points"
       ? graded.reduce((sum, item) => sum + item.score, 0) / graded.reduce((sum, item) => sum + item.max, 0) * 100
       : graded.reduce((sum, item) => sum + item.score / item.max * 100, 0) / graded.length;
     const gradedWeight = known ? graded.reduce((sum, item) => sum + weights.get(item.id), 0) : null;
@@ -87,5 +101,5 @@
     return copy;
   }
 
-  return { isGraded, categorySummary, summarize, forecast, required, linkedForecast, validateGrade, applyReviews };
+  return { isGraded, categorySummary, summarize, forecast, required, linkedForecast, validateGrade, applyReviews, normalizeName, completeItems };
 });

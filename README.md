@@ -1034,11 +1034,13 @@ documents the failed-login policy, trusted proxy boundary and multi-instance lim
 The student menu includes **Grades** (`/app?page=grades`). Existing courses start
 with empty grading rules. Choose **Use course materials** in the empty state or
 **Grading rules** to reuse uploaded syllabus/course files, or set rules manually
-and upload a PDF/TXT/image syllabus. Review extracted weights, assessment counts,
-special rules and grade lookup locations before saving.
+and upload a PDF/TXT/image syllabus. In Grades, a new plan saves automatically
+when the extracted weights are supported by readable source quotes, total 100%,
+and have no special rules or conflicts. Edit saved rules at any time. Existing
+plans, unverified weights and special rules open for review. Missing counts or
+within-category methods can be filled in later; forecasts wait for those details.
 Record each assessment manually or upload a PNG/JPG/WebP screenshot (up to 8 MB),
-check scores/maxima and match destinations, then confirm. AI reads never save
-records automatically. Uploads are sent only after starting recognition and are
+check scores/maxima and match destinations, then confirm. Uploads are sent only after starting recognition and are
 not stored in the grade plan. Recognition uses the existing configured complex
 model and account AI allowance. Manual entry works without an AI key.
 
@@ -1061,8 +1063,8 @@ without guessing a URL. Submission pages, grading percentages and unrelated link
 are not treated as grade lookup destinations. **Check again** refreshes changed
 materials; deleting a material removes its discovered locations.
 
-Direct syllabus recognition includes destinations/directions in the editable rules
-review, saved only on confirmation. An optional manual HTTP(S) URL can be added in
+Direct syllabus recognition includes destinations/directions in the editable rules.
+An optional manual HTTP(S) URL can be added in
 a category's additional rules. Recognition from text-readable files checks proposed
 destinations against the actual supplied source. Images/scans still require the
 user's review of extracted addresses. Scanned course materials without readable
@@ -1071,12 +1073,11 @@ text/links may not yield a location. Querying grade locations does not change re
 Saved-material extraction lists only the selected account/course's non-schedule
 documents and suggests syllabus/grading/lookup files (up to 8 per extraction).
 It sends saved readable text, or retained PDF originals when text is unavailable,
-only after **Extract and review**. Long documents use selected grading passages
+only after **Extract grading rules**. Long documents use selected grading passages
 and disclose that limit. The draft includes grounded source quotes and PDF pages
 when available; scanned originals require checking the quoted evidence against
-the file. Extraction and cancellation never write a grade plan. Confirmation
-retains existing assessment records, saves reviewed rules/lookup locations, and
-rejects changed/deleted sources or stale grade plans. AWS database transactions
+the file. Both automatic and reviewed saves reject changed/deleted sources or
+stale grade plans. Reviewed updates retain existing assessment records. AWS database transactions
 also guard document and large-text material revisions. Unsupported files remain
 visible with extraction disabled; manual setup stays available without AI.
 

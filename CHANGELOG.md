@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — Grading rules
+
+- Save clear, source-verified syllabus weights automatically when setting up a course through Grades. Users can edit the rules afterward. Unclear or special rules and changes to an existing plan open for review.
+- Leave unspecified counts or weighting methods open for the user to complete without guessing course totals.
+
 ## Unreleased — Image model migration
 
 - Move image generation and editing to GPT Image 2.6 Sunburst by default. Existing configurations that still name GPT Image 2 or its April 2026 snapshot also use Sunburst, ahead of their February 10, 2027 shutdown.

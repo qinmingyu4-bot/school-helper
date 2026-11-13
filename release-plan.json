@@ -1,8 +1,13 @@
 {
-  "previousCommit": "2c361deac25cff982f1b1493b73af69855343bea",
-  "previousVersion": "1.2.31",
-  "version": "1.2.32",
-  "level": "patch",
-  "reason": "Fix the existing syllabus automatic-save behavior by removing unnecessary repeat review for clear existing-course rules, preserving user records and reviewing actual ambiguity or conflicts. No new product feature is introduced.",
-  "features": []
+  "previousCommit": "3f4520b38dfbaf0e8729529026cbbdca650a11fb",
+  "previousVersion": "1.2.32",
+  "version": "1.3.0",
+  "level": "minor",
+  "reason": "Add first-study guidance, mistake and exam aware review planning, confirmed email calendar changes and durable device drafts while retaining the latest native grades and password-reset implementations.",
+  "features": [
+    "First-study course and material guidance",
+    "Review priorities and available-time suggestions",
+    "Explicit email reschedule and cancellation confirmation",
+    "Durable device drafts for unfinished work"
+  ]
 }

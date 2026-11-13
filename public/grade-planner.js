@@ -117,8 +117,24 @@
     toastTimer = setTimeout(() => { el.hidden = true; }, 4200);
   }
   const dirty = new Map();
+  let deviceStorage;
+  try { deviceStorage = localStorage; } catch { /* Saving to the account remains available. */ }
+  const deviceDrafts = window.StudyBridgeDrafts?.create(deviceStorage);
+  const draftOwner = bootstrap.userId || host.dataset.userId;
+  const draftWriter = id();
+  const recoveredDrafts = new Map(courses.map(c => [c.id, deviceDrafts?.read(draftOwner, `grades:${c.id}`)]).filter(([, d]) => d?.plan && Array.isArray(d.plan.categories)));
+  function keepDraft(courseId, plan) {
+    const current = courses.find(c => c.id === courseId);
+    state.localDraftError = !deviceDrafts?.write(draftOwner, `grades:${courseId}`, { version:current.version, plan, writer:draftWriter });
+  }
+  function draftNotice() {
+    const saved = recoveredDrafts.get(state.courseId);
+    if (!saved) return "";
+    const current = saved.version === course().version;
+    return `<aside class="gp-notice" role="status"><p>${current ? t("发现尚未同步的本机成绩草稿，可恢复后继续保存。", "Unsynced grade changes are available on this device. Restore them to continue.") : t("账号成绩已有更新。本机草稿保留供下载核对，不会覆盖新成绩。", "Account grades have changed. Download your device draft to compare; newer grades will be preserved.")}</p><div class="gp-actions">${current ? `<button data-action="restore-draft">${t("恢复本机草稿", "Restore device draft")}</button>` : ""}<button data-action="download-draft">${t("下载草稿", "Download draft")}</button><button class="gp-text" data-action="discard-draft">${t("丢弃本机草稿", "Discard device draft")}</button></div></aside>`;
+  }
   let pending = null;
-  const saveText = () => state.saveError ? t("尚未保存，请重试", "Unsaved changes — retry") : pending || dirty.size ? t("正在保存…", "Saving…") : t("已保存到账号", "Saved to your account");
+  const saveText = () => state.saveError ? (state.localDraftError ? t("尚未保存，本机草稿也未保存，请保留页面", "Unsaved; device backup unavailable. Keep this page open") : t("尚未同步，已保留本机草稿，请重试", "Unsynced; device draft saved — retry")) : pending || dirty.size ? t("正在保存…", "Saving…") : t("已保存到账号", "Saved to your account");
   function updateSaveStatus() {
     root.querySelectorAll("[data-save-status]").forEach((el) => { el.textContent = saveText(); });
     root.querySelectorAll('[data-action="retry-save"]').forEach((el) => { el.hidden = !state.saveError; });
@@ -126,6 +142,7 @@
   function persist({sourceReview} = {}) {
     const c = course();
     dirty.set(c.id, { categories:clone(c.categories), source:c.source, ruleSources:clone(c.ruleSources || []), ...(sourceReview ? {sourceReview:clone(sourceReview)} : {}) });
+    keepDraft(c.id, dirty.get(c.id));
     if (pending) return pending;
     if (state.conflict) { toast(state.conflict); return Promise.resolve(false); }
     state.saveError = false;
@@ -140,7 +157,10 @@
           throw new Error(result.error || t("保存失败，请重试。", "Could not save. Please retry."));
         }
         current.version = result.plan.version;
-        if (dirty.get(courseId) === value) dirty.delete(courseId);
+        if (dirty.get(courseId) === value) {
+          dirty.delete(courseId);
+          if (deviceDrafts?.read(draftOwner, `grades:${courseId}`)?.writer === draftWriter) deviceDrafts.remove(draftOwner, `grades:${courseId}`);
+        } else keepDraft(courseId, dirty.get(courseId));
       }
       return true;
     }).catch((error) => { state.saveError = true; toast(error.message || t("保存失败，请检查网络后重试。", "Could not save. Check your connection and retry.")); return false; })
@@ -264,7 +284,7 @@
   function render() {
     const c = course();
     const summary = G.summarize(c);
-    root.innerHTML = `<div class="gp-shell"><main class="gp-main"><header class="gp-page-header"><div><p class="gp-eyebrow">GRADE PLANNER</p><h1>${t("成绩规划", "Grade planner")}</h1></div><span class="gp-preview-label">${t("按课程记录，随时规划", "Track your course, plan ahead")}</span></header><div class="gp-content"><div class="gp-course-bar"><div><div class="gp-course-title">${coursePicker()}</div><p class="gp-course-description">${esc(c.name)} · ${esc(c.term)}</p></div><div class="gp-actions"><button data-action="rules">${icon("file")}${t("评分规则", "Grading rules")}</button><button class="gp-primary" data-action="screenshot" ${!c.categories.length ? "disabled" : ""}>${icon("upload")}${t("上传成绩截图", "Upload grade screenshot")}</button></div></div>${!c.categories.length ? `<div class="gp-empty">${icon("file")}<h2>${t("先认识这门课的评分方式", "Start with the grading breakdown")}</h2><p>${t("从已上传的 syllabus 和课程资料中提取，清晰的评分占比直接生效，之后可以修改。", "Extract from your saved syllabus and course materials. Clear grading weights take effect automatically and remain editable.")}</p><div class="gp-actions"><button class="gp-primary" data-action="course-materials">${t("从课程资料提取", "Use course materials")}</button><button data-action="syllabus">${t("上传 syllabus", "Upload syllabus")}</button><button class="gp-text" data-action="rules">${t("手动设置", "Set up manually")}</button></div></div>` : `<div id="grade-stats" class="gp-stat-strip" aria-live="polite">${stats(summary)}</div><div class="gp-weight-track" role="img" aria-label="${t("各类别占总评比例", "Category weights")}">${c.categories.map((category) => `<span style="flex:${category.weight}"></span>`).join("")}</div><div class="gp-weight-labels">${c.categories.map((category) => `<span>${esc(category.name)} ${fmt(category.weight, 0)}%</span>`).join("")}</div><div id="grade-rule-notice">${ruleNotice(summary)}</div><div class="gp-tabs" role="tablist" aria-label="${t("成绩视图", "Grade views")}"><button class="gp-tab" role="tab" id="records-tab" aria-controls="grade-panel" aria-selected="${state.tab === "records"}" data-tab="records">${t("成绩记录", "Grade records")}</button><button class="gp-tab" role="tab" id="prediction-tab" aria-controls="grade-panel" aria-selected="${state.tab === "prediction"}" data-tab="prediction">${t("目标预测", "What-if planner")}</button></div><section id="grade-panel" role="tabpanel" aria-labelledby="${state.tab === "records" ? "records-tab" : "prediction-tab"}">${state.tab === "records" ? records(summary) : prediction(summary)}</section>`}</div></main></div>`;
+    root.innerHTML = `<div class="gp-shell"><main class="gp-main"><header class="gp-page-header"><div><p class="gp-eyebrow">GRADE PLANNER</p><h1>${t("成绩规划", "Grade planner")}</h1></div><span class="gp-preview-label">${t("按课程记录，随时规划", "Track your course, plan ahead")}</span></header><div class="gp-content"><div class="gp-course-bar"><div><div class="gp-course-title">${coursePicker()}</div><p class="gp-course-description">${esc(c.name)} · ${esc(c.term)}</p></div><div class="gp-actions"><button data-action="rules">${icon("file")}${t("评分规则", "Grading rules")}</button><button class="gp-primary" data-action="screenshot" ${!c.categories.length ? "disabled" : ""}>${icon("upload")}${t("上传成绩截图", "Upload grade screenshot")}</button></div></div>${draftNotice()}${!c.categories.length ? `<div class="gp-empty">${icon("file")}<h2>${t("先认识这门课的评分方式", "Start with the grading breakdown")}</h2><p>${t("从已上传的 syllabus 和课程资料中提取，清晰的评分占比直接生效，之后可以修改。", "Extract from your saved syllabus and course materials. Clear grading weights take effect automatically and remain editable.")}</p><div class="gp-actions"><button class="gp-primary" data-action="course-materials">${t("从课程资料提取", "Use course materials")}</button><button data-action="syllabus">${t("上传 syllabus", "Upload syllabus")}</button><button class="gp-text" data-action="rules">${t("手动设置", "Set up manually")}</button></div></div>` : `<div id="grade-stats" class="gp-stat-strip" aria-live="polite">${stats(summary)}</div><div class="gp-weight-track" role="img" aria-label="${t("各类别占总评比例", "Category weights")}">${c.categories.map((category) => `<span style="flex:${category.weight}"></span>`).join("")}</div><div class="gp-weight-labels">${c.categories.map((category) => `<span>${esc(category.name)} ${fmt(category.weight, 0)}%</span>`).join("")}</div><div id="grade-rule-notice">${ruleNotice(summary)}</div><div class="gp-tabs" role="tablist" aria-label="${t("成绩视图", "Grade views")}"><button class="gp-tab" role="tab" id="records-tab" aria-controls="grade-panel" aria-selected="${state.tab === "records"}" data-tab="records">${t("成绩记录", "Grade records")}</button><button class="gp-tab" role="tab" id="prediction-tab" aria-controls="grade-panel" aria-selected="${state.tab === "prediction"}" data-tab="prediction">${t("目标预测", "What-if planner")}</button></div><section id="grade-panel" role="tabpanel" aria-labelledby="${state.tab === "records" ? "records-tab" : "prediction-tab"}">${state.tab === "records" ? records(summary) : prediction(summary)}</section>`}</div></main></div>`;
     projection(); updateSaveStatus();
   }
   function refreshRecords(row) {
@@ -323,6 +343,20 @@
     }
     if (button.dataset.action === "refresh-locations") return void loadLocations(state.courseId,true);
     if (button.dataset.action === "location-source") return openDialog({kind:"locations",categoryId:button.dataset.locationCategory,error:""});
+    if (button.dataset.action === "restore-draft") {
+      const saved = recoveredDrafts.get(state.courseId);
+      if (!saved || saved.version !== course().version) return;
+      Object.assign(course(), { categories:clone(saved.plan.categories), source:saved.plan.source || "", ruleSources:clone(saved.plan.ruleSources || []) }); recoveredDrafts.delete(state.courseId);
+      render(); return void persist(saved.plan.sourceReview ? {sourceReview:saved.plan.sourceReview} : {});
+    }
+    if (button.dataset.action === "download-draft") {
+      const saved = recoveredDrafts.get(state.courseId); if (!saved) return;
+      const url = URL.createObjectURL(new Blob([JSON.stringify(saved.plan, null, 2)], {type:"application/json"}));
+      const link = document.createElement("a"); link.href = url; link.download = "studybridge-grade-draft.json"; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); return;
+    }
+    if (button.dataset.action === "discard-draft") {
+      deviceDrafts?.remove(draftOwner, `grades:${state.courseId}`); recoveredDrafts.delete(state.courseId); render(); return;
+    }
     if (button.dataset.action === "retry-save") return void persist();
     if (button.dataset.action === "course-materials") return void openMaterials();
     if (button.dataset.action === "repair-rule") {

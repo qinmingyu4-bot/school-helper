@@ -48,6 +48,10 @@ test("learning-loop HTTP keeps sources, answers, preferences and calendar links 
   const confirmed = await request(route + "/topics", "POST", { action: "confirm", version: draft.data.learning.version, draftId: draft.data.learning.draft.id, topics: draft.data.learning.draft.topics });
   assert.equal(confirmed.status, 200);
   const topicId = confirmed.data.learning.topics[0].id;
+  const recommendations = await request(route + "/recommendations", "POST", { topicId, timeZone: "UTC", from: "09:00", to: "20:00", minutes: 30 });
+  assert.equal(recommendations.status, 200);
+  assert.ok(Array.isArray(recommendations.data.slots));
+  assert.equal((await request(route + "/recommendations", "POST", { topicId }, bob)).status, 404);
   const generated = await request(route + "/quiz", "POST", { topicId, requestId: "private-practice" });
   assert.equal(generated.status, 200);
   const quiz = generated.data.quiz;

@@ -136,8 +136,10 @@ is accepted. AI sees sender, subject, receipt time and a bounded body, not other
 mailboxes or StudyBridge course documents. Relative dates use the mail's receipt
 time and the mailbox's saved browser time zone. Summaries, evidence and draft
 fields persist; raw full bodies are not persisted. Relevant notices without an
-event remain readable cards. Cancellation messages do not create an event;
-rescheduling suggestions require reviewing the existing calendar manually.
+event remain readable cards. Cancellation and rescheduling messages produce unchecked change suggestions.
+Students select the existing event, compare its original time with the mail evidence,
+and explicitly confirm. Target version checks and an atomic draft/calendar commit
+prevent stale edits and repeated changes. See [course workflow completion](product-completion.md).
 
 Inbox cards allow selecting suggested items and editing title, kind, course,
 date/time, end time, time zone and location. Missing times are never filled with a

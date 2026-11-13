@@ -89,6 +89,44 @@ AI 请求缺少所属账号。|The AI request has no account associated with it.
 
 制作功能范围|Creation capabilities
 StudyBridge 不支持任何形式的视频制作。|StudyBridge does not support video production in any form.
+已确认日程变更|Calendar changes confirmed
+有本机草稿，展开继续核对|Local draft available. Expand to continue reviewing.
+找回密码|Reset your password
+验证邮箱后设置新密码，其他设备上的旧登录将失效。|Verify your email and set a new password. Previous sessions on other devices will expire.
+新密码|New password
+重置密码|Reset password
+返回登录|Back to sign in
+无法收取邮件？申请人工协助|Cannot receive email? Request help
+如果邮箱已注册，验证码将发送到该邮箱，请检查收件箱或垃圾邮件。|If this email is registered, a code will be sent. Check your inbox and spam folder.
+密码已重置，请使用新密码登录。|Password reset. Sign in with your new password.
+成绩规划|Grade planner
+从一份课程资料开始|Start with your course material
+开始课程学习|Start studying a course
+建立课程|Create a course
+上传一份讲义或课程大纲|Upload lecture notes or a syllabus
+开始一个问题或练习|Start a question or practice session
+本机草稿保存失败，请保留页面。|Local draft could not be saved. Keep this page open.
+草稿仅保存在本机，确认后才加入账号日程。|Draft saved on this device only. Confirm to add it to your account calendar.
+未提交选项仅保存在本机，提交后同步练习记录。|Unsubmitted choices stay on this device. Submit to sync practice results.
+建议优先复习|Suggested review priorities
+安排复习|Schedule review
+反复答错，优先复习|Repeated mistakes: prioritize review
+上次练习需要巩固|Consolidate the last practice session
+近期有考试，建议检查理解|Upcoming exam: check your understanding
+已到建议复习时间|Suggested review is due
+按学习节奏复习|Review at your own pace
+考试|Exam
+已有复习安排|Review already scheduled
+可用时段开始|Available from
+可用时段结束|Available until
+查找空闲时间|Find available times
+这个主题已有待完成的复习安排，请先查看日程。|This topic already has a pending review. Check your calendar.
+可用时段内暂无空闲时间，可调整时段或手动选择。|No free slots in this window. Adjust it or choose a time manually.
+取消已有日程|Cancel an existing event
+更新已有日程|Update an existing event
+选择原日程并核对原时间|Select the existing event and check its original time
+确认所选日程变更|Confirm selected calendar changes
+所选日程变更已保存。|Selected calendar changes saved.
 系统推送|System push notifications
 仅对此设备生效。锁屏通知不显示日程标题或课程内容。|Applies to this device only. Lock screen notifications hide schedule titles and course details.
 提醒时间|Reminder time

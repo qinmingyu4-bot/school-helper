@@ -1975,7 +1975,7 @@ async function routeApi(req, res) {
     const auth = await currentUser(req);
     if (!auth) return sendError(res, 401, "登录已过期，请重新登录。");
     const token = hashToken(`grades:${auth.tokenHash}`);
-    if (gradeUrl.pathname === "/api/grade-planner" && req.method === "GET") return sendJson(res, 200, { ...await grades.read(auth.user.id), csrfToken: token });
+    if (gradeUrl.pathname === "/api/grade-planner" && req.method === "GET") return sendJson(res, 200, { ...await grades.read(auth.user.id), csrfToken: token, userId: auth.user.id });
     const gradeLocations = gradeUrl.pathname.match(/^\/api\/grade-planner\/([^/]+)\/locations$/);
     if (gradeLocations && req.method === "GET") return sendJson(res,200,await grades.locations(auth.user.id,decodeURIComponent(gradeLocations[1])));
     const gradeMaterials = gradeUrl.pathname.match(/^\/api\/grade-planner\/([^/]+)\/materials$/);
@@ -3358,6 +3358,7 @@ if (directMessageMatch && method === "POST") {
       if (method === "POST") {
         const body = await readJson(req, 16000);
         if (!body || typeof body !== "object" || Array.isArray(body)) return sendError(res, 400, "学习操作格式无效。");
+        if (childId === "recommendations") return sendJson(res, 200, await learningLoop.recommendations(user.id, courseId, body));
         if (childId === "extract") await learningLoop.extract(user, courseId, body);
         else if (childId === "topics") await learningLoop.topics(user.id, courseId, body);
         else if (childId === "quiz") return sendJson(res, 200, { quiz: await learningLoop.quiz(user, courseId, body) });

@@ -2,6 +2,13 @@
 
 This file records stable StudyBridge versions so a broken update can be rolled back safely.
 
+## 1.3.0 — 2026-11-13
+
+- MINOR feature release from production 1.2.32, `3f4520b38dfbaf0e8729529026cbbdca650a11fb`.
+- Adds first-study guidance, mistake/exam-aware review scheduling, confirmed email reschedules/cancellations and device draft recovery. Keeps the latest native grades, password reset, archiving and usage accounting.
+- Validate with source/assets checks, the full Node regression suite, release-policy tests, dependency audit and desktop/mobile browser checks. Live acceptance checks the deployment commit, frontend version and health after the workflow finishes.
+- Rollback code target: `3f4520b38dfbaf0e8729529026cbbdca650a11fb`; preserve current user data and private deployment backups. No data migration or new environment variables.
+
 ## Version numbering policy
 
 Future production releases use `MAJOR.MINOR.PATCH` according to the owner's

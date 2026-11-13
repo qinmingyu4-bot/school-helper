@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.2.32";
+  const VERSION = "1.3.0";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -873,6 +873,14 @@
       }).join("")}</div>` : ""}</section>`;
   }
 
+  function onboardingHtml() {
+    if (state.messages.length || state.page !== "study") return "";
+    const hasCourse = !isGeneralChat() && state.courses.some((c) => c.id === state.activeCourseId);
+    const hasDocs = hasCourse && state.docs.some((d) => d.type !== "Schedule");
+    const firstCourse = courseChats.visibleCourses(state.courses)[0];
+    return `<section class="study-start" aria-label="${esc(ui.text("开始课程学习"))}"><h2>${ui.text("从一份课程资料开始")}</h2><ol><li>${hasCourse ? "✓ " : ""}${ui.text("建立课程")} ${!hasCourse ? firstCourse ? `<button data-action="select-course" data-id="${esc(firstCourse.id)}">${ui.text("选择课程")}</button>` : `<button data-action="add-course">${ui.text("新增")}</button>` : ""}</li><li>${hasDocs ? "✓ " : ""}${ui.text("上传一份讲义或课程大纲")} ${hasCourse && !hasDocs ? `<button data-action="onboard-material">${ui.text("课程与资料")}</button>` : ""}</li><li>${ui.text("开始一个问题或练习")} ${hasDocs ? `<button data-action="learning-open">${ui.text("学习清单 · 练习")}</button>` : ""}</li></ol></section>`;
+  }
+
   function studyPage() {
     const course = isGeneralChat() ? chatSpaces.general : state.courses.find((item) => item.id === state.activeCourseId);
     const conversation = state.courseConversations[state.activeCourseId]?.find((item) => item.id === state.activeConversationId);
@@ -882,7 +890,7 @@
       ${upcomingBanner()}
       <section class="chat-area">
         <div class="messages" id="messages">
-          ${state.messages.length ? state.messages.map(messageHtml).join("") : `<div class="message ai"><b>AI</b><div>${isGeneralChat() ? ui.text("你好，有什么想问的？") : ui.text("欢迎回来。先保存课程资料，然后问我预习、复习、deadline、作业要求或模拟考试。")}</div></div>`}
+          ${onboardingHtml()}${state.messages.length ? state.messages.map(messageHtml).join("") : `<div class="message ai"><b>AI</b><div>${isGeneralChat() ? ui.text("你好，有什么想问的？") : ui.text("欢迎回来。先保存课程资料，然后问我预习、复习、deadline、作业要求或模拟考试。")}</div></div>`}
         </div>
       </section>
       ${composerHtml()}
@@ -1534,7 +1542,7 @@
         <div id="scheduleCalendarView" class="planner-view">${parts.calendar}</div>
         ${scheduleCalendarView.courseManagementHtml(state.scheduleItems)}
         <details class="card schedule-manual" id="scheduleManual" ${state.scheduleManualOpen || state.scheduleDraftOrigin === "quick" && state.scheduleDrafts.length ? "open" : ""}>
-          <summary><span><b>＋ 新增安排</b><small>课程、作业截止、个人计划，都放在这里</small></span><span class="schedule-disclosure" aria-hidden="true">⌄</span></summary>
+          <summary><span><b>＋ 新增安排</b><small>${state.scheduleQuickText || state.scheduleDrafts.length ? ui.text("有本机草稿，展开继续核对") : ui.text("课程、作业截止、个人计划，都放在这里")}</small></span><span class="schedule-disclosure" aria-hidden="true">⌄</span></summary>
           ${scheduleQuickHtml(model)}
           ${state.scheduleDraftOrigin === "quick" ? scheduleReviewHtml() : ""}
           <details class="schedule-manual-fields" ${Object.entries(draft).some(([key, value]) => key !== "date" && value) ? "open" : ""}><summary>手动填写详细信息</summary>
@@ -1731,7 +1739,7 @@
 
   function scheduleReviewHtml() {
     if (!state.scheduleDrafts.length) return "";
-    return ui.html`<article class="card schedule-review"><h2 tabindex="-1">核对提取结果（${state.scheduleDrafts.length} 条）</h2>
+    return ui.html`<article class="card schedule-review"><p data-draft-storage role="status">${ui.text(draftSaveError ? "本机草稿保存失败，请保留页面。" : "草稿仅保存在本机，确认后才加入账号日程。")}</p><h2 tabindex="-1">核对提取结果（${state.scheduleDrafts.length} 条）</h2>
       <p>${esc(state.scheduleSource)} · ${ui.text("先看课程和时间，勾选要加入的项目；需要更改时再点「修改」。")}</p>
       <fieldset ${state.scheduleImportBusy ? "disabled" : ""}>
       ${state.scheduleDrafts.some((item) => item.weekly) ? scheduleCalendarHtml() : ""}
@@ -3618,7 +3626,33 @@
   setInterval(() => { if (!document.hidden) void syncScheduleTimeZone(); }, 60000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) void syncScheduleTimeZone(); });
 
+  let draftStorage;
+  try { draftStorage = localStorage; } catch { /* Continue with visible storage failure feedback. */ }
+  const durableDrafts = window.StudyBridgeDrafts.create(draftStorage);
+  const scheduleDraftFields = ["scheduleDrafts", "scheduleSource", "scheduleDraftOrigin", "scheduleQuickText", "scheduleCalendar", "scheduleCalendarDraft", "scheduleFromDate", "scheduleImportedCourses", "scheduleImportOpen", "scheduleManualOpen"];
+  const scheduleDraftDefaults = Object.fromEntries(scheduleDraftFields.map(key => [key, structuredClone(state[key] ?? null)]));
+  let draftOwner = "", draftSaveError = false;
+  function saveScheduleDraft() {
+    if (!draftOwner || state.user?.id !== draftOwner) return;
+    draftSaveError = !durableDrafts.write(draftOwner, "schedule", Object.fromEntries(scheduleDraftFields.map(key => [key, state[key]])));
+    root.querySelectorAll("[data-draft-storage]").forEach(el => { el.textContent = ui.text(draftSaveError ? "本机草稿保存失败，请保留页面。" : "草稿仅保存在本机，确认后才加入账号日程。"); });
+  }
+  function syncScheduleDraft() {
+    const next = state.user?.id || "";
+    if (next !== draftOwner) {
+      draftOwner = next;
+      const saved = durableDrafts.read(next, "schedule");
+      for (const key of scheduleDraftFields) state[key] = structuredClone(scheduleDraftDefaults[key]);
+      if (saved && Array.isArray(saved.scheduleDrafts) && saved.scheduleDrafts.length <= 1000) for (const key of scheduleDraftFields) if (key in saved) state[key] = saved[key];
+    } else saveScheduleDraft();
+  }
+  window.addEventListener("pagehide", saveScheduleDraft);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) saveScheduleDraft(); });
+  root.addEventListener("input", () => queueMicrotask(saveScheduleDraft));
+  root.addEventListener("change", () => queueMicrotask(saveScheduleDraft));
+
   function render() {
+    syncScheduleDraft();
     void syncScheduleTimeZone();
     scheduleManagementUi.closeIfStale();
     const renameInput = $("conversationRename");

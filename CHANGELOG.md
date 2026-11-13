@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.0 — 2026-11-13
+
+- Classification: MINOR from verified production 1.2.32 (`3f4520b`). Add important learning and calendar workflows, preserving the latest native grades, course archives, usage accounting, password recovery and release safeguards.
+- Guide an empty study conversation through choosing a course, uploading materials and starting a question or practice.
+- Prioritize review using repeated mistakes, due dates and explicit same-course exams; suggest free time within the user's chosen window and prevent duplicate pending review plans.
+- Review email reschedules and cancellations against an explicitly selected existing event. Validate its version and ownership, apply the confirmed change atomically and retain the before/after receipt.
+- Keep unfinished schedule input and quiz choices in account-scoped device drafts. Preserve unsynced grade edits with explicit recovery, download and discard; stale grade drafts never overwrite newer account records.
+- Preserve the current real-course grade service and self-service password reset rather than replacing them with the earlier task snapshot. No production data migration or new credentials are required.
+
 ## 1.2.32 — 2026-11-13
 
 - Classification: PATCH from verified production 1.2.31 (`2c361de`). Fix the existing default-save behavior and unnecessary review prompts; no new product module or major functionality is introduced. Preserve the release-policy governance already on main.

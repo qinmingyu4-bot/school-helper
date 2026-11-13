@@ -122,7 +122,17 @@ test("account grades enforce ownership, CSRF, revision checks, private persisten
   assert.equal(savedUpload.categories[0].method, "unknown");
   assert.equal(savedUpload.categories[0].weight, 40);
   assert.equal(savedUpload.categories[1].items[0].status, "pending");
-  assert.equal((await upload("Homework 40%\nFinal 60%", 1)).savedPlan, undefined);
+  const completedUpload = (await upload("Homework 40%\nFinal 60%", 1)).savedPlan;
+  assert.equal(completedUpload.version, 2);
+  assert.equal(completedUpload.categories[0].method, "equal");
+  assert.equal(completedUpload.categories[0].plannedCount, 2);
+  assert.equal(completedUpload.categories[1].items[0].id, savedUpload.categories[1].items[0].id);
+  Object.assign(completedUpload.categories[0].items[0], { score:0, max:20, status:"graded", source:"screenshot" });
+  const recordedUpload = await req(`/api/grade-planner/${uploaded.id}`, alice, completedUpload, "PUT", headers);
+  assert.equal(recordedUpload.status, 200);
+  const preservedUpload = (await upload("Homework 40%\nFinal 60%", 3)).savedPlan;
+  assert.equal(preservedUpload.version, 4);
+  assert.deepEqual(preservedUpload.categories[0].items[0], completedUpload.categories[0].items[0]);
 
   const reused = await createCourse("Saved syllabus auto-save");
   const reusedDoc = (await (await req(`/api/courses/${reused.id}/documents`, alice,
@@ -135,7 +145,7 @@ test("account grades enforce ownership, CSRF, revision checks, private persisten
   assert.equal(savedReuse.categories[0].items.length, 2);
   assert.equal((await req(reusedRoute, alice, reuse, "POST", headers)).status, 409);
   const autoPlans = (await (await req("/api/grade-planner", alice)).json()).courses;
-  assert.equal(autoPlans.find(value => value.id === uploaded.id).version, 1);
+  assert.equal(autoPlans.find(value => value.id === uploaded.id).version, 4);
   assert.equal(autoPlans.find(value => value.id === reused.id).version, 1);
   for (const value of [uploaded, reused]) await req(`/api/courses/${value.id}`, alice, undefined, "DELETE");
   await stop(); await start();

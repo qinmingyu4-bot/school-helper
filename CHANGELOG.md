@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Clear syllabus rules by default
+
+- Save clear syllabus rules without a confirmation screen for both new and existing courses. Fill missing details while preserving recorded grades, item IDs, existing settings and manual grade links; review actual conflicts instead of every re-import.
+- Match category weights in whole-table quotes and stop requiring review solely for long-file excerpts or clear scanned/image readings. Readable source quotes remain text-checked; uncertain readings and unsupported special rules still open review.
+- Explain existing-setting conflicts by category and field, and keep every saved rule editable. This fixes the intended default-save behavior; it does not add background extraction on refresh.
+
 ## Unreleased — Restore scope-based release numbering
 
 - Restore the owner's MAJOR/MINOR/PATCH rules from `dae7ddc`, which remained on

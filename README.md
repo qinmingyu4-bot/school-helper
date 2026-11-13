@@ -1034,11 +1034,23 @@ documents the failed-login policy, trusted proxy boundary and multi-instance lim
 The student menu includes **Grades** (`/app?page=grades`). Existing courses start
 with empty grading rules. Choose **Use course materials** in the empty state or
 **Grading rules** to reuse uploaded syllabus/course files, or set rules manually
-and upload a PDF/TXT/image syllabus. In Grades, a new plan saves automatically
-when the extracted weights are supported by readable source quotes, total 100%,
-and have no special rules or conflicts. Edit saved rules at any time. Existing
-plans, unverified weights and special rules open for review. Missing counts or
-within-category methods can be filled in later; forecasts wait for those details.
+and upload a PDF/TXT/image syllabus. In Grades, clear extracted rules save
+without a confirmation screen, including re-extraction for existing courses.
+Weights must total 100% and map unambiguously to their category in the source
+quote, including quotes of a whole grading table. Readable sources still require
+literal quote matching. Clear image/scanned-PDF readings can save using model-read
+source quotes; those remain labeled as visually read rather than text-verified.
+Long-file passages do not force confirmation solely because they are excerpts.
+Uncertain readings, conflicting rules and unsupported special rules open a single
+editable review, with existing-setting conflicts identified by category and field.
+
+Automatic updates preserve category/assessment IDs, recorded scores (including
+zero and excluded items), known counts/methods/maxima, and manually entered grade
+links. Missing details can be filled, but a conflicting known setting, an unmatched
+old category or ambiguous item mapping requires review. No record is automatically
+deleted. Edit saved rules at any time. Unspecified counts/methods stay unknown;
+forecasts wait for those details. Extraction runs when the user starts it, not on
+page refresh, and screenshot grade entry continues to require score confirmation.
 Record each assessment manually or upload a PNG/JPG/WebP screenshot (up to 8 MB),
 check scores/maxima and match destinations, then confirm. Uploads are sent only after starting recognition and are
 not stored in the grade plan. Recognition uses the existing configured complex

@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.2.11";
+  const VERSION = "1.2.12";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -428,6 +428,7 @@
 
   function authHtml(mode = "login") {
     const register = mode === "register";
+    if (mode === "reset") return resetHtml();
     return ui.html`
       <main class="auth-shell auth-entry">
         <header class="auth-header">
@@ -474,6 +475,10 @@
     `;
   }
 
+  function resetHtml() {
+    return ui.html`<main class="auth-shell auth-entry"><section class="auth-card"><a href="/" class="auth-brand">StudyBridge.</a><h1>找回密码</h1><p>验证邮箱后设置新密码，其他设备上的旧登录将失效。</p><label>Email<input id="authEmail" type="email" autocomplete="email"></label><label>邮箱验证码<input id="authEmailCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></label><button data-action="send-email-code" data-purpose="reset">发送验证码</button><label>新密码<input id="authPassword" type="password" autocomplete="new-password" placeholder="至少 8 位"></label><label>确认密码<input id="authPasswordConfirm" type="password" autocomplete="new-password"></label><button class="primary wide" data-action="reset-password">重置密码</button><button class="link-button" data-action="auth-tab" data-tab="login">返回登录</button><button class="link-button" data-action="manual-reset">无法收取邮件？申请人工协助</button><p class="auth-feedback" role="status" aria-live="polite"></p></section></main>`;
+  }
+
   const emailCooldowns = new Map();
   let emailCooldownTimer;
   function authMessage(message) {
@@ -484,14 +489,14 @@
     const button = root.querySelector('[data-action="send-email-code"]');
     if (!button) { clearInterval(emailCooldownTimer); emailCooldownTimer = null; return; }
     const email = $("authEmail")?.value.trim().toLowerCase();
-    const seconds = Math.max(0, Math.ceil(((emailCooldowns.get(email) || 0) - Date.now()) / 1000));
+    const seconds = Math.max(0, Math.ceil(((emailCooldowns.get(`${button.dataset.purpose || "register"}:${email}`) || 0) - Date.now()) / 1000));
     button.disabled = button.dataset.sending === "true" || seconds > 0;
     button.textContent = button.dataset.sending === "true" ? ui.text("发送中…") : seconds ? ui.message`${seconds} 秒后重发` : ui.text("发送验证码");
     if (seconds > 0 && !emailCooldownTimer) emailCooldownTimer = setInterval(updateEmailCooldown, 1000);
     if (!seconds && emailCooldownTimer) { clearInterval(emailCooldownTimer); emailCooldownTimer = null; }
   }
   function startEmailCooldown(email, seconds) {
-    emailCooldowns.set(email, Date.now() + seconds * 1000);
+    emailCooldowns.set(`${root.querySelector('[data-action="send-email-code"]')?.dataset.purpose || "register"}:${email}`, Date.now() + seconds * 1000);
     clearInterval(emailCooldownTimer);
     emailCooldownTimer = null;
     updateEmailCooldown();
@@ -743,16 +748,24 @@
       }).join("")}</div>` : ""}</section>`;
   }
 
+  function onboardingHtml() {
+    if (state.messages.length || state.page !== "study") return "";
+    const hasCourse = !isGeneralChat() && state.courses.some((c) => c.id === state.activeCourseId);
+    const hasDocs = hasCourse && state.docs.some((d) => d.type !== "Schedule");
+    const firstCourse = courseChats.visibleCourses(state.courses)[0];
+    return `<section class="study-start" aria-label="${esc(ui.text("开始课程学习"))}"><h2>${ui.text("从一份课程资料开始")}</h2><ol><li>${hasCourse ? "✓ " : ""}${ui.text("建立课程")} ${!hasCourse ? firstCourse ? `<button data-action="select-course" data-id="${esc(firstCourse.id)}">${ui.text("选择课程")}</button>` : `<button data-action="add-course">${ui.text("新增")}</button>` : ""}</li><li>${hasDocs ? "✓ " : ""}${ui.text("上传一份讲义或课程大纲")} ${hasCourse && !hasDocs ? `<button data-action="onboard-material">${ui.text("课程与资料")}</button>` : ""}</li><li>${ui.text("开始一个问题或练习")} ${hasDocs ? `<button data-action="learning-open">${ui.text("学习清单 · 练习")}</button>` : ""}</li></ol></section>`;
+  }
+
   function studyPage() {
     const course = isGeneralChat() ? chatSpaces.general : state.courses.find((item) => item.id === state.activeCourseId);
     const conversation = state.courseConversations[state.activeCourseId]?.find((item) => item.id === state.activeConversationId);
     const courseName = isGeneralChat() ? ui.text(chatSpaces.general.name) : course?.name;
     return `
-      <header class="page-header"><div class="course-chat-heading"><small>${esc(courseName || ui.text("请选择课程"))}${!isGeneralChat() ? ui.text(" · 课程资料共享") : ""}</small><h1 title="${esc(conversation?.title || courseName || ui.text("请选择课程"))}">${esc(conversation?.title || courseName || ui.text("请选择课程"))}</h1></div>${!isGeneralChat() && course ? ui.html`<div class="course-chat-actions"><button data-action="learning-open">学习清单 · 练习</button><button data-action="new-conversation" data-id="${esc(course.id)}">＋ 新对话</button></div>` : ""}</header>
+      <header class="page-header"><div class="course-chat-heading"><small>${esc(courseName || ui.text("请选择课程"))}${!isGeneralChat() ? ui.text(" · 课程资料共享") : ""}</small><h1 title="${esc(conversation?.title || courseName || ui.text("请选择课程"))}">${esc(conversation?.title || courseName || ui.text("请选择课程"))}</h1></div>${!isGeneralChat() && course ? ui.html`<div class="course-chat-actions"><button data-action="learning-open">学习清单 · 练习</button><a class="button" href="/grades?course=${encodeURIComponent(course.id)}">成绩规划</a><button data-action="new-conversation" data-id="${esc(course.id)}">＋ 新对话</button></div>` : ""}</header>
       ${upcomingBanner()}
       <section class="chat-area">
         <div class="messages" id="messages">
-          ${state.messages.length ? state.messages.map(messageHtml).join("") : `<div class="message ai"><b>AI</b><div>${isGeneralChat() ? ui.text("你好，有什么想问的？") : ui.text("欢迎回来。先保存课程资料，然后问我预习、复习、deadline、作业要求或模拟考试。")}</div></div>`}
+          ${onboardingHtml()}${state.messages.length ? state.messages.map(messageHtml).join("") : `<div class="message ai"><b>AI</b><div>${isGeneralChat() ? ui.text("你好，有什么想问的？") : ui.text("欢迎回来。先保存课程资料，然后问我预习、复习、deadline、作业要求或模拟考试。")}</div></div>`}
         </div>
       </section>
       ${composerHtml()}
@@ -889,7 +902,7 @@
       body.insertAdjacentHTML("afterbegin", '<div class="reply-content"></div>');
       content = body.querySelector(".reply-content");
     }
-    content.innerHTML = window.StudyBridgeMarkdown.render(reply.assistant.content);
+    window.StudyBridgeMarkdown.renderInto(content, reply.assistant.content);
     if (reply.assistant.content) reply.hasDisplayedText = true;
     const status = body.querySelector(".reply-status");
     if (reply.assistant.pending && status) status.lastElementChild.textContent = ui.text(replyPhases[reply.assistant.phase] || replyPhases.thinking);
@@ -931,11 +944,18 @@
   }
 
   function scheduleStudyReply(reply) {
-    if (reply.frame) return;
-    reply.frame = requestAnimationFrame(() => {
-      reply.frame = 0;
-      updateStudyReply(reply);
-    });
+    if (reply.frame || reply.renderTimer) return;
+    // Coalesce network bursts without changing the accumulated answer. Leave
+    // time for typing/scrolling between paints, especially on slower devices.
+    const delay = Math.max(0, (reply.lastPaintAt || 0) + 80 - performance.now());
+    reply.renderTimer = setTimeout(() => {
+      reply.renderTimer = 0;
+      reply.frame = requestAnimationFrame(() => {
+        reply.frame = 0;
+        updateStudyReply(reply);
+        reply.lastPaintAt = performance.now();
+      });
+    }, delay);
   }
 
   function mergeStudyReply(messages, reply) {
@@ -1049,6 +1069,8 @@
     } finally {
       reply.assistant.pending = false;
       studyReplies.delete(reply.key);
+      clearTimeout(reply.renderTimer);
+      reply.renderTimer = 0;
       cancelAnimationFrame(reply.frame);
       reply.frame = 0;
       updateStudyReply(reply);
@@ -1391,7 +1413,7 @@
         <div id="scheduleCalendarView" class="planner-view">${parts.calendar}</div>
         ${scheduleCalendarView.courseManagementHtml(state.scheduleItems)}
         <details class="card schedule-manual" id="scheduleManual" ${state.scheduleManualOpen || state.scheduleDraftOrigin === "quick" && state.scheduleDrafts.length ? "open" : ""}>
-          <summary><span><b>＋ 新增安排</b><small>课程、作业截止、个人计划，都放在这里</small></span><span class="schedule-disclosure" aria-hidden="true">⌄</span></summary>
+          <summary><span><b>＋ 新增安排</b><small>${state.scheduleQuickText || state.scheduleDrafts.length ? ui.text("有本机草稿，展开继续核对") : ui.text("课程、作业截止、个人计划，都放在这里")}</small></span><span class="schedule-disclosure" aria-hidden="true">⌄</span></summary>
           ${scheduleQuickHtml(model)}
           ${state.scheduleDraftOrigin === "quick" ? scheduleReviewHtml() : ""}
           <details class="schedule-manual-fields" ${Object.entries(draft).some(([key, value]) => key !== "date" && value) ? "open" : ""}><summary>手动填写详细信息</summary>
@@ -1430,7 +1452,7 @@
         ${state.scheduleDraftOrigin === "file" ? scheduleReviewHtml() : ""}
         </details>
         <div id="scheduleAgendaView" class="planner-view">${parts.agenda}</div>
-        <p class="schedule-timezone">月历和新增安排使用当前时区：${esc(model.timeZone)} · 导入课程按学校时区换算<br>Lecture / Tutorial 按结束时间自动完成；未填写结束时间时，按课表记录的开始时间处理。</p>
+        <p class="schedule-timezone">日程按录入的日期和钟点显示，出国或切换时区后保持一致。<br>Lecture / Tutorial 按结束时间自动完成；未填写结束时间时，按课表记录的开始时间处理。</p>
       </section>
     `;
   }
@@ -1585,7 +1607,7 @@
 
   function scheduleReviewHtml() {
     if (!state.scheduleDrafts.length) return "";
-    return ui.html`<article class="card schedule-review"><h2 tabindex="-1">核对提取结果（${state.scheduleDrafts.length} 条）</h2>
+    return ui.html`<article class="card schedule-review"><p data-draft-storage role="status">${ui.text(draftSaveError ? "本机草稿保存失败，请保留页面。" : "草稿仅保存在本机，确认后才加入账号日程。")}</p><h2 tabindex="-1">核对提取结果（${state.scheduleDrafts.length} 条）</h2>
       <p>${esc(state.scheduleSource)} · 尚未加入日程。勾选要加入的项目，点开卡片可编辑并查看完整备注与原文。${state.scheduleDraftOrigin === "file" && state.scheduleImportedCourses.length ? ui.text("已识别的课程已自动加入「对话与课程」，取消预览不会删除课程。") : ""}${state.scheduleDrafts.some((item) => item.weekly) ? ui.text("每周课程确认一次即可生成本学期剩余安排。") : ""}</p>
       ${state.scheduleDrafts.some((item) => item.weekly) ? scheduleCalendarHtml() : ""}
       <fieldset ${state.scheduleImportBusy ? "disabled" : ""}>
@@ -1702,11 +1724,11 @@
     const draft = state.scheduleCalendarDraft;
     let count = null;
     try { if (calendar) count = scheduleImport.deduplicate(scheduleImport.expandWeekly(state.scheduleDrafts.filter((item) => item.selected), calendar, { fromDate: state.scheduleFromDate }), state.scheduleItems).items.length; } catch {}
-    return ui.html`<section class="schedule-calendar" aria-label="学期与停课规则"><h3>本学期循环规则</h3><p>${esc(state.scheduleCalendarNotice)}</p>
-      ${calendar ? ui.html`<p><strong>${esc([calendar.school, calendar.campus, calendar.label].filter(Boolean).join(" · "))}</strong></p><p>授课范围：${calendar.teachingPeriods.map((period) => `${esc(period.startDate)} — ${esc(period.endDate)}`).join("；")}<br>从 ${esc(state.scheduleFromDate)} 起生成；时区 ${esc(calendar.timeZone)} · <span data-schedule-preview-count>${count !== null ? ui.message`新增 ${count} 次安排（自动跳过重复）` : ui.text("请补全课程规则")}</span></p>
+    return ui.html`<section class="schedule-calendar" aria-label="学期与停课规则"><h3>本学期循环规则</h3><p>${esc(ui.text(state.scheduleCalendarNotice))}</p>
+      ${calendar ? ui.html`<p><strong>${esc([calendar.school, calendar.campus, calendar.faculty, calendar.label].filter(Boolean).join(" · "))}</strong></p><p>授课范围：${calendar.teachingPeriods.map((period) => `${esc(period.startDate)} — ${esc(period.endDate)}`).join("；")}<br>从 ${esc(state.scheduleFromDate)} 起生成 · <span data-schedule-preview-count>${count !== null ? ui.message`新增 ${count} 次安排（自动跳过重复）` : ui.text("请补全课程规则")}</span></p>
       <p>停课：${calendar.breaks.length ? calendar.breaks.map((pause) => `${esc(pause.startDate)}${pause.endDate !== pause.startDate ? ` — ${esc(pause.endDate)}` : ""} ${esc(pause.label)}`).join("；") : ui.text("本次校历未列出范围内的停课日")}</p>
       ${(calendar.sources || []).map((source) => `<a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.title)}</a>`).join(" · ")}` : ui.html`<p class="schedule-warning">只需填写一次学期范围，所有已识别的每周课程都会使用它。</p>`}
-      <details ${!calendar || state.scheduleCalendarEditing ? "open" : ""}><summary>手动确认或调整本学期</summary><div class="inline-fields"><label>授课开始<input type="date" data-calendar-field="startDate" value="${esc(draft.startDate)}"></label><label>最后授课日<input type="date" data-calendar-field="endDate" value="${esc(draft.endDate)}"></label></div><label>停课日期（每行一个日期或起止范围）<textarea data-calendar-field="breaks" placeholder="2026-10-12&#10;2026-10-26 / 2026-10-30">${esc(draft.breaks)}</textarea></label><label>学校时区<input data-calendar-field="timeZone" value="${esc(draft.timeZone)}" placeholder="America/Toronto"></label></details>
+      <details ${!calendar || state.scheduleCalendarEditing ? "open" : ""}><summary>手动确认或调整本学期</summary><div class="inline-fields"><label>授课开始<input type="date" data-calendar-field="startDate" value="${esc(draft.startDate)}"></label><label>最后授课日<input type="date" data-calendar-field="endDate" value="${esc(draft.endDate)}"></label></div><label>停课日期（每行一个日期或起止范围）<textarea data-calendar-field="breaks" placeholder="2026-10-12&#10;2026-10-26 / 2026-10-30">${esc(draft.breaks)}</textarea></label></details>
     </section>`;
   }
 
@@ -1998,8 +2020,8 @@
       title: data.title || String(doc.title || "").replace(SCHEDULE_PREFIX, "").trim() || "Schedule item",
       kind: data.kind || "DDL",
       course: data.course || (course.name === SCHEDULE_COURSE ? "" : course.name),
-      startsAt: data.startsAt || doc.createdAt,
-      endsAt: data.endsAt || "",
+      startsAt: scheduleImport.wallTime(data.startsAt || doc.createdAt, data.timeZone),
+      endsAt: scheduleImport.wallTime(data.endsAt, data.timeZone),
       timeZone: data.timeZone || "",
       recurrence: data.recurrence,
       location: data.location || "",
@@ -2088,7 +2110,7 @@
     const data = await api("/api/schedule/items");
     if (state.user?.id !== userId || !isCurrent()) return;
     if (refreshCourses) state.courses = data.courses || [];
-    state.scheduleItems = data.items || [];
+    state.scheduleItems = (data.items || []).map(scheduleImport.floating);
   }
 
   async function ensureScheduleCourse() {
@@ -2488,10 +2510,11 @@
         updateEmailCooldown();
         authMessage("");
         try {
-          const data = await api("/api/auth/send-verification", { method: "POST", body: { email, inviteCode: $("authInvite")?.value || "" } });
+          const data = await api(button.dataset.purpose === "reset" ? "/api/auth/request-password-reset" : "/api/auth/send-verification", { method: "POST", body: { email, inviteCode: $("authInvite")?.value || "" } });
           if (!button.isConnected) return;
           startEmailCooldown(email, data.resendAfter || 0);
-          if (data.emailDelivery === "disabled") authMessage(data.message);
+          if (button.dataset.purpose === "reset") authMessage(ui.text("如果邮箱已注册，验证码将发送到该邮箱，请检查收件箱或垃圾邮件。"));
+          else if (data.emailDelivery === "disabled") authMessage(data.message);
           else if (data.emailDelivery === "page") {
             if (input.value.trim().toLowerCase() === email) $("authEmailCode").value = data.emailCode;
             authMessage(data.message);
@@ -2508,7 +2531,24 @@
         location.assign(`/api/auth/google/start?${params}`);
         return;
       }
+      if (action === "onboard-material") {
+        const trigger = root.querySelector('[data-mobile-action="study-panel"]');
+        if (window.matchMedia("(max-width: 700px)").matches) trigger?.click();
+        $("docFile")?.focus(); return;
+      }
       if (action === "forgot-password") {
+        const email = $("authEmail")?.value || "";
+        root.innerHTML = authHtml("reset"); $("authEmail").value = email; updateEmailCooldown(); return;
+      }
+      if (action === "reset-password") {
+        button.disabled = true;
+        try {
+          await api("/api/auth/reset-password", { method: "POST", body: { email: $("authEmail").value, emailCode: $("authEmailCode").value, password: $("authPassword").value, passwordConfirm: $("authPasswordConfirm").value } });
+          root.innerHTML = authHtml("login"); authMessage(ui.text("密码已重置，请使用新密码登录。"));
+        } finally { if (button.isConnected) button.disabled = false; }
+        return;
+      }
+      if (action === "manual-reset") {
         const email = $("authEmail")?.value || "";
         if (!email) throw new Error(ui.text("请先填写邮箱。"));
         await api("/api/auth/request-manual-reset", { method: "POST", body: { email } });
@@ -2693,6 +2733,15 @@
       }
       if (action === "stop-chat") {
         activeStudyReply()?.controller.abort();
+        return;
+      }
+      if (action === "study-task-supplement") {
+        const prompt = studyTasks?.supplement(button.dataset.job, state.messages), input = $("chatInput");
+        if (prompt && input) {
+          if (!input.value.includes(prompt)) input.value = [input.value.trim(), prompt].filter(Boolean).join("\n\n");
+          studyComposer.resize(); input.scrollIntoView({ block: "center" }); input.focus();
+          input.setSelectionRange(input.value.length, input.value.length);
+        }
         return;
       }
       if (action === "stop-study-task" || action === "study-task-cancel" || action === "study-task-retry") {
@@ -3019,8 +3068,8 @@
         if (endClock && (!scheduleImport.validClock(endClock) || endClock <= startsAt.slice(11))) throw new Error(ui.text("结束时间应晚于开始时间；跨天安排请分天添加。"));
         cancelScheduleVoice();
         const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        const payload = { title, kind: scheduleImport.kind($("scheduleKind")?.value) || "EVENT", course: $("scheduleCourse")?.value || "", startsAt: scheduleImport.toUtc(startsAt, timeZone),
-          endsAt: endClock ? scheduleImport.toUtc(`${day}T${endClock}`, timeZone) : "", timeZone, location: $("scheduleLocation")?.value || "", notes: $("scheduleNotes")?.value || "", completedAt: "" };
+        const payload = { title, kind: scheduleImport.kind($("scheduleKind")?.value) || "EVENT", course: $("scheduleCourse")?.value || "", startsAt,
+          endsAt: endClock ? `${day}T${endClock}` : "", timeZone, location: $("scheduleLocation")?.value || "", notes: $("scheduleNotes")?.value || "", completedAt: "" };
         button.disabled = true;
         state.scheduleSaving = true;
         try {
@@ -3082,7 +3131,7 @@
           onBatch: ({ operation, batch, items }) => {
             const selected = new Set(batch.map((entry) => `${entry.courseId}/${entry.docId}`));
             state.scheduleItems = state.scheduleItems.filter((entry) => !selected.has(`${entry.courseId}/${entry.docId}`));
-            if (operation === "edit") state.scheduleItems.push(...items);
+            if (operation === "edit") state.scheduleItems.push(...items.map(scheduleImport.floating));
             if (state.page === "schedule") render();
           },
           onDone: (message) => { setToast(message); if (state.page === "schedule") render(); }
@@ -3209,7 +3258,36 @@
     });
   }
 
+  const syncScheduleTimeZone = window.StudyBridgePush.createTimeZoneSync({ api, getUser: () => state.user });
+  setInterval(() => { if (!document.hidden) void syncScheduleTimeZone(); }, 60000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) void syncScheduleTimeZone(); });
+
+  const durableDrafts = window.StudyBridgeDrafts.create(localStorage);
+  const scheduleDraftFields = ["scheduleDrafts", "scheduleSource", "scheduleDraftOrigin", "scheduleQuickText", "scheduleCalendar", "scheduleCalendarDraft", "scheduleFromDate", "scheduleImportedCourses", "scheduleImportOpen", "scheduleManualOpen"];
+  const scheduleDraftDefaults = Object.fromEntries(scheduleDraftFields.map(key => [key, structuredClone(state[key] ?? null)]));
+  let draftOwner = "", draftSaveError = false;
+  function saveScheduleDraft() {
+    if (!draftOwner || state.user?.id !== draftOwner) return;
+    draftSaveError = !durableDrafts.write(draftOwner, "schedule", Object.fromEntries(scheduleDraftFields.map(key => [key, state[key]])));
+    root.querySelectorAll("[data-draft-storage]").forEach(el => { el.textContent = ui.text(draftSaveError ? "本机草稿保存失败，请保留页面。" : "草稿仅保存在本机，确认后才加入账号日程。"); });
+  }
+  function syncScheduleDraft() {
+    const next = state.user?.id || "";
+    if (next !== draftOwner) {
+      draftOwner = next;
+      const saved = durableDrafts.read(next, "schedule");
+      for (const key of scheduleDraftFields) state[key] = structuredClone(scheduleDraftDefaults[key]);
+      if (saved && Array.isArray(saved.scheduleDrafts) && saved.scheduleDrafts.length <= 1000) for (const key of scheduleDraftFields) if (key in saved) state[key] = saved[key];
+    } else saveScheduleDraft();
+  }
+  window.addEventListener("pagehide", saveScheduleDraft);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) saveScheduleDraft(); });
+  root.addEventListener("input", () => queueMicrotask(saveScheduleDraft));
+  root.addEventListener("change", () => queueMicrotask(saveScheduleDraft));
+
   function render() {
+    syncScheduleDraft();
+    void syncScheduleTimeZone();
     scheduleManagementUi.closeIfStale();
     const renameInput = $("conversationRename");
     if (renameInput && state.renamingConversation?.courseId === renameInput.dataset.course && state.renamingConversation.id === renameInput.dataset.conversation) state.renamingConversation.title = renameInput.value;

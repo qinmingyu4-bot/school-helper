@@ -33,13 +33,13 @@ test("course grouping crosses storage courses and sections without grouping unre
   assert.equal(management.groups([...items, { ...meeting, course: "STA437" }]).length, 3, "ambiguous campus abbreviation stays separate");
 });
 
-test("bulk edits preserve dates, unrelated fields and completion while respecting each occurrence's DST offset", () => {
+test("bulk edits preserve dates, unrelated fields and completion while retaining each occurrence's clock time", () => {
   const patch = { startTime: "12:00", endTime: "13:00", location: "New room" };
   const summer = management.applyPatch(meeting, patch);
   const winter = management.applyPatch({ ...meeting, startsAt: "2026-11-02T15:00:00.000Z", endsAt: "2026-11-02T16:00:00.000Z", completedAt: "2026-11-02T16:00Z" }, patch);
-  assert.equal(summer.startsAt, "2026-10-26T16:00:00.000Z");
-  assert.equal(winter.startsAt, "2026-11-02T17:00:00.000Z");
-  assert.equal(winter.endsAt, "2026-11-02T18:00:00.000Z");
+  assert.equal(summer.startsAt, "2026-10-26T12:00");
+  assert.equal(winter.startsAt, "2026-11-02T12:00");
+  assert.equal(winter.endsAt, "2026-11-02T13:00");
   assert.equal(winter.completedAt, "2026-11-02T16:00Z");
   assert.equal(summer.notes, meeting.notes);
   assert.equal(summer.evidence, meeting.evidence);
@@ -47,9 +47,9 @@ test("bulk edits preserve dates, unrelated fields and completion while respectin
   assert.equal(summer.recurrence, undefined);
   assert.deepEqual(management.applyPatch(meeting, { location: "" }).recurrence, meeting.recurrence);
   assert.equal(management.applyPatch(meeting, { endTime: "" }).endsAt, "");
-  assert.equal(management.applyPatch(meeting, { title: "Changed", date: "2026-11-09" }).startsAt, "2026-11-09T15:00:00.000Z");
+  assert.equal(management.applyPatch(meeting, { title: "Changed", date: "2026-11-09" }).startsAt, "2026-11-09T10:00");
   assert.throws(() => management.applyPatch(meeting, { startTime: "12:00" }), /结束时间/);
-  assert.throws(() => management.applyPatch({ ...meeting, startsAt: "2026-03-01T10:00", endsAt: "" }, { date: "2026-03-08", startTime: "02:30" }));
+  assert.equal(management.applyPatch({ ...meeting, startsAt: "2026-03-01T10:00", endsAt: "" }, { date: "2026-03-08", startTime: "02:30" }).startsAt, "2026-03-08T02:30");
   assert.throws(() => management.applyPatch(meeting, { completedAt: "" }));
   assert.throws(() => management.applyPatch(meeting, {}));
   assert.equal(meeting.location, "Old room");

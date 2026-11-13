@@ -19,6 +19,7 @@
   }
   function create({ request, getContext, onStudy, onScheduleChange, ui, storage = globalThis.localStorage, doc = globalThis.document }) {
     let context = null, generation = 0, loadSequence = 0, lastVisible = false, owner = null, panel = null, prompt = null, timer = null, lastInteraction = 0, returnFocus = null;
+    const drafts = globalThis.StudyBridgeDrafts?.create(storage);
     const cache = new Map(), sessionDismissals = new Set();
     const current = (expected, sequence = generation) => sequence === generation && key(getContext()) === expected && getContext()?.visible;
     const model = () => cache.get(key(context));
@@ -32,9 +33,13 @@
       panel.querySelectorAll("[data-answer]").forEach((input) => { if (input.checked) state.answers[Number(input.dataset.answer)] = Number(input.value); });
       panel.querySelectorAll("[data-doc]").forEach((input) => { state.selectedDocs[input.dataset.doc] = input.checked; });
       panel.querySelectorAll("[data-draft-id]").forEach((input) => { state.keep[input.dataset.draftId] = input.checked; });
+      if (drafts && state.quiz && !state.quiz.submittedAt) state.draftSaved = drafts.write(context.userId, `quiz:${context.courseId}:${state.quiz.id}`, {answers:state.answers});
+      const draftStatus = panel.querySelector("[data-quiz-draft]");
+      if (draftStatus) draftStatus.textContent = t(state.draftSaved === false ? "本机草稿保存失败，请保留页面。" : "未提交选项仅保存在本机，提交后同步练习记录。");
       state.disclosures ||= {};
       panel.querySelectorAll("details[data-disclosure]").forEach((element) => { state.disclosures[element.dataset.disclosure] = element.open; });
     }
+    globalThis.addEventListener?.("pagehide", capture);
     function closePrompt() { prompt?.remove(); prompt = null; clearTimeout(timer); }
     function close() {
       capture();
@@ -131,12 +136,12 @@
     function quizHtml(state) {
       const quiz = state.quiz;
       if (!quiz) return "";
-      return `<h3>${esc(quiz.topicTitle)}</h3><p>${safe("这些是根据课程资料生成的练习题，请先作答，再查看反馈。AI 题目和解析也可能有误，可对照出处核对。")}</p>${quiz.submittedAt ? `<p class="learning-result" role="status">${safe("本次结果")} ${quiz.score}/3 · ${safe(quiz.helped ? "看过提示后作答" : "独立作答")}<br>${safe(quiz.score === 3 && !quiz.helped ? "已记录本次独立答对，后续用新题再检查。" : "已记下需要再练的内容，你可以看讲解或安排下一次复习。")}</p>` : ""}${quiz.questions.map((question, index) => `<fieldset><legend>${index + 1}. ${esc(question.prompt)}</legend>${question.choices.map((choice, choiceIndex) => `<label class="learning-choice"><input type="radio" name="learning-q-${index}" data-answer="${index}" value="${choiceIndex}" ${Number(quiz.answers?.[index] ?? state.answers[index] ?? -1) === choiceIndex ? "checked" : ""} ${quiz.submittedAt ? "disabled" : ""}><span>${esc(choice)}</span></label>`).join("")}${question.explanations ? `<div class="learning-feedback"><b>${safe("参考答案")} ${String.fromCharCode(65 + question.answerIndex)}</b>${quiz.submittedAt && quiz.answers[index] !== question.answerIndex ? `<p>${safe("这次的误区")}：${esc(question.explanations[quiz.answers[index]])}</p>` : ""}<p>${esc(question.explanations[question.answerIndex])}</p>${sourceHtml(question.source)}</div>` : ""}</fieldset>`).join("")}<div class="learning-actions">${!quiz.submittedAt ? button("submit", "提交作答并查看反馈") + (!quiz.helped ? button("help", "先看答案与讲解（辅助练习）") : "") : button("quiz", "换三道新题再练", `data-topic="${esc(quiz.topicId)}"`)}${button("plan", "安排下次复习", `data-topic="${esc(quiz.topicId)}"`)}</div>`;
+      return `<p data-quiz-draft role="status">${safe(state.draftSaved === false ? "本机草稿保存失败，请保留页面。" : "未提交选项仅保存在本机，提交后同步练习记录。")}</p><h3>${esc(quiz.topicTitle)}</h3><p>${safe("这些是根据课程资料生成的练习题，请先作答，再查看反馈。AI 题目和解析也可能有误，可对照出处核对。")}</p>${quiz.submittedAt ? `<p class="learning-result" role="status">${safe("本次结果")} ${quiz.score}/3 · ${safe(quiz.helped ? "看过提示后作答" : "独立作答")}<br>${safe(quiz.score === 3 && !quiz.helped ? "已记录本次独立答对，后续用新题再检查。" : "已记下需要再练的内容，你可以看讲解或安排下一次复习。")}</p>` : ""}${quiz.questions.map((question, index) => `<fieldset><legend>${index + 1}. ${esc(question.prompt)}</legend>${question.choices.map((choice, choiceIndex) => `<label class="learning-choice"><input type="radio" name="learning-q-${index}" data-answer="${index}" value="${choiceIndex}" ${Number(quiz.answers?.[index] ?? state.answers[index] ?? -1) === choiceIndex ? "checked" : ""} ${quiz.submittedAt ? "disabled" : ""}><span>${esc(choice)}</span></label>`).join("")}${question.explanations ? `<div class="learning-feedback"><b>${safe("参考答案")} ${String.fromCharCode(65 + question.answerIndex)}</b>${quiz.submittedAt && quiz.answers[index] !== question.answerIndex ? `<p>${safe("这次的误区")}：${esc(question.explanations[quiz.answers[index]])}</p>` : ""}<p>${esc(question.explanations[question.answerIndex])}</p>${sourceHtml(question.source)}</div>` : ""}</fieldset>`).join("")}<div class="learning-actions">${!quiz.submittedAt ? button("submit", "提交作答并查看反馈") + (!quiz.helped ? button("help", "先看答案与讲解（辅助练习）") : "") : button("quiz", "换三道新题再练", `data-topic="${esc(quiz.topicId)}"`)}${button("plan", "安排下次复习", `data-topic="${esc(quiz.topicId)}"`)}</div>`;
     }
     function planHtml(state) {
       const topic = state.data.topics.find((item) => item.id === state.topicId);
       if (!topic) return "";
-      return `<h3>${esc(topic.title)}</h3><p>${safe("复习资料并完成三道新题，预计 15 分钟。请选择你愿意安排的时间，确认后才会加入日程。")}</p><label>${safe("复习时间")}<input type="datetime-local" data-field="planTime" value="${esc(state.fields.planTime || "")}"></label><label>${safe("预计分钟")}<input type="number" min="5" max="120" data-field="minutes" value="${esc(state.fields.minutes || 15)}"></label><p>${safe("时区")}：${esc(Intl.DateTimeFormat().resolvedOptions().timeZone)}</p>${button("save-plan", "确认加入日程")}`;
+      return `<h3>${esc(topic.title)}</h3>${state.recommendation ? `<p>${safe(state.recommendation.reason)}${state.recommendation.exam ? ` · ${safe("考试")}: ${esc(state.recommendation.exam.title)} ${esc(state.recommendation.exam.startsAt)}` : ""}${state.recommendation.planned ? ` · ${safe("已有复习安排")}: ${esc(state.recommendation.planned.startsAt)}` : ""}</p>` : ""}<div class="learning-actions">${(state.slots || []).map(slot => button("choose-slot",slot.replace("T"," "),`data-slot="${esc(slot)}"`)).join("")}</div><label>${safe("可用时段开始")}<input type="time" data-field="availableFrom" value="${esc(state.fields.availableFrom || "09:00")}"></label><label>${safe("可用时段结束")}<input type="time" data-field="availableTo" value="${esc(state.fields.availableTo || "21:00")}"></label>${button("find-slots","查找空闲时间")}<p>${safe("复习资料并完成三道新题，预计 15 分钟。请选择你愿意安排的时间，确认后才会加入日程。")}</p><label>${safe("复习时间")}<input type="datetime-local" data-field="planTime" value="${esc(state.fields.planTime || "")}"></label><label>${safe("预计分钟")}<input type="number" min="5" max="120" data-field="minutes" value="${esc(state.fields.minutes || 15)}"></label><p>${safe("时区")}：${esc(Intl.DateTimeFormat().resolvedOptions().timeZone)}</p>${button("save-plan", "确认加入日程")}`;
     }
     function bindHtml(state) {
       return `<p>${safe("选择课程资料，粘贴其中一小段原文作为定位依据。保存后可以根据这份资料练习。")}</p><label>${safe("课程资料")}<select data-field="bindDoc"><option value="">${safe("请选择资料")}</option>${state.data.documents.map((item) => `<option value="${esc(item.id)}" ${state.fields.bindDoc === item.id ? "selected" : ""}>${esc(item.name)}</option>`).join("")}</select></label><label>${safe("原文片段")}<textarea data-field="bindQuote" rows="4" maxlength="300">${esc(state.fields.bindQuote || "")}</textarea></label>${button("save-bind", "保存资料出处")}`;
@@ -156,6 +161,7 @@
         if (state.view === "source") body = `${(state.sources || []).map(sourceHtml).join("")}<p>${safe("可以让 AI 继续讲解，问题会先填入输入框，由你选择是否发送。")}</p>${button("lesson", "请 AI 讲解这个主题")}`;
         if (state.view === "history") body = `<p class="learning-caption">${safe("最近 24 次练习；关闭页面后也可继续未提交的题目。")}</p>${state.data.recent.map((entry) => `<article class="learning-history"><div><b>${esc(entry.title)}</b><small>${esc(date(entry.createdAt))} · ${entry.submittedAt ? `${entry.score}/3${entry.helped ? ` · ${safe("看过提示后作答")}` : ""}` : safe("尚未提交")}</small></div>${button("resume", entry.submittedAt ? "查看反馈" : "继续作答", `data-id="${esc(entry.id)}"`, "is-text has-arrow")}</article>`).join("") || `<div class="learning-empty">${icon("book")}<h3>${safe("还没有练习记录")}</h3><p>${safe("还没有作答记录，选一个主题开始吧。")}</p>${button("topics", "选择学习主题")}</div>`}`;
       }
+      if (state.view === "topics" && state.data?.recommendations?.length) body = `<div class="learning-section-intro"><span>${safe("建议优先复习")}</span></div>${state.data.recommendations.filter(r => !r.planned).slice(0,2).map(r => `<div class="learning-topic-meta">${esc(r.title)} · ${safe(r.reason)} ${button("plan","安排复习",`data-topic="${esc(r.topicId)}"`,"is-text")}</div>`).join("")}` + body;
       panel.innerHTML = `<header><div><div class="learning-eyebrow"><span class="learning-wordmark"><img src="/brand/icon-monochrome.svg" alt="" width="16" height="16">StudyBridge</span>${getContext()?.courseName ? `<span class="learning-course-name">${esc(getContext().courseName)}</span>` : ""}</div><h2 id="learning-title">${safe(views[state.view] || "学习清单")}</h2></div><button type="button" class="learning-close" data-learning="close" aria-label="${safe("关闭")}">${icon("close")}</button></header>
         <nav aria-label="${safe("学习入口")}">${["topics", "materials", "history"].map((view) => `<button type="button" data-learning="${view}" ${state.view === view ? 'aria-current="page"' : ""} aria-label="${safe(views[view])}">${safe(views[view])}${view !== "materials" && state.data ? `<span class="learning-tab-count" aria-hidden="true">${view === "topics" ? state.data.topics.length : state.data.recent.length}</span>` : ""}</button>`).join("")}</nav>
         <div class="learning-body">${state.error ? `<p role="alert" class="learning-error">${safe(state.error)}</p>${button("refresh", "刷新学习记录")}` : ""}${state.notice ? `<p role="status" class="learning-notice">${safe(state.notice)}</p>` : ""}${body}</div>
@@ -191,7 +197,12 @@
         const result = await request(endpoint(courseId, operation), { method: "POST", body });
         if (generation !== seq || !current(expected)) return;
         if (result.learning) state.data = result.learning;
-        if (result.quiz) { if (state.quiz?.id !== result.quiz.id) state.answers = []; state.quiz = result.quiz; state.view = "quiz"; }
+        if (result.quiz) { if (state.quiz?.id !== result.quiz.id) {
+          const saved = drafts?.read(context.userId, `quiz:${context.courseId}:${result.quiz.id}`);
+          state.answers = Array.isArray(saved?.answers) ? saved.answers : [];
+        }
+        state.quiz = result.quiz;
+        if (result.quiz.submittedAt) drafts?.remove(context.userId, `quiz:${context.courseId}:${result.quiz.id}`); state.view = "quiz"; }
         if (operation === "topics" && body.action === "add") state.fields.newTitle = "";
         if (operation === "topics" && body.action === "confirm") state.view = "topics";
         if (operation === "plan") { state.notice = "已加入日程，点击日程中的开始复习可回到题目。"; state.view = "topics"; delete state.planRequest; }
@@ -199,6 +210,17 @@
         if (["plan", "submit"].includes(operation)) await onScheduleChange?.();
       } catch (error) { if (generation === seq && key(context) === expected) state.error = error.message; }
       finally { state.busy = false; if (generation === seq && current(expected)) draw(); }
+    }
+    async function findSlots(state) {
+      const expected = key(context), seq = generation;
+      try {
+        const result = await request(endpoint(context.courseId,"recommendations"), {method:"POST",body:{topicId:state.topicId,timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone,minutes:Number(state.fields.minutes||15),from:state.fields.availableFrom||"09:00",to:state.fields.availableTo||"21:00"}});
+        if (!current(expected,seq) || state.view !== "plan" || result.recommendation.topicId !== state.topicId) return;
+        state.recommendation=result.recommendation;state.slots=result.slots;
+        if (result.slots.length) state.fields.planTime=result.slots[0];
+        else state.error=t(result.recommendation.planned ? "这个主题已有待完成的复习安排，请先查看日程。" : "可用时段内暂无空闲时间，可调整时段或手动选择。");
+      } catch(error) { if (current(expected,seq)) state.error=error.message; }
+      if (current(expected,seq)) draw();
     }
     async function action(button) {
       const state = model(), action = button.dataset.learning; if (!state || button.disabled) return;
@@ -231,19 +253,26 @@
         try {
           const result = await request(endpoint(context.courseId, action === "source" ? `source?topicId=${encodeURIComponent(button.dataset.topic)}` : `quiz?id=${encodeURIComponent(button.dataset.id)}`));
           if (!current(expected, seq)) return;
-          if (result.quiz) { if (state.quiz?.id !== result.quiz.id) state.answers = []; state.quiz = result.quiz; state.view = "quiz"; }
+          if (result.quiz) { if (state.quiz?.id !== result.quiz.id) {
+          const saved = drafts?.read(context.userId, `quiz:${context.courseId}:${result.quiz.id}`);
+          state.answers = Array.isArray(saved?.answers) ? saved.answers : [];
+        }
+        state.quiz = result.quiz;
+        if (result.quiz.submittedAt) drafts?.remove(context.userId, `quiz:${context.courseId}:${result.quiz.id}`); state.view = "quiz"; }
           else { state.sources = result.sources; state.topicId = button.dataset.topic; state.view = "source"; }
         } catch (error) { if (current(expected, seq)) state.error = error.message; }
         finally { state.busy = false; if (current(expected, seq)) draw(); }
         return;
       }
       if (action === "lesson") { const topic = state.data.topics.find((item) => item.id === state.topicId); close(); onStudy?.(topic, state.sources); return; }
+      if (action === "find-slots") { await findSlots(state); return; }
+      if (action === "choose-slot") { state.fields.planTime = button.dataset.slot; draw(); return; }
       if (action === "plan") {
         state.topicId = button.dataset.topic; state.view = "plan";
         const topic = state.data.topics.find((item) => item.id === state.topicId);
         const suggested = new Date(Math.max(Date.parse(topic?.nextReviewAt) || 0, Date.now() + 86400000)); suggested.setHours(19, 0, 0, 0);
         const local = new Date(suggested.getTime() - suggested.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-        state.fields.planTime = local; state.fields.minutes = "15"; state.planRequest = crypto.randomUUID(); draw(); return;
+        state.fields.planTime = local; state.fields.minutes = "15"; state.planRequest = crypto.randomUUID(); draw(); await findSlots(state); return;
       }
       if (action === "save-plan") {
         state.planRequest ||= crypto.randomUUID();

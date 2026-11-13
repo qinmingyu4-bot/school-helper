@@ -67,9 +67,21 @@
     }
     function html(job) {
       const labels = { accepting: "正在保存题目", queued: "等待处理", planning: "正在识别题目并匹配课程资料", running: "正在分批解答", completed: "整套题已完成", partial: "部分题目需要重试", failed: "任务未完成", canceled: "任务已停止", needs_input: "请补充标明题号的清晰题图或资料" };
-      return `<div class="study-task-status" role="status"><span>${esc(text(labels[job.status] || "等待处理"))}${job.total ? ` · ${esc(progress(job.completed, job.total))}` : ""}</span>${active(job) ? `<button type="button" data-action="study-task-cancel" data-job="${esc(job.id)}" ${pending.has(job.id) ? "disabled" : ""}>${esc(text("停止任务"))}</button>` : ["partial", "failed", "canceled"].includes(job.status) ? `<button type="button" data-action="study-task-retry" data-job="${esc(job.id)}" ${pending.has(job.id) ? "disabled" : ""}>${esc(text("重试未完成题目"))}</button>` : ""}${job.error ? `<span class="reply-notice">${esc(text(job.error))}</span>` : ""}${failure ? `<span class="reply-notice">${esc(text(failure))}</span>` : ""}${active(job) ? `<small>${esc(text("后台会继续处理，刷新页面可恢复进度。"))}</small>` : ""}</div>`;
+      const incomplete = ["partial", "failed", "canceled", "needs_input"].includes(job.status);
+      const retryable = incomplete && (job.status !== "needs_input" || job.batches?.some((batch) => batch.status !== "done"));
+      const button = (action, label) => `<button type="button" data-action="study-task-${action}" data-job="${esc(job.id)}" ${pending.has(job.id) ? "disabled" : ""}>${esc(text(label))}</button>`;
+      return `<div class="study-task-status" role="status"><span>${esc(text(labels[job.status] || "等待处理"))}${job.total ? ` · ${esc(progress(job.completed, job.total))}` : ""}</span>${active(job) ? button("cancel", "停止任务") : `${retryable ? button("retry", "重试未完成题目") : ""}${incomplete ? button("supplement", "补充题图或条件") : ""}`}${job.error ? `<span class="reply-notice">${esc(text(job.error))}</span>` : ""}${failure ? `<span class="reply-notice">${esc(text(failure))}</span>` : ""}${active(job) ? `<small>${esc(text("后台会继续处理，刷新页面可恢复进度。"))}</small>` : incomplete ? `<small>${esc(text("补充资料后继续提问，已完成的解答会保留。"))}</small>` : ""}</div>`;
     }
-    return { load, accept, action, mergeMessages, html, active: () => key(context) === key(getContext()) ? jobs.find(active) : null,
+    function supplement(id, messages = []) {
+      if (key(context) !== key(getContext())) return "";
+      const job = jobs.find((item) => item.id === id);
+      if (!job || active(job) || job.status === "completed") return "";
+      const numbers = (job.remaining || []).join("、").slice(0, 2400);
+      const original = messages.find((message) => message.id === job.messageId);
+      const source = original ? [original.displayText || original.content || "", ...(original.attachments || []).map((item) => item.name)].join(" · ").slice(0, 1000) : "";
+      return (source ? text("原提问：") + source + "\n" : "") + text("请结合这次补充的题图或条件，继续以下未完成题目：") + (numbers || text("上次未能读清的题目")) + "。\n" + text("只处理这些题目；请讲清方法和关键步骤。资料仍不足时，请指出具体缺项，不要猜答案。") + "\n" + text("补充说明：");
+    }
+    return { load, accept, action, mergeMessages, html, supplement, active: () => key(context) === key(getContext()) ? jobs.find(active) : null,
       clear() { generation++; clearTimeout(timer); jobs = []; context = null; owner = null; pending.clear(); } };
   }
   return { create, active };

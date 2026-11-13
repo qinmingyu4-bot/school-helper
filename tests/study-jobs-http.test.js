@@ -63,6 +63,24 @@ test("HTTP problem sets persist through restart, restore progress and isolate ac
   const messages = (await request(route + "/messages", "GET", null, alice.cookie)).data.messages;
   assert.equal(messages.length, 2); assert.match(messages[1].content, /已完成 20\/20/);
   const state = JSON.parse(await fs.readFile(database, "utf8")); assert.ok(!JSON.stringify(state.materials).includes("MATH_TASK_FIXTURE"), "Task result payloads are persisted outside the resident material manifest");
+  const interactive = await request(route + "/conversations", "POST", { title: "Interactive scope" }, alice.cookie);
+  for (const message of ["先给提示，等我回答再继续", "Explain question 2 only", "请问我几个问题来检查我是否真的理解了。", "这份试卷有多少道题？"]) {
+    const reply = await request(route + "/chat", "POST", { ...body, conversationId: interactive.data.conversation.id, stream: false, requestId: `scope-${Math.random().toString(36).slice(2)}`, message }, alice.cookie);
+    assert.equal(reply.status, 201, message);
+    assert.equal(reply.data.job, undefined);
+  }
+  assert.deepEqual((await request(route + `/study-jobs?conversationId=${interactive.data.conversation.id}`, "GET", null, alice.cookie)).data.jobs, []);
+  const grouped = await request(route + "/conversations", "POST", { title: "Retained upload group" }, alice.cookie);
+  await request(route + "/chat", "POST", { message: "Save these files", conversationId: grouped.data.conversation.id, attachments: [body.attachments[0], { ...body.attachments[0], name: "second-paper.txt" }] }, alice.cookie);
+  const continued = await request(route + "/chat", "POST", { ...body, conversationId: grouped.data.conversation.id, attachments: [], message: "参考 Lecture 0.txt，解答上传的整套题", requestId: "retained-whole-group" }, alice.cookie);
+  assert.equal(continued.status, 202);
+  let planned;
+  for (let attempt = 0; attempt < 100; attempt++) {
+    planned = (await request(route + "/study-jobs/" + continued.data.job.id, "GET", null, alice.cookie)).data.job;
+    if (planned.total) break;
+    await delay(30);
+  }
+  assert.equal(planned.total, 40, "Follow-up must retain the entire last upload, not just its last file");
   await request(route + "/conversations/default", "DELETE", null, alice.cookie);
   assert.equal((await request(taskRoute, "GET", null, alice.cookie)).status, 404);
 });

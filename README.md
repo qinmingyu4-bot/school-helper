@@ -4,6 +4,39 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, op
 
 ## Features
 
+- Authenticated course grade planning, first-study guidance, exam-aware review
+  suggestions, confirmed email calendar changes, local draft recovery and self-service
+  password reset: [course workflow completion](docs/product-completion.md).
+
+- Local **Grade planner** design preview: run `npm run preview:grades` and open
+  `http://127.0.0.1:4317/` (override the port with `GRADE_PREVIEW_PORT`). This
+  standalone server binds only to loopback, serves an explicit public-asset
+  allowlist and never opens the application database or starts background jobs.
+  The navigation and three example courses are a preview, not live account data.
+  Edit individual assignments/quizzes, confirm screenshot matches, review grading
+  rules, and adjust linked assessment/final-grade sliders from either side without
+  choosing a calculation mode. Course switching uses a compact menu with course
+  names and keyboard navigation. Records, rules, assessment editing and screenshot
+  review share quiet numeric fields and compact menus. Source evidence and special
+  rules expand when needed; changing review destinations retains edited scores,
+  disclosure state and scroll position. Confirm/cancel actions remain visible while
+  dialog content scrolls. Grades persist only in this
+  browser under `studybridge.grade-planner.preview.v1`; screenshot files are not
+  retained. Clear that key to restore the sample courses. The preview supports
+  the existing palettes, independent dark mode, Chinese/English and phone layouts.
+  On macOS with Command Line Tools, screenshots can use Apple Vision entirely
+  on-device, reading explicit assessment names and score/maximum pairs. If the
+  existing local `OPENAI_API_KEY` is configured, screenshots and PDF/TXT/image
+  syllabuses use the AI extraction endpoint (`GRADE_PREVIEW_MODEL`, then existing
+  model settings). Files are sent to that service only after **Start recognition**.
+  AI extraction is not required for manual grades or the explicitly labeled sample
+  review flows. All recognition results require editable confirmation before saving.
+  Equal and total-points category weighting are supported; unknown plans/maxima,
+  non-100% totals and unsupported special rules pause precise totals and forecasts.
+  This preview remains separate from real account data. The authenticated course
+  header now opens the same editor with cloud persistence and course-material
+  integration. Unsupported special grading schemes remain explicitly paused.
+
 - Chinese / English interface: switch on the homepage, sign-in screen, sidebar, or **Settings → Personalization**. On first use, the first supported browser language is selected (`zh-*` → Simplified Chinese, `en-*` → English), falling back to Chinese. The choice is saved as `studybridge.interface-language` in this browser, shared by the homepage and app, and synchronized across tabs. Switching preserves active form and chat drafts. Interface language is independent of AI Learning Style; user content, course names, messages and documents are kept in their original language. Missing translations fall back to Chinese. Add interface text to `public/i18n-en.js`, use `StudyBridgeI18n.text` / `message` for labels and `html` for trusted UI templates; keep user content in interpolations and escape it as before. Interface language is a browser preference, not an account-synced preference.
 
 - Six student destinations: Community, Classmates, Schedule, Study, Tools and **邮箱助手**. Bind Gmail or Outlook under **设置 → 邮箱授权**; the assistant's compact header shows connection state and linked addresses. **邮件解读与回复** opens directly with visible input/draft panels; **学习通知** separately reviews extracted items before calendar confirmation. View switching retains inputs, replies and review edits. Private OAuth setup and first-release limits: [Mailbox assistant](docs/mailbox-assistant.md).
@@ -20,7 +53,7 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, op
 - Expandable course folders with multiple independently titled chats, first-question titles and manual renaming. Course documents are shared; each chat keeps its own messages, uploads, input drafts and streaming reply. Historical course messages remain in the default conversation.
 - Timetable/syllabus extraction automatically adds recognized courses and reuses existing ones; calendar entries are saved only after confirmation and filed under the corresponding course.
 - Backend AI calls using `OPENAI_API_KEY`
-- Incremental Study Area replies with animated activity states and a stop-generation control
+- Incremental Study Area replies with animated activity states and a stop-generation control. Streamed display updates reuse unchanged blocks and formulas without reducing AI reasoning, context or review; see [rendering performance verification](docs/render-performance.md).
 - Self-hosted Inter Variable and Noto Sans SC interface fonts, with bundled licenses and source notes in `public/fonts/SOURCES.md`
 - Shared book-and-bridge logo on the homepage, login and app, defaulting to monochrome. **设置 → 个性化 → 品牌 Logo** offers the approved indigo/mint alternative with immediate preview and account-scoped saving, independent of interface palette and dark mode. Both original design proofs and scalable assets are documented in `docs/branding/README.md`.
 - Six Study Area modes with mode-specific question shortcuts and AI workflows: preview, guided learning, review, assignment help, mock exams, and exam cramming
@@ -33,6 +66,24 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, op
 - Classmate messages support original images and files, with thumbnails, enlarged image viewing and private downloads. Pick multiple files, paste screenshots or drag files into chat; remove queued attachments before sending. Send up to 6 files, 12 MB each and 20 MB total, with or without text. Failed sends retain the draft and retries reuse the same message identity. Selected files stay separate by chat during navigation; unsent files must be selected again after a page reload. Sent originals survive reloads/restarts and are accessible only to that chat's participants. SVG/HTML and other files download as attachments; only validated raster images preview inline.
 
 ## Website entry paths
+
+Local homepage review: run `npm run preview:landing` and open
+`http://127.0.0.1:4318/` (override with `LANDING_PREVIEW_PORT`). This loopback-only
+server serves an explicit public-page asset allowlist, without reading environment
+files, opening a database, starting workers or exposing account APIs. Entry buttons
+retain the production `/app` paths; account routes are deliberately unavailable in
+this preview. It does not deploy anything.
+
+The introduction now leads with four strengths: AI grounded in uploaded course
+materials, learning organized by course, grade calculation/target planning, and
+creation in SB Docs/Sheets/Slides. Schedule, email, practice and community are
+secondary supporting features. The grade illustration links an expected exam
+score to a course total using fixed sample assumptions (80 × 20% + 65 × 40% +
+final × 40%). It neither reads nor saves grades; the authenticated grade module is available from each course header. The example has a static fallback without
+JavaScript and preserves values during Chinese/English switching. The getting-started
+section gives concrete Study/course upload, mode/question and Tools → SB Docs
+steps, with a separate phone navigation note. Keep these instructions aligned
+with the current app labels.
 
 The bare domain serves `public/landing.html` with its own responsive styles and
 no application scripts or account requests. Its neutral white/light-gray surfaces,
@@ -380,11 +431,11 @@ Each course conversation (including the legacy default) has a delete action with
 
 The internal `Schedule & Deadlines` storage course is hidden from the study chat/course list. Saved chat selections fall back to a visible course or general chat. Its records remain intact for calendar events, personal plans, deadlines and duplicate checks; do not delete or filter it from schedule storage/API reads.
 
-Schedule extraction retains a known date even when no clock time is supplied. Drafts use separate date/time inputs, and a date-only deadline displays its date while asking only for the missing time. A unique, explicitly worded due date in that item's evidence/notes can be recovered without treating grace-period or late-submission cutoffs as the deadline. No 09:00/23:59 time is invented; confirmation still requires a valid time before calendar saving, with existing time-zone conversion and duplicate checks unchanged.
+Schedule extraction retains a known date even when no clock time is supplied. Drafts use separate date/time inputs, and a date-only deadline displays its date while asking only for the missing time. A unique, explicitly worded due date in that item's evidence/notes can be recovered without treating grace-period or late-submission cutoffs as the deadline. No 09:00/23:59 time is invented; confirmation still requires a valid time before calendar saving, preserving the entered clock time across device time-zone changes and retaining duplicate checks.
 
 The full agenda supports multi-select type filters alongside pending/all/completed status. An empty selection means all types; users can combine Lecture, Tutorial, assignment/deadline, Quiz, exam and personal categories. Status counts reflect selected types, type counts reflect the current status, and the month calendar remains unfiltered. Historical DDL assessments are classified by their titles (Quiz/小测/测验 and exam/test/midterm/final/考试); stored kinds and completion rules remain unchanged.
 
-**日程 → 按课程管理日程** provides bulk editing and deletion across every month, including legacy planner entries and course-owned schedule documents. Review the number and sample of affected entries, choose not-yet-started or all entries (including history), and optionally restrict to Lecture, Tutorial, assignments/exams or personal plans. Each agenda/day item also has edit/delete actions with a single-entry scope. Bulk edits change only checked time, room/link or notes fields; single-entry edits also support title/date. Local dates and per-entry time zones survive time changes, including daylight-saving offsets; legacy entries without a time zone use UTC. Course materials and chats remain intact. Named courses group by normalized course code/name; a short code joins a full code only when its campus match is unambiguous. Unnamed personal plans remain individually manageable.
+**日程 → 按课程管理日程** provides bulk editing and deletion across every month, including legacy planner entries and course-owned schedule documents. Review the number and sample of affected entries, choose not-yet-started or all entries (including history), and optionally restrict to Lecture, Tutorial, assignments/exams or personal plans. Each agenda/day item also has edit/delete actions with a single-entry scope. Bulk edits change only checked time, room/link or notes fields; single-entry edits also support title/date. Edits preserve the displayed dates and clock times across travel. Legacy UTC entries recover their original clock from the saved time zone, defaulting to UTC when unavailable. Course materials and chats remain intact. Named courses group by normalized course code/name; a short code joins a full code only when its campus match is unambiguous. Unnamed personal plans remain individually manageable.
 
 `POST /api/schedule/manage` accepts an authenticated, explicit snapshot of up to 80 `{courseId, docId}` targets and an edit/delete operation. Every batch validates ownership and schedule-document type before writing, with atomic local persistence or conditional DynamoDB transactions. The dialog prevalidates edits for the entire selection and processes larger selections in batches; failed requests retain the reviewed snapshot and retry only outstanding batches. Deleting already-removed targets is safe to retry. Concurrent DynamoDB changes return 409 instead of overwriting them. This endpoint never deletes course workspaces.
 
@@ -524,7 +575,52 @@ single-question, hints-only, one-at-a-time and quiz requests still take preceden
 Short PDF tutoring tasks and retained multipart course sources select the complex
 model even below the generic long-attachment threshold. The immediate upload's text
 has priority over older background when retrieval is needed, and recent long replies
-retain their completion summary for follow-up questions.
+retain their working for follow-up questions. History has a 40,000-character budget:
+numbered follow-ups first select matching problem sections from up to 80 saved
+messages, keeping up to three matching replies within a combined 24,000-character
+budget so a short clarification does not hide the earlier derivation. Recent
+conversation is then included, with up to 24,000 characters per ordinary assistant reply. Genuine omissions are marked explicitly; no historical messages
+are rewritten.
+
+Background whole-paper jobs require an explicit solving/teaching scope. Hint-only,
+interactive, single-question, counting and time-budget requests stay conversational;
+the complete “一步步教” shortcut still requests the whole paper. Numbering resets
+and gaps are preserved, section givens remain attached to their questions, and
+function arguments such as `f(x)` are not subpart headings. Follow-ups reuse the
+whole most recent upload group, or explicitly named solving targets. A filename
+mentioned as a reference (for example, “based on notes.pdf”) does not narrow the
+requested paper.
+
+Every PDF/image and otherwise unrecognized attachment in a background task must
+receive an explicit inventory check. Missing/oversized inputs cannot silently fall
+back to the readable subset. Partially readable sources remain visible as unresolved
+items and prevent a completed status. Detected subparts cannot be removed by
+planning, reviewed original-page selections are retained, and required question
+visuals are checked again before solving. Dependent questions run in later batches
+and receive verified prerequisite results; unreadable prerequisites remain explicit
+instead of being guessed. Mixed unreadable/failed tasks keep their retry action.
+Every incomplete task also offers an add-information entry that prepares a follow-up
+with the original request, source names and unfinished question numbers. It preserves
+the student's draft and completed answers; added information is sent as a new
+follow-up, so it does not rewrite the earlier task's completion record. Unreadable-only
+tasks request clearer input rather than performing a no-op retry. Original-file
+loading failures retain a retry action and do not discard independent readable
+questions in the same batch.
+Conversational replies (streaming and non-streaming) also stop before generation
+when a requested original is absent/omitted or text explicitly references a missing
+figure. They request the relevant crop, full wording, labels and units. These checks
+cover known input gaps, not semantic image readability; supplied but blurry figures
+still depend on model recognition. Tutoring instructions require confirmed facts,
+useful next steps and a clear distinction between a general method and an unresolved
+answer, with no invented values or conclusions for the sake of engagement.
+A separate model review checks each batch's
+calculations, requested working and evidence before results are saved, including
+prose in parts labelled unreadable so that label cannot hide a guessed answer. Rejected
+questions retry within the existing two-attempt/120-second-per-batch bounds;
+completed questions are preserved. Review failure never approves an answer by
+default. These extra calls add latency and usage; model review is not a mathematical
+proof or a guarantee of correctness. Ordinary streamed single-question replies
+continue to use the teaching prompt rather than this background review stage.
 
 Mock-exam mode defaults to the format and structure of previously uploaded questions
 available in the current conversation or shared course materials. It follows observable
@@ -625,29 +721,48 @@ information opens for correction; draft edits, selections and disclosure state
 survive calendar navigation. A sticky selected-count confirmation bar reduces
 mobile scrolling without truncating saved content or paginating the preview.
 
-For weekly patterns, the server uses the Profile school and the extracted year,
-term, campus/faculty and course codes to search the university's allowlisted
-official domain. Calendar ranges are accepted only with matching year/term,
-confirmed campus scope, confirmed no-class dates and consulted source URLs for
-each teaching range, break or makeup day. The UI shows the sources and school
-time zone. Calendar results are cached for six hours. No calendar dates are
-hardcoded or guessed; an unsupported school, ambiguous scope, disabled search or
-lookup failure leaves a single shared semester form for manual confirmation.
-The default term is the current term only when the file omits it, with an explicit
-review notice. Registry entries are in `lib/academic-calendar.js`.
+For weekly patterns, the server checks its academic calendar archive before
+searching. The included 2026–27 records cover regular undergraduate fall and
+winter/spring teaching at Waterloo, UC Berkeley and HKUST. A shared calendar
+requires an explicit year and term, a regular undergraduate scope and a
+compatible campus. Separate winter and spring terms keep their school-specific
+names. The preview shows the scope, teaching dates, breaks, time zone and
+official sources.
+
+On an archive miss, the server can look up the official calendar using the Profile
+school, year, term, campus/faculty and course codes. It saves verified results to
+the local database or DynamoDB, keyed to the same timetable scope and course set.
+Calendar lookup requires confirmed scope, confirmed no-class dates and consulted
+official sources for each teaching period, break or makeup day. The archive
+works with web lookup disabled. Missing dates or uncertain scope can be entered
+once in the shared semester form. An inferred current term is flagged for review.
+
+With web lookup and an OpenAI key configured, the production server checks the
+configured undergraduate scopes on startup and weekly. It looks ahead through
+the following calendar year, rechecks active and upcoming terms after 90 days
+and preserves the last verified copy if the school has yet to publish dates or
+lookup fails. Set `ACADEMIC_CALENDAR_REFRESH=false` to disable background checks.
+Initial records and refresh targets live in `lib/academic-calendar-seeds.js`.
 
 Confirmation expands selected weekly patterns from the import date through the
 last teaching day, excluding reading weeks, closures, holidays, exam/vacation
 gaps and dates outside teaching periods. Official weekday substitutions are
-supported. Review stays grouped by pattern, not by every occurrence. School-local
-wall times are converted to UTC with DST handling. Up to 200 source patterns and
+supported. Review stays grouped by pattern, not by every occurrence. Schedule dates and clock times are stored as floating local values. A 10:00 class
+stays at 10:00 when the device moves between Canada and China. Older UTC records
+are read using their saved original time zone to recover the entered clock.
+Records without that metadata use UTC as a stable fallback. Display, editing,
+duplicate detection, countdowns and class completion use the same clock rules.
+System reminders follow each subscribed device’s last reported local time zone,
+updated on app use and while the page is active. After travelling, open StudyBridge
+once to update background reminder timing. During a daylight-saving gap the
+written clock remains visible and its reminder moves forward with the clock. Up to 200 source patterns and
 1500 generated occurrences are allowed. Syllabus extraction prioritizes explicit
 quiz, test/midterm/final-exam and assignment dates as DDL tasks, including quizzes
 held during a lecture. Missing dates/times remain editable rather than invented.
 Re-imports compare saved items during review and again at confirmation. Ordinary
-Lecture/Tutorial meetings match by normalized course code, kind and actual UTC
+Lecture/Tutorial meetings match by normalized course code, kind and recorded local clock
 start time even when their titles differ; conflicting explicit section identifiers
-remain distinct. UofT term suffixes and school-local DST conversions are normalized.
+remain distinct. UofT term suffixes and legacy clocks are normalized.
 Assessments keep their titles in the duplicate key so a quiz and assignment at the
 same course/time both survive, and a quiz never merges with its host lecture.
 
@@ -676,13 +791,14 @@ adapt to the width of the content area, including narrow side panels.
 Confirmation saves reminders in the existing per-user planner, skips duplicates,
 and preserves remaining drafts if saving fails. Countdown labels refresh every
 15 seconds while the page is open, without replacing the student's draft inputs.
-Dates are displayed in the browser's time zone and saved as UTC instants.
+Dates and clock times retain the entered values in storage and display.
 AI extraction requires the server's existing `OPENAI_API_KEY` and uses
 `OPENAI_COMPLEX_MODEL`. Official calendar lookup also requires `OPENAI_WEB_SEARCH`
 and Responses API web search. Scanned PDFs are sent with their original pages;
 legacy DOC/PPT/XLS extraction is best-effort and displays a review warning.
 Documents over 100,000 extracted characters must be split rather than truncated.
-Drafts stay in memory while navigating but are discarded on page reload.
+Schedule review drafts and typed quick-entry text are recovered from account-scoped
+browser storage after reload; they remain unconfirmed until explicitly saved.
 
 ## Health Checks
 

@@ -36,6 +36,11 @@ test("push HTTP enforces authentication, CSRF, origin and ownership without expo
   assert.equal((await mutate("/api/push", { subscription, userId: bob.user.id })).status, 409);
   assert.equal((await mutate("/api/push", { subscription: { ...subscription, endpoint: "https://127.0.0.1/secret" } })).status, 400);
   assert.equal((await mutate("/api/push", { subscription, leadMinutes: 30, language: "en" })).status, 200);
+  const timeUpdate = { endpoint: subscription.endpoint, timeZone: "Asia/Shanghai" };
+  assert.equal((await mutate("/api/push/time-zone", timeUpdate, "")).status, 403);
+  assert.equal((await mutate("/api/push/time-zone", { ...timeUpdate, userId: bob.user.id })).status, 409);
+  assert.equal((await mutate("/api/push/time-zone", { ...timeUpdate, timeZone: "Invalid/Zone" })).status, 400);
+  assert.equal((await mutate("/api/push/time-zone", timeUpdate)).status, 200);
   const route = `/api/push?endpoint=${encodeURIComponent(subscription.endpoint)}`;
   const status = await (await request(route, alice)).json(); assert.equal(status.enabled, true); assert.equal(status.leadMinutes, 30); assert.ok(!JSON.stringify(status).includes(subscription.keys.auth));
   const bobStatus = await (await request("/api/push", bob)).json();

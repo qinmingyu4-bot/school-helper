@@ -21,30 +21,39 @@
       try {
         const next = await api(`/api/mailbox${before ? `?before=${encodeURIComponent(before)}` : ""}`);
         if (id !== getUser()?.id || request !== generation || !isCurrent()) return;
+        for (const draft of next.drafts || []) {
+          const retained = edits.get(draft.id);
+          if (retained) draft.items.forEach((item,index) => {
+            const edit=retained[index]; if (!edit || !item.candidates) return;
+            const previous=edit.candidates?.find(c=>c.docId===edit.targetId), fresh=item.candidates.find(c=>c.docId===edit.targetId);
+            if (previous?.version !== fresh?.version) { edit.targetId="";edit.selected=false; }
+            edit.candidates=item.candidates;
+          });
+        }
         data = before ? { ...next, drafts: [...(data?.drafts || []), ...next.drafts.filter((draft) => !data?.drafts.some((row) => row.id === draft.id))] } : next;
         error = "";
       } catch (failure) { if (id === getUser()?.id && request === generation && isCurrent()) error = failure.message; }
     }
     function draftEdit(draft) {
-      if (!edits.has(draft.id)) edits.set(draft.id, draft.items.map((item) => ({ ...item, selected: true })));
+      if (!edits.has(draft.id)) edits.set(draft.id, draft.items.map((item) => ({ ...item, selected: !["update","cancel"].includes(item.changeAction) })));
       return edits.get(draft.id);
     }
     function field(item, key, label, type = "text", required = false) {
       return `<label>${label}<input data-mailbox-field="${key}" type="${type}" value="${esc(item[key])}" ${required ? "required" : ""} ${key === "title" ? 'maxlength="160"' : ""}></label>`;
     }
     function card(draft) {
-      const status = { pending: ui.text("待确认"), confirmed: ui.text("已添加到日程"), dismissed: draft.items.length ? ui.text("已忽略") : ui.text("已阅") }[draft.status] || ui.text("待确认");
+      const status = { pending: ui.text("待确认"), confirmed: ui.text(draft.changes?.length ? "已确认日程变更" : "已添加到日程"), dismissed: draft.items.length ? ui.text("已忽略") : ui.text("已阅") }[draft.status] || ui.text("待确认");
       const items = draftEdit(draft);
       return `<article class="card mailbox-message" data-mailbox-draft="${esc(draft.id)}"><div class="section-title"><span class="mailbox-provider">${providerName(draft.provider)}</span><span class="mailbox-badge">${status}</span></div>
         <h3>${esc(draft.subject || ui.text("无主题"))}</h3><p class="mailbox-source">${esc(draft.sender)} · ${esc(new Date(draft.receivedAt).toLocaleString())}</p><p class="mailbox-summary">${esc(draft.summary)}</p>
         ${draft.link ? ui.html`<a class="mailbox-source-link" href="${esc(draft.link)}" target="_blank" rel="noopener noreferrer">查看原邮件 ↗</a>` : ""}
-        ${draft.status === "pending" ? `<form class="mailbox-review" data-mailbox-form="${esc(draft.id)}"><p class="mailbox-review-help">${items.length ? ui.text("核对勾选事项的日期、时间和时区；确认后才会添加到日程。") : ui.text("这封邮件有学习相关通知，没有可直接添加的日程。阅读后可在此标记已阅。")}</p>
+        ${draft.status === "confirmed" ? (draft.changes || []).map(change => `<p class="mailbox-summary">${esc(change.before.title)} · ${esc(change.before.startsAt)} → ${change.action === "cancel" ? ui.text("已取消") : esc(change.after.startsAt)}</p>`).join("") : ""}${draft.status === "pending" ? `<form class="mailbox-review" data-mailbox-form="${esc(draft.id)}"><p class="mailbox-review-help">${items.length ? ui.text("核对勾选事项的日期、时间和时区；确认后才会添加到日程。") : ui.text("这封邮件有学习相关通知，没有可直接添加的日程。阅读后可在此标记已阅。")}</p>
         ${items.map((item, index) => ui.html`<fieldset data-mailbox-index="${index}"><legend><label class="mailbox-check"><input type="checkbox" data-mailbox-field="selected" ${item.selected ? "checked" : ""}>事项 ${index + 1}</label></legend>
-          ${item.warning ? `<p class="mailbox-warning">${esc(item.warning)}</p>` : ""}<div class="mailbox-fields">
+          ${["update","cancel"].includes(item.changeAction) ? `<p><strong>${ui.text(item.changeAction === "cancel" ? "取消已有日程" : "更新已有日程")}</strong></p><label>${ui.text("选择原日程并核对原时间")}<select data-mailbox-field="targetId" required><option value="">${ui.text("请选择")}</option>${(item.candidates || []).map(c => `<option value="${esc(c.docId)}" ${c.docId === item.targetId ? "selected" : ""}>${esc(c.course)} · ${esc(c.title)} · ${esc(c.startsAt)} (${esc(c.timeZone)})</option>`).join("")}</select></label>` : ""}${item.warning ? `<p class="mailbox-warning">${esc(item.warning)}</p>` : ""}<div class="mailbox-fields">
           ${field(item, "title", ui.text("标题"), "text", true)}<label>类型<select data-mailbox-field="kind">${[["DDL", ui.text("作业 / 考试")], ["EVENT", ui.text("活动 / 会议")], ["LEC", "Lecture"], ["TUT", "Tutorial"]].map(([value, label]) => `<option value="${value}" ${item.kind === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
-          ${field(item, "date", ui.text("日期"), "date", true)}${field(item, "time", ui.text("时间"), "time", true)}${field(item, "endsAt", ui.text("结束时间（可选）"), "datetime-local")}${field(item, "timeZone", ui.text("时区"), "text", true)}${field(item, "course", ui.text("课程（可选）"))}${field(item, "location", ui.text("地点（可选）"))}</div>
+          ${field(item, "date", ui.text("日期"), "date", item.changeAction !== "cancel")}${field(item, "time", ui.text("时间"), "time", item.changeAction !== "cancel")}${field(item, "endsAt", ui.text("结束时间（可选）"), "datetime-local")}${field(item, "timeZone", ui.text("时区"), "text", true)}${field(item, "course", ui.text("课程（可选）"))}${field(item, "location", ui.text("地点（可选）"))}</div>
           ${item.evidence ? `<blockquote class="mailbox-evidence">${esc(item.evidence)}</blockquote>` : ""}</fieldset>`).join("")}
-          <p class="mailbox-card-error" role="alert"></p><div class="mailbox-actions">${items.length ? ui.html`<button class="primary" type="button" data-action="mailbox-confirm" data-id="${esc(draft.id)}" ${busy ? "disabled" : ""}>确认添加到日程</button>` : ""}<button type="button" data-action="mailbox-dismiss" data-id="${esc(draft.id)}" ${busy ? "disabled" : ""}>${items.length ? ui.text("忽略这封邮件") : ui.text("标记已阅")}</button></div></form>` : ""}</article>`;
+          <p class="mailbox-card-error" role="alert"></p><div class="mailbox-actions">${items.length ? ui.html`<button class="primary" type="button" data-action="mailbox-confirm" data-id="${esc(draft.id)}" ${busy ? "disabled" : ""}>确认所选日程变更</button>` : ""}<button type="button" data-action="mailbox-dismiss" data-id="${esc(draft.id)}" ${busy ? "disabled" : ""}>${items.length ? ui.text("忽略这封邮件") : ui.text("标记已阅")}</button></div></form>` : ""}</article>`;
     }
     function html(replyHtml = "") {
       account();
@@ -93,7 +102,7 @@
           await load();
         } else if (draft) {
           const items = draftEdit(draft).flatMap((item, index) => item.selected ? [{ index, title: item.title, kind: item.kind, course: item.course, startsAt: item.date && item.time ? `${item.date}T${item.time}` : "", endsAt: item.endsAt,
-            timeZone: item.timeZone, location: item.location, notes: item.notes }] : []);
+            timeZone: item.timeZone, location: item.location, notes: item.notes, ...(["update","cancel"].includes(item.changeAction) ? {targetId:item.targetId,targetVersion:item.candidates?.find(c => c.docId === item.targetId)?.version} : {}) }] : []);
           if (action === "mailbox-confirm") {
             if (!items.length) throw new Error(ui.text("请至少选择一个事项。"));
             const form = button.closest("form");
@@ -106,7 +115,7 @@
           if (!current()) return;
           data.drafts = data.drafts.map((row) => row.id === draft.id ? result.draft : row);
           edits.delete(draft.id);
-          banner = action === "mailbox-confirm" ? ui.message`已添加 ${result.saved} 项到日程${result.duplicates ? ui.message`，跳过 ${result.duplicates} 项重复安排` : ""}。` : ui.text("已处理这封邮件。");
+          banner = action === "mailbox-confirm" && result.changed ? ui.text("所选日程变更已保存。") : action === "mailbox-confirm" ? ui.message`已添加 ${result.saved} 项到日程${result.duplicates ? ui.message`，跳过 ${result.duplicates} 项重复安排` : ""}。` : ui.text("已处理这封邮件。");
           notice(banner);
         }
       } catch (failure) {

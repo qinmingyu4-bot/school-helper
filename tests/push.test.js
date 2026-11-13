@@ -124,6 +124,7 @@ test("device timing, timezone conversion, localization and bounded test requests
   const f = await fixture(t);
   await assert.rejects(f.service.subscribe(f.auth, { subscription: f.sub, leadMinutes: -1 }), { statusCode: 400 });
   await f.service.subscribe(f.auth, { subscription: f.sub, leadMinutes: 0, language: "en" });
+  await f.service.updateTimeZone(f.auth, { endpoint: f.sub.endpoint, timeZone: "America/Toronto" });
   f.items([{ id: "school-local", startsAt: "2026-11-04T07:01", timeZone: "America/Toronto" }]);
   f.advance(60000); await f.service.tick(); assert.equal(f.deliveries.length, 1); assert.match(f.deliveries[0].data.title, /schedule reminder/);
   await f.service.test(f.auth, f.sub.endpoint); assert.equal(f.deliveries.length, 2);
@@ -206,4 +207,48 @@ test("deployment ensure preserves existing VAPID keys, enables the worker and re
   const wrong = webpush.generateVAPIDKeys();
   await fs.writeFile(target, first.replace(/^WEB_PUSH_PRIVATE_KEY=.*$/m, `WEB_PUSH_PRIVATE_KEY=${wrong.privateKey}`));
   assert.equal(run().status, 1);
+});
+
+test("travel updates reminders to the device clock and preserves account boundaries and delivery history", async (t) => {
+  const f = await fixture(t);
+  await f.service.subscribe(f.auth, { subscription: f.sub, leadMinutes: 0, timeZone: "America/Toronto" });
+  // At 12:01 UTC this is 20:01 in China, regardless of the timetable's origin.
+  f.items([{ id: "travel", startsAt: "2026-11-04T20:01", timeZone: "America/Toronto" }]);
+  await f.service.updateTimeZone(f.auth, { endpoint: f.sub.endpoint, timeZone: "Asia/Shanghai" });
+  f.advance(60000);
+  await f.service.tick();
+  assert.equal(f.deliveries.length, 1);
+  await f.service.updateTimeZone(f.auth, { endpoint: f.sub.endpoint, timeZone: "America/Toronto" });
+  await f.service.updateTimeZone(f.auth, { endpoint: f.sub.endpoint, timeZone: "Asia/Shanghai" });
+  await f.service.tick();
+  assert.equal(f.deliveries.length, 1);
+  const result = await f.service.updateTimeZone({ user: { id: "bob" }, tokenHash: "bobtoken" }, { endpoint: f.sub.endpoint, timeZone: "America/Vancouver" });
+  assert.equal(result.enabled, false);
+  await assert.rejects(f.service.updateTimeZone(f.auth, { endpoint: f.sub.endpoint, timeZone: "Invalid/Zone" }), { statusCode: 400 });
+});
+
+test("opening the app synchronizes an existing device after travel and ignores another account's subscription", async () => {
+  const { createTimeZoneSync } = require("../public/push-notifications");
+  let user = { id: "alice" }, zone = "America/Toronto";
+  const requests = [];
+  const sync = createTimeZoneSync({
+    getUser: () => user,
+    win: { Intl: { DateTimeFormat: () => ({ resolvedOptions: () => ({ timeZone: zone }) }) },
+      navigator: { serviceWorker: { getRegistration: async () => ({ pushManager: { getSubscription: async () => ({ endpoint: "device" }) } }) } } },
+    api: async (path, options) => {
+      requests.push({ path, options });
+      return options ? { enabled: true } : { userId: "alice", enabled: true, csrfToken: "token" };
+    }
+  });
+  await sync(); await sync();
+  assert.equal(requests.length, 2);
+  assert.equal(requests[1].options.body.timeZone, "America/Toronto");
+  assert.equal(requests[1].options.headers["x-csrf-token"], "token");
+  zone = "Asia/Shanghai";
+  await sync();
+  assert.equal(requests[3].options.body.timeZone, "Asia/Shanghai");
+  user = { id: "bob" };
+  await sync();
+  assert.equal(requests.length, 5);
+  assert.equal(requests[4].options, undefined);
 });

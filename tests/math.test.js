@@ -95,3 +95,24 @@ test("all Learning Style settings use the same math contract and the browser loa
   assert.ok(html.indexOf("/math.js?") < html.indexOf("/markdown.js?"));
   assert.ok(html.includes(`/vendor/katex-${version}/katex.min.css`));
 });
+
+test("formula reuse keeps display modes separate, bounds memory and does not share macros", () => {
+  const vm = require("node:vm");
+  const katex = require("katex"), MarkdownIt = require("markdown-it");
+  let calls = 0;
+  const browser = { katex: { renderToString: (...args) => { calls++; return katex.renderToString(...args); } } };
+  vm.runInNewContext(fs.readFileSync(require.resolve("../public/math"), "utf8"), browser);
+  const md = new MarkdownIt({ html: false });
+  browser.StudyBridgeMath.install(md);
+  const first = md.render('\\(x^2\\)');
+  assert.equal(md.render('\\(x^2\\)'), first);
+  assert.equal(calls, 1);
+  md.render('\\[x^2\\]');
+  assert.equal(calls, 2);
+  assert.ok(!md.render('\\(\\newcommand{\\secret}{x}\\secret\\)').includes('math-fallback'));
+  assert.ok(md.render('\\(\\secret\\)').includes('math-fallback'));
+  for (let i = 0; i < 270; i++) md.render(`\\(x_{${i}}\\)`);
+  const before = calls;
+  assert.equal(md.render('\\(x^2\\)'), first);
+  assert.equal(calls, before + 1, "old entries are evicted instead of growing indefinitely");
+});

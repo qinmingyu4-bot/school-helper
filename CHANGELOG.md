@@ -1,5 +1,143 @@
 # Changelog
 
+## Unreleased — Complete core course workflows
+
+- Connect the approved grade planner to real courses and account storage, with
+  syllabus material selection, reviewed recognition, version conflicts and local
+  draft recovery. Keep the standalone sample preview separate.
+- Add a compact first-study guide, evidence-based review priorities and available
+  time suggestions before upcoming course exams, with explicit confirmation.
+- Review email reschedules and cancellations against an existing calendar entry;
+  apply confirmed changes atomically, retaining before/after evidence.
+- Restore local schedule drafts and unsubmitted practice choices after refresh.
+- Expose email-code password recovery with manual assistance as a fallback.
+- Preserve account palettes, dark mode and Chinese/English; task-branch review only.
+
+
+## Unreleased — Practical homepage getting-started guide
+
+- Replace abstract start prompts with three concrete steps: create a course and
+  upload files, choose a Study mode and ask questions, then write and preview AI
+  revisions in Tools → SB Docs. Add the phone course/material navigation path.
+- Clarify direct number entry and slider use in the grade example. Keep the
+  existing layout, provide Chinese/English copy and update asset cache keys.
+- Local preview only; no production deployment.
+
+## Unreleased — Homepage focused on four product strengths
+
+- Present course-grounded AI, course-based organization, grade planning and an
+  integrated learning-to-creation workflow in the existing restrained homepage style.
+- Add an accessible, linked grade example with explicit fixed assumptions and a
+  static fallback; illustrate editable work in SB Docs and retain secondary study,
+  schedule, mailbox and community support. Update Chinese/English copy and metadata.
+- Add `npm run preview:landing`, an isolated loopback-only public-page preview with
+  an asset allowlist and no database, secrets, account APIs or AI requests.
+- Validate 20 focused regressions and 304-file source/assets/package checks, plus
+  desktop/320 px Chinese/English layouts, decimal and keyboard grade updates,
+  language-switch value retention and preview-server isolation.
+- Local preview and task-branch review only; no production deployment.
+
+## Unreleased — Consistent grade records, rules and screenshot review
+
+- Extend the approved quiet grade-planner style to records, rule editing,
+  assessment editing and screenshot upload/review. Remove repeated status copy,
+  boxed fields and the filled dialog footer; keep light dividers and clear actions.
+- Organize rules into compact rows with a live weight total and optional source
+  and special-rule disclosures. Reuse themed menus for calculation methods,
+  assessment status and screenshot destinations, including keyboard/Escape use.
+- Separate source screenshots from editable review rows, highlight score/maximum
+  pairs and show each save destination and existing-grade replacement clearly.
+  Preserve score drafts, disclosures and scroll position while matching or
+  selecting rows; keep confirmation required and duplicate destinations blocked.
+- Keep dialog actions stationary, reflow forms at phone widths and preserve
+  Chinese/English, account palettes and dark mode. Local preview only; no deployment.
+- Validate 17 focused regressions and 302-file source/assets/package checks.
+  Browser checks cover draft retention, validation/cancel, actual on-device OCR,
+  explicit saving, zero scores, manual editing/status changes, restored sample
+  records, keyboard menus and 320 px English/dark layouts.
+
+## Unreleased — Direct grade planning and quieter controls
+
+- Replace the calculation-mode switch with two linked, directly editable values:
+  adjust an assessment score to update the course total, or adjust the total to
+  calculate the score needed. Keep other pending-assessment assumptions editable
+  in a compact disclosure and show explicit unreachable/already-met targets.
+- Replace native course and assessment dropdown chrome with compact, themed
+  menus showing full names, selected states and keyboard/Escape navigation.
+- Remove the separate shaded prediction card and oversized form controls. Use
+  lighter numeric fields, finer slider tracks and restrained typography across
+  light/dark mode, existing palettes, Chinese/English and phone layouts.
+- Extend the standing design guidance to favor integrated controls and direct
+  manipulation over explanation-heavy modes. Local preview only; no deployment.
+- Validate 17 focused regressions and 302-file source/assets/package checks.
+  Browser checks cover both directions, changed assumptions, all remaining
+  assessments, unreachable targets, course-menu keyboard selection, 320 px
+  layouts and English/dark mode. Recorded course grades stay unchanged.
+
+## Unreleased — Local grade-planner preview
+
+- Add an isolated local preview in StudyBridge's existing quiet style: sample
+  course switching, expandable assessment categories, individual score/maximum
+  entry, pending/zero/excluded states, editable rules and browser-only persistence.
+- Calculate partial-category contributions with equal or total-points weighting.
+  Keep graded average, earned course points and remaining weight distinct; pause
+  precise totals when rules or assessment plans are incomplete.
+- Add forward and inverse grade scenarios with live sliders, explicit assumptions
+  for other pending assessments and reachable/unreachable target handling. Keep
+  simulated results separate from real recorded scores.
+- Add screenshot upload and editable per-assessment confirmation, with on-device
+  Apple Vision recognition on supported Macs and optional configured AI extraction.
+  Syllabus AI extraction uses the same review-first flow; sample demonstrations
+  are labeled, source files are not retained, and special rules remain visible.
+- Serve only on loopback without accessing the app database or background jobs.
+  Preserve Chinese/English, existing palettes, independent dark mode and phone
+  layouts. This is a local design preview, not an account-integrated release.
+- Validate 14 focused regressions and 302-file source/assets/package checks.
+  Browser checks cover real local screenshot recognition and review-before-save,
+  manual edits, reload persistence, target limits, rule validation, English/dark
+  mode and 320/1280 px layouts. Remote AI extraction requires a configured key
+  and was verified with simulated HTTP responses, not a live model call.
+
+## Unreleased — Lasting design guidance
+
+- Record the owner's standing preference for StudyBridge's existing simple,
+  restrained interface in project instructions. Future modules and design
+  proposals should reuse the current typography, controls and themes, including
+  account palettes, light/dark mode, Chinese/English and mobile layouts.
+- Documentation only; no application behavior or deployment changes.
+
+## Unreleased — Smooth streamed answers without reducing AI quality
+
+- Reuse unchanged answer blocks and bounded in-memory formula output instead of rebuilding the whole reply on every streamed update. Preserve complete Markdown semantics, late reference links, math, code and table scrolling.
+- Coalesce visual updates at 80 ms intervals; terminal events still flush the complete answer immediately and cancel queued paints. Keep all received text, input drafts, stop-generation and navigation behavior.
+- Leave AI models, reasoning, prompts, retrieval, context, answer length and independent review unchanged. This reduces browser rendering overhead, not model thinking time.
+- Local Chrome stress test (4× CPU slowdown, 16,162 characters / 180 formulas / 100 updates): total update work 11,781 → 824 ms, p95 215 → 11 ms, updates over 50 ms 81 → 0; final HTML identical. These are controlled local measurements, not production latency guarantees. See [performance verification](docs/render-performance.md).
+- Validate 584 automated regressions, 295-file source/assets/package checks, and isolated Chrome/WebKit streaming, navigation, draft, stop and mobile-display checks.
+
+## Unreleased — Reliable AI tutoring and practice review
+
+- Missing-input follow-up: stop conversational generation when required originals are unavailable or text refers to a missing figure. Keep independent readable background questions progressing when another original fails to load, with a specific recovery message and retry limited to blocked questions.
+- Give every incomplete task an add-image/details entry carrying the original request and unfinished question numbers, preserving drafts and completed answers. Keep retry available for mixed failures; reject no-op retries when clearer input is required. Independently review unreadable-labelled prose too, and require helpful, approachable teaching without guessed conditions or answers.
+- Missing-input validation: 582 full-suite regressions pass, plus 23 focused regressions after hardening thrown file-read failures; source/assets/package checks cover 295 JavaScript files. HTTP regressions cover both chat transports, missing originals, supplied transcriptions and restored visuals with simulated AI.
+- Second review: preserve detected subparts and inspected PDF pages; distinguish reference filenames from solving targets; pass verified prerequisite results across batches and block dependent answers when prerequisites are unreadable. Keep retry actions on mixed unresolved/failed tasks and reject missing visuals at solve time. Retain earlier full derivations alongside later clarifications.
+- Hide both proposed answer indices and author explanations during quiz review; store independently derived explanations in the resolved learning languages.
+- Respect hint-only, interactive, specific-question and time-budget requests before routing whole-paper jobs. Preserve the complete-teaching shortcut and all files in a retained upload group.
+- Keep every numbered section and numbering gap, distinguish subpart headings from function arguments, and preserve section givens. Explicitly inspect mixed text/PDF/image inventories; unreadable or uninspected attachments cannot be reported as a completed paper.
+- Preserve relevant middle calculations for follow-up questions within a bounded history budget, including older numbered sections and scoped background-task context.
+- Independently review background solutions before saving them and retry only rejected questions. Review generated quizzes without revealing the proposed answer index; reject ambiguous, unsupported or inconsistent questions before creating learning records.
+- Second-review validation: all 574 full-suite regressions pass with the complete Node runtime path under UTC, plus the strengthened reference-filename HTTP regression. Source/assets/package checks cover 293 JavaScript files. AI transports are simulated.
+- Use selected wrong answers and their explanations to target follow-up practice. Add regression coverage for scope routing, full inventories, missing visuals, failed reviews, persistence, history and misconception feedback. Additional model reviews add latency/usage and do not guarantee correctness.
+
+## 1.2.12 — Academic calendar archive and stable schedule clock times
+
+- Keep timetable imports, manual plans, deadlines and learning reviews at their entered dates and clock times across device time-zone changes. Recover older UTC entries through their saved original time zone, with a stable UTC fallback when that metadata is absent.
+- Align calendar grouping, editing, duplicate detection, countdowns and automatic class completion with those clock times. Update existing device push subscriptions to the locally reported time zone when the app is used.
+
+- Reuse verified university teaching calendars across timetable imports and server restarts. Include 2026–27 regular undergraduate fall and winter/spring calendars for Waterloo, UC Berkeley and HKUST, with official links, holidays and weekday substitutions where applicable.
+- Check configured upcoming terms in the background and keep previously verified dates when an update cannot be confirmed. Retain live lookup and one shared manual calendar form for unmatched imports.
+- Publish both owner-authorized schedule updates together through the existing AWS release workflow. Refresh package/frontend/cache versions to 1.2.12 and preserve user data, private configuration and existing notification subscriptions.
+- Validate all 545 automated regressions, 289-file source/assets/package checks and deployment-shell syntax, including calendar archive reuse and cross-zone schedule/reminder behavior.
+
 ## 1.2.11 — Classmate system notifications
 
 - Publish the owner-authorized classmate system notifications from `a931776`, retaining the existing `43640a7` (1.2.10) schedule push release, persistent private VAPID keys, accounts and user data. Refresh package/frontend/cache versions to 1.2.11; use the verified private backup and automatic code/environment recovery.

@@ -39,15 +39,15 @@ test("expired deadlines and personal tasks never auto-complete and explicit comp
 test("automatic completion uses school-local times across daylight-saving changes", () => {
   const summer = { ...meeting(), startsAt: "2026-10-26T10:00", endsAt: "2026-10-26T11:00", timeZone: "America/Toronto" };
   const winter = { ...meeting("TUT"), startsAt: "2026-11-02T10:00", endsAt: "2026-11-02T11:00", timeZone: "America/Toronto" };
-  assert.equal(importer.completion(summer, "2026-10-26T14:59:59Z").completedAt, "");
-  assert.equal(importer.completion(summer, "2026-10-26T15:00:00Z").completedAt, "2026-10-26T15:00:00.000Z");
-  assert.equal(importer.completion(winter, "2026-11-02T15:59:59Z").completedAt, "");
-  assert.equal(importer.completion(winter, end).completedAt, end);
-  assert.equal(importer.completion({ ...summer, startsAt: "2026-03-08T02:30", endsAt: "" }, end).completedAt, "");
+  assert.equal(importer.completion(summer, "2026-10-26T14:59:59Z", "America/Toronto").completedAt, "");
+  assert.equal(importer.completion(summer, "2026-10-26T15:00:00Z", "America/Toronto").completedAt, "2026-10-26T15:00:00.000Z");
+  assert.equal(importer.completion(winter, "2026-11-02T15:59:59Z", "America/Toronto").completedAt, "");
+  assert.equal(importer.completion(winter, end, "America/Toronto").completedAt, end);
+  assert.equal(importer.completion({ ...summer, startsAt: "2026-03-08T02:30", endsAt: "" }, end, "America/Toronto").completedAt, "2026-03-08T07:30:00.000Z");
 });
 
 test("calendar views move elapsed classes into history while overdue assignments keep their action", () => {
-  const items = [meeting(), meeting("TUT"), meeting("DDL"), meeting("EVENT")];
+  const items = [meeting(), meeting("TUT"), meeting("DDL"), meeting("EVENT")].map((item) => ({ ...item, timeZone: "America/Toronto" }));
   const before = JSON.stringify(items);
   const during = calendar.buildModel({ items, now: "2026-11-02T15:30Z", timeZone: "America/Toronto" });
   assert.equal(during.ongoing.length, 4);

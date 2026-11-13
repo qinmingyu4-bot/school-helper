@@ -57,7 +57,7 @@
           }
           subscription ||= await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(info.publicKey) });
           if (!active()) { await subscription.unsubscribe(); return; }
-          await mutate("/api/push", { subscription: subscription.toJSON(), leadMinutes: Number(node("lead").value), scheduleEnabled: node("schedule").checked, messagesEnabled: node("messages").checked, language: ui.getLanguage() });
+          await mutate("/api/push", { subscription: subscription.toJSON(), leadMinutes: Number(node("lead").value), scheduleEnabled: node("schedule").checked, messagesEnabled: node("messages").checked, language: ui.getLanguage(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
           await read();
         } else if (kind === "disable") {
           await mutate("/api/push", { endpoint: subscription.endpoint }, "DELETE");
@@ -77,5 +77,27 @@
     controls();
     return { activate, dispose() { disposed = true; unsubscribe(); } };
   }
-  return { capability, createPanel };
+  function createTimeZoneSync({ api, getUser, win = window }) {
+    let synced = "", busy = false;
+    return async function sync() {
+      const owner = getUser()?.id;
+      const timeZone = (win.Intl || Intl).DateTimeFormat().resolvedOptions().timeZone;
+      const key = `${owner}:${timeZone}`;
+      if (!owner) { synced = ""; return; }
+      if (busy || synced === key || !("serviceWorker" in win.navigator)) return;
+      busy = true;
+      try {
+        const registration = await win.navigator.serviceWorker.getRegistration("/");
+        const subscription = await registration?.pushManager?.getSubscription();
+        if (!subscription || getUser()?.id !== owner) return;
+        const info = await api(`/api/push?endpoint=${encodeURIComponent(subscription.endpoint)}`);
+        if (!info.enabled || info.userId !== owner || getUser()?.id !== owner) return;
+        const updated = await api("/api/push/time-zone", { method: "POST", headers: { "x-csrf-token": info.csrfToken },
+          body: { endpoint: subscription.endpoint, userId: owner, timeZone } });
+        if (updated.enabled && getUser()?.id === owner) synced = key;
+      } catch { /* Retry when the page next becomes active or its periodic check runs. */ }
+      finally { busy = false; }
+    };
+  }
+  return { capability, createPanel, createTimeZoneSync };
 });

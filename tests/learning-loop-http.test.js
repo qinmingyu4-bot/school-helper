@@ -60,7 +60,17 @@ test("learning-loop HTTP keeps sources, answers, preferences and calendar links 
   assert.equal(feedback.data.quiz.score, 2);
   assert.equal((await request(route)).data.learning.topics[0].status, "needs_review");
   await request(route + "/preferences", "POST", { prompts: false });
+  const gradeRoute = root + "/grades";
+  assert.equal((await request(gradeRoute,"GET",null,bob)).status,404);
+  const gradeBody={version:0,source:"manual",categories:[{id:"final",name:"Final",weight:100,method:"equal",plannedCount:1,items:[{id:"exam",name:"Final exam",status:"graded",score:0,max:100}]}]};
+  assert.equal((await request(gradeRoute,"PUT",gradeBody)).status,200);
+  assert.equal((await request(gradeRoute,"PUT",gradeBody)).status,409);
+  assert.equal((await request(gradeRoute)).data.plan.categories[0].items[0].score,0);
+  assert.equal((await request(route)).data.learning.topics[0].status,"needs_review");
+  const advice=await request(route+"/recommendations","POST",{topicId,timeZone:"UTC",minutes:15,from:"09:00",to:"20:00"});
+  assert.equal(advice.status,200);assert.equal(advice.data.recommendation.topicId,topicId);
   await stop(); await start();
+  assert.equal((await request(gradeRoute)).data.plan.categories[0].items[0].score,0);
   assert.equal((await request(route)).data.learning.prompts, false);
   assert.equal((await request(route + `/quiz?id=${quiz.id}`)).data.quiz.score, 2);
   const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 16);

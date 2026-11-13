@@ -41,3 +41,5 @@
 @media (pointer:coarse) {
   :root .study-workspace .composer-light :is(.quick-prompts button, .quick-prompts-more > summary, #studyMode) { min-height:44px; }
 }
+
+.study-start{padding:16px 0;border-bottom:1px solid var(--line);margin-bottom:16px;font-size:13px}.study-start h2{font-size:15px;font-weight:550}.study-start ol{padding-left:22px;line-height:2.4}.study-start button{font-size:12px;padding:3px 8px;margin-left:8px}.course-chat-actions a{color:inherit;font-size:13px;text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:6px}

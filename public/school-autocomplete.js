@@ -153,6 +153,14 @@
       note: "AI 可以把项目、networking 和 presentation 做得更职业化。"
     },
     {
+      name: "Hong Kong University of Science and Technology",
+      aliases: ["hkust", "the hong kong university of science and technology", "香港科技大学", "香港科技大學"],
+      type: "Research university",
+      place: "Clear Water Bay, Hong Kong",
+      traits: [],
+      note: ""
+    },
+    {
       name: "University of California, Berkeley",
       aliases: ["uc berkeley", "berkeley", "加州大学伯克利"],
       type: "Public research university",

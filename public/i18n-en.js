@@ -5,6 +5,44 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+已确认日程变更|Calendar changes confirmed
+有本机草稿，展开继续核对|Local draft available. Expand to continue reviewing.
+找回密码|Reset your password
+验证邮箱后设置新密码，其他设备上的旧登录将失效。|Verify your email and set a new password. Previous sessions on other devices will expire.
+新密码|New password
+重置密码|Reset password
+返回登录|Back to sign in
+无法收取邮件？申请人工协助|Cannot receive email? Request help
+如果邮箱已注册，验证码将发送到该邮箱，请检查收件箱或垃圾邮件。|If this email is registered, a code will be sent. Check your inbox and spam folder.
+密码已重置，请使用新密码登录。|Password reset. Sign in with your new password.
+成绩规划|Grade planner
+从一份课程资料开始|Start with your course material
+开始课程学习|Start studying a course
+建立课程|Create a course
+上传一份讲义或课程大纲|Upload lecture notes or a syllabus
+开始一个问题或练习|Start a question or practice session
+本机草稿保存失败，请保留页面。|Local draft could not be saved. Keep this page open.
+草稿仅保存在本机，确认后才加入账号日程。|Draft saved on this device only. Confirm to add it to your account calendar.
+未提交选项仅保存在本机，提交后同步练习记录。|Unsubmitted choices stay on this device. Submit to sync practice results.
+建议优先复习|Suggested review priorities
+安排复习|Schedule review
+反复答错，优先复习|Repeated mistakes: prioritize review
+上次练习需要巩固|Consolidate the last practice session
+近期有考试，建议检查理解|Upcoming exam: check your understanding
+已到建议复习时间|Suggested review is due
+按学习节奏复习|Review at your own pace
+考试|Exam
+已有复习安排|Review already scheduled
+可用时段开始|Available from
+可用时段结束|Available until
+查找空闲时间|Find available times
+这个主题已有待完成的复习安排，请先查看日程。|This topic already has a pending review. Check your calendar.
+可用时段内暂无空闲时间，可调整时段或手动选择。|No free slots in this window. Adjust it or choose a time manually.
+取消已有日程|Cancel an existing event
+更新已有日程|Update an existing event
+选择原日程并核对原时间|Select the existing event and check its original time
+确认所选日程变更|Confirm selected calendar changes
+所选日程变更已保存。|Selected calendar changes saved.
 系统推送|System push notifications
 仅对此设备生效。锁屏通知不显示日程标题或课程内容。|Applies to this device only. Lock screen notifications hide schedule titles and course details.
 提醒时间|Reminder time
@@ -331,6 +369,15 @@ PDF 页码|Physical PDF pages
 请补充标明题号的清晰题图或资料|Please provide a clear image or source for the specified question
 停止任务|Stop task
 重试未完成题目|Retry unfinished questions
+补充题图或条件|Add a clear image or missing details
+补充资料后继续提问，已完成的解答会保留。|Continue with added information. Completed answers stay saved.
+请结合这次补充的题图或条件，继续以下未完成题目：|Use the newly supplied images or details to continue these unfinished questions:
+上次未能读清的题目|the questions that could not be read last time
+只处理这些题目；请讲清方法和关键步骤。资料仍不足时，请指出具体缺项，不要猜答案。|Work only on these questions and explain the method and key steps. If details are still missing, identify them specifically without guessing an answer.
+补充说明：|Additional details:
+原提问：|Original request:
+部分题目的原图未能读取，请重试或补充清晰题图。|Original images for some questions could not be read. Retry or add clear images.
+剩余题目需要补充清晰题图或条件，请使用补充入口后发送。已完成的解答会保留。|The remaining questions need clear images or missing details. Use the add-information button, then send. Completed answers stay saved.
 后台会继续处理，刷新页面可恢复进度。|Work continues in the background. Refresh to restore progress.
 进度暂时无法更新，后台任务仍在继续。|Progress is temporarily unavailable. Work continues in the background.
 已完成 {0}/{1} 题|Completed {0}/{1} questions
@@ -1592,6 +1639,77 @@ AI 只在你点击后参与；预览不会改动内容，应用后可撤销。|A
 名称无效或重复。|Invalid or duplicate name.
 至少保留一个工作表。|Keep at least one sheet.
 删除当前工作表？引用此表的公式会显示错误。|Delete this sheet? Formulas referencing it will show errors.
+StudyBridge 围绕你的课程组织资料与对话，让 AI 依据上传资料回答问题，连接成绩规划与 SB Docs、Sheets、Slides 中的学习产出。|StudyBridge organizes materials and conversations around your courses. Get AI help grounded in your uploads, plan grades and create your work in SB Docs, Sheets and Slides.
+围绕你的课程，把资料、AI 学习、成绩规划和创作放在一起。|Bring course materials, AI learning, grade planning and creative work together.
+让 AI 依据你的课程资料回答，再把思考变成自己的成果。|Get answers grounded in your course materials, then turn your thinking into work of your own.
+连接学习与产出。|Learning through to creation.
+从资料中的一个问题，到下一场考试，再到自己的作品。|From a question in your notes to your next exam and work of your own.
+第 3 页|Page 3
+课程大纲|Course syllabus
+01 / 依据课程资料的 AI|01 / AI GROUNDED IN YOUR MATERIALS
+从你的讲义出发，|Start with your notes.
+把问题讲到点上。|Get to the heart of a question.
+上传讲义、课件和习题，AI 优先从这些资料中寻找依据，结合这门课的概念与方法回答。沿着课程引用回到原文，核对某一步为什么成立，再继续追问。|Upload notes, slides and problem sets. AI looks to these materials first, answering with your course’s concepts and methods. Follow course references back to the original, check the reasoning and keep asking.
+依据课程资料回答的示例|Example answer grounded in course materials
+导数描述函数在某一点的瞬时变化率。|A derivative describes the instantaneous rate of change of a function at a point.
+课程资料与回答示意|Course material and answer · Illustration
+02 / 围绕课程组织学习|02 / LEARNING ORGANIZED BY COURSE
+一门课的积累，|Keep each course’s progress
+都留在这门课里。|together in one place.
+每门课都有自己的资料和对话。概念追问、作业推导、考前复习可以分开讨论，共用这门课的资料，也能随时回看之前的思路。|Each course has its own materials and conversations. Keep concepts, assignments and exam revision in separate discussions with shared course materials, and return to earlier reasoning whenever you need it.
+从这周的讲义，接上下一次学习。|Pick up where your last study session left off.
+同一门课，多段对话，共享资料。|One course. Separate conversations. Shared materials.
+03 / 成绩计算与目标规划|03 / GRADE CALCULATION AND PLANNING
+看清已有成绩，|See where you stand.
+也看清下一步目标。|Plan what comes next.
+按课程评分规则整理已有成绩，查看各项考核对总评的贡献。调整期末预期分数，看看总评怎样变化；也可以从目标总评出发，反推期末需要拿多少分。|Organize scores using your course’s grading rules and see how each assessment contributes. Adjust an expected final-exam score to see the course total, or set a target total to find the exam score you need.
+调整示例数值，试试两边联动。|Try the example: either score updates the other.
+微积分 · 成绩规划|Calculus · Grade planning
+交互示例|Interactive example
+平时作业|Assignments
+期中考试|Midterm exam
+期末考试|Final exam
+待考|Upcoming
+期末预期分数|Expected final-exam score
+目标总评|Target course total
+调整期末预期分数|Adjust the expected final-exam score
+调整目标总评|Adjust the target course total
+示例：期末拿到 80 分，总评为 74 分；目标总评 80 分，期末需要 95 分。|Example: an exam score of 80 gives a course total of 74. A target total of 80 requires 95 on the exam.
+本例已有 42 个课程分，期末占 40%，可达总评为 42–82 分。其他成绩固定，所有分数均为示例。|This example has 42 course points earned and a final exam worth 40%, giving a possible total of 42–82. Other scores stay fixed. All scores are illustrative.
+04 / 从学习到产出的一站式体验|04 / FROM LEARNING TO FINISHED WORK
+理清思路之后，|Once the ideas are clear,
+就在这里写下来。|write them here.
+向 AI 请教，再在 SB Docs 中整理想法、撰写报告。选中文字，让 AI 帮你修改，预览后再决定是否应用。用 SB Sheets 整理数据，用 SB Slides 完成展示，让学习与产出留在同一个空间。|Ask AI for help, then organize your ideas and write your report in SB Docs. Select text, request an AI revision and preview it before applying. Use SB Sheets for data and SB Slides for presentations, keeping learning and creation in one space.
+少一些来回搬运，多一些专注表达。|Less moving between apps. More focus on your work.
+在 SB Docs 中整理学习成果的示例|Example of turning learning into a report in SB Docs
+学习报告|Study report
+用变化率理解导数|Understanding derivatives through rates of change
+平均速度描述一段时间内的变化。当时间间隔不断缩短，我们就能讨论某一瞬间的变化率。|Average speed describes change over an interval. As that interval shrinks, we can discuss the rate of change at an instant.
+导数把这个过程写成了数学语言。|The derivative expresses this process mathematically.
+把这段解释得更清楚|Make this explanation clearer
+整理思路 → 自主编辑 → 预览 AI 修改 → 完成作品 · 界面示意|Organize ideas → Edit → Preview AI revisions → Finish your work · Illustration
+更多学习支持|More study support
+练习与复习|Practice and review
+整理学习主题，用短测检查理解，保留反馈，再确认下一次复习时间。|Organize study topics, check understanding with short quizzes, keep the feedback and confirm your next review time.
+日程与邮箱|Schedule and email
+把课表、截止日期与学习通知接入日程。邮件可选连接 Gmail 或 Outlook，仅申请只读权限；日程经你确认后添加。|Bring timetables, deadlines and learning notices into your schedule. Optionally connect Gmail or Outlook with read-only access; calendar additions need your confirmation.
+社区与同学|Community and classmates
+在 SB Docs 中整理成文稿，或用表格与演示表达自己的想法。|Write it up in SB Docs, or express your ideas with spreadsheets and slides.
+成绩规划示例怎样计算？|How does the grade-planning example work?
+按每项考核的分数与权重计算贡献，再相加得到总评。这里固定了示例作业和期中成绩，两端数值联动，仅演示这套规则下的结果；实际计算需要先确认自己的课程评分规则。|Each assessment contributes its score multiplied by its weight. This example fixes the assignment and midterm scores and links the exam score with the total. For your own calculations, confirm your course’s grading rules first.
+AI 会直接修改我的文稿吗？|Does AI change my document directly?
+你可以先在 SB Docs 中自主编辑，再主动请求 AI 修改全文或所选文字。查看修改预览后，选择应用或放弃；应用后也可以撤销。|Edit freely in SB Docs, then ask AI to revise the document or selected text. Review the preview and choose to apply or discard it. Applied revisions can also be undone.
+第一次使用，|First time here?
+可以这样开始。|Start with these steps.
+登录后，从一门正在学的课开始。|Sign in and start with a course you are taking.
+新建课程，上传资料|Create a course and upload materials
+进入「学习」，在「对话与课程」点「新增」。选中课程后，在「课程资料」选择文件，再点上传按钮。|Open Study and choose Add under Chats and courses. Select your course, choose files under Course materials, then press the upload button.
+选个学习场景，开始提问|Choose a study mode and ask a question
+在输入框上方选择预习、复习或作业辅导，再写下你的问题。需要核对时，沿回答中的课程引用回看资料；换个话题，可以点「＋ 新对话」。|Choose Prepare, Review or Assignment help above the input, then ask your question. Follow course references in the answer to check your materials. For a different topic, choose + New chat.
+打开 SB Docs，整理成果|Open SB Docs and develop your work
+打开「工具 → SB Docs」，在「自主编辑」中写作。需要 AI 修改时，选中文字并填写要求，先看预览，再决定是否应用。|Open Tools → SB Docs and choose Edit manually to write. For an AI revision, select text and enter your instructions. Preview the changes before deciding whether to apply them.
+手机上先从主菜单进入「学习」，再点「课程与资料」管理课程和文件。|On a phone, open Study from the main menu, then tap Courses and materials to manage courses and files.
+直接输入分数或拖动滑杆；修改一端，另一端会同步计算。|Type a score or drag a slider. Change either value and the other updates.
 StudyBridge · 连接学习的每一步|StudyBridge · Connect every step of learning
 StudyBridge 将课程资料、AI 学习、日程与创作连接起来。以你的课程资料为依据，在探索与追问中积累理解，找到自己的学习节奏。|StudyBridge connects course materials, AI learning, schedules and creative tools. Learn from your own materials, follow your questions and build understanding at your own pace.
 AI 从你的课程资料出发，陪你学习、复习、推敲问题。|AI works with your course materials to guide your study, review and reasoning.
@@ -1829,6 +1947,11 @@ AI 仍在整理，请稍候；也可取消后重试。|AI is still processing. P
 整理超时，原文已保留，可重试或手动填写。|Processing timed out. Text is kept. Retry or enter details manually.
 已取消整理，原文已保留。|Processing canceled. Text is kept.
 {0} · 尚未加入日程。勾选要加入的项目，点开卡片可编辑并查看完整备注与原文。{1}{2}|{0} · Not added yet. Select items and open cards to edit or review notes and sources.{1}{2}
+日程按录入的日期和钟点显示，出国或切换时区后保持一致。|Schedules keep the date and clock time you entered when you travel or change time zones.
+已使用存档中经大学官网核对的校历。|Using an archived calendar verified against official university sources.
+已从大学官网核对授课日期和停课假期。|Teaching dates and breaks were checked against official university sources.
+课表未注明完整学期，已按当前学期匹配；请核对上方校历。|The timetable does not specify a complete term. Review the calendar selected for the current term.
+存档中没有匹配的校历，联网校历检索未启用。请补充一次授课起止和停课日期。|No archived calendar matches and online lookup is off. Enter the teaching dates and breaks once for this import.
 正在读取课表版面与时间；识别到每周课程后将自动核对学校官网校历…|Reading the timetable. Weekly classes will be checked against the official school calendar…
 提取到 {0} 条待核对安排{1}。请在下方核对并确认。|Extracted {0} events{1}. Review and confirm below.
 ，发现 {0} 项重复，已标记已有安排并默认取消勾选|, including {0} duplicates, marked and deselected

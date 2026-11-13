@@ -104,7 +104,7 @@ for (const dynamo of [false, true]) test(`mailbox ${dynamo ? "DynamoDB" : "local
   const results = await Promise.all([service.resolve("alice", draft.id, body), service.resolve("alice", draft.id, body)]);
   assert.equal(results.reduce((sum, result) => sum + result.saved, 0), 1);
   const courses = await db.listCourses("alice"), docs = await db.listDocuments("alice", courses[0].id);
-  assert.equal(docs.length, 1); assert.equal(JSON.parse(docs[0].text).startsAt, "2026-11-16T23:00:00.000Z");
+  assert.equal(docs.length, 1); assert.equal(JSON.parse(docs[0].text).startsAt, "2026-11-16T18:00");
   const notice = status.drafts.find((row) => !row.items.length);
   await service.resolve("alice", notice.id, { action: "dismiss", generation: notice.generation });
   // Resume a durable queue; replaying source IDs retains the already-reviewed draft.
@@ -166,4 +166,23 @@ test("temporary provider failures back off without consuming queued mail, while 
   row = await db.getMailbox("alice", "gmail"); assert.equal(row.reconnectRequired, true);
   clock.value += 901000; await service.tick(); assert.equal(calls, 2);
   await assert.rejects(service.requestSync("alice", "gmail"), /重新绑定/);
+});
+
+for (const dynamo of [false,true]) test(`mailbox ${dynamo?'DynamoDB':'local'}: reschedule and cancellation are atomic, idempotent and reject stale targets`,async t=>{
+  const db=await setup(t,dynamo);
+  const course=await db.createCourse({id:'math',userId:'alice',name:'Math'});
+  const doc=await db.createDocument({id:'exam',userId:'alice',courseId:course.id,title:'[SCHEDULE_ITEM] Final',type:'Schedule',text:JSON.stringify({title:'Final',kind:'DDL',course:'Math',startsAt:'2026-11-20T09:00',timeZone:'UTC',completedAt:''})});
+  const connection={userId:'alice',provider:'gmail',active:true,generation:'g'};
+  const draft={id:'change',userId:'alice',provider:'gmail',generation:'g',status:'pending',items:[{changeAction:'update'}]};
+  await db.changeMailbox('alice','gmail',()=>connection,{draft});
+  const item={changeAction:'update',targetId:doc.id,targetVersion:require('../lib/mailbox-changes').version(doc),title:'Final',kind:'DDL',startsAt:'2026-11-21T09:00',timeZone:'UTC'};
+  await assert.rejects(db.resolveMailboxDraft('alice','change',[{...item,targetVersion:'old'}],'confirm','g'),/变化/);
+  assert.equal((await db.getMailboxDraft('alice','change')).status,'pending');
+  const results=await Promise.all([db.resolveMailboxDraft('alice','change',[item],'confirm','g'),db.resolveMailboxDraft('alice','change',[item],'confirm','g')]);
+  assert.equal(results.reduce((n,r)=>n+r.saved,0),1);
+  const documents=await db.listDocuments('alice',course.id);assert.equal(documents.length,1);assert.equal(JSON.parse(documents[0].text).startsAt,item.startsAt);
+  await db.changeMailbox('alice','gmail',()=>connection,{draft:{...draft,id:'cancel',items:[{changeAction:'cancel'}]}});
+  await db.resolveMailboxDraft('alice','cancel',[{...item,changeAction:'cancel',targetVersion:require('../lib/mailbox-changes').version(documents[0])}],'confirm','g');
+  assert.equal((await db.listDocuments('alice',course.id)).length,0);
+  assert.equal((await db.getMailboxDraft('alice','cancel')).changes[0].before.title,'Final');
 });

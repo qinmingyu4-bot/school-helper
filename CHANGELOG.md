@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — Isolated development workflow
+
+- Require one managed worktree and task branch per independent writing task.
+- Document safe checkpoints for migrating existing work, isolated local runtime
+  data, and combined verification before integration.
+- Preserve active edits and require deployment authorization separately. This is
+  documentation-only; no runtime change or production deployment.
+
 ## 1.2.32 — 2026-11-13
 
 - Classification: PATCH from verified production 1.2.31 (`2c361de`). Fix the existing default-save behavior and unnecessary review prompts; no new product module or major functionality is introduced. Preserve the release-policy governance already on main.

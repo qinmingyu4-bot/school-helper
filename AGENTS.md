@@ -79,3 +79,42 @@ governance-only exception skips deployment.
 When the owner is testing before release or has not requested deployment, push
 changes to a task branch so they are available on GitHub for review. Merge or
 push to main when deployment is authorized by the owner.
+
+## Parallel Work and Worktrees
+
+The owner requires isolated development to prevent concurrent chats from
+modifying the same working files. This governs development workflow only; it
+must not change production behavior or authorize deployment.
+
+- Before editing, inspect the current branch, `git status --short`, and
+  `git worktree list`. Check active StudyBridge chats when those tools are
+  available. Each independent writing task must use its own worktree and
+  `codex/` branch; changing branches inside a shared directory is not isolation.
+- Prefer Codex-managed worktrees so the chat remains attached to its actual
+  checkout. Reuse the chat's suitable existing worktree. Use its absolute path
+  explicitly for every command. Do not create new long-lived work under `/tmp`.
+- Start new work from the latest verified main or an explicitly required feature
+  base. Record the base and dependencies. Never replace newer main with an older
+  task snapshot; preserve intervening changes and the latest release policy.
+- Do not move, reset, stash, delete, or clean another chat's in-progress files.
+  Existing shared-directory work must reach a verified, saved checkpoint with
+  its owning chat before migration. Preserve unrelated edits and staging; if
+  ownership is unclear, leave them intact. Ask before messaging another chat
+  unless the user explicitly authorized that coordination.
+- A clean committed task can be reopened in a managed worktree at its exact SHA.
+  Verify the destination commit and working tree before retiring the old checkout.
+  Keep recoverable commits and local-only work until retention is confirmed.
+- Keep local databases, uploads, generated outputs and caches isolated per
+  worktree. Use distinct development ports. Do not share a writable test database,
+  copy production `.env` files, or point worktree tests at production services.
+  Install dependencies from the lockfile; avoid writable node_modules symlinks
+  between concurrent development tasks.
+- Integrate completed tasks one at a time in a separate integration worktree.
+  Review overlapping files and API/data changes, resolve conflicts deliberately,
+  then run `npm run check`, `TZ=UTC npm test`, and the relevant end-to-end flows
+  against the combined result. A conflict-free merge alone is not verification.
+- Publish completed work to task branches. Keep unfinished/unverified tasks out
+  of integration and report them explicitly. Main/AWS updates still require the
+  owner's deployment authorization. Worktree setup does not imply that approval.
+
+See `docs/worktree-workflow.md` for the transition and verification checklist.

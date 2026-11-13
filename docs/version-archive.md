@@ -120,6 +120,26 @@ release record; older releases without this gate retain their historical workflo
 
 ## Stable Versions
 
+### 1.2.32 - 2026-11-13
+
+- Classification: **PATCH**. Correct the existing syllabus default-save behavior,
+  rather than introduce a new module or important product capability.
+- Verified production baseline and code rollback target: **1.2.31**,
+  `2c361deac25cff982f1b1493b73af69855343bea`. The live app asset matches this
+  baseline; the later `fa138e2` main change is release-policy governance only.
+- Source fix: `582c0f1fa45d682e8c8f055a5620ca289bec739b`. Clear re-extractions
+  can fill missing rules without another confirmation. Preserve recorded grades,
+  IDs, known settings and manual links; stop only for uncertain readings,
+  conflicting settings or unsupported special rules. Whole-table citations,
+  long passages and clear visual readings no longer force review solely by format.
+- Validation: 38 grade-related tests passed, with a local simulated-recognition
+  browser check confirming automatic saving and retention of an existing 18/20
+  score. The full local suite passed 675 tests with one Linux-only check skipped;
+  all 12 release-policy tests and source/assets/version checks passed.
+- Package, lockfile, frontend and entry cache versions are synchronized to 1.2.32.
+  No data migration or new production configuration. Retain current user data
+  during any code rollback; use the standard private backup and health checks.
+
 ### 1.2.19 - 2026-11-06
 
 Purpose:

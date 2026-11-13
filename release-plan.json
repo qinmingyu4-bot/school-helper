@@ -1,0 +1,8 @@
+{
+  "previousCommit": "2c361deac25cff982f1b1493b73af69855343bea",
+  "previousVersion": "1.2.31",
+  "version": "1.2.32",
+  "level": "patch",
+  "reason": "Fix the existing syllabus automatic-save behavior by removing unnecessary repeat review for clear existing-course rules, preserving user records and reviewing actual ambiguity or conflicts. No new product feature is introduced.",
+  "features": []
+}

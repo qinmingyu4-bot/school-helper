@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased — Clear syllabus rules by default
+## 1.2.32 — 2026-11-13
+
+- Classification: PATCH from verified production 1.2.31 (`2c361de`). Fix the existing default-save behavior and unnecessary review prompts; no new product module or major functionality is introduced. Preserve the release-policy governance already on main.
 
 - Save clear syllabus rules without a confirmation screen for both new and existing courses. Fill missing details while preserving recorded grades, item IDs, existing settings and manual grade links; review actual conflicts instead of every re-import.
 - Match category weights in whole-table quotes and stop requiring review solely for long-file excerpts or clear scanned/image readings. Readable source quotes remain text-checked; uncertain readings and unsupported special rules still open review.

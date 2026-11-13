@@ -1,3 +1,16 @@
+/* Keep the reminder and the scrollable conversation on the same surface. */
+:root .app-shell > .workspace.study-workspace,
+:root .app-shell > .workspace.study-workspace > .chat-area { background:var(--panel); }
+:root .study-workspace > .deadline-banner {
+  border-color:var(--line);
+  background:var(--soft);
+}
+:root .study-workspace > .deadline-banner > div > span { color:var(--green); }
+:root .study-workspace > .deadline-banner > strong {
+  background:var(--sb-tint, #eaf4ef);
+  color:var(--green);
+}
+
 /* Compact Study composer. All surfaces and controls use account theme tokens. */
 :root .study-workspace .composer-light { --composer-secondary:color-mix(in srgb, var(--muted) 85%, var(--ink)); gap:10px; padding:14px 28px 16px; border-top:0; background:var(--panel); color:var(--ink); }
 :root .study-workspace .composer-light .study-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:6px 16px; }
@@ -31,6 +44,14 @@
 :root .study-workspace .composer-light :is(button, summary, select):focus-visible { outline:2px solid var(--green); outline-offset:2px; }
 :root .study-workspace .composer-light.drop-ready .compose-row { border-color:var(--green); background:var(--sb-tint, var(--soft)); }
 @media (max-width:700px) {
+  .app-shell:not(.admin-shell) > .study-workspace > .mobile-page-bar {
+    grid-template-columns:auto minmax(0, 1fr) auto;
+  }
+  .study-workspace > .mobile-page-bar > strong {
+    overflow:hidden;
+    text-overflow:ellipsis;
+    text-align:center;
+  }
   :root .study-workspace .composer-light { padding:12px 16px max(12px, env(safe-area-inset-bottom)); }
   :root .study-workspace .composer-light .quick-prompts { flex-basis:100%; }
   :root .study-workspace .composer-light .compose-row { grid-template-columns:44px minmax(0, 1fr) 44px; padding:6px; gap:5px; }
@@ -42,4 +63,79 @@
   :root .study-workspace .composer-light :is(.quick-prompts button, .quick-prompts-more > summary, #studyMode) { min-height:44px; }
 }
 
-.study-start{padding:16px 0;border-bottom:1px solid var(--line);margin-bottom:16px;font-size:13px}.study-start h2{font-size:15px;font-weight:550}.study-start ol{padding-left:22px;line-height:2.4}.study-start button{font-size:12px;padding:3px 8px;margin-left:8px}.course-chat-actions a{color:inherit;font-size:13px;text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:6px}
+.study-start {
+  --task-complete: #18744d;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--panel);
+  font-size:13px;
+}
+:root[data-sb-mode="dark"] .study-start { --task-complete: #82cba1; }
+.study-start > header {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px 16px;
+  padding:0 2px 10px;
+}
+.study-start h2 { margin:0; font-size:15px; font-weight:600; }
+.study-start-progress {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  color:var(--muted);
+  font-size:12px;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+.study-start-progress progress { width:52px; height:6px; accent-color:var(--task-complete); }
+.study-start ol { display:grid; gap:3px; margin:0; padding:0; list-style:none; }
+.study-start li {
+  display:grid;
+  grid-template-columns:24px minmax(0, 1fr) auto;
+  align-items:center;
+  gap:6px 10px;
+  min-height:40px;
+  padding:4px 8px;
+  border:1px solid transparent;
+  border-radius:8px;
+}
+.study-start li[aria-current="step"] {
+  border-color:var(--line);
+  background:var(--soft);
+  font-weight:550;
+}
+.study-start-mark {
+  display:grid;
+  place-items:center;
+  width:24px;
+  height:24px;
+  border:1px solid var(--line);
+  border-radius:7px;
+  color:var(--muted);
+  font-size:11px;
+  font-weight:600;
+}
+.study-start .is-complete .study-start-mark {
+  border-color:transparent;
+  background:color-mix(in srgb, var(--task-complete) 13%, var(--panel));
+  fill:none;
+  stroke:var(--task-complete);
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.study-start-label { overflow-wrap:anywhere; }
+.study-start button { min-height:32px; padding:4px 8px; font-size:12px; }
+.study-start button:focus-visible { outline:2px solid var(--green); outline-offset:2px; }
+@media (max-width:420px) {
+  .study-start { padding:10px; }
+  .study-start li { grid-template-columns:24px minmax(0, 1fr); }
+  .study-start button { grid-column:2; justify-self:start; }
+}
+@media (pointer:coarse) {
+  .study-start button { min-height:44px; }
+}
+.course-chat-actions a{color:inherit;font-size:13px;text-decoration:none;border:1px solid var(--line);padding:7px 10px;border-radius:6px}

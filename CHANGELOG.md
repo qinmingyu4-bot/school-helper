@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — Study task checklist
+
+- Use one surface behind the study reminder and conversation. Show onboarding as a compact task list with green completion checks, a progress count, and an action on the current step.
+
 ## 1.3.0 — 2026-11-13
 
 - Classification: MINOR from verified production 1.2.32 (`3f4520b`). Add important learning and calendar workflows, preserving the latest native grades, course archives, usage accounting, password recovery and release safeguards.

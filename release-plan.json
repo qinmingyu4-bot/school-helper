@@ -1,8 +1,8 @@
 {
-  "previousCommit": "97e2a50f0ed5c9417a0aedd349d016f6137220e0",
-  "previousVersion": "1.3.2",
-  "version": "1.4.0",
-  "level": "minor",
-  "reason": "Introduce the daily checklist in Schedule with real course goals, shared schedule records, progress and a compact Study entry.",
-  "features": ["Course-connected daily checklist with task planning and quantity goals"]
+  "previousCommit": "336e104dab922c8e1dcb2360b2a2ef8ba31c3a38",
+  "previousVersion": "1.4.0",
+  "version": "1.4.1",
+  "level": "patch",
+  "reason": "Keep the scroll position when selecting a date in the existing calendar or opening the day of the next scheduled item.",
+  "features": []
 }

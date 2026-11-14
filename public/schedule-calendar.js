@@ -102,6 +102,22 @@
     const groups = management.groups(items);
     return ui.html`<details class="card planner-course-manager"><summary><span><b>按课程管理日程</b><small>整门课程一键编辑或删除，无需逐天处理</small></span><span aria-hidden="true">⌄</span></summary><div class="planner-course-list">${groups.length ? groups.map((group) => ui.html`<div class="planner-course-row"><div><b>${escape(group.name)}</b><small>${group.items.length} 条安排 · ${management.select(group.items).length} 条尚未开始</small></div><div class="planner-manage-actions"><button data-action="edit-schedule-course" data-key="${escape(group.key)}" aria-label="批量编辑 ${escape(group.name)}">批量编辑</button><button data-action="delete-schedule-course" data-key="${escape(group.key)}" aria-label="删除课程日程 ${escape(group.name)}">删除课程日程</button></div></div>`).join("") : ui.html`<p class="muted">安排填写课程后，可在这里按课程管理。未关联课程的安排可在列表中单独编辑或删除。</p>`}</div></details>`;
   }
+  function renderMonth(model, countdown) {
+    return ui.html`<div class="planner-month-layout">
+        <article class="card planner-month" aria-label="月历">
+          <div class="planner-month-header"><div><span class="schedule-kicker">MONTHLY CALENDAR</span><h2>${escape(model.month.slice(0, 4))}年${Number(model.month.slice(5))}月</h2></div><div class="planner-month-nav"><button data-action="schedule-month" data-offset="-1" aria-label="上个月" ${model.month === "2000-01" ? "disabled" : ""}>‹</button><span class="planner-viewed-month" aria-live="polite" aria-atomic="true" aria-label="当前查看：${escape(model.month.slice(0, 4))}年${Number(model.month.slice(5))}月">${Number(model.month.slice(5))}月</span><button data-action="schedule-month" data-offset="1" aria-label="下个月" ${model.month === "2200-12" ? "disabled" : ""}>›</button></div></div>
+          <div class="planner-month-meta"><button data-action="schedule-today">回到今天 · ${escape(dateLabel(model.today))}</button><label>跳至<input type="month" id="scheduleMonthPicker" aria-label="选择月份" min="2000-01" max="2200-12" value="${escape(model.month)}"></label></div>
+          <div class="planner-weekdays" aria-hidden="true">${(ui.getLanguage() === "en" ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] : ["日", "一", "二", "三", "四", "五", "六"]).map((day) => `<span>${day}</span>`).join("")}</div>
+          <div class="planner-grid">${model.days.map((day) => ui.html`<button class="planner-day ${day.inMonth ? "" : "is-outside"} ${day.today ? "is-today" : ""} ${day.selected ? "is-selected" : ""}" data-action="schedule-day" data-date="${day.date}" aria-label="${escape(dateLabel(day.date))}${day.today ? ui.text("，今天") : ""}，${day.items.length} 项安排" aria-pressed="${day.selected}" ${day.today ? 'aria-current="date"' : ""}>
+            <span class="planner-day-number">${Number(day.date.slice(8))}</span><span class="planner-day-events" aria-hidden="true">${day.items.slice(0, 3).map((item) => `<span class="planner-chip planner-${type(item.kind)[1]} ${item.completedAt ? "is-completed" : ""}"><i></i><span>${item.untimed ? "" : escape(importer.wallTime(item.startsAt, item.timeZone).slice(11))} ${escape(item.title)}</span></span>`).join("")}${day.items.length > 3 ? ui.html`<small>+${day.items.length - 3} 项</small>` : ""}</span>${day.items.length ? ui.html`<span class="planner-mobile-count" aria-hidden="true">${day.items.length}项</span>` : ""}</button>`).join("")}</div>
+          <div class="planner-legend">${Object.values(types).map(([label, name]) => `<span><i class="planner-dot planner-${name}"></i>${ui.text(label)}</span>`).join("")}</div>
+        </article>
+        <article class="card planner-day-detail" aria-label="当天详情"><span class="schedule-kicker">DAY DETAILS</span><h2>${Number(model.selectedDate.slice(5, 7))}月${Number(model.selectedDate.slice(8))}日${model.selectedDate === model.today ? ui.html`<span class="planner-today-label">今天</span>` : ""}</h2><p class="planner-day-subtitle">${escape(dateLabel(model.selectedDate))} · ${model.selectedItems.length} 项安排</p>
+          <button class="primary planner-add" data-action="schedule-new" data-date="${model.selectedDate}">＋ 此日添加安排</button>
+          <div class="planner-day-items">${model.selectedItems.length ? model.selectedItems.map((item) => itemHtml(item, model, countdown)).join("") : ui.html`<div class="planner-empty"><b>这一天还没有安排</b><p>添加个人计划，或从课程文件导入。</p></div>`}</div>
+        </article>
+      </div>`;
+  }
   function renderParts(model, { agendaView = "upcoming", agendaTypes: selectedTypes = [], countdown = () => "" } = {}) {
     selectedTypes = normalizeTypes(selectedTypes);
     const rows = filterAgenda(model.rows, selectedTypes);
@@ -116,22 +132,6 @@
       previousDate = item.startDay;
       return heading + itemHtml(item, model, countdown);
     }).join("");
-    const calendarHtml = ui.html`<article class="card planner-next" id="scheduleNext">${nextHtml(model, countdown)}</article>
-      <div class="planner-month-layout">
-        <article class="card planner-month" aria-label="月历">
-          <div class="planner-month-header"><div><span class="schedule-kicker">MONTHLY CALENDAR</span><h2>${escape(model.month.slice(0, 4))}年${Number(model.month.slice(5))}月</h2></div><div class="planner-month-nav"><button data-action="schedule-month" data-offset="-1" aria-label="上个月" ${model.month === "2000-01" ? "disabled" : ""}>‹</button><span class="planner-viewed-month" aria-live="polite" aria-atomic="true" aria-label="当前查看：${escape(model.month.slice(0, 4))}年${Number(model.month.slice(5))}月">${Number(model.month.slice(5))}月</span><button data-action="schedule-month" data-offset="1" aria-label="下个月" ${model.month === "2200-12" ? "disabled" : ""}>›</button></div></div>
-          <div class="planner-month-meta"><button data-action="schedule-today">回到今天 · ${escape(dateLabel(model.today))}</button><label>跳至<input type="month" id="scheduleMonthPicker" aria-label="选择月份" min="2000-01" max="2200-12" value="${escape(model.month)}"></label></div>
-          <div class="planner-weekdays" aria-hidden="true">${(ui.getLanguage() === "en" ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] : ["日", "一", "二", "三", "四", "五", "六"]).map((day) => `<span>${day}</span>`).join("")}</div>
-          <div class="planner-grid">${model.days.map((day) => ui.html`<button class="planner-day ${day.inMonth ? "" : "is-outside"} ${day.today ? "is-today" : ""} ${day.selected ? "is-selected" : ""}" data-action="schedule-day" data-date="${day.date}" aria-label="${escape(dateLabel(day.date))}${day.today ? ui.text("，今天") : ""}，${day.items.length} 项安排" aria-pressed="${day.selected}" ${day.today ? 'aria-current="date"' : ""}>
-            <span class="planner-day-number">${Number(day.date.slice(8))}</span><span class="planner-day-events" aria-hidden="true">${day.items.slice(0, 3).map((item) => `<span class="planner-chip planner-${type(item.kind)[1]} ${item.completedAt ? "is-completed" : ""}"><i></i><span>${item.untimed ? "" : escape(importer.wallTime(item.startsAt, item.timeZone).slice(11))} ${escape(item.title)}</span></span>`).join("")}${day.items.length > 3 ? ui.html`<small>+${day.items.length - 3} 项</small>` : ""}</span>${day.items.length ? ui.html`<span class="planner-mobile-count" aria-hidden="true">${day.items.length}项</span>` : ""}</button>`).join("")}</div>
-          <div class="planner-legend">${Object.values(types).map(([label, name]) => `<span><i class="planner-dot planner-${name}"></i>${ui.text(label)}</span>`).join("")}</div>
-        </article>
-        <article class="card planner-day-detail" aria-label="当天详情"><span class="schedule-kicker">DAY DETAILS</span><h2>${Number(model.selectedDate.slice(5, 7))}月${Number(model.selectedDate.slice(8))}日${model.selectedDate === model.today ? ui.html`<span class="planner-today-label">今天</span>` : ""}</h2><p class="planner-day-subtitle">${escape(dateLabel(model.selectedDate))} · ${model.selectedItems.length} 项安排</p>
-          <button class="primary planner-add" data-action="schedule-new" data-date="${model.selectedDate}">＋ 此日添加安排</button>
-          <div class="planner-day-items">${model.selectedItems.length ? model.selectedItems.map((item) => itemHtml(item, model, countdown)).join("") : ui.html`<div class="planner-empty"><b>这一天还没有安排</b><p>添加个人计划，或从课程文件导入。</p></div>`}</div>
-        </article>
-      </div>
-      `;
     const agendaHtml = ui.html`<article class="card planner-agenda" aria-label="完整日程"><div class="planner-agenda-header"><div><span class="schedule-kicker">YOUR AGENDA</span><h2>完整日程</h2><p>课程、作业与个人安排 · 按时间排序，不受所选月份限制</p><p>Lecture / Tutorial 下课后自动完成；作业和个人安排需手动完成，过期也保留在“待完成”。</p></div><nav class="planner-tabs" aria-label="日程范围">${[["upcoming", ui.text("待完成"), pending.length], ["all", ui.text("全部安排"), rows.length], ["completed", ui.text("已完成"), completed.length]].map(([view, label, count]) => `<button data-action="schedule-agenda" data-view="${view}" aria-pressed="${agendaView === view}">${ui.text(label)}<span>${count}</span></button>`).join("")}</nav></div>
         <div class="planner-type-filters" role="group" aria-label="安排类型，可多选"><span>类型 · 可多选</span><button data-action="schedule-type" data-type="all" aria-pressed="${selectedTypes.length === 0}">全部类型<span>${scope.length}</span></button>${Object.entries(agendaTypes).map(([key, label]) => `<button data-action="schedule-type" data-type="${key}" aria-pressed="${selectedTypes.includes(key)}">${ui.text(label)}<span>${scope.filter((item) => agendaType(item) === key).length}</span></button>`).join("")}</div>
         <p class="planner-filter-hint">类型筛选仅作用于下方列表，支持组合查看；月历保留全部安排。</p>
@@ -139,13 +139,14 @@
         ${model.invalidCount ? ui.html`<p class="planner-overdue-notice">${model.invalidCount} 项安排缺少有效时间，暂时无法放入月历。</p>` : ""}
         <div class="planner-agenda-items">${agenda || `<div class="planner-empty"><b>${selectedTypes.length ? ui.text("当前筛选下没有安排") : agendaView === "completed" ? ui.text("还没有已完成的安排") : agendaView === "all" ? ui.text("从第一条安排开始") : ui.text("暂无待完成的安排")}</b><p>${selectedTypes.length ? ui.text("试试其他类型组合，或点击“全部类型”。") : ui.text("选择月历中的日期，添加课程、作业或个人计划。")}</p></div>`}</div>
       </article>`;
-    return { calendar: calendarHtml, agenda: agendaHtml };
+    const calendar = ui.html`<article class="card planner-next" id="scheduleNext">${nextHtml(model, countdown)}</article>${renderMonth(model, countdown)}`;
+    return { calendar, agenda: agendaHtml };
   }
   function render(model, options) {
     const parts = renderParts(model, options);
     return parts.calendar + parts.agenda;
   }
-  const api = { shiftMonth, buildModel, dateLabel, render, renderParts, nextHtml, courseManagementHtml, agendaType, filterAgenda, toggleType };
+  const api = { shiftMonth, buildModel, dateLabel, render, renderParts, renderMonth, nextHtml, courseManagementHtml, agendaType, filterAgenda, toggleType };
   if (typeof module === "object" && module.exports) module.exports = api;
   else scope.StudyBridgeScheduleCalendar = api;
 })(typeof window !== "undefined" ? window : globalThis);

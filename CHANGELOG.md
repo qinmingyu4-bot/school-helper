@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.1 — 2026-11-14
+
+- Classification: PATCH from production 1.4.0 (`336e104`). Fix scrolling during date selection in the existing calendar.
+- Keep the current scroll position when choosing a date from the calendar or using “View day” on the next scheduled item. Update the selected date and details in place and retain keyboard focus.
+
 ## 1.4.0 — 2026-11-14
 
 - Classification: MINOR from production 1.3.2 (`97e2a50`). Introduce a course-connected daily checklist in Schedule.

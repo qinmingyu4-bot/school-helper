@@ -2,6 +2,13 @@
 
 This file records stable StudyBridge versions so a broken update can be rolled back safely.
 
+## 1.4.1 — 2026-11-14
+
+- PATCH from production 1.4.0, `336e104dab922c8e1dcb2360b2a2ef8ba31c3a38`. Correct the scroll jump when selecting a date or opening the day of the next scheduled item.
+- Source change: `318b66e58e867c0a9ca554073f50c44163fbbb54`. Update the month calendar and selected day in place and retain keyboard focus.
+- Validate with the release policy, source/assets checks, the regression suite and Chrome/WebKit at desktop and phone widths. Verify the deployed version and both affected assets after the workflow.
+- Rollback code target: `336e104dab922c8e1dcb2360b2a2ef8ba31c3a38`. Preserve current account data and private backups.
+
 ## 1.4.0 — 2026-11-14
 
 - MINOR from 1.3.2, `97e2a50f0ed5c9417a0aedd349d016f6137220e0`. Add the course-connected daily checklist, with quantity goals and shared schedule progress.

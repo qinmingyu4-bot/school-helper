@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — Study onboarding
+
+- Collapse the study onboarding tasks to a single progress row by default. Expand it to see completed steps and the current action.
+
 ## 1.3.1 — 2026-11-14
 
 - Classification: PATCH from verified production 1.3.0 (`35bbf13`). Refine the existing study onboarding layout and repair its course materials shortcut.

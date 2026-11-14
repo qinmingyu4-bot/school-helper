@@ -893,14 +893,15 @@
     const completed = tasks.filter((task) => task.done).length;
     const progress = ui.message`已完成 ${completed}/${tasks.length} 项`;
     return `
-      <section class="study-start" aria-labelledby="studyStartTitle">
-        <header>
-          <h2 id="studyStartTitle">${esc(ui.text("从一份课程资料开始"))}</h2>
+      <details class="study-start">
+        <summary>
+          <span class="study-start-title">${esc(ui.text("学习入门"))}</span>
           <span class="study-start-progress">
             <progress value="${completed}" max="${tasks.length}" aria-hidden="true"></progress>
             ${esc(progress)}
           </span>
-        </header>
+          <svg class="study-start-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
         <ol role="list">
           ${tasks.map(({ label, done, action }, index) => `
             <li${done ? ' class="is-complete"' : index === completed ? ' aria-current="step"' : ""}>
@@ -911,7 +912,7 @@
             </li>
           `).join("")}
         </ol>
-      </section>
+      </details>
     `;
   }
 
@@ -3730,6 +3731,7 @@
     const previousCourseId = previousChat?.parentElement.dataset.courseId;
     const previousConversationId = previousChat?.parentElement.dataset.conversationId || "default";
     const previousChatKey = previousChat ? studyReplyKey(state.user?.id, previousCourseId, previousConversationId) : "";
+    const wasOnboardingOpen = previousChat?.querySelector(".study-start")?.open;
     const previousMessages = previousChat?.querySelector(".messages")?.innerHTML;
     const previousScrollTop = previousChat?.scrollTop || 0;
     const previousChatDraft = $("chatInput")?.value || "";
@@ -3781,6 +3783,8 @@
     }
     const chat = root.querySelector(".study-workspace .chat-area");
     if (chat) {
+      const onboarding = chat.querySelector(".study-start");
+      if (onboarding && previousChatKey === studyReplyKey()) onboarding.open = Boolean(wasOnboardingOpen);
       $("chatInput").value = studyDrafts.get(studyReplyKey())?.text || "";
       const showLatest = !previousChat || previousChatKey !== studyReplyKey()
         || previousMessages !== chat.querySelector(".messages")?.innerHTML;

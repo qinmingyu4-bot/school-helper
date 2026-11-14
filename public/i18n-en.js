@@ -101,6 +101,7 @@ StudyBridge 不支持任何形式的视频制作。|StudyBridge does not support
 密码已重置，请使用新密码登录。|Password reset. Sign in with your new password.
 成绩规划|Grade planner
 从一份课程资料开始|Start with your course material
+学习入门|Getting started
 开始课程学习|Start studying a course
 建立课程|Create a course
 上传一份讲义或课程大纲|Upload lecture notes or a syllabus

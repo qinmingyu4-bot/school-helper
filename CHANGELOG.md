@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Give grading-rule saves a clear progress and success state. Keep saved special grading notes collapsed and explain any calculation limits separately from confirmation.
+
 ## 1.3.0 — 2026-11-13
 
 - Classification: MINOR from verified production 1.2.32 (`3f4520b`). Add important learning and calendar workflows, preserving the latest native grades, course archives, usage accounting, password recovery and release safeguards.

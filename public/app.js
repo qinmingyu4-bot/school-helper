@@ -181,7 +181,7 @@
     messages: [],
     allDocs: [],
     scheduleItems: [],
-    dailyView: "today",
+    dailyView: "calendar",
     scheduleMonth: "",
     scheduleSelectedDate: "",
     scheduleAgendaView: "upcoming",
@@ -944,7 +944,7 @@
     const due = nextDue();
     if (!due) return ui.html`<section class="deadline-banner deadline-empty"><div><span>暂无 upcoming deadline</span><b>添加作业、考试或课程提醒后，这里会显示最近时间。</b></div></section>`;
     return ui.html`
-      <section class="deadline-banner" data-page="schedule" data-schedule-view="calendar">
+      <section class="deadline-banner" data-page="schedule">
         <div><span>最近要做</span><b>${esc(due.title)}</b><p>${esc(due.course || "")} | ${esc(formatDate(due.startsAt))} | ${esc(due.location || "")}</p></div>
         <strong><span data-countdown="${esc(due.startsAt)}">${esc(dueText(due.startsAt))}</span><small>${scheduleImport.kind(due.kind) === "DDL" ? ui.text("后截止") : ui.text("后开始")}</small></strong>
       </section>
@@ -1572,8 +1572,13 @@
   }
 
   function schedulePage() {
-    const view = state.dailyView;
-    if (view === "today") return `${pageHeader("SCHEDULE", ui.text("日程"), ui.text("今日清单"))}${dailyChecklist.tabs(view)}${dailyChecklist.render(state.scheduleItems, state.courses)}`;
+    if (state.dailyView === "today") return ui.html`
+      <header class="page-header checklist-page-header">
+        <div><h1>今日清单</h1></div>
+        <button type="button" data-action="daily-back">返回月历</button>
+      </header>
+      ${dailyChecklist.render(state.scheduleItems, state.courses)}
+    `;
     const model = scheduleMonthModel();
     state.scheduleMonth = model.month;
     state.scheduleSelectedDate = model.selectedDate;
@@ -1582,9 +1587,11 @@
     state.scheduleClockSignature = scheduleClockSignature(model);
     return ui.html`
       ${pageHeader("SCHEDULE", ui.text("日程"), ui.text("一个月历，收好你的课程、作业与生活安排。"))}
-      ${dailyChecklist.tabs(view)}
       <section class="schedule-layout">
-        <div class="schedule-push-entry"><button type="button" data-action="open-push-settings">${ui.text("系统提醒设置")}</button></div>
+        <div class="schedule-push-entry schedule-page-actions">
+          ${dailyChecklist.entry()}
+          <button type="button" data-action="open-push-settings">系统提醒设置</button>
+        </div>
         <div id="scheduleCalendarView" class="planner-view">${parts.calendar}</div>
         ${scheduleCalendarView.courseManagementHtml(state.scheduleItems)}
         <details class="card schedule-manual" id="scheduleManual" ${state.scheduleManualOpen || state.scheduleDraftOrigin === "quick" && state.scheduleDrafts.length ? "open" : ""}>
@@ -2476,13 +2483,14 @@
     return course;
   }
 
-  async function loadPage(page) {
+  async function loadPage(page, { scheduleView = "calendar" } = {}) {
     if (state.page === "grades" && page !== "grades") {
       const planner = root.querySelector("#grade-module")?.gradePlanner;
       if (planner && !await planner.flush()) return;
     }
     const pageGeneration = ++pageLoadGeneration;
     const generation = ++classmatesGeneration;
+    if (page === "schedule") state.dailyView = scheduleView;
     setPage(page);
     page = state.page;
     const userId = state.user?.id;
@@ -2809,10 +2817,16 @@
     const authSubmission = action === "register" || action === "login";
     if (authSubmission) button.disabled = true;
     try {
+      if (action === "daily-back") {
+        state.dailyView = "calendar";
+        render();
+        root.querySelector(".schedule-page-actions .daily-entry")?.focus();
+        return;
+      }
       if (action.startsWith("daily-")) {
         const userId = state.user?.id, generation = pageLoadGeneration;
         const isCurrent = () => state.user?.id === userId && generation === pageLoadGeneration && state.page === "schedule" && state.dailyView === "today";
-        await dailyChecklist.handle(button, { state, api, reload: (current) => loadScheduleItems(true, false, current), renderPage: render, open: () => loadPage("schedule"), isCurrent });
+        await dailyChecklist.handle(button, { state, api, reload: (current) => loadScheduleItems(true, false, current), renderPage: render, open: () => loadPage("schedule", { scheduleView: "today" }), isCurrent });
         return;
       }
       if (action === "learning-open") { learningLoop.open(); return; }
@@ -3834,7 +3848,6 @@
   async function openPushSchedule(url) {
     const userId = state.user?.id;
     const id = url.searchParams.get("scheduleItem");
-    state.dailyView = "calendar";
     await loadScheduleItems(false);
     if (!userId || state.user?.id !== userId) return;
     const item = state.scheduleItems.find((row) => row.id === id);
@@ -3912,9 +3925,11 @@
     const pageTarget = event.target.closest("[data-page]");
     if (pageTarget) {
       event.preventDefault();
-      if (pageTarget.dataset.scheduleView) state.dailyView = pageTarget.dataset.scheduleView;
       if (mobileNavigation.enter(pageTarget.dataset.page)) {
-        if (pageTarget.dataset.scheduleView) render();
+        if (pageTarget.dataset.page === "schedule" && state.dailyView === "today") {
+          state.dailyView = "calendar";
+          render();
+        }
         classmateNotifications.reconcileToast();
         if (state.page === "classmates") requestAnimationFrame(acknowledgeClassmateRead);
         return;

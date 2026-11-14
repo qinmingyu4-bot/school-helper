@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — Calendar first
+
+- Open Schedule directly to the monthly calendar and upcoming agenda. Open Today's checklist from a single button next to reminder settings and return to the selected calendar date.
+
 ## 1.4.1 — 2026-11-14
 
 - Classification: PATCH from production 1.4.0 (`336e104`). Fix scrolling during date selection in the existing calendar.

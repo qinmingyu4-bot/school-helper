@@ -5,7 +5,7 @@ const { test } = require("node:test");
 
 const source = fs.readFileSync(require.resolve("../public/app.js"), "utf8");
 const helpers = source.slice(source.indexOf("  function communityValue()"), source.indexOf("  function communityPage()"));
-const loader = source.slice(source.indexOf("  async function loadPage(page)"), source.indexOf("  function stopClassmatesLive()"));
+const loader = source.slice(source.indexOf("  async function loadPage("), source.indexOf("  function stopClassmatesLive()"));
 
 function harness() {
   const state = {

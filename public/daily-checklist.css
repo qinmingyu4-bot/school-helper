@@ -1,6 +1,5 @@
-.daily-tabs{padding:0 24px;display:flex;gap:24px;margin:0 0 22px;border-bottom:1px solid var(--line)}
-.daily-tabs button{padding:12px 0;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;color:var(--muted)}
-.daily-tabs button[aria-pressed=true]{color:var(--ink);border-bottom-color:var(--green)}
+.schedule-page-actions{flex-wrap:wrap;gap:8px}
+.checklist-page-header>button{min-height:36px}
 .study-heading-row{display:flex;flex:1;align-items:center;gap:8px;min-width:0}
 .study-heading-row .daily-entry{flex-shrink:0;min-height:36px;padding:7px 10px;font-size:12px;white-space:nowrap}
 .daily-checklist{max-width:960px;margin:0 auto;width:calc(100% - 32px);color:var(--ink)}
@@ -18,5 +17,5 @@
 :root[data-sb-mode="dark"] .daily-checklist .daily-check[aria-checked=true]{color:#82cba1;border-color:currentColor}
 .daily-row.is-done strong{color:var(--muted);text-decoration:line-through}
 .daily-progress{display:flex;gap:8px;align-items:center;margin-top:10px}.daily-progress label{display:flex;flex-direction:row;align-items:center}.daily-progress input{width:70px}.daily-actions{display:flex;align-items:flex-start;gap:10px}.daily-actions details{max-width:170px}.daily-actions summary{padding:7px 0}.daily-actions details button{margin-top:7px}.daily-backlog{margin-top:24px;border-top:1px solid var(--line)}.daily-footnote{margin-top:24px}.daily-empty{padding:10px 0}.daily-main p{white-space:pre-wrap;overflow-wrap:anywhere}
-.daily-checklist :is(button,input,select,summary):focus-visible,.daily-tabs button:focus-visible,.daily-entry:focus-visible{outline:2px solid var(--green);outline-offset:3px}
-@media(max-width:700px){.study-heading-row .daily-entry{min-height:44px}.daily-add-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.daily-row{flex-wrap:wrap;gap:10px}.daily-actions{margin-left:34px;width:100%;flex-wrap:wrap}.daily-row time{min-width:80px}.daily-existing{align-items:stretch;flex-direction:column}.daily-checklist h2 small{display:block;margin:6px 0 0}}
+.daily-checklist :is(button,input,select,summary):focus-visible,.checklist-page-header button:focus-visible,.daily-entry:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+@media(max-width:700px){.study-heading-row .daily-entry,.checklist-page-header>button{min-height:44px}.daily-add-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.daily-row{flex-wrap:wrap;gap:10px}.daily-actions{margin-left:34px;width:100%;flex-wrap:wrap}.daily-row time{min-width:80px}.daily-existing{align-items:stretch;flex-direction:column}.daily-checklist h2 small{display:block;margin:6px 0 0}}

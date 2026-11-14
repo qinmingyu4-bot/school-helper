@@ -1304,6 +1304,8 @@ Quiz / 小测|Quiz
 安排填写课程后，可在这里按课程管理。未关联课程的安排可在列表中单独编辑或删除。|Events linked to a course can be managed here. Other events can be edited individually in the list.
 今天|Today
 月历|Calendar
+今日清单|Today's checklist
+返回月历|Back to calendar
 上个月|Previous month
 当前查看：{0}年{1}月|Viewing: {0}-{1}
 {0}年{1}月|{0}-{1}

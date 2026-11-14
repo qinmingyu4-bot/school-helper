@@ -25,9 +25,6 @@
     return { today, tasks: current, overdue, events, done: current.filter(item => item.completedAt).length };
   }
   const target = item => `data-doc="${e(item.docId)}" data-course="${e(item.courseId)}"`;
-  function tabs(view) {
-    return `<nav class="daily-tabs" aria-label="${t("日程视图", "Schedule view")}">${[["today", t("今日清单", "Today")], ["calendar", t("月历", "Calendar")]].map(([key,label]) => `<button data-action="daily-view" data-view="${key}" aria-pressed="${view === key}">${label}</button>`).join("")}</nav>`;
-  }
   function entry(courseId = "") {
     return `<button type="button" class="daily-entry" data-action="daily-open" data-course="${e(courseId)}">${t("今日清单", "Today's checklist")}</button>`;
   }
@@ -60,13 +57,14 @@
     const action = button.dataset.action;
     if (action === "daily-open") {
       const courseId = button.dataset.course;
-      state.dailyView = "today";
       await open();
       const select = document.getElementById("dailyCourse");
-      if (state.page === "schedule" && select && [...select.options].some(option => option.value === courseId)) select.value = courseId;
+      if (state.page === "schedule" && state.dailyView === "today") {
+        if (select && [...select.options].some(option => option.value === courseId)) select.value = courseId;
+        document.querySelector('[data-action="daily-back"]')?.focus();
+      }
       return;
     }
-    if (action === "daily-view") { state.dailyView = button.dataset.view; renderPage(); return; }
     if (action === "daily-refresh") { await reload(isCurrent); if (isCurrent()) renderPage(); return; }
     const item = state.scheduleItems.find(i => i.docId === (action === "daily-existing" ? document.getElementById("dailyExisting").value : button.dataset.doc) && (action === "daily-existing" || i.courseId === button.dataset.course));
     const today = model([]).today;
@@ -99,6 +97,6 @@
     }
     finally { button.disabled = false; }
   }
-  const api = { model, isTask, validate, tabs, entry, render, handle };
+  const api = { model, isTask, validate, entry, render, handle };
   if (node) module.exports = api; else scope.StudyBridgeDailyChecklist = api;
 })(typeof window !== "undefined" ? window : globalThis);

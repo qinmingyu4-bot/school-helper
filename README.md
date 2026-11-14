@@ -649,10 +649,10 @@ the server; no additional browser credentials or environment settings are needed
 
 ## Schedule imports
 
-Schedule opens to **Today**, which combines tasks and scheduled events from all
-your courses. Use **Calendar** for the monthly planner, imports, and the full
-agenda. The **Today's checklist** button in Study opens Today and preselects the
-current course when adding a goal.
+Schedule opens to the monthly calendar and upcoming agenda. Use **Today's
+checklist** next to reminder settings to open the daily tasks and events from
+all your courses, then use **Back to calendar** to return. The **Today's
+checklist** button in Study also preselects the current course when adding a goal.
 
 Today and Calendar share the same account records. Add a task from an existing
 schedule item or create a goal with an optional target quantity. Plan dates

@@ -5,6 +5,53 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+在开发者端查看使用概况和管理用户。|Review usage and manage accounts in the developer console.
+查看使用情况，管理用户和邀请码。|Review usage and manage users and invitations.
+使用概况|Usage overview
+使用摘要|Usage summary
+查看使用摘要|View usage summary
+统计时段|Reporting period
+近 7 天|Last 7 days
+近 30 天|Last 30 days
+正在读取使用数据…|Loading usage data…
+无法读取使用数据，请刷新重试。|Could not load usage data. Refresh to try again.
+统计区间：{0} 至 {1}（UTC）。数据从 {2} 开始记录。|Period: {0} to {1} (UTC). Data collection began {2}.
+活跃用户|Active users
+首次学习完成率|First study completion
+次日回访率|Day 1 return rate
+第七日回访率|Day 7 return rate
+操作失败率|Operation failure rate
+样本不足|No eligible users
+每日活跃人数|Daily active users
+查看每日人数|View daily counts
+功能使用|Feature usage
+{0} 人 · {1} 次操作|{0} users · {1} actions
+{0} 次操作|{0} actions
+{0} · {1} 人|{0} · {1} users
+此时段暂无操作记录。|No actions recorded in this period.
+活跃按前台交互或功能操作去重。回访仅统计目标日期已经结束的新用户。首次学习指收到课程回答或提交练习。AI 成本为估算。|Active users are counted once across foreground activity and feature actions. Return rates use completed observation days. First study means receiving a course answer or submitting a quiz. AI costs are estimates.
+注册时间|Registered
+最近活跃时间|Last active
+活跃天数|Active days
+创建课程数|Courses created
+资料上传数|Materials uploaded
+成功操作数|Successful actions
+失败操作数|Failed actions
+AI 请求数|AI requests
+{0} 次返回用量|Usage reported for {0} requests
+输入 Token|Input tokens
+输出 Token|Output tokens
+AI 估算成本|Estimated AI cost
+其中 {0} 次按预留用量估算|{0} requests estimated from reservations
+办公工具|Office tools
+首次学习进度|First study progress
+上传课程资料|Upload course material
+发送学习提问|Ask a study question
+完成首次学习|Complete a first study activity
+尚无完成记录|Not recorded
+近期失败记录|Recent failures
+错误编号|Request ID
+此时段暂无失败记录。|No failures recorded in this period.
 历史课程|Archived courses
 存档课程|Archive course
 存档课程 {0}|Archive course {0}

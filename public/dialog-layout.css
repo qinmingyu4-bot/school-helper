@@ -5,7 +5,7 @@
   --dialog-inline-gap: 48px;
   --dialog-block-gap: 56px;
 }
-:root dialog:is(.learning-dialog,.settings-dialog,.schedule-manage-dialog,.chat-image-dialog,.admin-delete-dialog) {
+:root dialog:is(.learning-dialog,.settings-dialog,.schedule-manage-dialog,.chat-image-dialog,.admin-delete-dialog,.admin-usage-dialog) {
   box-sizing: border-box;
   width: min(var(--dialog-width), calc(100vw - var(--dialog-inline-gap)));
   height: min(var(--dialog-height), calc(100dvh - var(--dialog-block-gap)));
@@ -15,7 +15,7 @@
   padding: 0;
   overflow: hidden;
 }
-:root dialog:is(.learning-dialog,.settings-dialog,.schedule-manage-dialog,.chat-image-dialog,.admin-delete-dialog)[open] {
+:root dialog:is(.learning-dialog,.settings-dialog,.schedule-manage-dialog,.chat-image-dialog,.admin-delete-dialog,.admin-usage-dialog)[open] {
   display: flex;
   flex-direction: column;
 }

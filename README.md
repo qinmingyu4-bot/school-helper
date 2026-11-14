@@ -15,6 +15,7 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, op
 - Creator console for creating, copying, enabling, and disabling invite codes
 - Creator overview of registered students and their course/document/chat counts
 - Admin-only recent online timestamps with relative labels and exact-time tooltips
+- [Developer usage overview and account summaries](docs/admin-usage.md) with 7/30-day reporting, onboarding, errors and estimated AI costs
 - HttpOnly session cookie
 - Per-student courses, course documents, preferences, and chat history
 - Expandable course folders with multiple independently titled chats, first-question titles and manual renaming. Course documents are shared; each chat keeps its own messages, uploads, input drafts and streaming reply. Historical course messages remain in the default conversation.

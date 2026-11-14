@@ -818,8 +818,12 @@
     learningStyleTimer = setTimeout(() => void editor.saver.flush().catch(() => {}), 400);
   }
 
+  const adminUsage = globalThis.StudyBridgeAdminUsage.create({
+    api, root, getAdmin: () => state.user && state.mode === "admin" && isAdmin() ? state.user.id : null
+  });
+
   function adminSideHint() {
-    return ui.html`<section class="side-section"><p class="muted">开发者端只保留监管、邀请码、用户、系统状态和密码重置。</p></section>`;
+    return ui.html`<section class="side-section"><p class="muted">在开发者端查看使用概况和管理用户。</p></section>`;
   }
 
   function shellHtml(content) {
@@ -2283,7 +2287,8 @@
     const users = overview?.users || [];
     const roleLabel = (role) => ["admin", "co-admin"].includes(String(role).toLowerCase()) ? ui.text("管理员") : ui.text("用户");
     return ui.html`
-      ${pageHeader("CREATOR CONSOLE", ui.text("开发者端"), ui.text("管理邀请码、用户、系统状态和密码重置申请。"), false)}
+      ${pageHeader("CREATOR CONSOLE", ui.text("开发者端"), ui.text("查看使用情况，管理用户和邀请码。"), false)}
+      ${adminUsage.html()}
       ${adminStatusHtml()}
       <section class="admin-management">
         <article class="admin-section" aria-labelledby="adminInvitesTitle">
@@ -2301,7 +2306,7 @@
         <article class="admin-section" aria-labelledby="adminUsersTitle">
           <div class="section-title"><h2 id="adminUsersTitle">用户</h2><small data-membership-count>共 ${users.length} 人 · 普通 ${users.filter(user => user.membershipTier !== "plus").length} · Plus ${users.filter(user => user.membershipTier === "plus").length}</small></div>
           <div class="admin-list">${users.length ? users.map((user) => ui.html`<div class="user-row" data-membership-user-row="${esc(user.id)}">
-            <div class="admin-record-details"><b>${esc(user.name)}</b><p class="admin-record-note">${esc(user.email)}</p><div class="admin-record-meta"><span>${roleLabel(user.role)}</span><span class="membership-badge" data-membership="${user.membershipTier === "plus" ? "plus" : "standard"}">${user.membershipTier === "plus" ? ui.text("Plus 用户") : ui.text("普通用户")}</span>${user.inviteCode ? ui.html`<span>邀请码 <span class="admin-invite-code">${esc(user.inviteCode)}</span></span>` : ""}</div><p class="admin-record-note">最近在线：<time data-last-seen-user="${esc(user.id)}" ${user.lastSeenAt ? `datetime="${esc(user.lastSeenAt)}" title="${esc(new Date(user.lastSeenAt).toLocaleString())}"` : ""}>${userActivity.relativeTime(user.lastSeenAt)}</time></p></div>
+            <div class="admin-record-details"><button type="button" class="admin-usage-user" data-action="user-usage" data-id="${esc(user.id)}" title="查看使用摘要">${esc(user.name || user.email)}</button><p class="admin-record-note">${esc(user.email)}</p><div class="admin-record-meta"><span>${roleLabel(user.role)}</span><span class="membership-badge" data-membership="${user.membershipTier === "plus" ? "plus" : "standard"}">${user.membershipTier === "plus" ? ui.text("Plus 用户") : ui.text("普通用户")}</span>${user.inviteCode ? ui.html`<span>邀请码 <span class="admin-invite-code">${esc(user.inviteCode)}</span></span>` : ""}</div><p class="admin-record-note">最近在线：<time data-last-seen-user="${esc(user.id)}" ${user.lastSeenAt ? `datetime="${esc(user.lastSeenAt)}" title="${esc(new Date(user.lastSeenAt).toLocaleString())}"` : ""}>${userActivity.relativeTime(user.lastSeenAt)}</time></p></div>
             <div class="admin-user-controls"><dl class="admin-user-stats"><div><dt>课程</dt><dd>${user.stats?.courses || 0}</dd></div><div><dt>文档</dt><dd>${user.stats?.documents || 0}</dd></div><div><dt>聊天</dt><dd>${user.stats?.messages || 0}</dd></div></dl><button type="button" data-action="set-user-membership" data-id="${esc(user.id)}" data-tier="${user.membershipTier === "plus" ? "standard" : "plus"}" data-expected="${user.membershipTier === "plus" ? "plus" : "standard"}" ${adminMembershipPending.has(user.id) ? "disabled" : ""}>${user.membershipTier === "plus" ? ui.text("设为普通用户") : ui.text("设为 Plus")}</button><span class="admin-membership-status" role="status" aria-live="polite"></span></div>
           </div>`).join("") : ui.html`<p class="muted admin-empty">暂无用户。</p>`}</div>
         </article>
@@ -2809,6 +2814,7 @@
     const authSubmission = action === "register" || action === "login";
     if (authSubmission) button.disabled = true;
     try {
+      if (action === "user-usage") { adminUsage.open(button.dataset.id); return; }
       if (action.startsWith("daily-")) {
         const userId = state.user?.id, generation = pageLoadGeneration;
         const isCurrent = () => state.user?.id === userId && generation === pageLoadGeneration && state.page === "schedule" && state.dailyView === "today";
@@ -3780,6 +3786,7 @@
       if (gradeDialogOpen) { gradeDialog.close(); gradeDialog.showModal(); }
     }
     if (state.page === "grades") void window.StudyBridgeGradePlanner.mount(root.querySelector("#grade-module"));
+    adminUsage.sync();
     if (state.page === "schedule") updateSchedulePreviewCount();
     if (state.page === "schedule" && previousSchedule && root.querySelector(".schedule-layout")) {
       window.scrollTo(previousPageScroll.x, previousPageScroll.y);
@@ -3886,10 +3893,10 @@
       }
       document.title = ui.text("学习空间 · StudyBridge");
       state.user = data.user;
-      void reportUserActivity();
       const savedTool = localStorage.getItem("studybridge.tool");
       state.tool = ["docs", "sheets", "slides", "images", "cheatsheet", "email"].includes(savedTool) ? savedTool : "docs";
       state.mode = isAdmin() && localStorage.getItem("studybridge.mode") === "admin" ? "admin" : "student";
+      void reportUserActivity();
       const urlPage = new URL(location.href).searchParams.get("page");
       const billingResult = new URL(location.href).searchParams.get("billing");
       const mailboxResult = new URL(location.href).searchParams.get("mailbox");
@@ -4144,7 +4151,8 @@
     report.time = Date.now();
     try {
       const generation = membershipGeneration;
-      const result = await api("/api/me/activity", { method: "POST" });
+      const result = await api("/api/me/activity", { method: "POST",
+        headers: { "x-studybridge-context": state.mode === "admin" ? "admin" : "student" } });
       if (state.user?.id === userId && result.userId === userId && generation === membershipGeneration) applyMembership(result.membershipTier);
       report.time = Date.now();
     } catch { /* Presence failures must not interrupt studying. */ }

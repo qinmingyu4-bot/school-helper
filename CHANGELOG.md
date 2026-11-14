@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Developer console usage
+
+- Add 7-day and 30-day usage overviews and individual user summaries with
+  activity, onboarding, operation errors and AI usage from the allowance ledger.
+- Limit analytics to administrators and store usage metadata without exposing
+  learning content. Keep Chinese and English labels and the existing themes.
+
 ## 1.4.1 — 2026-11-14
 
 - Classification: PATCH from production 1.4.0 (`336e104`). Fix scrolling during date selection in the existing calendar.

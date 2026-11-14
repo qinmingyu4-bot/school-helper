@@ -93,3 +93,50 @@
 @container (max-width: 720px) { .admin-user-controls { justify-items: start; } }
 
 .admin-membership-status.is-error { color: var(--danger); }
+
+.admin-usage {
+  padding: 22px 28px;
+  background: var(--panel);
+  color: var(--ink);
+  border-block: 1px solid var(--line);
+}
+.admin-usage-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.admin-usage-heading h2, .admin-usage-dialog h2 { margin: 0; font-size: 20px; }
+.admin-usage h3, .admin-usage-dialog h3 { margin: 0 0 10px; font-size: 14px; }
+.admin-usage-controls { display: flex; gap: 6px; flex-wrap: wrap; }
+.admin-usage-controls button { padding: 6px 10px; min-height: 36px; font-size: 12px; }
+.admin-usage-controls button[aria-pressed="true"] { background: var(--soft); color: var(--ink); border-color: var(--muted); }
+.admin-usage-note { color: var(--muted); margin: 12px 0; font-size: 12px; line-height: 1.6; }
+.admin-usage-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 10px 0 22px; }
+.admin-usage-metrics > div { padding: 10px 12px 10px 0; border-bottom: 1px solid var(--line); }
+.admin-usage-metrics dt, .admin-usage-list small { color: var(--muted); font-size: 12px; }
+.admin-usage-metrics dd { margin: 4px 0 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.admin-usage-metrics small { display: block; color: var(--muted); font-size: 11px; font-weight: 400; }
+.admin-usage-columns { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 22px; }
+.admin-usage-chart { display: flex; gap: 4px; height: 84px; align-items: stretch; border-bottom: 1px solid var(--line); }
+.admin-usage-track { display: flex; align-items: end; flex: 1; min-width: 0; }
+.admin-usage-track span { width: 100%; height: var(--bar-height); background: var(--sb-accent, var(--green)); border-radius: 2px 2px 0 0; }
+.admin-usage-chart-axis { display: flex; justify-content: space-between; gap: 8px; margin: 6px 0; color: var(--muted); font-size: 11px; }
+.admin-usage-days { margin-top: 8px; font-size: 12px; }
+.admin-usage-days summary { cursor: pointer; }
+.admin-usage-days ul { max-height: 190px; overflow: auto; }
+.admin-usage-list { padding: 0; margin: 0; list-style: none; }
+.admin-usage-list li { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; border-bottom: 1px solid var(--line); padding: 8px 0; font-size: 13px; }
+.admin-usage-list li > * { min-width: 0; overflow-wrap: anywhere; }
+.admin-usage-errors { margin-top: 20px; }
+.admin-usage-errors small { display: block; margin-top: 2px; }
+.admin-usage-errors code { color: var(--muted); font-size: 11px; text-align: end; }
+.admin-usage-dialog { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; }
+.admin-usage-dialog::backdrop { background: rgba(0, 0, 0, .42); }
+.admin-usage-dialog header p { margin: 4px 0 0; color: var(--muted); overflow-wrap: anywhere; }
+.admin-usage-user { justify-self: start; }
+@media (max-width: 660px) {
+  .admin-usage { padding: 18px 16px; }
+  .admin-usage-columns { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .admin-usage-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-usage-chart { gap: 2px; }
+}
+@media (max-width: 380px) {
+  .admin-usage-errors li { flex-direction: column; gap: 3px; }
+  .admin-usage-errors code { text-align: start; }
+}

@@ -1,8 +1,8 @@
 {
-  "previousCommit": "a37299f30a1044507fd2ba567830c6b5d3554b87",
-  "previousVersion": "1.3.1",
-  "version": "1.3.2",
-  "level": "patch",
-  "reason": "Clarify the existing grading-rule save status and collapse special-rule notes so saved rules no longer appear to need confirmation.",
-  "features": []
+  "previousCommit": "97e2a50f0ed5c9417a0aedd349d016f6137220e0",
+  "previousVersion": "1.3.2",
+  "version": "1.4.0",
+  "level": "minor",
+  "reason": "Introduce the daily checklist in Schedule with real course goals, shared schedule records, progress and a compact Study entry.",
+  "features": ["Course-connected daily checklist with task planning and quantity goals"]
 }

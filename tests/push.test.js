@@ -53,6 +53,7 @@ test("server-wired at-time reminders include classes without end times but skip 
   const startsAt = new Date(setup.time() + 60000).toISOString();
   const items = [
     { id: "lecture", kind: "LEC", startsAt },
+    { id: "untimed-goal", kind: "EVENT", checklist: true, untimed: true, startsAt },
     { id: "tutorial", kind: "TUT", startsAt, endsAt: "" },
     { id: "completed", kind: "LEC", startsAt, completedAt: new Date(setup.time()).toISOString() },
     { id: "too-late", kind: "TUT", startsAt: new Date(setup.time() - 6 * 60000).toISOString() }
@@ -72,7 +73,7 @@ test("server-wired at-time reminders include classes without end times but skip 
   await service.tick(); assert.equal(setup.deliveries.length, 0);
   setup.advance(90000);
   assert.ok(importer.completion(items[0], setup.time()).completedAt);
-  assert.ok(importer.completion(items[1], setup.time()).completedAt);
+  assert.ok(importer.completion(items[2], setup.time()).completedAt);
   await service.tick();
   assert.deepEqual(setup.deliveries.map((delivery) => delivery.data.url), [
     "/app?page=schedule&scheduleItem=lecture", "/app?page=schedule&scheduleItem=tutorial"

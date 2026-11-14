@@ -64,7 +64,7 @@ test("calendar views move elapsed classes into history while overdue assignments
   assert.equal(after.next, null);
   assert.equal(after.days.find((day) => day.date === "2026-11-02").items.filter((item) => item.completedAt).length, 2);
   const completedHtml = calendar.render(after, { agendaView: "completed" });
-  assert.match(completedHtml, /✓ 已上完/);
+  assert.match(completedHtml, /✓ 已结束/);
   assert.ok(!completedHtml.includes('aria-label="完成 LEC"'));
   const upcomingHtml = calendar.render(after);
   assert.match(upcomingHtml, /仍需手动完成/);

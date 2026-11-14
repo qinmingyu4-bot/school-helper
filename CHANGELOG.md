@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.0 — 2026-11-14
+
+- Classification: MINOR from production 1.3.2 (`97e2a50`). Introduce a course-connected daily checklist in Schedule.
+- See tasks, review plans, classes, and personal events across the account. Plan existing tasks without moving their deadlines, and save or complete course-linked goals with optional quantity progress.
+- Open Today from the Study header. Calendar and Today share saved records, and the review planner recognizes existing plans and course exams.
+- Collapse the study onboarding tasks to a single progress row by default. Expand it to see completed steps and the current action.
+
 ## 1.3.2 — 2026-11-14
 
 - Classification: PATCH from production 1.3.1 (`a37299f`). Fix the existing grading-rule save feedback and presentation of saved special rules.

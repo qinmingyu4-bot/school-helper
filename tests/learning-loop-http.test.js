@@ -73,6 +73,16 @@ test("learning-loop HTTP keeps sources, answers, preferences and calendar links 
   const calendar = (await request("/api/schedule/items")).data.items.find((item) => item.learningTopicId === topicId);
   assert.ok(calendar);
   assert.equal(calendar.courseId, course.id);
+  const examDate = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10);
+  assert.equal((await request("/api/schedule/import", "POST", {
+    timeZone: "UTC", items: [{ courseId: course.id, kind: "DDL", title: "Course final exam", startsAt: `${examDate}T14:00` }]
+  })).data.saved, 1);
+  const suggested = await request(route + "/recommendations", "POST", { topicId, timeZone: "UTC", from: "09:00", to: "20:00", minutes: 15 });
+  assert.equal(suggested.data.recommendation.planned.docId, calendar.docId);
+  assert.equal(suggested.data.recommendation.exam.title, "Course final exam");
+  assert.deepEqual(suggested.data.slots, []);
+  const duplicateDate = new Date(Date.now() + 6 * 86400000).toISOString().slice(0, 16);
+  assert.equal((await request(route + "/plan", "POST", { topicId, requestId: "calendar-learning-duplicate", startsAt: duplicateDate, timeZone: "UTC", minutes: 15 })).status, 409);
   await request(root, "DELETE");
   assert.equal((await request(route)).status, 404);
   assert.equal((await request(route + `/quiz?id=${quiz.id}`)).status, 404);

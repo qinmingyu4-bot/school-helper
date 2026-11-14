@@ -649,6 +649,17 @@ the server; no additional browser credentials or environment settings are needed
 
 ## Schedule imports
 
+Schedule opens to **Today**, which combines tasks and scheduled events from all
+your courses. Use **Calendar** for the monthly planner, imports, and the full
+agenda. The **Today's checklist** button in Study opens Today and preselects the
+current course when adding a goal.
+
+Today and Calendar share the same account records. Add a task from an existing
+schedule item or create a goal with an optional target quantity. Plan dates
+leave original deadlines intact. Earlier unfinished tasks can be moved to
+today. Review tasks open the linked review, and untimed goals show as **Any
+time** in the calendar without setting countdowns or timed push reminders.
+
 The Add Arrangement panel accepts ordinary-language text or voice. Describe one
 or several plans, then choose AI 整理安排 and confirm the resulting editable drafts.
 Relative dates use the actual current date in the browser's IANA time zone;

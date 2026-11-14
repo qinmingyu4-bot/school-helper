@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.3.2";
+  const VERSION = "1.4.0";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -13,6 +13,7 @@
   const scheduleImport = window.StudyBridgeScheduleImport;
   const scheduleCalendarView = window.StudyBridgeScheduleCalendar;
   const scheduleManagement = window.StudyBridgeScheduleManagement;
+  const dailyChecklist = window.StudyBridgeDailyChecklist;
   const scheduleManagementUi = window.StudyBridgeScheduleManagementUi.create();
   const scheduleDraftDisclosure = new WeakMap();
   let scheduleExtractionRequest = null;
@@ -180,6 +181,7 @@
     messages: [],
     allDocs: [],
     scheduleItems: [],
+    dailyView: "today",
     scheduleMonth: "",
     scheduleSelectedDate: "",
     scheduleAgendaView: "upcoming",
@@ -893,14 +895,15 @@
     const completed = tasks.filter((task) => task.done).length;
     const progress = ui.message`已完成 ${completed}/${tasks.length} 项`;
     return `
-      <section class="study-start" aria-labelledby="studyStartTitle">
-        <header>
-          <h2 id="studyStartTitle">${esc(ui.text("从一份课程资料开始"))}</h2>
+      <details class="study-start">
+        <summary>
+          <span class="study-start-title">${esc(ui.text("学习入门"))}</span>
           <span class="study-start-progress">
             <progress value="${completed}" max="${tasks.length}" aria-hidden="true"></progress>
             ${esc(progress)}
           </span>
-        </header>
+          <svg class="study-start-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
         <ol role="list">
           ${tasks.map(({ label, done, action }, index) => `
             <li${done ? ' class="is-complete"' : index === completed ? ' aria-current="step"' : ""}>
@@ -911,7 +914,7 @@
             </li>
           `).join("")}
         </ol>
-      </section>
+      </details>
     `;
   }
 
@@ -920,7 +923,13 @@
     const conversation = state.courseConversations[state.activeCourseId]?.find((item) => item.id === state.activeConversationId);
     const courseName = isGeneralChat() ? ui.text(chatSpaces.general.name) : course?.name;
     return `
-      <header class="page-header"><div class="course-chat-heading"><small>${esc(courseName || ui.text("请选择课程"))}${!isGeneralChat() ? ui.text(" · 课程资料共享") : ""}</small><h1 title="${esc(conversation?.title || courseName || ui.text("请选择课程"))}">${esc(conversation?.title || courseName || ui.text("请选择课程"))}</h1></div>${!isGeneralChat() && course ? ui.html`<div class="course-chat-actions"><button data-action="learning-open">学习清单 · 练习</button><button data-action="new-conversation" data-id="${esc(course.id)}">＋ 新对话</button></div>` : ""}</header>
+      <header class="page-header">
+        <div class="study-heading-row">
+          <div class="course-chat-heading"><small>${esc(courseName || ui.text("请选择课程"))}${!isGeneralChat() ? ui.text(" · 课程资料共享") : ""}</small><h1 title="${esc(conversation?.title || courseName || ui.text("请选择课程"))}">${esc(conversation?.title || courseName || ui.text("请选择课程"))}</h1></div>
+          ${dailyChecklist.entry(course?.id)}
+        </div>
+        ${!isGeneralChat() && course ? ui.html`<div class="course-chat-actions"><button data-action="learning-open">学习清单 · 练习</button><button data-action="new-conversation" data-id="${esc(course.id)}">＋ 新对话</button></div>` : ""}
+      </header>
       ${upcomingBanner()}
       <section class="chat-area">
         <div class="messages" id="messages">
@@ -935,7 +944,7 @@
     const due = nextDue();
     if (!due) return ui.html`<section class="deadline-banner deadline-empty"><div><span>暂无 upcoming deadline</span><b>添加作业、考试或课程提醒后，这里会显示最近时间。</b></div></section>`;
     return ui.html`
-      <section class="deadline-banner" data-page="schedule">
+      <section class="deadline-banner" data-page="schedule" data-schedule-view="calendar">
         <div><span>最近要做</span><b>${esc(due.title)}</b><p>${esc(due.course || "")} | ${esc(formatDate(due.startsAt))} | ${esc(due.location || "")}</p></div>
         <strong><span data-countdown="${esc(due.startsAt)}">${esc(dueText(due.startsAt))}</span><small>${scheduleImport.kind(due.kind) === "DDL" ? ui.text("后截止") : ui.text("后开始")}</small></strong>
       </section>
@@ -1563,6 +1572,8 @@
   }
 
   function schedulePage() {
+    const view = state.dailyView;
+    if (view === "today") return `${pageHeader("SCHEDULE", ui.text("日程"), ui.text("今日清单"))}${dailyChecklist.tabs(view)}${dailyChecklist.render(state.scheduleItems, state.courses)}`;
     const model = scheduleMonthModel();
     state.scheduleMonth = model.month;
     state.scheduleSelectedDate = model.selectedDate;
@@ -1571,6 +1582,7 @@
     state.scheduleClockSignature = scheduleClockSignature(model);
     return ui.html`
       ${pageHeader("SCHEDULE", ui.text("日程"), ui.text("一个月历，收好你的课程、作业与生活安排。"))}
+      ${dailyChecklist.tabs(view)}
       <section class="schedule-layout">
         <div class="schedule-push-entry"><button type="button" data-action="open-push-settings">${ui.text("系统提醒设置")}</button></div>
         <div id="scheduleCalendarView" class="planner-view">${parts.calendar}</div>
@@ -2343,7 +2355,7 @@
   function nextDue() {
     const now = Date.now();
     return (state.scheduleItems || [])
-      .filter((item) => !scheduleImport.completion(item, now).completedAt && item.startsAt && new Date(item.startsAt).getTime() >= now)
+      .filter((item) => !item.untimed && !scheduleImport.completion(item, now).completedAt && item.startsAt && new Date(item.startsAt).getTime() >= now)
       .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt))[0] || null;
   }
 
@@ -2797,6 +2809,12 @@
     const authSubmission = action === "register" || action === "login";
     if (authSubmission) button.disabled = true;
     try {
+      if (action.startsWith("daily-")) {
+        const userId = state.user?.id, generation = pageLoadGeneration;
+        const isCurrent = () => state.user?.id === userId && generation === pageLoadGeneration && state.page === "schedule" && state.dailyView === "today";
+        await dailyChecklist.handle(button, { state, api, reload: (current) => loadScheduleItems(true, false, current), renderPage: render, open: () => loadPage("schedule"), isCurrent });
+        return;
+      }
       if (action === "learning-open") { learningLoop.open(); return; }
       if (action === "onboard-material") {
         if (!mobileNavigation.snapshot().active) $("docText")?.focus();
@@ -3540,8 +3558,7 @@
         const item = state.scheduleItems.find((entry) => entry.docId === button.dataset.doc && entry.courseId === button.dataset.course);
         if (!item) throw new Error(ui.text("找不到这个提醒。"));
         if (scheduleImport.completion(item).classMeeting) return;
-        const updated = { ...item, completedAt: new Date().toISOString() };
-        await api(`/api/courses/${item.courseId}/documents/${item.docId}`, { method: "PATCH", body: { title: `${SCHEDULE_PREFIX} ${item.title}`, type: "Schedule", text: JSON.stringify(updated) } });
+        await api("/api/schedule/manage", { method: "POST", body: { operation: "edit", items: [{ courseId: item.courseId, docId: item.docId }], patch: { completed: true } } });
         await loadPage("schedule");
         return;
       }
@@ -3730,6 +3747,7 @@
     const previousCourseId = previousChat?.parentElement.dataset.courseId;
     const previousConversationId = previousChat?.parentElement.dataset.conversationId || "default";
     const previousChatKey = previousChat ? studyReplyKey(state.user?.id, previousCourseId, previousConversationId) : "";
+    const wasOnboardingOpen = previousChat?.querySelector(".study-start")?.open;
     const previousMessages = previousChat?.querySelector(".messages")?.innerHTML;
     const previousScrollTop = previousChat?.scrollTop || 0;
     const previousChatDraft = $("chatInput")?.value || "";
@@ -3781,6 +3799,8 @@
     }
     const chat = root.querySelector(".study-workspace .chat-area");
     if (chat) {
+      const onboarding = chat.querySelector(".study-start");
+      if (onboarding && previousChatKey === studyReplyKey()) onboarding.open = Boolean(wasOnboardingOpen);
       $("chatInput").value = studyDrafts.get(studyReplyKey())?.text || "";
       const showLatest = !previousChat || previousChatKey !== studyReplyKey()
         || previousMessages !== chat.querySelector(".messages")?.innerHTML;
@@ -3807,6 +3827,7 @@
   async function openPushSchedule(url) {
     const userId = state.user?.id;
     const id = url.searchParams.get("scheduleItem");
+    state.dailyView = "calendar";
     await loadScheduleItems(false);
     if (!userId || state.user?.id !== userId) return;
     const item = state.scheduleItems.find((row) => row.id === id);
@@ -3884,7 +3905,9 @@
     const pageTarget = event.target.closest("[data-page]");
     if (pageTarget) {
       event.preventDefault();
+      if (pageTarget.dataset.scheduleView) state.dailyView = pageTarget.dataset.scheduleView;
       if (mobileNavigation.enter(pageTarget.dataset.page)) {
+        if (pageTarget.dataset.scheduleView) render();
         classmateNotifications.reconcileToast();
         if (state.page === "classmates") requestAnimationFrame(acknowledgeClassmateRead);
         return;
@@ -4151,7 +4174,22 @@
     finally { adminActivityRefreshing = false; }
   }, 60000);
 
+  document.addEventListener("visibilitychange", async () => {
+    const checklist = root.querySelector("#dailyChecklist");
+    if (document.hidden || !state.user || state.busy || !checklist) return;
+    const generation = pageLoadGeneration;
+    const isCurrent = () => generation === pageLoadGeneration && state.page === "schedule" && state.dailyView === "today";
+    try {
+      await loadScheduleItems(true, false, isCurrent);
+      if (isCurrent() && checklist === root.querySelector("#dailyChecklist") && !checklist.querySelector("details[open], :focus-within")) render();
+    } catch { /* Keep visible data; explicit refresh reports errors. */ }
+  });
   setInterval(() => {
+    const checklist = root.querySelector("#dailyChecklist");
+    if (checklist && !state.busy && !checklist.querySelector("details[open], :focus-within")) {
+      const { today } = dailyChecklist.model([]);
+      if (checklist.dataset.day !== today) render();
+    }
     updateAdminActivityLabels();
     if (state.page === "schedule" && $("scheduleCalendarView")) {
       const model = scheduleMonthModel();

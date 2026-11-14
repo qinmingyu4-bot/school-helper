@@ -38,10 +38,13 @@
     return { date: local.slice(0, 10), time: local.slice(11) };
   }
 
+  const daily = typeof module === "object" && module.exports ? require("./daily-checklist") : scope.StudyBridgeDailyChecklist;
   function validatePatch(patch) {
     const limits = { title: 160, date: 10, startTime: 5, endTime: 5, location: 2000, notes: 10000 };
     if (!patch || typeof patch !== "object" || Array.isArray(patch) || !Object.keys(patch).length) throw new Error("请勾选至少一个要修改的字段。");
+    daily.validate(patch);
     for (const [key, value] of Object.entries(patch)) {
+      if (["plannedDate", "goalProgress", "completed"].includes(key)) continue;
       if (!Object.hasOwn(limits, key) || typeof value !== "string" || value.length > limits[key]) throw new Error("修改字段无效或过长。");
       if (key === "title" && !value.trim()) throw new Error("标题不能为空。");
       if (key === "date" && !schedule.validDate(value)) throw new Error("请选择有效日期。");
@@ -52,14 +55,30 @@
   function applyPatch(item, patch) {
     validatePatch(patch);
     const result = { ...item };
+    if (Object.hasOwn(patch, "plannedDate")) {
+      if (!daily.isTask(item)) throw new Error("Only tasks can have a planned date.");
+      result.plannedDate = patch.plannedDate;
+      if (item.untimed && patch.plannedDate) result.startsAt = `${patch.plannedDate}T23:59`;
+    }
+    if (Object.hasOwn(patch, "goalProgress")) {
+      daily.validate({ goalTarget: item.goalTarget || 0, goalProgress: patch.goalProgress });
+      result.goalProgress = patch.goalProgress;
+      result.completedAt = item.goalTarget && result.goalProgress === item.goalTarget ? (item.completedAt || new Date().toISOString()) : "";
+    }
+    if (Object.hasOwn(patch, "completed")) {
+      if (schedule.completion(item).classMeeting) throw new Error("Class meetings use their scheduled end time.");
+      result.completedAt = patch.completed ? (item.completedAt || new Date().toISOString()) : "";
+      if (item.goalTarget) result.goalProgress = patch.completed ? item.goalTarget : 0;
+    }
     for (const key of ["title", "location", "notes"]) if (Object.hasOwn(patch, key)) result[key] = key === "title" ? patch[key].trim() : patch[key];
     if (["date", "startTime", "endTime"].some((key) => Object.hasOwn(patch, key))) {
       const timeZone = item.timeZone || "UTC";
       const start = localParts(item.startsAt, timeZone);
       const end = item.endsAt ? localParts(item.endsAt, timeZone) : null;
       const date = patch.date || start.date;
-      result.startsAt = `${date}T${patch.startTime || start.time}`;
-      const endTime = Object.hasOwn(patch, "endTime") ? patch.endTime : end?.time;
+      result.startsAt = `${date}T${item.untimed ? "23:59" : patch.startTime || start.time}`;
+      if (item.untimed) result.plannedDate = date;
+      const endTime = item.untimed ? "" : Object.hasOwn(patch, "endTime") ? patch.endTime : end?.time;
       const days = end ? Math.round((Date.parse(end.date) - Date.parse(start.date)) / 86400000) : 0;
       const endDate = new Date(Date.parse(date) + days * 86400000).toISOString().slice(0, 10);
       result.endsAt = endTime ? `${endDate}T${endTime}` : "";

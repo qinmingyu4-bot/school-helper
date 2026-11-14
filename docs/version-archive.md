@@ -2,6 +2,13 @@
 
 This file records stable StudyBridge versions so a broken update can be rolled back safely.
 
+## 1.4.0 — 2026-11-14
+
+- MINOR from 1.3.2, `97e2a50f0ed5c9417a0aedd349d016f6137220e0`. Add the course-connected daily checklist, with quantity goals and shared schedule progress.
+- Integrate the original checklist (`aae4001`) and collapsed Study onboarding (`e8876c2`) into the current production code.
+- Validate schedule and account isolation, review links, timed reminders, and desktop/mobile workflows with test data. The deployment verifies backup integrity, versioned assets and health.
+- Rollback code target: `97e2a50f0ed5c9417a0aedd349d016f6137220e0`. Checklist fields use existing schedule documents and need no migration.
+
 ## 1.3.1 — 2026-11-14
 
 - PATCH from production 1.3.0, `35bbf1331369208c945a2cabe0d5f1049fdd6a57`. Refine the existing study onboarding layout and repair its course materials shortcut.

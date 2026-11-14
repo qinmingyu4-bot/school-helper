@@ -1010,6 +1010,9 @@ function parseScheduleDocument(doc, course = {}) {
     if (!data.title || !data.startsAt) return null;
     return {
       id: doc.id,
+      docId: doc.id,
+      courseId: course.id,
+      learningTopicId: data.learningTopicId || "",
       title: String(data.title || "").slice(0, 160),
       kind: String(data.kind || "deadline").slice(0, 40),
       course: String(data.course || (course.name === scheduleCourseName ? "" : course.name) || "").slice(0, 100),
@@ -1018,6 +1021,8 @@ function parseScheduleDocument(doc, course = {}) {
       timeZone: data.timeZone || "",
       location: String(data.location || "").slice(0, 160),
       notes: String(data.notes || "").slice(0, 600),
+      plannedDate: data.plannedDate || "", checklist: Boolean(data.checklist), untimed: Boolean(data.untimed),
+      goalTarget: data.goalTarget || 0, goalProgress: data.goalProgress || 0,
       completedAt: data.completedAt || ""
     };
   } catch {
@@ -1050,8 +1055,10 @@ function formatScheduleContext(scheduleItems = []) {
         `${index + 1}. ${item.title}`,
         `course=${item.course || "unknown"}`,
         `kind=${item.kind || "deadline"}`,
-        `due=${scheduleImport.wallTime(item.startsAt, item.timeZone)}`
+        item.untimed ? "untimed personal learning goal" : `due=${scheduleImport.wallTime(item.startsAt, item.timeZone)}`
       ];
+      if (item.plannedDate) bits.push(`plannedFor=${item.plannedDate}`);
+      if (item.goalTarget) bits.push(`progress=${item.goalProgress}/${item.goalTarget}`);
       if (item.location) bits.push(`location=${item.location}`);
       if (item.notes) bits.push(`notes=${item.notes}`);
       return bits.join(" | ");

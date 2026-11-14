@@ -161,7 +161,8 @@
 .gp-rule-details>summary { padding:2px 0; }
 .gp-rule-details blockquote { margin:10px 0 15px; padding:0 0 0 12px; border-left:1px solid var(--line); color:var(--muted); font-size:11px; line-height:1.9; overflow-wrap:anywhere; }
 .gp-rule-details label { display:grid; gap:4px; color:var(--muted); font-size:11px; margin:7px 0 0; }
-.gp-rule-details label input { width:100%; }
+.gp-rule-details label :is(input,textarea) { width:100%; }
+.gp-rule-details textarea { resize:vertical; }
 .gp-rule-details>p { color:var(--muted); font-size:10px; line-height:1.8; margin-top:8px; }
 .gp-rule-source { padding-bottom:12px; }
 .gp-rule-source pre { font:inherit; font-size:11px; line-height:1.9; color:var(--muted); white-space:pre-wrap; }
@@ -385,7 +386,7 @@
   .gp-rule-method { grid-column:1/3; grid-row:3; }
   .gp-rule-details { grid-column:1/-1; }
   .gp-mobile-label { display:block; color:var(--muted); font-size:10px; margin-bottom:5px; }
-  #grade-dialog :is(.gp-rule-row,.gp-edit-fields) input { font-size:16px; }
+  #grade-dialog :is(.gp-rule-row,.gp-edit-fields) :is(input,textarea) { font-size:16px; }
   #grade-dialog .gp-rule-weight input { width:60px; }
   #grade-dialog .gp-rule-count input { width:70px; }
   .gp-rule-overview { gap:9px; margin-bottom:13px; }
@@ -455,6 +456,7 @@
 .gp-stat-value.is-pending { font-size:19px; letter-spacing:0; line-height:2.2; }
 .gp-stat-label { overflow-wrap:anywhere; }
 .gp-rule-notice p { margin:0; }
+.gp-rule-notice > summary { cursor:pointer; }
 .gp-rule-notice ul { list-style:none; padding:0; margin:8px 0 0; }
 .gp-rule-notice li { display:flex; align-items:baseline; justify-content:space-between; gap:8px 20px; padding:4px 0; }
 .gp-rule-notice li > span { min-width:0; overflow-wrap:anywhere; }

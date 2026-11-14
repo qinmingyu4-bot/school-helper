@@ -134,6 +134,14 @@ release record; older releases without this gate retain their historical workflo
 
 ## Stable Versions
 
+### 1.3.2 - 2026-11-14
+
+- Classification: **PATCH**. Clarify saving and confirmation in the existing grade planner.
+- Production baseline and code rollback target: **1.3.1**, `a37299f30a1044507fd2ba567830c6b5d3554b87`.
+- Source fix: `12ae1d3a96e9ec92672d0277814ab1f15b5b208a`. Show save progress and success, collapse special grading notes after confirmation, and keep those notes accessible for editing.
+- Local verification: 45 grade-related tests passed and a simulated browser flow confirmed that saving closes the dialog and preserves grades and special rules.
+- Synchronize package, lockfile, application version and affected grade assets. No data migration or configuration change.
+
 ### 1.2.32 - 2026-11-13
 
 - Classification: **PATCH**. Correct the existing syllabus default-save behavior,

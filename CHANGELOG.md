@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.2 — 2026-11-14
+
+- Classification: PATCH from production 1.3.1 (`a37299f`). Fix the existing grading-rule save feedback and presentation of saved special rules.
+- Show saving progress and confirm success before returning to grades. Keep saved special grading notes collapsed and distinguish calculation limits from confirmation.
+
 ## 1.3.1 — 2026-11-14
 
 - Classification: PATCH from verified production 1.3.0 (`35bbf13`). Refine the existing study onboarding layout and repair its course materials shortcut.

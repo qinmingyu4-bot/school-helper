@@ -1,8 +1,8 @@
 {
-  "previousCommit": "35bbf1331369208c945a2cabe0d5f1049fdd6a57",
-  "previousVersion": "1.3.0",
-  "version": "1.3.1",
+  "previousCommit": "a37299f30a1044507fd2ba567830c6b5d3554b87",
+  "previousVersion": "1.3.1",
+  "version": "1.3.2",
   "level": "patch",
-  "reason": "Polish the existing study onboarding background and task states, and repair its course materials shortcut.",
+  "reason": "Clarify the existing grading-rule save status and collapse special-rule notes so saved rules no longer appear to need confirmation.",
   "features": []
 }

@@ -1,8 +1,8 @@
 {
-  "previousCommit": "62e85553dc9edd8b339c97fa141abcbd5fb2e233",
-  "previousVersion": "1.4.1",
-  "version": "1.4.2",
+  "previousCommit": "0dcaf6150a3adaba6137de4297f1bad5c4897fd0",
+  "previousVersion": "1.4.2",
+  "version": "1.4.3",
   "level": "patch",
-  "reason": "Restore the calendar and upcoming agenda as the default Schedule view, with a separate button for the existing daily checklist.",
+  "reason": "Clarify the existing next-item calendar shortcut in Chinese and English so it points to the scheduled date.",
   "features": []
 }

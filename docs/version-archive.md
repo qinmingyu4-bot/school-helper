@@ -2,6 +2,13 @@
 
 This file records stable StudyBridge versions so a broken update can be rolled back safely.
 
+## 1.4.3 — 2026-11-14
+
+- PATCH from verified production 1.4.2, `0dcaf6150a3adaba6137de4297f1bad5c4897fd0`. Clarify the next-item calendar shortcut in Chinese and English.
+- Source change: `4b924b083245c852043f025784fa3514d014fa6d`.
+- Validate source and release policy, the regression suite, bilingual date selection and the live app bundle.
+- Rollback code target: `0dcaf6150a3adaba6137de4297f1bad5c4897fd0`. Preserve current account data and private backups.
+
 ## 1.4.2 — 2026-11-14
 
 - PATCH from production 1.4.1, `62e85553dc9edd8b339c97fa141abcbd5fb2e233`. Restore the month calendar and upcoming agenda as the default Schedule view.

@@ -96,7 +96,7 @@
   function nextHtml(model, countdown) {
     const item = model.next;
     const instant = item ? new Date(item.start).toISOString() : "";
-    return ui.html`<div class="planner-next-heading"><span class="schedule-kicker">UP NEXT</span><h2>下一项安排</h2></div><div class="planner-next-content">${item ? `${badge(item)}<b>${escape(item.title)}</b><small>${escape(dateLabel(item.startDay))} · ${escape(timeLabel(item))}${item.location ? ` · ${escape(item.location)}` : ""}</small>` : ui.html`<b>暂无即将开始的安排</b><small>选择日期，添加课程、作业或自己的计划。</small>`}</div>${item ? ui.html`<strong data-countdown="${instant}">${escape(countdown(instant))}</strong><button data-action="schedule-day" data-date="${escape(item.startDay)}">查看当天</button>` : ""}${model.ongoing.length ? ui.html`<p class="planner-ongoing">正在进行：${escape(model.ongoing.map((entry) => entry.title).join("、"))}</p>` : ""}`;
+    return ui.html`<div class="planner-next-heading"><span class="schedule-kicker">UP NEXT</span><h2>下一项安排</h2></div><div class="planner-next-content">${item ? `${badge(item)}<b>${escape(item.title)}</b><small>${escape(dateLabel(item.startDay))} · ${escape(timeLabel(item))}${item.location ? ` · ${escape(item.location)}` : ""}</small>` : ui.html`<b>暂无即将开始的安排</b><small>选择日期，添加课程、作业或自己的计划。</small>`}</div>${item ? ui.html`<strong data-countdown="${instant}">${escape(countdown(instant))}</strong><button data-action="schedule-day" data-date="${escape(item.startDay)}">跳到该日期</button>` : ""}${model.ongoing.length ? ui.html`<p class="planner-ongoing">正在进行：${escape(model.ongoing.map((entry) => entry.title).join("、"))}</p>` : ""}`;
   }
   function courseManagementHtml(items) {
     const groups = management.groups(items);

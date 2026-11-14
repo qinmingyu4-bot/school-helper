@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.3 — 2026-11-14
+
+- Classification: PATCH from verified production 1.4.2 (`0dcaf61`). Clarify the calendar shortcut for the next scheduled item.
+- Label the shortcut “跳到该日期” / “Go to date” to identify the scheduled date. Keep date selection in place.
+
 ## 1.4.2 — 2026-11-14
 
 - Classification: PATCH from production 1.4.1 (`62e8555`). Restore the default calendar view and move the existing checklist to a separate entry.

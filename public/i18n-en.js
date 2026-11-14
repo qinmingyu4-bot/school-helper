@@ -1292,7 +1292,7 @@ Quiz / 小测|Quiz
 下一项安排|Next event
 暂无即将开始的安排|No upcoming events
 选择日期，添加课程、作业或自己的计划。|Select a date to add a course, assignment or personal plan.
-查看当天|View day
+跳到该日期|Go to date
 正在进行：{0}|In progress: {0}
 按课程管理日程|Manage events by course
 整门课程一键编辑或删除，无需逐天处理|Edit or delete a course’s events together

@@ -2,6 +2,13 @@
 
 This file records stable StudyBridge versions so a broken update can be rolled back safely.
 
+## 1.3.1 — 2026-11-14
+
+- PATCH from production 1.3.0, `35bbf1331369208c945a2cabe0d5f1049fdd6a57`. Refine the existing study onboarding layout and repair its course materials shortcut.
+- Source change: `7cf85c22c1abc9455a98a31ad70deeaeaf917471`. Unify the reminder and conversation background and show real course/material progress with green checks.
+- Validate the release policy, source and assets, and the full regression suite. Browser checks cover desktop and mobile, both languages, dark mode, and navigation to course materials, practice, and the calendar using isolated data.
+- Rollback code target: `35bbf1331369208c945a2cabe0d5f1049fdd6a57`. Preserve current account data and private backups.
+
 ## 1.3.0 — 2026-11-13
 
 - MINOR feature release from production 1.2.32, `3f4520b38dfbaf0e8729529026cbbdca650a11fb`.

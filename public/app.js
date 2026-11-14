@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.3.0";
+  const VERSION = "1.3.1";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -646,12 +646,16 @@
     });
   }
 
-  function studySidebarHtml() {
-    const courses = courseChats.visibleCourses(state.courses);
-    const materials = state.docs.filter((doc) =>
+  function courseMaterials() {
+    return state.docs.filter((doc) =>
       String(doc.type || "").toLowerCase() !== "schedule" &&
       !String(doc.title || "").startsWith(SCHEDULE_PREFIX) &&
       !String(doc.title || "").startsWith("[SCHEDULE ITEM]"));
+  }
+
+  function studySidebarHtml() {
+    const courses = courseChats.visibleCourses(state.courses);
+    const materials = courseMaterials();
     return ui.html`
       <section class="side-section study-course-directory" data-doc-dropzone="true">
         <div class="section-title"><b>对话与课程</b><button data-action="add-course">新增</button></div>
@@ -876,9 +880,39 @@
   function onboardingHtml() {
     if (state.messages.length || state.page !== "study") return "";
     const hasCourse = !isGeneralChat() && state.courses.some((c) => c.id === state.activeCourseId);
-    const hasDocs = hasCourse && state.docs.some((d) => d.type !== "Schedule");
+    const hasDocs = hasCourse && courseMaterials().length > 0;
     const firstCourse = courseChats.visibleCourses(state.courses)[0];
-    return `<section class="study-start" aria-label="${esc(ui.text("开始课程学习"))}"><h2>${ui.text("从一份课程资料开始")}</h2><ol><li>${hasCourse ? "✓ " : ""}${ui.text("建立课程")} ${!hasCourse ? firstCourse ? `<button data-action="select-course" data-id="${esc(firstCourse.id)}">${ui.text("选择课程")}</button>` : `<button data-action="add-course">${ui.text("新增")}</button>` : ""}</li><li>${hasDocs ? "✓ " : ""}${ui.text("上传一份讲义或课程大纲")} ${hasCourse && !hasDocs ? `<button data-action="onboard-material">${ui.text("课程与资料")}</button>` : ""}</li><li>${ui.text("开始一个问题或练习")} ${hasDocs ? `<button data-action="learning-open">${ui.text("学习清单 · 练习")}</button>` : ""}</li></ol></section>`;
+    const courseAction = firstCourse
+      ? ui.html`<button type="button" data-action="select-course" data-id="${esc(firstCourse.id)}">选择课程</button>`
+      : ui.html`<button type="button" data-action="add-course">新增</button>`;
+    const tasks = [
+      { label: "建立课程", done: hasCourse, action: courseAction },
+      { label: "上传一份讲义或课程大纲", done: hasDocs, action: ui.html`<button type="button" data-action="onboard-material" data-mobile-action="study-panel">课程与资料</button>` },
+      { label: "开始一个问题或练习", done: false, action: ui.html`<button type="button" data-action="learning-open">学习清单 · 练习</button>` }
+    ];
+    const completed = tasks.filter((task) => task.done).length;
+    const progress = ui.message`已完成 ${completed}/${tasks.length} 项`;
+    return `
+      <section class="study-start" aria-labelledby="studyStartTitle">
+        <header>
+          <h2 id="studyStartTitle">${esc(ui.text("从一份课程资料开始"))}</h2>
+          <span class="study-start-progress">
+            <progress value="${completed}" max="${tasks.length}" aria-hidden="true"></progress>
+            ${esc(progress)}
+          </span>
+        </header>
+        <ol role="list">
+          ${tasks.map(({ label, done, action }, index) => `
+            <li${done ? ' class="is-complete"' : index === completed ? ' aria-current="step"' : ""}>
+              ${done ? `<svg class="study-start-mark" role="img" aria-label="${esc(ui.text("已完成"))}" viewBox="0 0 24 24"><path d="m7 12 3 3 7-7"/></svg>` :
+                `<span class="study-start-mark" aria-hidden="true">${index + 1}</span>`}
+              <span class="study-start-label">${esc(ui.text(label))}</span>
+              ${index === completed ? action : ""}
+            </li>
+          `).join("")}
+        </ol>
+      </section>
+    `;
   }
 
   function studyPage() {
@@ -2764,6 +2798,10 @@
     if (authSubmission) button.disabled = true;
     try {
       if (action === "learning-open") { learningLoop.open(); return; }
+      if (action === "onboard-material") {
+        if (!mobileNavigation.snapshot().active) $("docText")?.focus();
+        return;
+      }
       if (action === "learning-start") {
         const topicId = button.dataset.topic, courseId = button.dataset.course, taskId = button.dataset.doc;
         await selectConversation(courseId, "default");
@@ -3746,8 +3784,11 @@
       $("chatInput").value = studyDrafts.get(studyReplyKey())?.text || "";
       const showLatest = !previousChat || previousChatKey !== studyReplyKey()
         || previousMessages !== chat.querySelector(".messages")?.innerHTML;
-      chat.scrollTop = showLatest ? chat.scrollHeight : previousScrollTop;
-      keepLatestAfterFontLoad(chat);
+      if (!state.messages.length) chat.scrollTop = 0;
+      else {
+        chat.scrollTop = showLatest ? chat.scrollHeight : previousScrollTop;
+        keepLatestAfterFontLoad(chat);
+      }
       studyComposer.resize();
     }
     const dm = root.querySelector(".dm-list");

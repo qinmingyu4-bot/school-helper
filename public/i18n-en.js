@@ -105,6 +105,7 @@ StudyBridge 不支持任何形式的视频制作。|StudyBridge does not support
 建立课程|Create a course
 上传一份讲义或课程大纲|Upload lecture notes or a syllabus
 开始一个问题或练习|Start a question or practice session
+已完成 {0}/{1} 项|{0}/{1} complete
 本机草稿保存失败，请保留页面。|Local draft could not be saved. Keep this page open.
 草稿仅保存在本机，确认后才加入账号日程。|Draft saved on this device only. Confirm to add it to your account calendar.
 未提交选项仅保存在本机，提交后同步练习记录。|Unsubmitted choices stay on this device. Submit to sync practice results.

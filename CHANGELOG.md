@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Rename the next-item shortcut to “Go to date” so it clearly points to the scheduled date.
+
 ## 1.4.1 — 2026-11-14
 
 - Classification: PATCH from production 1.4.0 (`336e104`). Fix scrolling during date selection in the existing calendar.

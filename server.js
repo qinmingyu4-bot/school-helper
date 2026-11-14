@@ -29,6 +29,7 @@ const mailboxProviders = require("./lib/mailbox-providers");
 const { createMailboxService } = require("./lib/mailbox-service");
 const { membershipTier } = require("./lib/membership");
 const { createAiUsage } = require("./lib/ai-usage");
+const { createUsageAnalytics, STEPS, reportWindow, summarize, overview: usageOverview } = require("./lib/usage-analytics");
 const { createGradePlanner } = require("./lib/grade-planner-service");
 const { createBillingService } = require("./lib/billing-service");
 const { createAlipayService } = require("./lib/alipay-service");
@@ -124,7 +125,8 @@ const academicCalendars = createCalendarService({
     return response.json();
   }
 });
-const aiUsage = createAiUsage({ db, entitlement: (userId) => alipay.entitlement(userId) });
+const usage = createUsageAnalytics(db);
+const aiUsage = createAiUsage({ db, entitlement: (userId) => alipay.entitlement(userId), onRequest: usage.recordAi });
 const office = createOfficeService(db);
 const schedulePush = createPushService({ db, listSchedule: (userId) => listUserScheduleItems(userId, { includeCompleted: true }) });
 const publicDir = path.join(__dirname, "public");
@@ -153,15 +155,17 @@ const grades = createGradePlanner({ db, apiKey: process.env.OPENAI_API_KEY, mode
 const webSearchEnabled = process.env.OPENAI_WEB_SEARCH !== "false";
 const googleClientId = String(process.env.GOOGLE_CLIENT_ID || "").trim();
 const googleClientSecret = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();
-const mailbox = createMailboxService({ db, analyze: (messages, userId) => aiUsage.run(userId, () => {
+const mailbox = createMailboxService({ db, analyze: (messages, userId) => usage.background(userId, "mailbox", () => aiUsage.run(userId, () => {
   if (!process.env.OPENAI_API_KEY) throw new Error("邮件识别尚未配置。");
   return callAiWithChatCompletions(messages, complexAiModel, null, { signal: AbortSignal.timeout(60000), store: false });
-}) });
+})) });
 let cachedAiHealth = null;
 let lastAiRequest = null;
 const classmateStreams = new Map();
 const creative = createCreativeService({
   db, request: (...args) => aiUsage.fetch(...args),
+  observe: (userId, work) => usage.background(userId, "office", work),
+  reportOutcome: usage.outcome,
   documentModel: () => process.env.OPENAI_DOCUMENT_MODEL || complexAiModel,
   contextFor: (userId, courseId, message, cheatsheet) => courseContext(db, userId, courseId, message, cheatsheet)
 });
@@ -196,6 +200,11 @@ function studyProvider(model) {
 }
 const studyJobs = createStudyJobs({ db, index: studyIndex, loadSources: studySources, loadVisual: studyVisual,
   plan: studyProvider(simpleAiModel), answer: studyProvider(complexAiModel), saveQuestion: saveChatQuestion,
+  observe: (job, work) => usage.background(job.userId, "study", work),
+  reportOutcome: (status) => {
+    usage.outcome(status);
+    if (status === 200) usage.reached("firstStudy");
+  },
   learningInstruction: (preferences) => learningStyle.buildInstruction(preferences),
   modeInstruction: (mode) => studyModes.buildInstruction(mode),
   finalize: (job, content, interrupted) => db.saveStudyMessage({ id: job.assistantId, userId: job.userId, courseId: job.courseId, conversationId: job.conversationId,
@@ -522,6 +531,7 @@ async function requireUser(req, res) {
     sendError(res, 401, "Please log in first.");
     return null;
   }
+  usage.identify(auth.user, res);
   return auth.user;
 }
 
@@ -1502,6 +1512,7 @@ async function streamCourseChat(req, res, context) {
   const timeout = setTimeout(() => controller.abort(new Error("AI reply timed out.")), 180000);
   try {
     userMessage = await saveChatQuestion(context);
+    if (course.chatType !== "general") usage.reached("question");
     send("start", { message: userMessage });
     controller.signal.throwIfAborted();
     const { prompt, model, blockedReply } = await studyAnswerContext({ ...context, signal: controller.signal });
@@ -1523,8 +1534,11 @@ async function streamCourseChat(req, res, context) {
     send("status", { phase: "saving" });
     if (!(await getChatCourse(user.id, course.id))) throw new Error("Course was deleted during the reply.");
     assistantMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId: course.id, conversationId, role: "assistant", content, mode });
+    usage.outcome(blockedReply || !process.env.OPENAI_API_KEY ? 204 : 200);
+    if (course.chatType !== "general" && !blockedReply && process.env.OPENAI_API_KEY) usage.reached("firstStudy");
     send("done", { messages: [userMessage, assistantMessage], model });
   } catch (error) {
+    usage.outcome(controller.signal.aborted ? (controller.signal.reason?.name === "AbortError" ? 499 : 504) : error.statusCode || 502);
     if (!controller.signal.aborted) console.error("StudyBridge streaming reply failed:", error);
     if (userMessage && !assistantMessage && await getChatCourse(user.id, course.id)) {
       try {
@@ -1981,6 +1995,7 @@ async function routeApi(req, res) {
   if (gradeUrl.pathname === "/api/grade-planner" || gradeUrl.pathname.startsWith("/api/grade-planner/")) {
     const auth = await currentUser(req);
     if (!auth) return sendError(res, 401, "登录已过期，请重新登录。");
+    usage.identify(auth.user, res);
     const token = hashToken(`grades:${auth.tokenHash}`);
     if (gradeUrl.pathname === "/api/grade-planner" && req.method === "GET") return sendJson(res, 200, { ...await grades.read(auth.user.id), csrfToken: token, userId: auth.user.id });
     const gradeLocations = gradeUrl.pathname.match(/^\/api\/grade-planner\/([^/]+)\/locations$/);
@@ -2392,6 +2407,7 @@ async function routeApi(req, res) {
     const user = await requireUser(req, res);
     if (!user) return;
     await db.recordUserActivity(user.id);
+    if (req.headers["x-studybridge-context"] === "student") usage.foreground();
     return sendJson(res, 200, { ok: true, userId: user.id, membershipTier: membershipTier(user) }, { "cache-control": "private, no-store" });
   }
 
@@ -2404,6 +2420,7 @@ async function routeApi(req, res) {
   if (url.pathname.startsWith("/api/mailbox")) {
     const auth = await currentUser(req);
     if (!auth) return sendError(res, 401, "请先登录 StudyBridge，再管理邮箱授权。");
+    usage.identify(auth.user, res);
     const csrfToken = hashToken(`mailbox:${auth.tokenHash}`);
     const respond = (data, status = 200) => sendJson(res, status, data, { "cache-control": "private, no-store" });
     if (url.pathname === "/api/mailbox" && method === "GET") {
@@ -2749,6 +2766,33 @@ async function routeApi(req, res) {
     const post = await db.toggleCommunityPostLike(schoolKey, communityLikeMatch[1], user.id);
     if (!post) return sendError(res, 404, "Community post not found.");
     return sendJson(res, 200, { post: publicCommunityPost(post, user) });
+  }
+
+  const userUsage = url.pathname.match(/^\/api\/admin\/users\/([\w-]{1,100})\/usage$/);
+  if (method === "GET" && (url.pathname === "/api/admin/usage" || userUsage)) {
+    const auth = await requireAdminSession(req, res);
+    if (!auth) return;
+    const period = url.searchParams.get("days") ?? "7";
+    if (!["7", "30"].includes(period)) return sendError(res, 400, "Choose a 7-day or 30-day range.");
+    const window = reportWindow(Number(period), await usage.started());
+    if (!userUsage) {
+      const [rows, users] = await Promise.all([db.listUsageDays(window.calendar), db.listUsers()]);
+      return sendJson(res, 200, usageOverview(rows, users, window));
+    }
+    const id = userUsage[1], target = await db.getUser(id);
+    if (!target) return sendError(res, 404, "Account not found.");
+    const [rows, steps, activity, paidMembershipExpiresAt] = await Promise.all([
+      db.listUsageDays(window.calendar, id), db.getUsageSteps(id), db.getUserActivity(id), alipay.entitlement(id)
+    ]);
+    const totals = summarize(rows);
+    const lastSeenAt = [activity?.lastSeenAt, totals.lastActiveAt].filter(Boolean).sort().at(-1) || null;
+    console.info(JSON.stringify({ event: "admin-user-usage-read", actorId: auth.user.id, userId: id, days: window.days }));
+    return sendJson(res, 200, {
+      ...window, ...totals,
+      user: { name: target.name, createdAt: target.createdAt, membershipTier: membershipTier({ ...target, paidMembershipExpiresAt }), lastSeenAt },
+      steps: STEPS.map((key) => ({ key, at: steps[key] || null })),
+      errors: rows.flatMap((row) => row.errors).sort((a, b) => b.at.localeCompare(a.at)).slice(0, 12)
+    });
   }
 
   if (url.pathname === "/api/admin/overview" && method === "GET") {
@@ -3262,6 +3306,7 @@ if (directMessageMatch && method === "POST") {
       send("progress", { phase: "reviewing" });
       const importFromDate = scheduleImport.todayInZone(timeZone);
       const imported = await db.ensureImportedCourses(user.id, items.map((item) => item.course), calendar?.label || [termHint.year, termHint.season].filter(Boolean).join(" "));
+      usage.reached("course", imported.createdCourses.length);
       const existing = await listUserScheduleItems(user.id, { includeCompleted: true });
       const review = scheduleImport.reviewDuplicates(items, existing, { calendar, fromDate: importFromDate, timeZone });
       items = review.items;
@@ -3270,10 +3315,12 @@ if (directMessageMatch && method === "POST") {
       timings.totalMs = Math.round(performance.now() - started);
       const result = { timings, items, courses: imported.courses, createdCourses: imported.createdCourses, duplicateCount: review.duplicateCount, fileName: file.fileName, timeZone: calendar?.timeZone || timeZone, calendar, calendarNotice, termHint, ...calendarRecovery(user.profile?.school, termHint), importFromDate, previewCount };
       console.info("Schedule extraction timings:", JSON.stringify(timings));
+      usage.outcome(200);
       if (!streaming) return sendJson(res, 200, result);
       send("result", result);
       return res.end();
     } catch (error) {
+      usage.outcome(res.destroyed ? 499 : timedOut ? 504 : error.statusCode || error.status || 502);
       if (res.destroyed) return;
       console.warn("Schedule extraction failed:", error.name);
       const message = timedOut ? "读取超时，请重试或分批上传；尚未保存任何提醒。" : "AI 提取未成功，请重试或手动添加；尚未保存任何提醒。";
@@ -3308,6 +3355,8 @@ if (directMessageMatch && method === "POST") {
       name,
       term: String(body.term || "Current term").slice(0, 80)
     });
+    if (name === scheduleCourseName) usage.feature("schedule");
+    else usage.reached("course");
     return sendJson(res, 201, { course });
   }
 
@@ -3397,8 +3446,9 @@ if (directMessageMatch && method === "POST") {
         if (size > uploadLimits.courseFileBytes) return sendError(res, 413, "课程资料单文件最大支持 50 MB，请拆分后上传。");
       }
       const title = String(body.title || body.fileName || "Course note").trim().slice(0, 160);
-      let text, sourcePdf;
+      let text, sourcePdf, unreadable = false;
       const uploadedFile = hasUploadedFile(body);
+      if (course.name === scheduleCourseName || body.type === "Schedule") usage.feature("schedule");
       try {
         if (body.fileData && uploadedDocumentType(body) === "PDF") {
           sourcePdf = await readStudyPdf(decodeBase64Data(body.fileData), cleanAttachmentName(body.fileName || title), uploadLimits.courseFileBytes);
@@ -3406,12 +3456,14 @@ if (directMessageMatch && method === "POST") {
         } else text = body.fileData ? await extractUploadedText(body, compactDocumentText, uploadLimits.courseFileBytes) : compactDocumentText(body.text);
       } catch (error) {
         if (uploadedFile && !/too large|empty|support is still installing/i.test(error.message || "")) {
+          unreadable = true;
           text = uploadedFilePlaceholder(body, error.message);
         } else {
           return sendError(res, 400, error.message);
         }
       }
       if (!text && uploadedFile) {
+        unreadable = true;
         text = uploadedFilePlaceholder(body);
       }
       if (!text) {
@@ -3433,6 +3485,8 @@ if (directMessageMatch && method === "POST") {
         throw error;
       }
       setImmediate(() => void studyIndex.prepare(user.id, courseId, { id: `doc:${document.id}`, name: document.title, text: document.text, sourcePages: document.sourcePages }).catch(() => {}));
+      if (uploadedFile && course.name !== scheduleCourseName && body.type !== "Schedule") usage.reached("material");
+      if (unreadable) usage.outcome(422, "UPLOAD_PARSE");
       return sendJson(res, 201, { document });
     }
     if (child === "documents" && childId && (method === "PUT" || method === "PATCH")) {
@@ -3535,11 +3589,14 @@ if (directMessageMatch && method === "POST") {
     }
     if (child === "chat" && method === "POST") {
       const body = await readJson(req);
+      const email = course.chatType === "general" && body.mode === "email";
+      if (email) usage.feature("mailbox");
       const conversationId = body.conversationId ?? courseConversations.DEFAULT_ID;
       if (typeof conversationId !== "string" || conversationId.length > 100 || course.chatType === "general" && conversationId !== courseConversations.DEFAULT_ID) return sendError(res, 400, "Invalid conversation.");
       if (!(await db.getConversation(user.id, courseId, conversationId))) return sendError(res, 404, "Conversation not found.");
       const rawMessage = String(body.message || "").trim().slice(0, 4000);
       const mode = course.chatType === "general" ? "general" : String(body.mode || "guided").slice(0, 40);
+      if (!email) usage.mode(mode);
       const attachments = await normalizeChatAttachments(body.attachments);
       const message = rawMessage || (attachments.length ? "Please analyze the attached file(s)." : "");
       if (!message) return sendError(res, 400, "Message is required.");
@@ -3557,15 +3614,19 @@ if (directMessageMatch && method === "POST") {
         const detected = studyJobs.detectSet({ message, mode, sources });
         if (detected) {
           const job = await studyJobs.create(context, detected, body.requestId);
+          usage.reached("question");
           const question = (await db.listMessages(user.id, courseId, Infinity, conversationId)).find((item) => item.id === job.messageId);
           return sendJson(res, 202, { job: await studyJobs.publicJob(job), message: question });
         }
       }
       if (body.stream === true) return streamCourseChat(req, res, context);
       const userMessage = await saveChatQuestion(context);
+      if (course.chatType !== "general") usage.reached("question");
       const { prompt, model: selectedModel, blockedReply } = await studyAnswerContext(context);
       const aiContent = blockedReply || await callAi(prompt, selectedModel);
       const assistantMessage = await db.createMessage({ id: createId("msg"), userId: user.id, courseId, conversationId, role: "assistant", content: aiContent, mode });
+      if (course.chatType !== "general" && !blockedReply && process.env.OPENAI_API_KEY) usage.reached("firstStudy");
+      else if (blockedReply || !process.env.OPENAI_API_KEY) usage.outcome(204);
       return sendJson(res, 201, { messages: [userMessage, assistantMessage], model: selectedModel });
     }
   }
@@ -3577,20 +3638,24 @@ const server = http.createServer((req, res) => aiUsage.run(null, async () => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "SAMEORIGIN");
   res.setHeader("Content-Security-Policy", "frame-ancestors 'self'");
-  try {
-    if (req.url.startsWith("/api/")) return await routeApi(req, res);
-    return await serveStatic(req, res);
-  } catch (error) {
+  if (req.url.startsWith("/api/")) return usage.request(req, res, () => handleRequest(res, () => routeApi(req, res)));
+  return handleRequest(res, () => serveStatic(req, res));
+}));
+
+async function handleRequest(res, respond) {
+  try { return await respond(); }
+  catch (error) {
     const status = error.statusCode || 500;
     if (status === 500) console.error(error);
-    if (res.headersSent) return res.end();
+    if (res.headersSent) { usage.outcome(status); return res.end(); }
     return sendError(res, status, error.message || "Server error.");
   }
-}));
+}
 
 staticAssets.prepare().then(() => server.listen(port, () => {
   console.log(`StudyBridge cloud app running on http://localhost:${server.address().port}`);
   scheduleLocalDatabaseBackups();
+  void usage.started().catch(() => console.warn("Usage analytics initialization deferred."));
   mailbox.start();
   schedulePush.start();
   studyJobs.start();

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.0 — 2026-11-14
+
+- Classification: MINOR from verified production 1.4.3 (`71b9a45`). Add two developer-facing reporting views.
+- Add 7-day and 30-day usage overviews and individual user summaries with
+  activity, onboarding, operation errors and AI usage from the allowance ledger.
+- Limit analytics to administrators and store usage metadata without exposing
+  learning content. Keep Chinese and English labels and the existing themes.
+
 ## 1.4.3 — 2026-11-14
 
 - Classification: PATCH from verified production 1.4.2 (`0dcaf61`). Clarify the calendar shortcut for the next scheduled item.

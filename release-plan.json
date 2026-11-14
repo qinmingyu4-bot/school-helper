@@ -1,8 +1,11 @@
 {
-  "previousCommit": "0dcaf6150a3adaba6137de4297f1bad5c4897fd0",
-  "previousVersion": "1.4.2",
-  "version": "1.4.3",
-  "level": "patch",
-  "reason": "Clarify the existing next-item calendar shortcut in Chinese and English so it points to the scheduled date.",
-  "features": []
+  "previousCommit": "71b9a4524389ff77bca7e82ba76f9e573466833c",
+  "previousVersion": "1.4.3",
+  "version": "1.5.0",
+  "level": "minor",
+  "reason": "Add developer-facing product analytics and individual usage summaries, with account-scoped onboarding and operational diagnostics.",
+  "features": [
+    "Developer usage overview for 7 and 30 days",
+    "Individual account usage and onboarding summary"
+  ]
 }

@@ -2,6 +2,13 @@
 
 This file records stable StudyBridge versions so a broken update can be rolled back safely.
 
+## 1.5.0 — 2026-11-14
+
+- MINOR from verified production 1.4.3, `71b9a4524389ff77bca7e82ba76f9e573466833c`. Add a developer usage overview and individual account usage summaries.
+- Source feature: `75610f722fb627f58c836611876af548df8b3d34`. Reuse the existing AI allowance ledger for estimated cost and keep student content outside the analytics records.
+- Validate release policy, source and assets, regression tests and bilingual desktop/mobile rendering. After deployment, check the live version, service health and admin authorization.
+- Rollback code target: `71b9a4524389ff77bca7e82ba76f9e573466833c`. Preserve current account data and private backups. The production local database requires no migration.
+
 ## 1.4.3 — 2026-11-14
 
 - PATCH from verified production 1.4.2, `0dcaf6150a3adaba6137de4297f1bad5c4897fd0`. Clarify the next-item calendar shortcut in Chinese and English.

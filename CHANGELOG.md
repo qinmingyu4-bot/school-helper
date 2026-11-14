@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased — Calendar first
+## 1.4.2 — 2026-11-14
 
+- Classification: PATCH from production 1.4.1 (`62e8555`). Restore the default calendar view and move the existing checklist to a separate entry.
 - Open Schedule directly to the monthly calendar and upcoming agenda. Open Today's checklist from a single button next to reminder settings and return to the selected calendar date.
 
 ## 1.4.1 — 2026-11-14

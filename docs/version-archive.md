@@ -2,6 +2,13 @@
 
 This file records stable StudyBridge versions so a broken update can be rolled back safely.
 
+## 1.4.2 — 2026-11-14
+
+- PATCH from production 1.4.1, `62e85553dc9edd8b339c97fa141abcbd5fb2e233`. Restore the month calendar and upcoming agenda as the default Schedule view.
+- Source change: `3e5d80b44d099f7db82541152f20ff5b22a1f494`. Open Today's checklist with a button next to reminder settings and return to the selected date.
+- Validate desktop and phone navigation, upcoming events, checklist data and the return action against isolated data. Check the served production assets and health after deployment.
+- Rollback code target: `62e85553dc9edd8b339c97fa141abcbd5fb2e233`. No data migration.
+
 ## 1.4.1 — 2026-11-14
 
 - PATCH from production 1.4.0, `336e104dab922c8e1dcb2360b2a2ef8ba31c3a38`. Correct the scroll jump when selecting a date or opening the day of the next scheduled item.

@@ -1,8 +1,8 @@
 {
-  "previousCommit": "336e104dab922c8e1dcb2360b2a2ef8ba31c3a38",
-  "previousVersion": "1.4.0",
-  "version": "1.4.1",
+  "previousCommit": "62e85553dc9edd8b339c97fa141abcbd5fb2e233",
+  "previousVersion": "1.4.1",
+  "version": "1.4.2",
   "level": "patch",
-  "reason": "Keep the scroll position when selecting a date in the existing calendar or opening the day of the next scheduled item.",
+  "reason": "Restore the calendar and upcoming agenda as the default Schedule view, with a separate button for the existing daily checklist.",
   "features": []
 }

@@ -3416,22 +3416,29 @@
         finally { if (current()) { emailDraft.generating = false; delete emailDraft.request; if (state.page === "email") render(); } }
         return;
       }
-      if (action === "schedule-month" || action === "schedule-today" || action === "schedule-day" || action === "schedule-agenda" || action === "schedule-type") {
+      if (action === "schedule-day") {
+        if (!scheduleImport.validDate(button.dataset.date)) return;
+        state.scheduleSelectedDate = button.dataset.date;
+        state.scheduleMonth = button.dataset.date.slice(0, 7);
+        const model = scheduleMonthModel();
+        root.querySelector(".planner-month-layout").outerHTML = scheduleCalendarView.renderMonth(model, dueText);
+        if (!state.scheduleManualDraft.date) $("scheduleDate").value = model.selectedDate;
+        if (button.classList.contains("planner-day")) {
+          root.querySelector('.planner-day[aria-pressed="true"]')?.focus({ preventScroll: true });
+        }
+        return;
+      }
+      if (action === "schedule-month" || action === "schedule-today" || action === "schedule-agenda" || action === "schedule-type") {
         const model = scheduleMonthModel();
         if (action === "schedule-month") {
           state.scheduleMonth = scheduleCalendarView.shiftMonth(model.month, Number(button.dataset.offset));
           state.scheduleSelectedDate = state.scheduleMonth === model.today.slice(0, 7) ? model.today : `${state.scheduleMonth}-01`;
         }
         if (action === "schedule-today") { state.scheduleSelectedDate = model.today; state.scheduleMonth = model.today.slice(0, 7); }
-        if (action === "schedule-day" && scheduleImport.validDate(button.dataset.date)) { state.scheduleSelectedDate = button.dataset.date; state.scheduleMonth = button.dataset.date.slice(0, 7); }
         if (action === "schedule-agenda" && ["upcoming", "all", "completed"].includes(button.dataset.view)) state.scheduleAgendaView = button.dataset.view;
         if (action === "schedule-type") state.scheduleAgendaTypes = scheduleCalendarView.toggleType(state.scheduleAgendaTypes, button.dataset.type);
         render();
         if (action === "schedule-type") root.querySelector(`.planner-type-filters [data-type="${button.dataset.type}"]`)?.focus({ preventScroll: true });
-        if (action === "schedule-day") {
-          root.querySelector('.planner-day[aria-pressed="true"]')?.focus({ preventScroll: true });
-          root.querySelector(".planner-day-detail")?.scrollIntoView({ block: "nearest" });
-        }
         if (action === "schedule-agenda") root.querySelector(`.planner-tabs [data-view="${state.scheduleAgendaView}"]`)?.focus({ preventScroll: true });
         if (action === "schedule-month") root.querySelector(`.planner-month-nav [data-offset="${button.dataset.offset}"]`)?.focus({ preventScroll: true });
         if (action === "schedule-today") root.querySelector('[data-action="schedule-today"]')?.focus({ preventScroll: true });

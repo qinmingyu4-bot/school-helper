@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Keep the current scroll position when choosing a date from the calendar or
+  using “View day” on the next scheduled item. Update the selected date and
+  details in place and retain focus on the corresponding control.
+
 ## 1.3.2 — 2026-11-14
 
 - Classification: PATCH from production 1.3.1 (`a37299f`). Fix the existing grading-rule save feedback and presentation of saved special rules.

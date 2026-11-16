@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased — Guest sample course
+## 1.8.0 — 2026-11-16
+
+- MINOR from 1.7.2: add an interactive guest Study workspace and a separate
+  prebuilt course. Guest coursework stays inside the visitor’s browser.
 
 - Add a bilingual, sign-in-free microeconomics lesson with two original sample
   readings, prepared Q&A, clickable source sections and a three-question quiz.
@@ -8,7 +11,11 @@
   Keep guest progress in the browser and support light and dark display.
 - Open the demo in the Study workspace layout, with the familiar course
   sidebar, question composer, conversation switching and Study topics · Practice.
-- Link to the lesson from the homepage and its local preview.
+- Let guests create a new course, select and upload a bundled sample TXT in
+  the course sidebar, then ask a prepared question and open its citation.
+- Start visitors in an empty workspace with one highlighted next action at a
+  time. Keep the prebuilt Microeconomics lesson available as a separate entry.
+- Link to both experiences from the homepage and its local preview.
 
 ## 1.7.2 — 2026-11-16
 

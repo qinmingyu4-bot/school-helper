@@ -61,6 +61,13 @@ window.StudyBridgeSampleContent = {
         { text: ["只能确认价格上涨和销量下降同时发生。案例没有控制天气、到校人数或其他咖啡店的价格，这些变化也可能影响销量。", "We can observe that price rose and sales fell. The case does not control for weather, campus attendance, or competitor pricing, which could also change sales."], sources: [["case", 1]] },
         { text: ["讲义里「提价会降低收入」有前提：我们沿着同一条需求曲线比较，其他条件保持不变。这个案例适合练习计算，实际经营决策还需要额外证据。", "The lecture’s revenue rule assumes a move along the same demand curve, with other factors held constant. These numbers work as a calculation exercise. A real pricing decision needs more evidence."], sources: [["lecture", 2]] }
       ]
+    },
+    {
+      prompt: ["需求价格弹性怎么计算？", "How do I calculate price elasticity of demand?"],
+      blocks: [
+        { text: ["先算需求量的百分比变化，再除以价格的百分比变化，最后取绝对值。结果大于 1，表示需求量对价格的反应相对大。", "Divide the percentage change in quantity demanded by the percentage change in price, then take the absolute value. A result above 1 means quantity is relatively responsive to price."], sources: [["lecture", 0]] },
+        { text: ["讲义用中点法计算变化比例。需求量的变化除以前后需求量的平均数，价格的变化也除以前后价格的平均数。这样把起点和终点互换，算出的弹性大小仍然相同。", "Use the midpoint method from the notes. For quantity and price separately, divide the change by the average of the two values. Reversing the starting and ending points then gives the same elasticity magnitude."], sources: [["lecture", 1]] }
+      ]
     }
   ],
   quiz: [

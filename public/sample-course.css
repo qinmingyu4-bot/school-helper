@@ -37,3 +37,39 @@
   .sample-shell .sample-intro { font-size: 14px; }
   .sample-shell .sample-prompts button { min-height: 39px; }
 }
+
+.sample-upload-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.sample-upload-actions button { padding: 5px 8px; font-size: 12px; }
+.sample-shell .sample-note { overflow-wrap: anywhere; }
+#courseUploadStatus:empty { display: none; }
+
+.sample-shell .sample-guide-copy {
+  margin: 8px 28px 0;
+  padding: 8px 10px;
+  border-inline-start: 2px solid var(--green);
+  color: var(--ink);
+  background: var(--sb-tint, var(--soft));
+  font-size: 13px;
+  line-height: 1.5;
+}
+.sample-shell .sample-guide-copy[hidden] { display: none; }
+.sample-empty-workspace { max-width: 36rem; padding: 32px 0; }
+.sample-empty-workspace h2 { margin: 0; font-size: 22px; }
+.sample-empty-workspace p { margin: 8px 0 14px; color: var(--muted); line-height: 1.6; }
+.sample-shell .sample-alternate-entry { display: block; width: fit-content; margin-top: 8px; }
+:root :is(.sample-shell, #sample-add-course) button[data-guide-next] {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--green) 14%, transparent);
+}
+:root .sample-shell button[data-guide-next]:not(.send) {
+  background: var(--sb-tint, var(--soft));
+  border-color: var(--green);
+  color: var(--ink);
+}
+@media (max-width: 700px) {
+  .sample-shell .sample-guide-copy { margin: 8px 16px 0; }
+  :root .sample-shell[data-mobile-panel="open"] > .sidebar > .sample-mobile-guide:not([hidden]),
+  :root .sample-shell[data-mobile-view="menu"] > .sidebar > .sample-mobile-guide:not([hidden]) { display: block; margin: 10px 0; }
+  :root .sample-shell[data-mobile-panel="open"] > .sidebar > .sample-alternate-entry { display: block; }
+}

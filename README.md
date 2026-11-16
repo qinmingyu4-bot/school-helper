@@ -43,8 +43,9 @@ files, opening a database, starting workers or exposing account APIs. It does no
 deploy anything. The example's final study-space link leads to the live
 StudyBridge login or learning area.
 
-The public `/sample-course` entry offers a five-minute bilingual microeconomics
-lesson without an account. It opens in the Study workspace layout and uses
+The public `/sample-course` entry opens without a selected course. The separate
+`/sample-course?course=sample` entry offers a five-minute bilingual
+microeconomics lesson without an account. Both use
 the shared workspace, sidebar, composer and learning dialog styles. Visitors
 can read the two sample documents from the course sidebar, fill the study
 composer with a prepared question and send it, open citations, switch or start
@@ -52,6 +53,14 @@ conversations and open Study topics · Practice from the course header. The
 three-question quiz gives answer-specific feedback and supports a local review
 date and retries. Prepared replies, drafts, quiz progress and the review date
 use only this browser. No account or calendar records are created.
+
+To try creating a course, choose **Add** under **Chats and courses** and enter a
+course name. The guide highlights the current action on desktop and mobile.
+In **Course materials**, select the bundled sample lecture notes
+(or download the TXT and choose it in the file picker), then choose **Upload
+selected file**. The preview checks the sample TXT in the browser before adding
+it to that course. A prepared question then appears in the conversation. Fill
+the composer, send, and follow the citation to the uploaded notes.
 
 The introduction now leads with four strengths: AI grounded in uploaded course
 materials, learning organized by course, grade calculation/target planning, and

@@ -1,8 +1,11 @@
 {
-  "previousCommit": "b3ad0b417970311f5b00028757ea099f3e888c5f",
-  "previousVersion": "1.7.1",
-  "version": "1.7.2",
-  "level": "patch",
-  "reason": "Refine the existing tools, classmates and community layouts with restrained tabs, divided lists and account-themed surfaces, preserving all existing functions and data flows. No new product capability or major redesign.",
-  "features": []
+  "previousCommit": "bccee3f6137a926ebd79c478c36835f41c0e0dd3",
+  "previousVersion": "1.7.2",
+  "version": "1.8.0",
+  "level": "minor",
+  "reason": "Add a new public, sign-in-free Study workspace with a guided course-creation, sample upload and first-question workflow, plus an independent prebuilt course.",
+  "features": [
+    "Guest Study workspace with course creation, example material upload, prepared Q&A with source citations and next-action guidance",
+    "Standalone prebuilt microeconomics course with bilingual materials, practice feedback and browser-local review"
+  ]
 }

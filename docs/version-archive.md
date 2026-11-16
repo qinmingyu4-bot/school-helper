@@ -2,6 +2,19 @@
 
 This file records stable StudyBridge versions so a broken update can be rolled back safely.
 
+## 1.8.0 — 2026-11-16
+
+- MINOR from production 1.7.2, `bccee3f6137a926ebd79c478c36835f41c0e0dd3`.
+- Add a public guest Study workspace with guided course creation, bundled TXT
+  upload, prepared question and answer, and clickable citations. Provide the
+  prebuilt microeconomics lesson separately with a three-question practice flow.
+- Store guest courses and progress in the current browser. No data migration,
+  setup changes, or external processing is required for the guest flow.
+- Validate release policy, app and public asset compatibility, the automated
+  suite, and the interactive flow on desktop, tablet and phone widths.
+- Rollback code target: `bccee3f6137a926ebd79c478c36835f41c0e0dd3`.
+  Use the existing private backup and release health checks; retain account data.
+
 ## 1.7.2 — 2026-11-16
 
 - PATCH from production 1.7.1, `b3ad0b417970311f5b00028757ea099f3e888c5f`.

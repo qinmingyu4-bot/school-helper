@@ -60,7 +60,8 @@ test("homepage, authenticated entry, legacy bookmarks and OAuth use distinct pag
     assert.match(await bundleResponse.text(), /StudyBridgeI18n/);
     const entryLinks = [...html.matchAll(/class="[^"]*button[^"\n]*" href="([^"]+)"/g)].map((match) => match[1]);
     assert.deepEqual(new Set(entryLinks), new Set(["/app", "/sample-course"]));
-    assert.match(html, /href="\/sample-course">试一门示例课/);
+    assert.match(html, /href="\/sample-course">试用学习空间/);
+    assert.match(html, /href="\/sample-course\?course=sample"/);
     for (const file of ["landing.css", "typography.css", "brand.css"]) assert.equal((await request(`/${file}`)).status, 200);
     for (const name of ["book-bridge-monochrome", "book-bridge-color", "icon-monochrome", "icon-color"]) {
       const asset = await request(`/brand/${name}.svg`);
@@ -78,7 +79,7 @@ test("homepage, authenticated entry, legacy bookmarks and OAuth use distinct pag
   });
 
   await t.test("sample course and its assets work without an account", async () => {
-    for (const route of ["/sample-course", "/sample-course/"]) {
+    for (const route of ["/sample-course", "/sample-course/", "/sample-course?course=sample"]) {
       const guest = await request(route);
       assert.equal(guest.status, 200);
       assert.equal(guest.headers.get("set-cookie"), null);

@@ -7,11 +7,13 @@ const apiSource = source.slice(source.indexOf("  async function api("), source.i
 
 function client(fetch) {
   let refreshes = 0;
+  const reports = [];
   const context = vm.createContext({ fetch, FormData, window: { StudyBridgeChatStream: require("../public/chat-stream") },
     ui: { text: (value) => value, message: (strings, ...values) => String.raw({ raw: strings }, ...values) },
-    usageView: { refresh: () => { refreshes++; } } });
+    usageView: { refresh: () => { refreshes++; } }, state: { user: { id: "student" }, page: "schedule" },
+    feedbackView: { remember: (report) => reports.push(report) } });
   const api = vm.runInContext(`${apiSource}; api`, context);
-  return { api, refreshes: () => refreshes };
+  return { api, reports, refreshes: () => refreshes };
 }
 const packet = (event, data) => new TextEncoder().encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 
@@ -32,13 +34,17 @@ test("import client displays server progress before completion and consumes the 
 
 test("import client supports older JSON servers and rejects failed or incomplete streams", async () => {
   for (const [response, message] of [
-    [new Response(packet("error", { error: "Failed recognition" }), { headers: { "content-type": "text/event-stream" } }), /Failed recognition/],
+    [new Response(packet("error", { error: "Failed recognition", diagnosticStatus: 502 }), { headers: { "content-type": "text/event-stream" } }), /Failed recognition/],
     [new Response(packet("progress", { phase: "recognizing" }), { headers: { "content-type": "text/event-stream" } }), /连接中断/],
     [Response.json({ error: "Please sign in" }, { status: 401 }), /Please sign in/]
   ]) {
     const caller = client(async () => response);
     await assert.rejects(caller.api("/api/schedule/extract", { method: "POST", onProgress: () => {} }), message);
     assert.equal(caller.refreshes(), 1);
+    if (message.source === "Failed recognition") {
+      assert.equal(caller.reports[0].status, 502);
+      assert.equal(caller.reports[0].page, "schedule");
+    }
   }
   const caller = client(async () => Response.json({ items: [] }));
   assert.equal((await caller.api("/api/schedule/extract", { method: "POST", onProgress: () => assert.fail("JSON has no progress events") })).items.length, 0);

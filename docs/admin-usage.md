@@ -2,8 +2,9 @@
 
 **Usage overview** provides a 7-day or 30-day window including the current UTC
 day, daily active users, return rates, first-study completion, feature actions,
-operation failures and estimated AI spending. Click a user name under **Users**
-to open the account summary and switch its reporting period independently.
+operation failures and estimated AI spending. Under **Users**, click **Expand usage summary** to see the account’s data
+inline and switch its reporting period independently. Click the same button
+to collapse it.
 
 - Active users have a foreground student activity report or a tracked account
   action. Admin console activity, background jobs and background mailbox analysis

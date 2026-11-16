@@ -94,13 +94,16 @@
     </div>`;
   }
 
+  const summaryId = (userId) => `admin-usage-summary-${userId}`;
+  const toggleLabel = (expanded) => ui.text(expanded ? "收起使用摘要" : "展开使用摘要");
+
   function create({ api, getAdmin, root }) {
     let actor, panel, detail, period = 7;
     const view = (userId) => ({ days: period, userId, pending: false, request: 0 });
     function active() { return Boolean(actor && actor === getAdmin()); }
 
     function render(target) {
-      const element = target.userId ? target.dialog : root.querySelector("[data-admin-usage]");
+      const element = target.userId ? document.getElementById(summaryId(target.userId)) : root.querySelector("[data-admin-usage]");
       if (!element?.isConnected) return;
       const control = element.querySelector("[data-admin-usage-controls]");
       const focused = document.activeElement?.closest(".admin-usage-controls");
@@ -113,10 +116,6 @@
       content.innerHTML = target.pending ? `<p class="muted" role="status">${label("正在读取使用数据…")}</p>`
         : target.error ? `<p class="muted" role="status">${label("无法读取使用数据，请刷新重试。")}</p>`
           : target.data ? (target.userId ? summary(target.data) : overview(target.data)) : "";
-      if (target.userId && target.data) {
-        element.querySelector("#adminUsageAccount").textContent = target.data.user.name;
-        element.querySelector("#adminUsageAccount").hidden = false;
-      }
     }
 
     async function load(target) {
@@ -144,8 +143,9 @@
     function onControl(event, target) {
       const button = event.target.closest("[data-admin-usage-days], [data-admin-usage-refresh]");
       if (!button || !active()) return;
-      if (button.dataset.usageDays) {
-        const days = Number(button.dataset.usageDays);
+      const selection = button.dataset.adminUsageDays;
+      if (selection) {
+        const days = Number(selection);
         if (days === target.days && !target.error) return;
         target.days = days;
         if (!target.userId) period = days;
@@ -154,35 +154,38 @@
       void load(target);
     }
 
-    function closeDetail(restoreFocus = true) {
+    function setExpanded(userId, expanded) {
+      const element = document.getElementById(summaryId(userId));
+      if (!element || !root.contains(element)) return;
+      element.hidden = !expanded;
+      const button = element.parentElement.querySelector('[data-action="user-usage"]');
+      button.setAttribute("aria-expanded", String(expanded));
+      button.textContent = toggleLabel(expanded);
+      return element;
+    }
+
+    function closeDetail() {
       if (!detail) return;
       const previous = detail;
       detail = null;
       previous.controller?.abort();
-      previous.dialog.close();
-      previous.dialog.remove();
-      if (restoreFocus && active()) {
-        Array.from(root.querySelectorAll('[data-action="user-usage"]')).find((button) => button.dataset.id === previous.userId)?.focus({ preventScroll: true });
-      }
+      const element = setExpanded(previous.userId, false);
+      if (!element) return;
+      element.onclick = null;
+      element.querySelector("[data-admin-usage-controls]").replaceChildren();
+      element.querySelector("[data-admin-usage-content]").replaceChildren();
     }
 
-    function open(userId) {
+    function toggle(userId) {
       if (!active()) return;
-      closeDetail(false);
+      const wasOpen = detail?.userId === userId;
+      closeDetail();
+      if (wasOpen) return;
+      const element = setExpanded(userId, true);
+      if (!element) return;
       const target = view(userId);
       detail = target;
-      target.language = ui.getLanguage();
-      const dialog = document.createElement("dialog");
-      target.dialog = dialog;
-      dialog.className = "admin-usage-dialog";
-      dialog.setAttribute("aria-labelledby", "adminUsageUserTitle");
-      dialog.innerHTML = `<header class="dialog-heading"><div><h2 id="adminUsageUserTitle">${label("使用摘要")}</h2><p id="adminUsageAccount" hidden></p></div>
-        <button type="button" data-admin-usage-close aria-label="${label("关闭")}" autofocus>×</button></header>
-        <div class="dialog-body"><div data-admin-usage-controls></div><div data-admin-usage-content></div></div>`;
-      dialog.addEventListener("click", (event) => event.target.closest("[data-admin-usage-close]") ? closeDetail() : onControl(event, target));
-      dialog.addEventListener("cancel", (event) => { event.preventDefault(); closeDetail(); });
-      document.body.append(dialog);
-      dialog.showModal();
+      element.onclick = (event) => onControl(event, target);
       void load(target);
     }
 
@@ -191,7 +194,7 @@
       if (actor !== current || !host) {
         panel?.controller?.abort();
         panel = null;
-        closeDetail(false);
+        closeDetail();
         actor = current;
       }
       if (!current || !host) return;
@@ -200,11 +203,13 @@
         panel = view();
         void load(panel);
       } else render(panel);
-      if (detail && detail.language !== ui.getLanguage()) {
-        detail.language = ui.getLanguage();
-        detail.dialog.querySelector("h2").textContent = ui.text("使用摘要");
-        detail.dialog.querySelector("[data-admin-usage-close]").setAttribute("aria-label", ui.text("关闭"));
-        render(detail);
+      if (detail) {
+        const target = detail;
+        const element = setExpanded(target.userId, true);
+        if (element) {
+          element.onclick = (event) => onControl(event, target);
+          render(target);
+        } else closeDetail();
       }
     }
 
@@ -212,7 +217,12 @@
       html: () => `<section class="admin-usage" data-admin-usage aria-labelledby="adminUsageTitle">
         <div class="admin-usage-heading"><h2 id="adminUsageTitle">${label("使用概况")}</h2><div data-admin-usage-controls></div></div>
         <div data-admin-usage-content></div>
-      </section>`, open, sync
+      </section>`,
+      buttonHtml: (userId) => `<button type="button" class="admin-usage-toggle" data-action="user-usage" data-id="${esc(userId)}" aria-expanded="false" aria-controls="${esc(summaryId(userId))}">${esc(toggleLabel(false))}</button>`,
+      summaryHtml: (userId) => `<div class="admin-usage-inline" id="${esc(summaryId(userId))}" hidden>
+        <div data-admin-usage-controls></div><div data-admin-usage-content></div>
+      </div>`,
+      toggle, sync
     };
   }
 

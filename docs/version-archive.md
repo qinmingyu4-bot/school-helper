@@ -2,6 +2,20 @@
 
 This file records stable StudyBridge versions so a broken update can be rolled back safely.
 
+## 1.6.0 — 2026-11-16
+
+- MINOR from verified production 1.5.1, `448e5edb659cd862d1cadeb0df5e2cd7a2d3061f`.
+- Add inline per-user usage summaries and fix date-range controls. Add a problem
+  reporting inbox with grouped server failures, user reports, and operator email
+  delivered by the existing mail service.
+- Source commits: `dbe89f53f0df5b525ce6fb8ed7e9823777fda69c` and
+  `0e04f2dc737abf37b55487afdd005a3aa3cd5107`.
+- Validate release policy, full regression suite, bilingual desktop/mobile
+  workflow, and email using a local SMTP fixture. Verify production health,
+  exact assets and authentication requirements after deployment.
+- Rollback code target: `448e5edb659cd862d1cadeb0df5e2cd7a2d3061f`. Preserve current account
+  data and private backups. The production local database requires no migration.
+
 ## 1.5.1 — 2026-11-16
 
 - Classification: PATCH from production 1.5.0 (`d5d9548`): refine the existing

@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.6.0 — 2026-11-16
+
+- Classification: MINOR from verified production 1.5.1 (`448e5ed`). Add developer problem reporting and email notifications.
+
+- Add a developer inbox for tracked service failures and user-submitted reports.
+  Review the account, action, error code, request reference and environment.
+- Group repeated server failures, save feedback before emailing the configured
+  operator, and expose delivery and resolution status in the inbox.
+
+- Give each user a labeled button that expands and collapses their summary
+  in the user list. Fix the 7-day and 30-day controls in both usage views.
+
 ## 1.5.1 — 2026-11-16
 
 - Classification: PATCH from production 1.5.0 (`d5d9548`): refine the existing

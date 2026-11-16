@@ -88,7 +88,9 @@
 }
 
 .admin-user-controls { display: grid; justify-items: end; gap: 12px; min-width: 0; }
-.admin-user-controls > button { min-height: 40px; padding: 8px 12px; font-size: 12px; }
+.admin-user-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.admin-user-actions button { min-height: 40px; padding: 8px 12px; font-size: 12px; }
+.admin-membership-status:empty { display: none; }
 .admin-membership-status { min-height: 1.4em; color: var(--muted); font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
 @container (max-width: 720px) { .admin-user-controls { justify-items: start; } }
 
@@ -101,8 +103,8 @@
   border-block: 1px solid var(--line);
 }
 .admin-usage-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.admin-usage-heading h2, .admin-usage-dialog h2 { margin: 0; font-size: 20px; }
-.admin-usage h3, .admin-usage-dialog h3 { margin: 0 0 10px; font-size: 14px; }
+.admin-usage-heading h2 { margin: 0; font-size: 20px; }
+.admin-usage h3, .admin-usage-inline h3 { margin: 0 0 10px; font-size: 14px; }
 .admin-usage-controls { display: flex; gap: 6px; flex-wrap: wrap; }
 .admin-usage-controls button { padding: 6px 10px; min-height: 36px; font-size: 12px; }
 .admin-usage-controls button[aria-pressed="true"] { background: var(--soft); color: var(--ink); border-color: var(--muted); }
@@ -126,10 +128,14 @@
 .admin-usage-errors { margin-top: 20px; }
 .admin-usage-errors small { display: block; margin-top: 2px; }
 .admin-usage-errors code { color: var(--muted); font-size: 11px; text-align: end; }
-.admin-usage-dialog { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; }
-.admin-usage-dialog::backdrop { background: rgba(0, 0, 0, .42); }
-.admin-usage-dialog header p { margin: 4px 0 0; color: var(--muted); overflow-wrap: anywhere; }
-.admin-usage-user { justify-self: start; }
+.admin-usage-inline {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding: 14px 0 2px;
+  border-top: 1px solid var(--line);
+}
+.admin-usage-toggle { white-space: nowrap; }
+.admin-usage-toggle[aria-expanded="true"] { background: var(--soft); color: var(--ink); border-color: var(--muted); }
 @media (max-width: 660px) {
   .admin-usage { padding: 18px 16px; }
   .admin-usage-columns { grid-template-columns: minmax(0, 1fr); gap: 20px; }

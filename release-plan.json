@@ -1,8 +1,11 @@
 {
-  "previousCommit": "d5d95485a5c22d9a630e659ec5aabe7ebece11c8",
-  "previousVersion": "1.5.0",
-  "version": "1.5.1",
-  "level": "patch",
-  "reason": "Polish the existing public homepage layout and neutral palette, reserve an empty walkthrough slot, and fix the existing grade-demo scales and decimal clipping. No new product capability or architecture change.",
-  "features": []
+  "previousCommit": "448e5edb659cd862d1cadeb0df5e2cd7a2d3061f",
+  "previousVersion": "1.5.1",
+  "version": "1.6.0",
+  "level": "minor",
+  "reason": "Add end-user problem reporting, automatic server failure grouping and an administrator inbox with email delivery, alongside an inline account usage viewer.",
+  "features": [
+    "Problem reporting inbox with automatic diagnostics and administrator email delivery",
+    "Expandable per-account usage summaries in the developer console"
+  ]
 }

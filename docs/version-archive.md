@@ -2,6 +2,24 @@
 
 This file records stable StudyBridge versions so a broken update can be rolled back safely.
 
+## 1.5.1 — 2026-11-16
+
+- Classification: PATCH from production 1.5.0 (`d5d9548`): refine the existing
+  public homepage presentation and fix grade-demo interaction; no new product
+  capability, major product redesign or data migration.
+- Publish the approved asymmetric hero, neutral light-gray feature panels,
+  centered closing section and black product-style actions, with bilingual
+  responsive layouts. Keep the product walkthrough empty for later follow-up.
+- Give both grade sliders a 0–100 scale, preserve bidirectional calculation and
+  attainable bounds, and show two decimals without clipping on mobile.
+- Carry only homepage changes onto current main; preserve current account,
+  learning, scheduling, analytics, mail and release-policy implementations.
+- Approved preview source: `3f3e01d5f43d4b7fe22c554f367862ecb9c4d0c8`.
+- Validate release policy, source/assets, regression suite and desktop/mobile
+  homepage rendering; verify the live version, assets and health after deployment.
+- Rollback code target: `d5d95485a5c22d9a630e659ec5aabe7ebece11c8`.
+  Preserve all current account data and private backups. No migration is needed.
+
 ## 1.5.0 — 2026-11-14
 
 - MINOR from verified production 1.4.3, `71b9a4524389ff77bca7e82ba76f9e573466833c`. Add a developer usage overview and individual account usage summaries.

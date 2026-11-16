@@ -5,6 +5,8 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+你的课程、资料和灵感，在这里相连。|Your courses, materials and ideas. Connected.
+从一个问题，走向自己的理解。|From a question to understanding of your own.
 在开发者端查看使用概况和管理用户。|Review usage and manage accounts in the developer console.
 查看使用情况，管理用户和邀请码。|Review usage and manage users and invitations.
 使用概况|Usage overview

@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.5.1 — 2026-11-16
+
+- Classification: PATCH from production 1.5.0 (`d5d9548`): refine the existing
+  public homepage presentation and fix grade-demo interaction; no new product
+  capability, major product redesign or data migration.
+- Publish the approved asymmetric hero, neutral light-gray feature panels,
+  centered closing section and black product-style actions, with bilingual
+  responsive layouts. Keep the product walkthrough empty for later follow-up.
+- Give both grade sliders a 0–100 scale, preserve bidirectional calculation and
+  attainable bounds, and show two decimals without clipping on mobile.
+- Carry only homepage changes onto current main; preserve current account,
+  learning, scheduling, analytics, mail and release-policy implementations.
+
 ## 1.5.0 — 2026-11-14
 
 - Classification: MINOR from verified production 1.4.3 (`71b9a45`). Add two developer-facing reporting views.

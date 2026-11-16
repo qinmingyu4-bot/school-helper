@@ -58,7 +58,9 @@ test("homepage, authenticated entry, legacy bookmarks and OAuth use distinct pag
     const bundleResponse = await request(bundle[1]);
     assert.equal(bundleResponse.status, 200);
     assert.match(await bundleResponse.text(), /StudyBridgeI18n/);
-    assert.ok([...html.matchAll(/class="[^"]*button[^"\n]*" href="([^"]+)"/g)].every((match) => match[1] === "/app"));
+    const entryLinks = [...html.matchAll(/class="[^"]*button[^"\n]*" href="([^"]+)"/g)].map((match) => match[1]);
+    assert.deepEqual(new Set(entryLinks), new Set(["/app", "/sample-course"]));
+    assert.match(html, /href="\/sample-course">试一门示例课/);
     for (const file of ["landing.css", "typography.css", "brand.css"]) assert.equal((await request(`/${file}`)).status, 200);
     for (const name of ["book-bridge-monochrome", "book-bridge-color", "icon-monochrome", "icon-color"]) {
       const asset = await request(`/brand/${name}.svg`);
@@ -73,6 +75,22 @@ test("homepage, authenticated entry, legacy bookmarks and OAuth use distinct pag
     await redirect("/app", "/login");
     await redirect("/app?page=schedule", "/login?page=schedule");
     await redirect("/app", "/login", "sb_session=invalid-session");
+  });
+
+  await t.test("sample course and its assets work without an account", async () => {
+    for (const route of ["/sample-course", "/sample-course/"]) {
+      const guest = await request(route);
+      assert.equal(guest.status, 200);
+      assert.equal(guest.headers.get("set-cookie"), null);
+      const html = await guest.text();
+      assert.match(html, /<title>示例课 · StudyBridge<\/title>/);
+      const bundle = html.match(/src="(\/assets\/sample-course\.[a-f0-9]+\.js)"/);
+      assert.ok(bundle, "sample content and its controller load in order");
+      const script = await request(bundle[1]);
+      assert.equal(script.status, 200);
+      assert.match(await script.text(), /StudyBridgeSampleContent/);
+    }
+    await redirect("/app?page=study", "/login?page=study");
   });
 
   await t.test("old root bookmarks and trailing slashes retain destination queries", async () => {

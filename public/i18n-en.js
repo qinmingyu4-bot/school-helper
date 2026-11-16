@@ -2032,6 +2032,7 @@ StudyBridge 将课程资料、AI 学习、日程与创作连接起来，帮你�
 把知识|Make sense of\u0020
 用 AI 梳理讲义、推敲问题、复习备考。|Use AI to understand your notes, work through problems and prepare for exams.
 从看过一遍，到能用自己的话讲清楚。|Go from reading the material to explaining it in your own words.
+试一门示例课|Try a sample course
 探索学习空间|Explore the workspace
 微积分 · 第一章|Calculus · Chapter 1
 微积分 · 课程资料|Calculus · Course materials

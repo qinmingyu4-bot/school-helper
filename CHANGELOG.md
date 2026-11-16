@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — Guest sample course
+
+- Add a bilingual, sign-in-free microeconomics lesson with two original sample
+  readings, prepared Q&A, clickable source sections and a three-question quiz.
+- Show answer-specific feedback, an optional review date and a retry action.
+  Keep guest progress in the browser and support light and dark display.
+- Link to the lesson from the homepage and its local preview.
+
 ## 1.7.2 — 2026-11-16
 
 - PATCH from 1.7.1: polish existing tools, classmates and community layouts; no new capability or data migration.

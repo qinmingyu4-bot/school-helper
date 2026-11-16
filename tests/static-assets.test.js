@@ -30,7 +30,7 @@ async function serve(t, directory) {
 
 test("release entries preserve script order, CSS cascade and fonts with two immutable bundles", async (t) => {
   const get = await serve(t, path.resolve(__dirname, "../public"));
-  for (const entry of ["index", "landing"]) {
+  for (const entry of ["index", "landing", "sample-course"]) {
     const html = await get(`/${entry}.html`, { "accept-encoding": "br, gzip" });
     assert.equal(html.headers["cache-control"], "no-store");
     const text = zlib.brotliDecompressSync(html.body).toString();
@@ -79,6 +79,7 @@ test("content changes invalidate entry URLs without a package-version bump; old 
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
   const html = '<link rel="stylesheet" href="/theme.css?v=old"><script src="/code.js?v=old"></script><img src="/icon.svg">';
   await Promise.all([fs.writeFile(path.join(dir, "index.html"), html), fs.writeFile(path.join(dir, "landing.html"), html),
+    fs.writeFile(path.join(dir, "sample-course.html"), html),
     fs.writeFile(path.join(dir, "code.js"), 'var release = 1;'), fs.writeFile(path.join(dir, "theme.css"), 'body { color: red; }'),
     fs.writeFile(path.join(dir, "icon.svg"), '<svg/>')]);
   const first = await serve(t, dir), before = (await first("/index.html")).body.toString();

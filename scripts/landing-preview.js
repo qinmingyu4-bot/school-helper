@@ -5,6 +5,8 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const publicDir = path.resolve(__dirname, "../public");
 const assets = new Set([
+  "/sample-course.html", "/sample-course.css", "/sample-course.js", "/sample-course-content.js",
+  "/appearance.css", "/display-modes.css",
   "/landing-refined.css", "/landing-demo.js", "/landing-demo.css",
   "/landing.html", "/landing.css", "/landing-grades.js", "/landing-motion.js",
   "/landing-story.js", "/landing-story.css", "/i18n-en.js", "/i18n.js",
@@ -12,6 +14,7 @@ const assets = new Set([
   "/brand/book-bridge-monochrome.svg", "/brand/icon-monochrome.svg",
   "/fonts/inter-variable-4.1.woff2", "/fonts/noto-sans-sc-gb2312-v2.004.woff2"
 ]);
+const pages = { "/": "/landing.html", "/sample-course": "/sample-course.html", "/sample-course/": "/sample-course.html" };
 const mime = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "application/javascript; charset=utf-8", ".svg": "image/svg+xml", ".woff2": "font/woff2" };
 function createPreviewServer() {
   return http.createServer(async (req, res) => {
@@ -19,7 +22,11 @@ function createPreviewServer() {
     if (!/^(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(host)) { res.writeHead(403); return res.end(); }
     if (!["GET", "HEAD"].includes(req.method)) { res.writeHead(405); return res.end(); }
     const url = new URL(req.url, `http://${host}`);
-    const pathname = url.pathname === "/" ? "/landing.html" : url.pathname;
+    if (url.pathname === "/app" && url.searchParams.get("page") === "study") {
+      res.writeHead(302, { location: "https://studybridge.ink/app?page=study", "cache-control": "no-store" });
+      return res.end();
+    }
+    const pathname = Object.hasOwn(pages, url.pathname) ? pages[url.pathname] : url.pathname;
     if (!assets.has(pathname)) {
       res.writeHead(404, { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" });
       return res.end(req.method === "HEAD" ? undefined : "本地介绍页预览不连接账号服务。/ Local homepage preview: account services are not connected.");

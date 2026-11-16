@@ -36,12 +36,20 @@ StudyBridge Cloud is the server-backed version of StudyBridge. It adds login, op
 
 ## Website entry paths
 
-Local homepage review: run `npm run preview:landing` and open
+Local homepage and sample course review: run `npm run preview:landing` and open
 `http://127.0.0.1:4318/` (override with `LANDING_PREVIEW_PORT`). This loopback-only
 server serves an explicit public-page asset allowlist, without reading environment
-files, opening a database, starting workers or exposing account APIs. Entry buttons
-retain the production `/app` paths; account routes are deliberately unavailable in
-this preview. It does not deploy anything.
+files, opening a database, starting workers or exposing account APIs. It does not
+deploy anything. The example's final study-space link leads to the live
+StudyBridge login or learning area.
+
+The public `/sample-course` entry offers a five-minute bilingual microeconomics
+lesson without an account. The lesson pairs original English lecture notes with
+a fictional café case, three prepared questions with section-level source
+links, and three practice questions with hints and answer-specific feedback.
+Visitors can mark the next day for review or retry the quiz. Progress and the
+optional review date are stored only in the current browser. The lesson uses
+static assets and does not create account records or calendar events.
 
 The introduction now leads with four strengths: AI grounded in uploaded course
 materials, learning organized by course, grade calculation/target planning, and

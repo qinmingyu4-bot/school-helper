@@ -503,6 +503,8 @@ async function serveStatic(req, res) {
     requested = "/index.html";
   } else if (requested === "/") {
     requested = "/landing.html";
+  } else if (requested === "/sample-course" || requested === "/sample-course/") {
+    requested = "/sample-course.html";
   }
   if (requested === "/grades.html" && !await currentUser(req)) return pageRedirect("/login");
   if (requested === "/grade-planner-preview.html" && process.env.NODE_ENV === "production") return sendError(res, 404, "Not found");

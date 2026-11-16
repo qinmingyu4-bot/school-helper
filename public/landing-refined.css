@@ -415,23 +415,8 @@ a:focus-visible,summary:focus-visible {
   color:var(--muted);
 }
 
-.demo-placeholder {
-  aspect-ratio:16/6;
-  max-height:390px;
-  background:var(--soft);
-  border-radius:8px;
-  gap:12px;
-}
 
-.demo-placeholder>span:first-child {
-  font-size:16px;
-  color:var(--muted);
-  font-weight:400;
-}
 
-.demo-placeholder>span:last-child {
-  font-size:12px;
-}
 
 .product-story {
   background:var(--soft);
@@ -935,10 +920,6 @@ html[lang=en] .feature-copy h3 {
   .demo-intro>p:last-child {
     font-size:15px;
   }
-  .demo-placeholder {
-    border-radius:8px;
-    aspect-ratio:16/7;
-  }
   .section-space {
     padding-block:72px;
   }
@@ -1130,16 +1111,6 @@ html[lang=en] .feature-copy h3 {
   .demo-intro>p:last-child {
     font-size:13px;
     line-height:1.8;
-  }
-  .demo-placeholder {
-    aspect-ratio:16/9;
-    border-radius:8px;
-  }
-  .demo-placeholder>span:first-child {
-    font-size:12px;
-  }
-  .demo-placeholder>span:last-child {
-    font-size:10px;
   }
   .section-space {
     padding-block:60px;

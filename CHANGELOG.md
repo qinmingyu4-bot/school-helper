@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased — Refined homepage preview
+
+- Introduce an owner-requested Apple-inspired homepage direction with centered
+  typography, a larger learning-space preview, quiet gray feature sections,
+  compact navigation, restrained blue actions and more deliberate spacing.
+- Preserve the existing product content, bilingual language switch, grade-planning
+  interaction and responsive layouts down to 320px.
+- Keep the walkthrough area empty for the owner’s final product video.
+- Isolate the visual treatment in landing-refined.css; product workspace styles
+  are unchanged. Preview branch only; no production deployment.
+
 ## Unreleased — Homepage framework, video pending
 
 - Keep the homepage structure and reserve a quiet, responsive walkthrough area.

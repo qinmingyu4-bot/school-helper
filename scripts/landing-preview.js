@@ -7,7 +7,7 @@ const publicDir = path.resolve(__dirname, "../public");
 const { sendPublicVideo } = require("../lib/public-video");
 const assets = new Set([
   "/media/studybridge-usage-demo.mp4", "/media/studybridge-usage-demo-poster.png",
-  "/landing-demo.js", "/landing-demo.css", "/landing.html", "/landing.css", "/landing-grades.js", "/landing-motion.js",
+  "/landing-refined.css", "/landing-demo.js", "/landing-demo.css", "/landing.html", "/landing.css", "/landing-grades.js", "/landing-motion.js",
   "/landing-story.js", "/landing-story.css", "/i18n-en.js", "/i18n.js",
   "/i18n-landing.js", "/i18n.css", "/typography.css", "/brand.css", "/privacy.html",
   "/brand/book-bridge-monochrome.svg", "/brand/icon-monochrome.svg",

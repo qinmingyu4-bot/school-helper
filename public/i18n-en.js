@@ -5,6 +5,8 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+你的课程、资料和灵感，在这里相连。|Your courses, materials and ideas. Connected.
+从一个问题，走向自己的理解。|From a question to understanding of your own.
 已确认日程变更|Calendar changes confirmed
 有本机草稿，展开继续核对|Local draft available. Expand to continue reviewing.
 找回密码|Reset your password

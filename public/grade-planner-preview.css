@@ -260,8 +260,8 @@
 .gp-linked-label>label { padding:5px 0; font-size:14px; font-weight:500; line-height:18px; }
 .gp-linked-label>.gp-focus-weight, .gp-linked-label>#total-caption { color:var(--muted); font-size:11px; line-height:18px; }
 .gp-picker-focus>summary { font-size:14px; font-weight:500; line-height:18px; gap:9px; }
-.gp-linked-number { display:flex; align-items:baseline; gap:5px; min-width:0; margin:14px 0 15px; }
-#grade-app .gp-linked-number input { width:3.65em; max-width:calc(100% - 70px); padding:0 0 4px; border:0; border-bottom:1px solid transparent; border-radius:0; background:transparent; color:var(--ink); font-size:38px; font-weight:450; letter-spacing:-1.5px; line-height:1.25; font-variant-numeric:tabular-nums; appearance:textfield; -moz-appearance:textfield; }
+.gp-linked-number { display:flex; flex-wrap:wrap; align-items:baseline; gap:5px; min-width:0; margin:14px 0 15px; }
+#grade-app .gp-linked-number input { width:calc(6ch + 12px); max-width:calc(100% - 48px); flex:0 0 auto; padding:0 0 4px; border:0; border-bottom:1px solid transparent; border-radius:0; background:transparent; color:var(--ink); font-size:38px; font-weight:450; letter-spacing:-1.5px; line-height:1.25; font-variant-numeric:tabular-nums; appearance:textfield; -moz-appearance:textfield; }
 #grade-app .gp-linked-number input::-webkit-inner-spin-button, #grade-app .gp-linked-number input::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
 #grade-app .gp-linked-number input:hover { border-bottom-color:var(--line); }
 #grade-app .gp-linked-number input:focus-visible { border-bottom-color:var(--green); outline:2px solid color-mix(in srgb,var(--green) 35%,transparent); outline-offset:5px; border-radius:2px; }

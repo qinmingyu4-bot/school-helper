@@ -276,7 +276,7 @@
     if (!summary.pending.some((item) => item.id === state.focus && item.weight > 0) && state.focus !== "all") state.focus = summary.pending.find((item) => /final|期末/i.test(item.name) && item.weight > 0)?.id || "all";
     const focus = summary.pending.find((item) => item.id === state.focus);
     const others = state.focus === "all" ? [] : summary.categories.filter((s) => summary.pending.some((item) => item.categoryId === s.category.id && item.id !== state.focus));
-    return `<div class="gp-prediction"><div class="gp-planner-intro"><p>${t("拖动任意一侧，另一侧随之更新。", "Move either slider. The other follows.")}</p><span>${t("仅模拟，不更改已录入成绩", "A simulation, separate from your grades")}</span></div><div class="gp-linked-planner" aria-label="${t("成绩与总评联动预测", "Linked assessment and final grade planner")}"><section class="gp-linked-side"><div class="gp-linked-label">${focusPicker(summary)}<span class="gp-focus-weight">${forecastWeight(summary, focus)}</span></div><div class="gp-linked-number"><input id="assessment-number" type="number" min="0" max="100" step="any" inputmode="decimal" aria-label="${t("项目成绩", "Assessment score")}" aria-describedby="linked-result" value="${fmt(Math.min(100, state.exam))}"><span>%</span><small id="assessment-hint"></small></div><input class="gp-range" id="assessment-slider" type="range" min="0" max="100" step="0.1" value="${Math.min(100, state.exam)}" aria-label="${t("项目成绩滑条", "Assessment score slider")}" aria-describedby="linked-result"><div class="gp-range-scale"><span>0</span><span>100</span></div></section><div class="gp-linked-connector" aria-hidden="true">${icon("link")}</div><section class="gp-linked-side"><div class="gp-linked-label"><label for="total-number">${t("最终总评", "Final grade")}</label><span id="total-caption">${t("课程总成绩", "Course total")}</span></div><div class="gp-linked-number"><input id="total-number" type="number" min="0" max="100" step="any" inputmode="decimal" aria-label="${t("最终总评", "Final grade")}" aria-describedby="linked-result" value="${fmt(state.goal)}"><span>/ 100</span></div><input class="gp-range" id="total-slider" type="range" min="0" max="100" step="0.1" value="${state.goal}" aria-label="${t("最终总评滑条", "Final grade slider")}" aria-describedby="linked-result"><div class="gp-range-scale"><span>0</span><span>100</span></div></section></div><div class="gp-linked-result" id="linked-result" role="status" aria-live="polite"></div>${others.length ? `<details class="gp-other-assumptions"><summary><span>${t("其他未出分项目", "Other pending assessments")}</span><span id="assumption-summary"></span><span class="gp-adjust-label">${t("调整", "Adjust")}${icon("down")}</span></summary><div class="gp-assumption-fields">${others.map(({category:c}) => `<label><span>${esc(c.name)}</span><span><input class="gp-assumption-number" type="number" min="0" max="100" step="any" data-assumption="${esc(c.id)}" aria-label="${esc(c.name)} ${t("预测百分比", "assumed percentage")}" value="${state.assumptions[c.id] ?? 85}"><small>%</small></span></label>`).join("")}</div></details>` : ""}<p class="gp-simulation-note">${t("按已确认的评分规则计算，未包含额外调分。", "Based on confirmed grading rules, without additional curves.")}</p></div>`;
+    return `<div class="gp-prediction"><div class="gp-planner-intro"><p>${t("拖动任意一侧，另一侧随之更新。", "Move either slider. The other follows.")}</p><span>${t("仅模拟，不更改已录入成绩", "A simulation, separate from your grades")}</span></div><div class="gp-linked-planner" aria-label="${t("成绩与总评联动预测", "Linked assessment and final grade planner")}"><section class="gp-linked-side"><div class="gp-linked-label">${focusPicker(summary)}<span class="gp-focus-weight">${forecastWeight(summary, focus)}</span></div><div class="gp-linked-number"><input id="assessment-number" type="number" min="0" max="100" step="any" inputmode="decimal" aria-label="${t("项目成绩", "Assessment score")}" aria-describedby="linked-result" value="${fmt(Math.min(100, state.exam), 2)}"><span>%</span><small id="assessment-hint"></small></div><input class="gp-range" id="assessment-slider" type="range" min="0" max="100" step="0.01" value="${Math.min(100, state.exam)}" aria-label="${t("项目成绩滑条", "Assessment score slider")}" aria-describedby="linked-result"><div class="gp-range-scale"><span>0</span><span>100</span></div></section><div class="gp-linked-connector" aria-hidden="true">${icon("link")}</div><section class="gp-linked-side"><div class="gp-linked-label"><label for="total-number">${t("最终总评", "Final grade")}</label><span id="total-caption">${t("课程总成绩", "Course total")}</span></div><div class="gp-linked-number"><input id="total-number" type="number" min="0" max="100" step="any" inputmode="decimal" aria-label="${t("最终总评", "Final grade")}" aria-describedby="linked-result" value="${fmt(state.goal, 2)}"><span>/ 100</span></div><input class="gp-range" id="total-slider" type="range" min="0" max="100" step="0.01" value="${state.goal}" aria-label="${t("最终总评滑条", "Final grade slider")}" aria-describedby="linked-result"><div class="gp-range-scale"><span>0</span><span>100</span></div></section></div><div class="gp-linked-result" id="linked-result" role="status" aria-live="polite"></div>${others.length ? `<details class="gp-other-assumptions"><summary><span>${t("其他未出分项目", "Other pending assessments")}</span><span id="assumption-summary"></span><span class="gp-adjust-label">${t("调整", "Adjust")}${icon("down")}</span></summary><div class="gp-assumption-fields">${others.map(({category:c}) => `<label><span>${esc(c.name)}</span><span><input class="gp-assumption-number" type="number" min="0" max="100" step="any" data-assumption="${esc(c.id)}" aria-label="${esc(c.name)} ${t("预测百分比", "assumed percentage")}" value="${state.assumptions[c.id] ?? 85}"><small>%</small></span></label>`).join("")}</div></details>` : ""}<p class="gp-simulation-note">${t("按已确认的评分规则计算，未包含额外调分。", "Based on confirmed grading rules, without additional curves.")}</p></div>`;
   }
   function projection(activeId) {
     const summary = G.summarize(course());
@@ -286,13 +286,13 @@
     if (!linked) return;
     state.exam = linked.score;
     state.goal = linked.total;
-    const displayScore = state.driver === "total" ? Math.ceil((linked.score - 1e-8) * 10) / 10 : linked.score;
-    const display = { "assessment-number":fmt(displayScore), "assessment-slider":Math.min(100,displayScore), "total-number":fmt(linked.total), "total-slider":linked.total };
+    const displayScore = state.driver === "total" ? Math.ceil((linked.score - 1e-8) * 100) / 100 : linked.score;
+    const display = { "assessment-number":fmt(displayScore, 2), "assessment-slider":fmt(Math.min(100,displayScore), 2), "total-number":fmt(linked.total, 2), "total-slider":fmt(linked.total, 2) };
     for (const [key,value] of Object.entries(display)) {
       const input = scope.getElementById(key);
       if (key !== activeId) { input.value = value; input.removeAttribute("aria-invalid"); }
       input.style.setProperty("--range-progress", `${Math.min(100,Math.max(0,Number(input.value)))}%`);
-      if (key.endsWith("-number")) input.style.width = `${Math.max(2.5,input.value.length - .2)}ch`;
+      if (key.endsWith("-number")) input.style.width = `calc(${Math.max(6, input.value.length)}ch + 12px)`;
     }
     scope.getElementById("assessment-hint").textContent = linked.status === "unreachable" ? t("满分仍不足", "Full marks fall short") : state.driver === "total" ? t("至少需要", "Needed") : "";
     scope.getElementById("total-caption").textContent = state.driver === "total" ? t("你的目标", "Your target") : t("随成绩实时更新", "Updates with your score");
@@ -300,11 +300,11 @@
     const focus = summary.pending.find((item) => item.id === state.focus);
     const label = focus?.name || t("剩余项目均分", "Remaining average");
     if (linked.status === "unreachable") {
-      result.innerHTML = `<span class="gp-result-marker"></span><p>${t(`${esc(label)} 即使拿满分，也无法达到目标。`, `Even full marks in ${esc(label)} would fall short of this target.`)}<small>${t(`按其余项目的当前假设，满分时总评最高 ${fmt(linked.maximum)}。`, `With the other assumptions unchanged, full marks yield at most ${fmt(linked.maximum)}.`)}</small></p>`;
+      result.innerHTML = `<span class="gp-result-marker"></span><p>${t(`${esc(label)} 即使拿满分，也无法达到目标。`, `Even full marks in ${esc(label)} would fall short of this target.`)}<small>${t(`按其余项目的当前假设，满分时总评最高 ${fmt(linked.maximum, 2)}。`, `With the other assumptions unchanged, full marks yield at most ${fmt(linked.maximum, 2)}.`)}</small></p>`;
     } else if (state.driver === "total" && linked.status === "achieved" && linked.actual > linked.total + .000001) {
-      result.innerHTML = `<span class="gp-result-marker"></span><p>${t(`这个目标已满足：${esc(label)} 为 0% 时，总评也有 ${fmt(linked.actual)}。`, `This target is already covered: even 0% in ${esc(label)} gives a final grade of ${fmt(linked.actual)}.`)}<small>${t("其他未出分项目仍按下方假设计算。", "Other pending assessments still use the assumptions below.")}</small></p>`;
+      result.innerHTML = `<span class="gp-result-marker"></span><p>${t(`这个目标已满足：${esc(label)} 为 0% 时，总评也有 ${fmt(linked.actual, 2)}。`, `This target is already covered: even 0% in ${esc(label)} gives a final grade of ${fmt(linked.actual, 2)}.`)}<small>${t("其他未出分项目仍按下方假设计算。", "Other pending assessments still use the assumptions below.")}</small></p>`;
     } else {
-      result.innerHTML = `<span class="gp-result-marker"></span><p>${esc(label)} <strong>${fmt(displayScore)}%</strong><span class="gp-result-arrow">→</span>${t("总评", "Final grade")} <strong>${fmt(linked.total)}</strong>${focus?.max && state.driver === "total" ? `<small>${t(`相当于至少 ${fmt(Math.ceil((linked.score / 100 * focus.max - 1e-8) * 100) / 100,2)} / ${focus.max} 分`, `At least ${fmt(Math.ceil((linked.score / 100 * focus.max - 1e-8) * 100) / 100,2)} / ${focus.max} points`)}</small>` : ""}</p>`;
+      result.innerHTML = `<span class="gp-result-marker"></span><p>${esc(label)} <strong>${fmt(displayScore, 2)}%</strong><span class="gp-result-arrow">→</span>${t("总评", "Final grade")} <strong>${fmt(linked.total, 2)}</strong>${focus?.max && state.driver === "total" ? `<small>${t(`相当于至少 ${fmt(Math.ceil((linked.score / 100 * focus.max - 1e-8) * 100) / 100,2)} / ${focus.max} 分`, `At least ${fmt(Math.ceil((linked.score / 100 * focus.max - 1e-8) * 100) / 100,2)} / ${focus.max} points`)}</small>` : ""}</p>`;
     }
     const assumptionSummary = scope.getElementById("assumption-summary");
     if (assumptionSummary) {
@@ -425,9 +425,14 @@
     if (button.dataset.action === "screenshot") return openUpload("grades");
     if (button.dataset.action === "syllabus") return openUpload("syllabus");
   });
+  // Finish number edits without interrupting partially typed decimals.
+  root.addEventListener("focusout", (event) => {
+    if (["assessment-number", "total-number"].includes(event.target.id)) projection();
+  });
   root.addEventListener("change", (event) => {
     const el = event.target;
     if (el.dataset.appearance) { appearance[el.dataset.appearance] = el.value; setAppearance(); render(); return; }
+    if (["assessment-number", "total-number"].includes(el.id)) { projection(); return; }
     if (el.id === "pending-only") { state.pendingOnly = el.checked; render(); return; }
     if (el.dataset.score) commitScoreInput(el, true);
   });
@@ -854,7 +859,7 @@
       if (!host || host.dataset.mounted) return;
       host.dataset.mounted = "true";
       const scope = host.attachShadow({ mode:"open" });
-      scope.innerHTML = '<link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/grade-planner-preview.css?v=1.7.0"><style>:host{display:block;min-width:0;min-height:100%;font-family:var(--font-ui,system-ui,sans-serif)}.gp-embedded .gp-shell{min-height:100%}.gp-preview{min-height:100%}</style><div class="gp-preview gp-embedded"><div id="grade-app"></div><dialog id="grade-dialog" aria-labelledby="dialog-heading"></dialog><div id="grade-toast" role="status" aria-live="polite" hidden></div></div>';
+      scope.innerHTML = '<link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/grade-planner-preview.css?v=1.7.1"><style>:host{display:block;min-width:0;min-height:100%;font-family:var(--font-ui,system-ui,sans-serif)}.gp-embedded .gp-shell{min-height:100%}.gp-preview{min-height:100%}</style><div class="gp-preview gp-embedded"><div id="grade-app"></div><dialog id="grade-dialog" aria-labelledby="dialog-heading"></dialog><div id="grade-toast" role="status" aria-live="polite" hidden></div></div>';
       return start(scope, host);
     }
   };

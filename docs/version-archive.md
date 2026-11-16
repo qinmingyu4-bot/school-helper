@@ -2,6 +2,19 @@
 
 This file records stable StudyBridge versions so a broken update can be rolled back safely.
 
+## 1.7.1 — 2026-11-16
+
+- PATCH from verified production 1.7.0, `2d9a5d07ce32fd48a6087020c82d8fb06b0189a6`.
+- Display two decimal places in the existing grade forecast controls and give
+  numeric fields room on small screens. Keep independent 0–100 scales, linked
+  calculations and the latest drop-lowest rules and unreachable-target behavior.
+- Source fix: `4d5b6f88d05a4fb76567e19651a02b18bd8aeb47`.
+- Validate source/assets, release policy, grade controls and drop-lowest regression,
+  the full test suite, and bilingual mobile/desktop layouts. Verify production
+  health, version, exact grade assets and authenticated grade endpoint afterward.
+- Rollback code target: `2d9a5d07ce32fd48a6087020c82d8fb06b0189a6`. Preserve account
+  data and backups. No migration is required.
+
 ## 1.7.0 — 2026-11-16
 
 - MINOR from verified production 1.6.0, `5e1c0178f6f6dff8562bbf09a56f6d253b92a31d`.

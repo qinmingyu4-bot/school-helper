@@ -854,7 +854,7 @@
       if (!host || host.dataset.mounted) return;
       host.dataset.mounted = "true";
       const scope = host.attachShadow({ mode:"open" });
-      scope.innerHTML = '<link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/grade-planner-preview.css?v=1.3.2"><style>:host{display:block;min-width:0;min-height:100%;font-family:var(--font-ui,system-ui,sans-serif)}.gp-embedded .gp-shell{min-height:100%}.gp-preview{min-height:100%}</style><div class="gp-preview gp-embedded"><div id="grade-app"></div><dialog id="grade-dialog" aria-labelledby="dialog-heading"></dialog><div id="grade-toast" role="status" aria-live="polite" hidden></div></div>';
+      scope.innerHTML = '<link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/grade-planner-preview.css?v=1.7.0"><style>:host{display:block;min-width:0;min-height:100%;font-family:var(--font-ui,system-ui,sans-serif)}.gp-embedded .gp-shell{min-height:100%}.gp-preview{min-height:100%}</style><div class="gp-preview gp-embedded"><div id="grade-app"></div><dialog id="grade-dialog" aria-labelledby="dialog-heading"></dialog><div id="grade-toast" role="status" aria-live="polite" hidden></div></div>';
       return start(scope, host);
     }
   };

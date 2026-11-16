@@ -2,6 +2,20 @@
 
 This file records stable StudyBridge versions so a broken update can be rolled back safely.
 
+## 1.7.0 — 2026-11-16
+
+- MINOR from verified production 1.6.0, `5e1c0178f6f6dff8562bbf09a56f6d253b92a31d`.
+- Add category-level lowest-score exclusion via syllabus or manual settings.
+  Preserve original scores and recompute the kept group during grade entry and
+  goal forecasts. Check ambiguous or conditional rules before applying them.
+- Source commits: `08889e107fc1673a22cd70449045b450f1c9ee32` and
+  `e19a101ef70ea343ab01374798f87213e82123fb`.
+- Validate grading, recognition and storage regression tests, a readable PDF with
+  simulated AI output, and manual setup at desktop and mobile widths. Check
+  production health, exact asset contents and the protected grade endpoint.
+- Rollback code target: `5e1c0178f6f6dff8562bbf09a56f6d253b92a31d`. The optional rule fields require no
+  data migration. Preserve account data and private backups during rollback.
+
 ## 1.6.0 — 2026-11-16
 
 - MINOR from verified production 1.5.1, `448e5edb659cd862d1cadeb0df5e2cd7a2d3061f`.

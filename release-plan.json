@@ -1,11 +1,10 @@
 {
-  "previousCommit": "448e5edb659cd862d1cadeb0df5e2cd7a2d3061f",
-  "previousVersion": "1.5.1",
-  "version": "1.6.0",
+  "previousCommit": "5e1c0178f6f6dff8562bbf09a56f6d253b92a31d",
+  "previousVersion": "1.6.0",
+  "version": "1.7.0",
   "level": "minor",
-  "reason": "Add end-user problem reporting, automatic server failure grouping and an administrator inbox with email delivery, alongside an inline account usage viewer.",
+  "reason": "Add a structured drop-lowest grading rule with manual setup, grounded syllabus extraction, and recalculation of recorded grades and forecasts.",
   "features": [
-    "Problem reporting inbox with automatic diagnostics and administrator email delivery",
-    "Expandable per-account usage summaries in the developer console"
+    "Automatic and manual lowest-score exclusion for a grading category"
   ]
 }

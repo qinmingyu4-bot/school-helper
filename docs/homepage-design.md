@@ -1,9 +1,14 @@
 # Refined homepage preview
 
-The owner requested a premium, minimal direction inspired by Apple, built on
-StudyBridge’s existing homepage. The preview retains the content and brand while
-using centered hero typography, a larger learning-space illustration, white and
-soft gray sections, compact controls and restrained blue primary actions.
+The owner requested the refinement and restraint of a premium website, with a
+recognizably StudyBridge identity. Use the reference for clarity, spacing and
+craft, not for distinctive combinations of layout, color and control shapes.
+
+The homepage uses an asymmetric opening: a left-aligned headline beside its
+context and actions, followed by the learning workspace. Charcoal controls,
+subtle sage accents, open feature rows and thin rules connect the website with
+StudyBridge’s quiet course-workspace treatment. Avoid returning to the combined
+centered billboard, blue pill buttons and repeated large gray rounded panels.
 
 `public/landing-refined.css` is the final homepage stylesheet and contains this
 visual treatment without changing the signed-in product styles. The underlying

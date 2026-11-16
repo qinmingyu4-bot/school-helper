@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — StudyBridge homepage identity
+
+- Refine the premium homepage direction around StudyBridge’s own visual identity:
+  an asymmetric title-and-context opening, charcoal compact controls, restrained
+  sage accents, and open feature rows separated by thin rules.
+- Reduce the recognizable reference-site styling while retaining generous space,
+  a prominent learning workspace, bilingual layouts and the empty video slot.
+- Task-branch preview only; no production deployment.
+
 ## Unreleased — Refined homepage preview
 
 - Introduce an owner-requested Apple-inspired homepage direction with centered

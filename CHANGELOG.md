@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased — Selected neutral homepage panels
+
+- Restore the owner-selected light-gray rounded feature panels and white inner
+  product examples from the earlier homepage preview.
+- Restore the centered closing panel while retaining the black product-style
+  Start learning button.
+- Replace sage-tinted backgrounds, text and dividers with the earlier neutral
+  gray palette; preserve the asymmetric hero, empty video slot and grade fixes.
+- Task-branch preview only; no production deployment.
+
 ## Unreleased — Homepage grade slider scale and precision
 
 - Give both grade-demo sliders a shared 0–100 scale and value-based filled

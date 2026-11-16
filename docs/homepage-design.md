@@ -5,10 +5,14 @@ recognizably StudyBridge identity. Use the reference for clarity, spacing and
 craft, not for distinctive combinations of layout, color and control shapes.
 
 The homepage uses an asymmetric opening: a left-aligned headline beside its
-context and actions, followed by the learning workspace. Charcoal controls,
-subtle sage accents, open feature rows and thin rules connect the website with
-StudyBridge’s quiet course-workspace treatment. Avoid returning to the combined
-centered billboard, blue pill buttons and repeated large gray rounded panels.
+context and actions, followed by the learning workspace. Keep the product’s
+black, compact, slightly rounded action buttons.
+
+The owner selected the earlier neutral light-gray feature panels with white
+inner examples, and the centered light-gray closing panel. Use #f5f5f7 for soft
+backgrounds, with neutral text and dividers; the sage-tinted gray was explicitly
+rejected. The closing “Start learning” button keeps the black product style.
+These chosen panels coexist with the asymmetric opening and existing interactions.
 
 `public/landing-refined.css` is the final homepage stylesheet and contains this
 visual treatment without changing the signed-in product styles. The underlying

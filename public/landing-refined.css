@@ -1,11 +1,11 @@
 /* Owner-requested premium homepage direction. Product UI remains unchanged. */
 :root {
   --paper:#fff;
-  --ink:#252724;
-  --muted:#70736e;
-  --line:#dedfda;
-  --soft:#f5f6f2;
-  --site-accent:var(--sb-accent,#435d50);
+  --ink:#1d1d1f;
+  --muted:#6e6e73;
+  --line:#e2e2e5;
+  --soft:#f5f5f7;
+  --site-accent:var(--sb-accent,#343434);
   scroll-padding-top:90px;
 }
 
@@ -513,15 +513,14 @@ a:focus-visible,summary:focus-visible {
 
 .learning-feature,.feature-row {
   grid-template-columns:1fr 1fr;
-  gap:96px;
+  gap:60px;
   align-items:center;
-  background:transparent;
+  background:var(--soft);
   border:0;
-  border-radius:0;
-  padding:64px 0;
-  margin-top:0;
+  border-radius:24px;
+  padding:60px;
+  margin-top:24px;
   overflow:hidden;
-  border-top:1px solid var(--line);
 }
 
 .feature-number {
@@ -559,8 +558,8 @@ a:focus-visible,summary:focus-visible {
 
 .mode-list>span {
   border:0;
-  background:var(--soft);
-  border-radius:3px;
+  background:var(--paper);
+  border-radius:20px;
   font-size:10px;
   padding:6px 10px;
 }
@@ -574,10 +573,10 @@ a:focus-visible,summary:focus-visible {
 }
 
 .source-demo,.grade-demo,.feature-row .course-demo,.writing-demo {
-  background:var(--soft);
+  background:var(--paper);
   border:1px solid color-mix(in srgb,var(--line) 75%,transparent);
-  border-radius:8px;
-  box-shadow:none;
+  border-radius:14px;
+  box-shadow:0 10px 30px #00000003;
 }
 
 .source-demo {
@@ -768,24 +767,20 @@ a:focus-visible,summary:focus-visible {
 }
 
 .closing-section {
-  display:flex;
-  text-align:left;
-  background:transparent;
+  display:block;
+  text-align:center;
+  background:var(--soft);
   color:var(--ink);
-  border-radius:0;
-  padding:72px 0;
-  border-top:1px solid var(--line);
-  justify-content:space-between;
-  align-items:center;
-  gap:32px;
+  border-radius:24px;
+  padding:90px 40px;
 }
 
 .closing-section h2 {
-  font-size:clamp(32px,3.7vw,48px);
+  font-size:clamp(36px,4.6vw,60px);
   line-height:1.25;
   letter-spacing:-2px;
   font-weight:600;
-  margin-bottom:0;
+  margin-bottom:32px;
 }
 
 .closing-section .button-light {
@@ -863,8 +858,8 @@ html[lang=en] .feature-copy h3 {
     right:-12px;
   }
   .learning-feature,.feature-row {
-    padding:48px 0;
-    gap:40px;
+    padding:40px;
+    gap:32px;
   }
   .feature-copy h3 {
     font-size:30px;
@@ -956,9 +951,9 @@ html[lang=en] .feature-copy h3 {
   }
   .learning-feature,.feature-row {
     grid-template-columns:1fr;
-    padding:40px 0;
+    padding:36px;
     gap:32px;
-    border-radius:0;
+    border-radius:20px;
   }
   .learning-feature:nth-of-type(even) .feature-copy,.learning-feature:nth-of-type(even)>:last-child {
     order:initial;
@@ -1001,7 +996,7 @@ html[lang=en] .feature-copy h3 {
     gap:32px;
   }
   .closing-section {
-    padding:56px 0;
+    padding:64px 24px;
   }
   .story-copy h2 {
     font-size:34px;
@@ -1162,10 +1157,10 @@ html[lang=en] .feature-copy h3 {
     max-width:290px;
   }
   .learning-feature,.feature-row {
-    padding:36px 0;
+    padding:30px 22px;
     gap:28px;
-    margin-top:0;
-    border-radius:0;
+    margin-top:18px;
+    border-radius:18px;
   }
   .feature-number {
     font-size:10px;
@@ -1295,14 +1290,12 @@ html[lang=en] .feature-copy h3 {
     font-size:12px;
   }
   .closing-section {
-    padding:48px 0;
-    border-radius:0;
-    display:block;
+    padding:56px 20px;
+    border-radius:18px;
   }
   .closing-section h2 {
     font-size:34px;
     letter-spacing:-1.2px;
-    margin-bottom:24px;
   }
   .site-footer {
     padding-block:30px;

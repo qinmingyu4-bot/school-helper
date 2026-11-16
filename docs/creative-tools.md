@@ -1,5 +1,7 @@
 # Creative Tools
 
+Course notes is the first tool. See [Course notes](course-notes.md) for PDF annotation, saving and device support.
+
 ## Available Features
 
 Tools provides Word/PDF documents, editable Excel workbooks, editable PowerPoint

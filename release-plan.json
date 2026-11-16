@@ -1,11 +1,11 @@
 {
-  "previousCommit": "bccee3f6137a926ebd79c478c36835f41c0e0dd3",
-  "previousVersion": "1.7.2",
-  "version": "1.8.0",
+  "previousCommit": "1a2183375d2e4bf7fd92f563696cbdcf083e1c08",
+  "previousVersion": "1.8.0",
+  "version": "1.9.0",
   "level": "minor",
-  "reason": "Add a new public, sign-in-free Study workspace with a guided course-creation, sample upload and first-question workflow, plus an independent prebuilt course.",
+  "reason": "Add course PDF notes with pen, highlight, text and eraser annotations, cloud persistence and automatic course-code filing across desktop, phone and tablet.",
   "features": [
-    "Guest Study workspace with course creation, example material upload, prepared Q&A with source citations and next-action guidance",
-    "Standalone prebuilt microeconomics course with bilingual materials, practice feedback and browser-local review"
+    "Course PDF annotations and note tools",
+    "Automatic course-code material filing"
   ]
 }

@@ -5,6 +5,9 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+课件笔记|Course notes
+课件笔记、文档和创作|Course notes, documents and more
+课件笔记、文档、表格、演示和图片|Course notes, documents, spreadsheets, slides and images
 你的课程、资料和灵感，在这里相连。|Your courses, materials and ideas. Connected.
 从一个问题，走向自己的理解。|From a question to understanding of your own.
 反馈问题|Report a problem

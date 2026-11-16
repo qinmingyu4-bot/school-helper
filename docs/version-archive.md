@@ -2,6 +2,12 @@
 
 This file records stable StudyBridge versions so a broken update can be rolled back safely.
 
+## 1.9.0 — 2026-11-16
+
+- MINOR from verified production 1.8.0 (`1a2183375d2e4bf7fd92f563696cbdcf083e1c08`): introduce course PDF notes and automatic course-code filing.
+- Put notes first in Tools with quiet icon controls for pen, highlight, text, eraser and undo/redo; support desktop, phone and tablet with localized labels and account themes.
+- Preserve per-page cloud saves, local draft recovery, existing grades, course archives and account data. No data migration; rollback code target is `1a2183375d2e4bf7fd92f563696cbdcf083e1c08`.
+
 ## 1.8.0 — 2026-11-16
 
 - MINOR from production 1.7.2, `bccee3f6137a926ebd79c478c36835f41c0e0dd3`.

@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.8.0";
+  const VERSION = "1.9.0";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -169,6 +169,7 @@
     user: null,
     mode: "student",
     page: "study",
+    tool: "notes",
     courses: [],
     activeCourseId: "",
     activeConversationId: "default",
@@ -275,7 +276,7 @@
     schedule: ["时", "日程", "Deadline 和课程提醒"],
     study: ["学", "学习", "课程资料、AI 对话和复习计划"],
     grades: ["分", "成绩", "成绩记录、评分规则与目标预测"],
-    tools: ["工", "工具", "Docs、Sheets、Slides 和创作"],
+    tools: ["工", "工具", "课件笔记、文档和创作"],
     email: ["邮", "邮箱助手", "学习邮件、通知与日程确认"],
     profile: ["人", "个人资料", "头像、学校、专业和 SB ID"],
     admin: ["管", "开发者端", "邀请码、用户和系统状态"]
@@ -2287,12 +2288,12 @@
 
   function toolsPage() {
     return ui.html`
-      ${pageHeader("STUDY TOOLS", ui.text("工具"), ui.text("文档、表格、演示和图片"))}
+      ${pageHeader("STUDY TOOLS", ui.text("工具"), ui.text("课件笔记、文档、表格、演示和图片"))}
       <section class="tools-tabs" aria-label="工具选择">
-        ${["docs", "sheets", "slides", "images", "cheatsheet"].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" aria-pressed="${(state.tool || "docs") === tool}" data-action="tool-mode" data-tool="${tool}">${({ docs: "SB Docs", sheets: "SB Sheets", slides: "SB Slides", images: ui.text("图片"), cheatsheet: "Cheatsheet PDF" })[tool]}</button>`).join("")}
+        ${["notes", "docs", "sheets", "slides", "images", "cheatsheet", ...(creativeTools.videoEnabled() ? ["video"] : [])].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" aria-pressed="${(state.tool || "docs") === tool}" data-action="tool-mode" data-tool="${tool}" ${tool === "video" && !creativeTools.videoEnabled() ? ui.text('disabled title="视频生成暂未开放"') : ""}>${({ notes: ui.text("课件笔记"), docs: "SB Docs", sheets: "SB Sheets", slides: "SB Slides", images: ui.text("图片"), cheatsheet: "Cheatsheet PDF", video: creativeTools.videoEnabled() ? ui.text("视频") : ui.text("视频 · 未开放") })[tool]}</button>`).join("")}
       </section>
       ${officeTools.supports(state.tool || "docs") ? ui.html`<nav class="office-view-switch" aria-label="工作方式"><button data-action="office-view-edit" aria-pressed="${state.toolView !== "generate"}">自主编辑</button><button data-action="office-view-generate" aria-pressed="${state.toolView === "generate"}">AI 文件生成</button></nav>` : ""}
-      ${officeTools.supports(state.tool || "docs") && state.toolView !== "generate" ? officeTools.html(state.tool || "docs") : creativeTools.html(creativeContext())}
+      ${state.tool === "notes" ? '<div id="courseNotesSlot"></div>' : officeTools.supports(state.tool || "docs") && state.toolView !== "generate" ? officeTools.html(state.tool || "docs") : creativeTools.html(creativeContext())}
     `;
   }
 
@@ -2303,6 +2304,7 @@
     const preferredCourse = cheatsheetCourses.get(userId) || savedCourse;
     const courseId = [preferredCourse, state.activeCourseId, state.courses[0]?.id].find((id) => state.courses.some((course) => course.id === id)) || "";
     return { userId, tool, courseId, courses: state.courses, api, readFiles, esc, render,
+      openStudyCourse: (id) => selectConversation(id, "default"),
       selectCourse: (id) => {
         if (state.user?.id !== userId || !state.courses.some((course) => course.id === id)) return;
         cheatsheetCourses.set(userId, id);
@@ -2574,7 +2576,7 @@
         const data = await api("/api/courses");
         if (!isCurrent()) return;
         state.courses = data.courses || [];
-        if (!officeTools.supports(state.tool || "docs") || state.toolView === "generate") await creativeTools.load(creativeContext());
+        if (state.tool !== "notes" && (!officeTools.supports(state.tool || "docs") || state.toolView === "generate")) await creativeTools.load(creativeContext());
       }
       if (page === "admin") {
         const overview = await api("/api/admin/overview");
@@ -3625,7 +3627,7 @@
         state.toolView = "edit";
         localStorage.setItem("studybridge.tool", state.tool);
         render();
-        if (state.tool !== "email" && !officeTools.supports(state.tool)) { await creativeTools.load(creativeContext()); render(); }
+        if (state.tool !== "notes" && state.tool !== "email" && !officeTools.supports(state.tool)) { await creativeTools.load(creativeContext()); render(); }
         return;
       }
       if (action === "office-view-edit" || action === "office-view-generate") {
@@ -3841,6 +3843,7 @@
     usageView.sync();
     creativeTools.restoreFocus();
     void officeTools.mount(creativeContext());
+    void window.StudyBridgeCourseNotes.mount(creativeContext());
     if (state.toast && state.user) root.insertAdjacentHTML("beforeend", `<div class="toast">${esc(state.toast)}</div>`);
     mobileNavigation.sync(root, { userId: state.user?.id, mode: state.mode, page: state.page });
     const sidebar = root.querySelector(".sidebar");
@@ -3936,7 +3939,7 @@
       document.title = ui.text("学习空间 · StudyBridge");
       state.user = data.user;
       const savedTool = localStorage.getItem("studybridge.tool");
-      state.tool = ["docs", "sheets", "slides", "images", "cheatsheet", "email"].includes(savedTool) ? savedTool : "docs";
+      state.tool = ["notes", "docs", "sheets", "slides", "images", "cheatsheet", "email"].includes(savedTool) ? savedTool : "notes";
       state.mode = isAdmin() && (feedbackView.hasLink() || localStorage.getItem("studybridge.mode") === "admin") ? "admin" : "student";
       void reportUserActivity();
       const urlPage = new URL(location.href).searchParams.get("page");

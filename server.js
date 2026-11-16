@@ -255,6 +255,8 @@ const mimeTypes = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
+  ".wasm": "application/wasm",
   ".json": "application/json; charset=utf-8",
   ".png": "image/png",
   ".jpg": "image/jpeg",
@@ -267,6 +269,7 @@ const mimeTypes = {
 const staticAssets = createStaticAssets(publicDir, mimeTypes);
 
 const staticAssetExtensions = new Set([
+  ".mjs", ".wasm", ".bcmap", ".pfb", ".ttf",
   ".css",
   ".js",
   ".json",
@@ -3405,7 +3408,25 @@ if (directMessageMatch && method === "POST") {
     return sendJson(res, 201, { course });
   }
 
-  const courseMatch = url.pathname.match(/^\/api\/courses\/([^/]+)(?:\/([^/]+))?(?:\/([^/]+))?$/);
+  let courseMatch = url.pathname.match(/^\/api\/courses\/([^/]+)(?:\/([^/]+))?(?:\/([^/]+))?$/);
+  let routedMaterial = null;
+  if (url.pathname === "/api/course-materials" && method === "POST") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const body = normalizeUploadBody(await readJson(req, uploadLimits.courseRequestBytes));
+    if (!body.fileData || uploadedDocumentType(body) !== "PDF") return sendError(res, 400, "Please upload a PDF.");
+    let sourcePdf;
+    try { sourcePdf = await readStudyPdf(decodeBase64Data(body.fileData), cleanAttachmentName(body.fileName || "Course PDF"), uploadLimits.courseFileBytes); }
+    catch (error) { return sendError(res, /too large/i.test(error.message) ? 413 : 400, error.message); }
+    const courses = (await db.listCourses(user.id)).filter(c => c.chatType !== "general" && c.name !== "Schedule & Deadlines");
+    const match = require("./lib/course-material-routing").resolve(courses, body.fileName, sourcePdf.text);
+    const selected = body.courseId ? courses.find(c => c.id === body.courseId) : courses.find(c => c.id === match.courseId);
+    if (body.courseId && !selected) return sendError(res, 404, "Course not found.");
+    if (!selected) return sendJson(res, 200, { needsCourse: true, ...match });
+    routedMaterial = { body, sourcePdf };
+    courseMatch = [url.pathname, selected.id, "documents"];
+  }
+
   if (courseMatch) {
     const user = await requireUser(req, res);
     if (!user) return;
@@ -3416,6 +3437,25 @@ if (directMessageMatch && method === "POST") {
     if (!course) return sendError(res, 404, "Course not found.");
     if (course.chatType === "general" && ((!child && method === "DELETE") || (child === "documents" && method !== "GET"))) {
       return sendError(res, 403, "General chat is not a course. Upload attachments with a chat message instead.");
+    }
+
+    if (["note-source", "notes"].includes(child) && childId) {
+      res.setHeader("Cache-Control", "private, no-store");
+      const document = (await db.listDocuments(user.id, courseId)).find(item => item.id === childId);
+      if (!document?.hasSourcePdf) return sendError(res, 404, "PDF not found.");
+      if (child === "note-source" && method === "GET") {
+        const source = await db.readMaterial(user.id, courseId, `DOCFILE#${childId}#PDF`);
+        if (!source?.dataUrl) return sendError(res, 404, "PDF not found.");
+        const bytes = Buffer.from(source.dataUrl.split(",")[1], "base64");
+        res.writeHead(200, { "Content-Type": "application/pdf", "Content-Length": bytes.length, "Content-Disposition": "inline" });
+        return res.end(bytes);
+      }
+      const page = Number(url.searchParams.get("page"));
+      if (!Number.isInteger(page) || page < 1 || page > (document.sourcePageCount || 10000)) return sendError(res, 400, "Invalid page.");
+      const notes = require("./lib/course-notes").create(db);
+      if (child === "notes" && method === "GET") return sendJson(res, 200, await notes.read(user.id, courseId, childId, page));
+      if (child === "notes" && method === "PUT") return sendJson(res, 200, await notes.save(user.id, courseId, childId, page, await readJson(req, 300000)));
+      return sendError(res, 405, "Method not allowed.");
     }
 
     if (child === "archive" && !childId && method === "PUT") {
@@ -3484,7 +3524,7 @@ if (directMessageMatch && method === "POST") {
       return sendJson(res, 200, { documents: await db.listDocuments(user.id, courseId) });
     }
     if (child === "documents" && method === "POST") {
-      const body = normalizeUploadBody(await readJson(req, uploadLimits.courseRequestBytes));
+      const body = routedMaterial?.body || normalizeUploadBody(await readJson(req, uploadLimits.courseRequestBytes));
       if (body.fileData) {
         const size = decodeBase64Data(body.fileData).length;
         if (!size) return sendError(res, 400, "上传文件为空，请重新选择文件。");
@@ -3496,7 +3536,7 @@ if (directMessageMatch && method === "POST") {
       if (course.name === scheduleCourseName || body.type === "Schedule") usage.feature("schedule");
       try {
         if (body.fileData && uploadedDocumentType(body) === "PDF") {
-          sourcePdf = await readStudyPdf(decodeBase64Data(body.fileData), cleanAttachmentName(body.fileName || title), uploadLimits.courseFileBytes);
+          sourcePdf = routedMaterial?.sourcePdf || await readStudyPdf(decodeBase64Data(body.fileData), cleanAttachmentName(body.fileName || title), uploadLimits.courseFileBytes);
           text = sourcePdf.text;
         } else text = body.fileData ? await extractUploadedText(body, compactDocumentText, uploadLimits.courseFileBytes) : compactDocumentText(body.text);
       } catch (error) {
@@ -3523,7 +3563,7 @@ if (directMessageMatch && method === "POST") {
         courseId,
         title,
         text,
-        ...(sourcePdf ? { hasSourcePdf: true, sourcePages: sourcePdf.sourcePages || [] } : {}),
+        ...(sourcePdf ? { hasSourcePdf: true, sourcePageCount: sourcePdf.pages || null, sourcePages: sourcePdf.sourcePages || [] } : {}),
         type: uploadedFile ? uploadedDocumentType(body) : String(body.type || "Note").slice(0, 60)
       }); } catch (error) {
         if (sourcePdf) await db.deleteMaterials(user.id, courseId, `DOCFILE#${documentId}#`).catch(() => {});
@@ -3532,7 +3572,7 @@ if (directMessageMatch && method === "POST") {
       setImmediate(() => void studyIndex.prepare(user.id, courseId, { id: `doc:${document.id}`, name: document.title, text: document.text, sourcePages: document.sourcePages }).catch(() => {}));
       if (uploadedFile && course.name !== scheduleCourseName && body.type !== "Schedule") usage.reached("material");
       if (unreadable) usage.outcome(422, "UPLOAD_PARSE");
-      return sendJson(res, 201, { document });
+      return sendJson(res, 201, { document, ...(routedMaterial ? { courseId, courseName: course.name } : {}) });
     }
     if (child === "documents" && childId && (method === "PUT" || method === "PATCH")) {
       const body = await readJson(req);

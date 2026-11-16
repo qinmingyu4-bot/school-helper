@@ -1,10 +1,8 @@
 {
-  "previousCommit": "5e1c0178f6f6dff8562bbf09a56f6d253b92a31d",
-  "previousVersion": "1.6.0",
-  "version": "1.7.0",
-  "level": "minor",
-  "reason": "Add a structured drop-lowest grading rule with manual setup, grounded syllabus extraction, and recalculation of recorded grades and forecasts.",
-  "features": [
-    "Automatic and manual lowest-score exclusion for a grading category"
-  ]
+  "previousCommit": "2d9a5d07ce32fd48a6087020c82d8fb06b0189a6",
+  "previousVersion": "1.7.0",
+  "version": "1.7.1",
+  "level": "patch",
+  "reason": "Fix decimal precision and narrow numeric fields in the existing grade forecast controls while preserving independent scales, bidirectional calculation and drop-lowest grading rules.",
+  "features": []
 }

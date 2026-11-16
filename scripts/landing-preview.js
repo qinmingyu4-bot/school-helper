@@ -5,6 +5,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const publicDir = path.resolve(__dirname, "../public");
 const assets = new Set([
+  "/landing-refined.css", "/landing-demo.js", "/landing-demo.css",
   "/landing.html", "/landing.css", "/landing-grades.js", "/landing-motion.js",
   "/landing-story.js", "/landing-story.css", "/i18n-en.js", "/i18n.js",
   "/i18n-landing.js", "/i18n.css", "/typography.css", "/brand.css", "/privacy.html",

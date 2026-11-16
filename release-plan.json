@@ -1,11 +1,8 @@
 {
-  "previousCommit": "71b9a4524389ff77bca7e82ba76f9e573466833c",
-  "previousVersion": "1.4.3",
-  "version": "1.5.0",
-  "level": "minor",
-  "reason": "Add developer-facing product analytics and individual usage summaries, with account-scoped onboarding and operational diagnostics.",
-  "features": [
-    "Developer usage overview for 7 and 30 days",
-    "Individual account usage and onboarding summary"
-  ]
+  "previousCommit": "d5d95485a5c22d9a630e659ec5aabe7ebece11c8",
+  "previousVersion": "1.5.0",
+  "version": "1.5.1",
+  "level": "patch",
+  "reason": "Polish the existing public homepage layout and neutral palette, reserve an empty walkthrough slot, and fix the existing grade-demo scales and decimal clipping. No new product capability or architecture change.",
+  "features": []
 }

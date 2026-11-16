@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — Homepage usage demo
+
+- Add a 28-second native animated walkthrough from course materials to grounded
+  questions and SB Docs revision previews, with pause, replay, seeking and chapters.
+- Keep bilingual copy, responsive layouts and reduced-motion support; suspend
+  playback offscreen and in background tabs. No video download or account calls.
+- Available on a task branch for review; no production deployment.
+
 ## Unreleased — Complete core course workflows
 
 - Connect the approved grade planner to real courses and account storage, with

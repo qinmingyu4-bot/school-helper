@@ -6,6 +6,8 @@
   readings, prepared Q&A, clickable source sections and a three-question quiz.
 - Show answer-specific feedback, an optional review date and a retry action.
   Keep guest progress in the browser and support light and dark display.
+- Open the demo in the Study workspace layout, with the familiar course
+  sidebar, question composer, conversation switching and Study topics · Practice.
 - Link to the lesson from the homepage and its local preview.
 
 ## 1.7.2 — 2026-11-16

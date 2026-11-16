@@ -6,7 +6,9 @@ const path = require("node:path");
 const publicDir = path.resolve(__dirname, "../public");
 const assets = new Set([
   "/sample-course.html", "/sample-course.css", "/sample-course.js", "/sample-course-content.js",
-  "/appearance.css", "/display-modes.css",
+  "/workspace-base.css", "/reply-typography.css", "/appearance.css", "/study-sidebar.css",
+  "/course-conversations.css", "/display-modes.css", "/mobile-navigation.css", "/study-composer.css",
+  "/learning-loop.css", "/dialog-layout.css", "/study-composer.js",
   "/landing-refined.css", "/landing-demo.js", "/landing-demo.css",
   "/landing.html", "/landing.css", "/landing-grades.js", "/landing-motion.js",
   "/landing-story.js", "/landing-story.css", "/i18n-en.js", "/i18n.js",

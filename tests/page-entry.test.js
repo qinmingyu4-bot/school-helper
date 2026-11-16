@@ -88,7 +88,13 @@ test("homepage, authenticated entry, legacy bookmarks and OAuth use distinct pag
       assert.ok(bundle, "sample content and its controller load in order");
       const script = await request(bundle[1]);
       assert.equal(script.status, 200);
-      assert.match(await script.text(), /StudyBridgeSampleContent/);
+      const bundleCode = await script.text();
+      assert.match(bundleCode, /StudyBridgeSampleContent/);
+      assert.match(bundleCode, /workspace study-workspace/);
+      assert.match(bundleCode, /composer composer-light/);
+      const styles = html.match(/href="(\/assets\/sample-course\.[a-f0-9]+\.css)"/);
+      assert.ok(styles);
+      assert.match(await (await request(styles[1])).text(), /\.workspace\.study-workspace/);
     }
     await redirect("/app?page=study", "/login?page=study");
   });

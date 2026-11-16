@@ -44,12 +44,14 @@ deploy anything. The example's final study-space link leads to the live
 StudyBridge login or learning area.
 
 The public `/sample-course` entry offers a five-minute bilingual microeconomics
-lesson without an account. The lesson pairs original English lecture notes with
-a fictional café case, three prepared questions with section-level source
-links, and three practice questions with hints and answer-specific feedback.
-Visitors can mark the next day for review or retry the quiz. Progress and the
-optional review date are stored only in the current browser. The lesson uses
-static assets and does not create account records or calendar events.
+lesson without an account. It opens in the Study workspace layout and uses
+the shared workspace, sidebar, composer and learning dialog styles. Visitors
+can read the two sample documents from the course sidebar, fill the study
+composer with a prepared question and send it, open citations, switch or start
+conversations and open Study topics · Practice from the course header. The
+three-question quiz gives answer-specific feedback and supports a local review
+date and retries. Prepared replies, drafts, quiz progress and the review date
+use only this browser. No account or calendar records are created.
 
 The introduction now leads with four strengths: AI grounded in uploaded course
 materials, learning organized by course, grade calculation/target planning, and

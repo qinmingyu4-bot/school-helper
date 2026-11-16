@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — Expandable user usage summaries
+
+- Give each user a labeled button that expands and collapses their summary
+  in the user list. Fix the 7-day and 30-day controls in both usage views.
+
 ## 1.5.0 — 2026-11-14
 
 - Classification: MINOR from verified production 1.4.3 (`71b9a45`). Add two developer-facing reporting views.

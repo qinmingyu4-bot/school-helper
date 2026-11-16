@@ -9,7 +9,8 @@
 查看使用情况，管理用户和邀请码。|Review usage and manage users and invitations.
 使用概况|Usage overview
 使用摘要|Usage summary
-查看使用摘要|View usage summary
+展开使用摘要|Expand usage summary
+收起使用摘要|Collapse usage summary
 统计时段|Reporting period
 近 7 天|Last 7 days
 近 30 天|Last 30 days

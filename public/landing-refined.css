@@ -1207,7 +1207,7 @@ html[lang=en] .feature-copy h3 {
   }
   .grade-value input {
     font-size:23px;
-    width:50px;
+    width:calc(6ch + 12px);
   }
   .grade-value>span {
     font-size:10px;

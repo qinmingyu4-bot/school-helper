@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased — Homepage grade slider scale and precision
+
+- Give both grade-demo sliders a shared 0–100 scale and value-based filled
+  tracks, so exam scores and weighted totals occupy their actual percentages.
+- Preserve bidirectional calculation and constrain attainable totals to 42–82,
+  keeping final-exam scores within 0–100 when dragging either track.
+- Show two decimal places after editing and widen numeric inputs to fit 100.00
+  without clipping, including on 320px mobile layouts.
+- Add regressions for forward/reverse updates, bounds and decimal editing.
+- Task-branch preview only; no production deployment.
+
 ## Unreleased — StudyBridge homepage identity
 
 - Refine the premium homepage direction around StudyBridge’s own visual identity:

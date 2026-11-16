@@ -20,3 +20,8 @@ No video or playback controls should be added until the owner follows up.
 
 Review at `http://127.0.0.1:4318/` using `scripts/landing-preview.js`. This version
 is synchronized on a task branch for review, without production deployment.
+
+The grade demo uses two 0–100 tracks. Its fixed course points are 42 and the final
+exam weight is 40%, so dragging the total track is constrained to 42–82 while
+retaining the full scale. Both directions update immediately; score inputs show
+two decimals after committing or leaving the field, with room for `100.00`.

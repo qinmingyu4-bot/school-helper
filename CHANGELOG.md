@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.2 — 2026-11-16
+
+- PATCH from 1.7.1: polish existing tools, classmates and community layouts; no new capability or data migration.
+- Use restrained tool tabs, compact contact rows and a divided community reading/composer layout.
+- Preserve existing action handlers, editor canvases, data flows, bilingual copy and account palette/light-dark settings.
+- Validate responsive layouts, existing regression tests and production assets after AWS deployment.
+
 ## 1.7.1 — 2026-11-16
 
 - Classification: PATCH from verified production 1.7.0 (`2d9a5d0`). Fix existing

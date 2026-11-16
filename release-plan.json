@@ -1,8 +1,8 @@
 {
-  "previousCommit": "2d9a5d07ce32fd48a6087020c82d8fb06b0189a6",
-  "previousVersion": "1.7.0",
-  "version": "1.7.1",
+  "previousCommit": "b3ad0b417970311f5b00028757ea099f3e888c5f",
+  "previousVersion": "1.7.1",
+  "version": "1.7.2",
   "level": "patch",
-  "reason": "Fix decimal precision and narrow numeric fields in the existing grade forecast controls while preserving independent scales, bidirectional calculation and drop-lowest grading rules.",
+  "reason": "Refine the existing tools, classmates and community layouts with restrained tabs, divided lists and account-themed surfaces, preserving all existing functions and data flows. No new product capability or major redesign.",
   "features": []
 }

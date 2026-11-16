@@ -2,6 +2,14 @@
 
 This file records stable StudyBridge versions so a broken update can be rolled back safely.
 
+## 1.7.2 — 2026-11-16
+
+- PATCH from production 1.7.1, `b3ad0b417970311f5b00028757ea099f3e888c5f`.
+- Refine existing Tools, Classmates and Community surfaces without introducing new capabilities or changing data/interaction logic.
+- Source: `7504bb9`; carry only the approved stylesheet and entry link onto latest main.
+- Validate source/assets, release policy, regressions and bilingual desktop/mobile layouts; verify production health and exact assets.
+- Rollback code target: `b3ad0b417970311f5b00028757ea099f3e888c5f`. Preserve account data and backups; no migration required.
+
 ## 1.7.1 — 2026-11-16
 
 - PATCH from verified production 1.7.0, `2d9a5d07ce32fd48a6087020c82d8fb06b0189a6`.

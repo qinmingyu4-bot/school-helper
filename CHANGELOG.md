@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Show two decimal places in the account grade planner and its local preview,
+  including linked sliders and inverse score requirements. Preserve both 0–100
+  scales and explicit unreachable-target feedback.
+- Reserve room for full numeric values and allow helper text to wrap on narrow
+  screens; finish numeric formatting after editing without interrupting typing.
+
 ## 1.6.0 — 2026-11-16
 
 - Classification: MINOR from verified production 1.5.1 (`448e5ed`). Add developer problem reporting and email notifications.

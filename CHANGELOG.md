@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Problem reports and email notifications
+
+- Add a developer inbox for tracked service failures and user-submitted reports.
+  Review the account, action, error code, request reference and environment.
+- Group repeated server failures, save feedback before emailing the configured
+  operator, and expose delivery and resolution status in the inbox.
+
 ## Unreleased — Expandable user usage summaries
 
 - Give each user a labeled button that expands and collapses their summary

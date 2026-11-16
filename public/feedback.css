@@ -1,0 +1,41 @@
+.feedback-link { margin: 8px 0; width: fit-content; min-height: 40px; padding-inline: 12px; font-size: 13px; }
+.feedback-banner {
+  position: fixed; z-index: 40; top: max(12px, env(safe-area-inset-top)); right: 16px;
+  display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px);
+  padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--panel); color: var(--ink); box-shadow: var(--shadow);
+  font-size: 13px; overflow-wrap: anywhere;
+}
+.feedback-banner button { min-height: 38px; white-space: nowrap; padding: 5px 9px; }
+.feedback-banner [data-feedback-dismiss] { min-width: 36px; }
+.feedback-dialog {
+  --dialog-width: 560px; --dialog-height: 460px;
+  color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+}
+.feedback-dialog::backdrop { background: rgba(0, 0, 0, .42); }
+.feedback-dialog .dialog-heading h2 { font-size: 20px; }
+.feedback-dialog .dialog-heading button { min-width: 40px; min-height: 40px; padding: 0; }
+.feedback-form { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.feedback-form textarea { width: 100%; margin-top: 8px; resize: vertical; }
+.feedback-diagnostic { margin: 0 0 16px; padding: 0 0 12px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.feedback-diagnostic p { margin: 6px 0; }
+.feedback-footer { display: flex; justify-content: flex-end; align-items: center; gap: 12px; flex-wrap: wrap; }
+.feedback-footer p { flex: 1; margin: 0; font-size: 13px; overflow-wrap: anywhere; min-width: 0; }
+.feedback-footer p:empty { display: none; }
+.feedback-inbox { padding: 18px 28px; background: var(--panel); color: var(--ink); border-bottom: 1px solid var(--line); }
+.feedback-inbox > summary { font-size: 18px; font-weight: 600; cursor: pointer; }
+.feedback-inbox [data-feedback-list] { margin-top: 12px; }
+.feedback-issue { padding: 12px 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+.feedback-issue summary { cursor: pointer; }
+.feedback-row-meta { display: block; margin: 4px 0 0 16px; color: var(--muted); font-size: 12px; }
+.feedback-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+.feedback-facts > div { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.feedback-facts dt { font-size: 12px; color: var(--muted); }
+.feedback-facts dd { margin: 4px 0 0; }
+.feedback-note p { margin-top: 4px; white-space: pre-wrap; }
+.feedback-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.feedback-actions button { min-height: 40px; padding: 6px 10px; font-size: 12px; }
+@media (max-width: 660px) {
+  .feedback-inbox { padding: 16px; }
+  .feedback-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

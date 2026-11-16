@@ -29,6 +29,7 @@ const mailboxProviders = require("./lib/mailbox-providers");
 const { createMailboxService } = require("./lib/mailbox-service");
 const { membershipTier } = require("./lib/membership");
 const { createAiUsage } = require("./lib/ai-usage");
+const { createFeedback } = require("./lib/feedback");
 const { createUsageAnalytics, STEPS, reportWindow, summarize, overview: usageOverview } = require("./lib/usage-analytics");
 const { createGradePlanner } = require("./lib/grade-planner-service");
 const { createBillingService } = require("./lib/billing-service");
@@ -125,7 +126,8 @@ const academicCalendars = createCalendarService({
     return response.json();
   }
 });
-const usage = createUsageAnalytics(db);
+const feedback = createFeedback({ db, sendEmail, version: packageVersion, recipient: feedbackRecipient, origin: feedbackOrigin });
+const usage = createUsageAnalytics(db, { onFailure: feedback.observe });
 const aiUsage = createAiUsage({ db, entitlement: (userId) => alipay.entitlement(userId), onRequest: usage.recordAi });
 const office = createOfficeService(db);
 const schedulePush = createPushService({ db, listSchedule: (userId) => listUserScheduleItems(userId, { includeCompleted: true }) });
@@ -304,6 +306,19 @@ function adminEmails() {
     .split(",")
     .map((email) => normalizeEmail(email))
     .filter(Boolean);
+}
+
+function feedbackRecipient() {
+  const address = String(process.env.FEEDBACK_EMAIL_TO ?? adminEmails()[0] ?? "").trim();
+  return validEmail(address) && !/[<>,;:"()]/.test(address) ? address : "";
+}
+
+function feedbackOrigin() {
+  try {
+    const url = new URL(process.env.APP_BASE_URL || process.env.PUBLIC_BASE_URL);
+    if (["https:", "http:"].includes(url.protocol)) return url.origin;
+  } catch { /* Fall back to the official console for notification links. */ }
+  return "https://studybridge.ink";
 }
 
 function withEffectiveRole(user) {
@@ -1538,7 +1553,9 @@ async function streamCourseChat(req, res, context) {
     if (course.chatType !== "general" && !blockedReply && process.env.OPENAI_API_KEY) usage.reached("firstStudy");
     send("done", { messages: [userMessage, assistantMessage], model });
   } catch (error) {
-    usage.outcome(controller.signal.aborted ? (controller.signal.reason?.name === "AbortError" ? 499 : 504) : error.statusCode || 502);
+    const status = controller.signal.aborted ? (controller.signal.reason?.name === "AbortError" ? 499 : 504) : error.statusCode || 502;
+    usage.outcome(status);
+    usage.failureKind(error);
     if (!controller.signal.aborted) console.error("StudyBridge streaming reply failed:", error);
     if (userMessage && !assistantMessage && await getChatCourse(user.id, course.id)) {
       try {
@@ -1547,7 +1564,7 @@ async function streamCourseChat(req, res, context) {
         console.error("StudyBridge interrupted reply could not be saved:", saveError);
       }
     }
-    send("error", { error: error.usageError ? error.message : "回复已中断，请重新提问。", messages: [userMessage, assistantMessage].filter(Boolean) });
+    send("error", { diagnosticStatus: status, error: error.usageError ? error.message : "回复已中断，请重新提问。", messages: [userMessage, assistantMessage].filter(Boolean) });
   } finally {
     clearInterval(heartbeat);
     clearTimeout(timeout);
@@ -2768,6 +2785,30 @@ async function routeApi(req, res) {
     return sendJson(res, 200, { post: publicCommunityPost(post, user) });
   }
 
+  if (url.pathname === "/api/feedback" && method === "POST") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    if (!feedbackJson(req)) return sendError(res, 403, "请在当前网站提交问题反馈。");
+    return sendJson(res, 201, await feedback.submit(user, await readJson(req, 8192), req.headers["user-agent"]));
+  }
+
+  const feedbackIssue = url.pathname.match(/^\/api\/admin\/feedback\/([^/]{1,100})$/);
+  if ((url.pathname === "/api/admin/feedback" && method === "GET") || (feedbackIssue && ["GET", "PATCH"].includes(method))) {
+    const auth = await requireAdminSession(req, res);
+    if (!auth) return;
+    if (!feedbackIssue) return sendJson(res, 200, await feedback.list(url.searchParams.get("before") || ""));
+    let id;
+    try { id = decodeURIComponent(feedbackIssue[1]); } catch { return sendError(res, 400, "无效的反馈编号。"); }
+    if (method === "GET") {
+      const issue = await feedback.get(id);
+      return issue ? sendJson(res, 200, { issue }) : sendError(res, 404, "问题反馈不存在。");
+    }
+    if (!feedbackJson(req)) return sendError(res, 403, "请在当前网站管理问题反馈。");
+    const body = await readJson(req, 2048);
+    if (body?.actorId !== auth.user.id) return sendError(res, 409, "登录账号已改变，请重新打开开发者端。");
+    return sendJson(res, 200, { issue: await feedback.update(id, body.action, auth.user) });
+  }
+
   const userUsage = url.pathname.match(/^\/api\/admin\/users\/([\w-]{1,100})\/usage$/);
   if (method === "GET" && (url.pathname === "/api/admin/usage" || userUsage)) {
     const auth = await requireAdminSession(req, res);
@@ -3320,12 +3361,14 @@ if (directMessageMatch && method === "POST") {
       send("result", result);
       return res.end();
     } catch (error) {
-      usage.outcome(res.destroyed ? 499 : timedOut ? 504 : error.statusCode || error.status || 502);
+      const status = res.destroyed ? 499 : timedOut ? 504 : error.statusCode || error.status || 502;
+      usage.outcome(status);
+      usage.failureKind(error);
       if (res.destroyed) return;
       console.warn("Schedule extraction failed:", error.name);
       const message = timedOut ? "读取超时，请重试或分批上传；尚未保存任何提醒。" : "AI 提取未成功，请重试或手动添加；尚未保存任何提醒。";
       if (!streaming) return sendError(res, error.status || 502, error.usageError ? error.message : message);
-      send("error", { error: error.usageError ? error.message : message });
+      send("error", { diagnosticStatus: status, error: error.usageError ? error.message : message });
       return res.end();
     } finally {
       clearTimeout(timeout);
@@ -3642,10 +3685,16 @@ const server = http.createServer((req, res) => aiUsage.run(null, async () => {
   return handleRequest(res, () => serveStatic(req, res));
 }));
 
+function feedbackJson(req) {
+  return /^application\/json(?:;|$)/i.test(req.headers["content-type"] || "") &&
+    (!req.headers.origin || req.headers.origin === new URL(appBaseUrl(req)).origin);
+}
+
 async function handleRequest(res, respond) {
   try { return await respond(); }
   catch (error) {
     const status = error.statusCode || 500;
+    usage.failureKind(error);
     if (status === 500) console.error(error);
     if (res.headersSent) { usage.outcome(status); return res.end(); }
     return sendError(res, status, error.message || "Server error.");
@@ -3657,6 +3706,7 @@ staticAssets.prepare().then(() => server.listen(port, () => {
   scheduleLocalDatabaseBackups();
   void usage.started().catch(() => console.warn("Usage analytics initialization deferred."));
   mailbox.start();
+  feedback.start();
   schedulePush.start();
   studyJobs.start();
   if (webSearchEnabled && process.env.OPENAI_API_KEY && process.env.NODE_ENV === "production" && process.env.ACADEMIC_CALENDAR_REFRESH !== "false") academicCalendars.start(complexAiModel);
@@ -3668,6 +3718,7 @@ async function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
   mailbox.stop();
+  await feedback.stop();
   academicCalendars.stop();
   await schedulePush.stop();
   await studyJobs.stop();

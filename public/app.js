@@ -308,6 +308,11 @@
     }
   };
 
+  const feedbackView = globalThis.StudyBridgeFeedback.create({
+    api, getUser: () => state.user, getPage: () => state.page,
+    isAdmin: () => state.mode === "admin" && isAdmin(), mount: root
+  });
+
   async function api(path, options = {}) {
     const { onProgress, ...requestOptions } = options;
     const init = { credentials: "same-origin", ...requestOptions };
@@ -315,22 +320,36 @@
       init.headers = { "content-type": "application/json", ...(init.headers || {}) };
       init.body = JSON.stringify(init.body);
     }
-    const response = await fetch(path, init);
+    const attempt = { path, method: init.method || "GET", userId: state.user?.id, page: state.page };
+    const reportable = attempt.method !== "GET";
+    let response;
+    try { response = await fetch(path, init); }
+    catch (error) {
+      if (reportable && !init.signal?.aborted && error.name !== "AbortError") feedbackView.remember({ ...attempt, status: 0 });
+      throw error;
+    }
+    const requestId = response.headers.get("x-request-id");
     let data;
     try {
       if (onProgress && response.ok && response.headers.get("content-type")?.includes("text/event-stream")) {
         await window.StudyBridgeChatStream.readEvents(response, ({ event, data: packet }) => {
           const value = JSON.parse(packet);
           if (event === "progress") onProgress(value.phase);
-          if (event === "error") throw new Error(value.error || ui.text("读取失败，请重试。"));
+          if (event === "error") throw Object.assign(new Error(value.error || ui.text("读取失败，请重试。")), { status: value.diagnosticStatus });
           if (event === "result") { data = value; return false; }
         });
         if (!data) throw new Error(ui.text("连接中断，请重试；尚未保存任何提醒。"));
       } else data = await response.json().catch(() => ({}));
+    } catch (error) {
+      if (reportable && !init.signal?.aborted && error.name !== "AbortError") feedbackView.remember({ ...attempt, status: error.status || 0, requestId, stream: true });
+      throw error;
     } finally {
       if (path !== "/api/me/ai-usage" && init.method && init.method !== "GET") void usageView.refresh(true);
     }
-    if (!response.ok) throw Object.assign(new Error(data.error || data.message || ui.message`请求失败 (${response.status})`), { status: response.status, retryAfter: Number(response.headers.get("retry-after")) || 0 });
+    if (!response.ok) {
+      if (reportable) feedbackView.remember({ ...attempt, status: response.status, requestId });
+      throw Object.assign(new Error(data.error || data.message || ui.message`请求失败 (${response.status})`), { status: response.status, retryAfter: Number(response.headers.get("retry-after")) || 0 });
+    }
     return data;
   }
 
@@ -585,6 +604,7 @@
           <nav class="side-nav">${userNav}</nav>
         ` : ""}
         ${ui.selector()}
+        ${state.mode === "student" ? ui.html`<button type="button" class="feedback-link" data-action="open-feedback">反馈问题</button>` : ""}
         ${devSwitch}
         ${state.mode === "admin" ? adminSideHint() : state.page === "study" ? studySidebarHtml() : ""}
       </aside>
@@ -1162,6 +1182,7 @@
     state.uploadFiles = [];
     if (input) input.value = "";
     render();
+    let attempt;
     try {
       const attachments = await readFiles(files);
       clearTimeout(learningStyleTimer);
@@ -1171,15 +1192,18 @@
       reply.controller.signal.throwIfAborted();
       reply.assistant.phase = "preparing";
       scheduleStudyReply(reply);
-      const response = await fetch(`/api/courses/${reply.courseId}/chat`, {
+      attempt = { path: `/api/courses/${reply.courseId}/chat`, method: "POST", userId: reply.userId, page: "study" };
+      const response = await fetch(attempt.path, {
         method: "POST", credentials: "same-origin", signal: reply.controller.signal,
         headers: { "content-type": "application/json", accept: "text/event-stream" },
         body: JSON.stringify({ conversationId: reply.conversationId, message: text, mode: reply.mode, attachments, learningStyle: reply.learningStyle, stream: true,
           background: Boolean(studyTasks), requestId: crypto.randomUUID() })
       });
+      attempt.requestId = response.headers.get("x-request-id");
+      attempt.stream = response.ok;
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || ui.message`请求失败 (${response.status})`);
+        throw Object.assign(new Error(data.error || ui.message`请求失败 (${response.status})`), { status: response.status });
       }
       let completed = false;
       if (!(response.headers.get("content-type") || "").includes("text/event-stream")) {
@@ -1215,7 +1239,7 @@
           if (event === "done" || event === "error") {
             if (packet.messages?.[0]) { Object.assign(reply.user, packet.messages[0]); reply.userNeedsRender = true; reply.started = true; }
             if (packet.messages?.[1]) Object.assign(reply.assistant, packet.messages[1]);
-            if (event === "error") throw new Error(packet.error || ui.text("回复已中断，请重试。"));
+            if (event === "error") throw Object.assign(new Error(packet.error || ui.text("回复已中断，请重试。")), { status: packet.diagnosticStatus });
             completed = true;
             return false;
           }
@@ -1234,6 +1258,7 @@
         studyComposer.resize();
       }
       if (!reply.controller.signal.aborted && studyReplyKey() === reply.key) {
+        if (attempt) feedbackView.remember({ ...attempt, status: error.status || 0 });
         setToast(error.message);
         root.querySelector(".toast")?.remove();
         root.insertAdjacentHTML("beforeend", `<div class="toast">${esc(error.message)}</div>`);
@@ -2296,6 +2321,7 @@
     return ui.html`
       ${pageHeader("CREATOR CONSOLE", ui.text("开发者端"), ui.text("查看使用情况，管理用户和邀请码。"), false)}
       ${adminUsage.html()}
+      ${feedbackView.html()}
       ${adminStatusHtml()}
       <section class="admin-management">
         <article class="admin-section" aria-labelledby="adminInvitesTitle">
@@ -2829,6 +2855,7 @@
         root.querySelector(".schedule-page-actions .daily-entry")?.focus();
         return;
       }
+      if (action === "open-feedback") { feedbackView.open(); return; }
       if (action === "user-usage") { adminUsage.toggle(button.dataset.id); return; }
       if (action.startsWith("daily-")) {
         const userId = state.user?.id, generation = pageLoadGeneration;
@@ -2857,7 +2884,7 @@
         state.toast = "";
         const data = await api("/api/auth/login", { method: "POST", body: { email: $("authEmail")?.value || "", password: $("authPassword")?.value || "" } });
         state.user = data.user;
-        state.mode = "student";
+        state.mode = isAdmin() && feedbackView.hasLink() ? "admin" : "student";
         await loadPage(new URL(location.href).searchParams.get("page") || "study");
         return;
       }
@@ -3802,6 +3829,7 @@
     }
     if (state.page === "grades") void window.StudyBridgeGradePlanner.mount(root.querySelector("#grade-module"));
     adminUsage.sync();
+    feedbackView.sync();
     if (state.page === "schedule") updateSchedulePreviewCount();
     if (state.page === "schedule" && previousSchedule && root.querySelector(".schedule-layout")) {
       window.scrollTo(previousPageScroll.x, previousPageScroll.y);
@@ -3909,7 +3937,7 @@
       state.user = data.user;
       const savedTool = localStorage.getItem("studybridge.tool");
       state.tool = ["docs", "sheets", "slides", "images", "cheatsheet", "email"].includes(savedTool) ? savedTool : "docs";
-      state.mode = isAdmin() && localStorage.getItem("studybridge.mode") === "admin" ? "admin" : "student";
+      state.mode = isAdmin() && (feedbackView.hasLink() || localStorage.getItem("studybridge.mode") === "admin") ? "admin" : "student";
       void reportUserActivity();
       const urlPage = new URL(location.href).searchParams.get("page");
       const billingResult = new URL(location.href).searchParams.get("billing");

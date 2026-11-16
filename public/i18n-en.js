@@ -5,6 +5,81 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+反馈问题|Report a problem
+问题反馈|Problem reports
+后台任务故障|Background task error
+链接中的问题反馈已不存在。|This report is no longer available.
+提交时间|Submitted at
+反馈这次错误|Report this error
+当时发生了什么？|What happened?
+例如：我在上传资料时，页面提示读取失败。|For example, the app could not read a file while I was uploading it.
+开发者会收到你的账号和本次诊断信息。请避免填写密码、邮件正文或课程内容。|Your account and these diagnostics will be sent to the developer. Leave out passwords, email text, and course content.
+提交反馈|Submit report
+请描述你遇到的问题。|Describe the problem you encountered.
+正在提交反馈…|Submitting report…
+已提交反馈。编号 {0}|Report submitted. Reference {0}
+反馈次数已达上限，请稍后再试。|You have reached the report limit. Please try again later.
+暂未提交，描述已保留，请重试。|Submission failed. Your description is still here. Try again.
+正在读取问题反馈…|Loading problem reports…
+无法读取问题反馈，请重试。|Could not load problem reports. Try again.
+暂无问题反馈。|No problem reports yet.
+未能更新问题反馈，请重试。|Could not update the report. Try again.
+等待发信|Email queued
+正在发信|Sending email
+已发送邮件|Email sent
+邮件发送失败|Email delivery failed
+邮件通知未配置|Email notifications unavailable
+重试邮件|Retry email
+已处理|Resolved
+待处理|Open
+标记已处理|Mark resolved
+重新打开|Reopen
+账号邮箱|Account email
+账号编号|Account ID
+反馈编号|Report ID
+首次发生|First occurrence
+最近发生|Latest occurrence
+发生次数|Occurrences
+反馈来源|Source
+系统自动记录|Detected by the service
+用户提交|Submitted by user
+浏览器与系统|Browser and system
+请求耗时|Request duration
+诊断说明|Diagnostic category
+用户描述|User description
+生成学习回答|Generate a study answer
+课程练习|Course practice
+保存更改|Save changes
+识别资料|Recognize material
+语音转写|Transcribe audio
+同步邮箱|Sync mailbox
+生成邮件回复|Draft an email reply
+导入文件|Import file
+导出文件|Export file
+AI 辅助生成|Generate with AI
+发布内容|Publish content
+读取页面数据|Load page data
+其他操作|Other action
+用户主动反馈|Manual report
+请求未通过验证|The request did not pass validation
+没有操作权限|Permission denied
+找不到请求的数据|The requested data could not be found
+数据已更新或发生冲突|Data changed or conflicted
+提交内容超过大小限制|The submission exceeded the size limit
+无法处理提交的内容|The submitted content could not be processed
+操作过于频繁或已达到额度上限|The request or usage limit was reached
+无法读取资料文字|Text could not be read from the material
+连接中断或网络不可用|The connection was lost or unavailable
+操作进行中意外中断|The operation was interrupted
+服务处理失败|The service could not complete the request
+上游服务未能完成请求|An upstream service could not complete the request
+服务暂不可用|The service is temporarily unavailable
+服务响应超时|The service timed out
+操作失败|The operation failed
+请求超时|Request timeout
+AI 额度或服务限制|AI allowance or service limit
+存储写入冲突|Storage conflict
+加载更多|Load more
 在开发者端查看使用概况和管理用户。|Review usage and manage accounts in the developer console.
 查看使用情况，管理用户和邀请码。|Review usage and manage users and invitations.
 使用概况|Usage overview

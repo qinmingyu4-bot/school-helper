@@ -63,7 +63,14 @@ function createPreviewServer({ config = {}, recognize, request = fetch, useLocal
             if (!response.ok) throw new Error("AI 识别暂时不可用，请稍后重试；尚未保存任何成绩。");
             output = recognition.responseText(await response.json());
           }
-          return json(res, 200, recognition.parseRecognition(file.kind, output));
+          const result = recognition.parseRecognition(file.kind, output);
+          // The standalone sample editor has no structured drop-rule control.
+          for (const category of result.categories || []) {
+            if (category.dropLowest) category.specialRule ||= category.dropEvidence;
+            delete category.dropLowest;
+            delete category.dropEvidence;
+          }
+          return json(res, 200, result);
         } catch (error) { return json(res, 502, { error: error.name === "AbortError" ? "识别超时或已取消，请重试；尚未保存任何信息。" : error.message }); }
         finally { active--; clearTimeout(timeout); }
       }

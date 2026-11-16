@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — Drop lowest grades
+
+- Drop the lowest one or several grades in a category. Set the number manually or extract a clear rule such as “best 8 of 10” from a syllabus. Keep each recorded score visible and recalculate which ones count when grades or forecast assumptions change.
+
 ## 1.6.0 — 2026-11-16
 
 - Classification: MINOR from verified production 1.5.1 (`448e5ed`). Add developer problem reporting and email notifications.

@@ -1081,6 +1081,18 @@ pending, and actual zeroes count as zero. Equal or total-points category weighti
 is supported; simulation never changes recorded grades. Account appearance and
 interface language apply to the module.
 
+In **Grading rules**, set the number of lowest scores to drop per category.
+For best eight of ten, enter ten assessments and drop two. Clear syllabus
+drop/keep rules are recognized from uploaded or saved materials and applied
+when their source and the rest of the grading plan pass the usual checks.
+With no separate weighting method, simple top-N rules use equal assessment
+weights ranked by percentage. All scores remain available for editing. Entering
+a better score can replace a previously counted score, and projections recalculate
+the top group for each scenario. Until the counted slots fill, the remaining
+weight represents those unfilled slots. Points-based drops with different maxima,
+conditional rules, and alternative grading schemes still require review before
+a full course forecast can be calculated.
+
 `npm run preview:grades` keeps the separate loopback-only sample preview at port
 4317. Its browser-only example grades are never imported into account records.
 

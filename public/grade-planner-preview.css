@@ -463,3 +463,12 @@
 .gp-rule-notice li strong { font-weight:500; }
 .gp-rule-notice button { flex-shrink:0; font-size:inherit; }
 @media(max-width:700px) { .gp-stat-value.is-pending { font-size:15px; } .gp-rule-notice li { flex-wrap:wrap; gap:0 12px; } }
+
+
+.gp-rule-row .gp-drop-field { grid-column:1/-1; display:flex; align-items:center; flex-wrap:wrap; gap:4px 10px; padding:6px 0; color:var(--muted); }
+.gp-drop-field input { width:4ch; text-align:center; }
+.gp-grade-name .gp-mobile-dropped { display:none; }
+@media(max-width:700px) {
+  .gp-status.is-dropped { display:none; }
+  .gp-grade-name .gp-mobile-dropped { display:block; }
+}

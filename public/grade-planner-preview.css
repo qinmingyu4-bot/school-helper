@@ -467,6 +467,8 @@
 
 .gp-rule-row .gp-drop-field { grid-column:1/-1; display:flex; align-items:center; flex-wrap:wrap; gap:4px 10px; padding:6px 0; color:var(--muted); }
 .gp-drop-field input { width:4ch; text-align:center; }
+.gp-drop-preview { color:var(--ink); }
+.gp-preview .gp-drop-shortcut { font-size:inherit; min-height:0; padding:0; text-decoration:underline; text-underline-offset:2px; }
 .gp-grade-name .gp-mobile-dropped { display:none; }
 @media(max-width:700px) {
   .gp-status.is-dropped { display:none; }

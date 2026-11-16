@@ -1081,7 +1081,8 @@ pending, and actual zeroes count as zero. Equal or total-points category weighti
 is supported; simulation never changes recorded grades. Account appearance and
 interface language apply to the module.
 
-In **Grading rules**, set the number of lowest scores to drop per category.
+In **Grading rules** or through the shortcut beside a grade category, set the
+number of lowest scores to drop. The editor previews the number that will count.
 For best eight of ten, enter ten assessments and drop two. Clear syllabus
 drop/keep rules are recognized from uploaded or saved materials and applied
 when their source and the rest of the grading plan pass the usual checks.

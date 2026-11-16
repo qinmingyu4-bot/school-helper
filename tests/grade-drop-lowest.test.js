@@ -1,6 +1,7 @@
 "use strict";
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
+const { PDFDocument, StandardFonts } = require("pdf-lib");
 const G = require("../public/grade-planner-model");
 const { createGradePlanner } = require("../lib/grade-planner-service");
 const { readDropRule } = require("../lib/grade-preview-recognition");
@@ -70,21 +71,26 @@ test("recognizes written numbers and top-group clauses, and rejects conditional 
     ["The lowest two quiz marks will be dropped.",2,null],
     ["Best eight quizzes out of ten",2,10],
     ["only the best five count",1,6,6],
+    ["Only your 9 highest quiz scores will count",1,10,10],
+    ["Your lowest quiz grade will be disregarded.",1,null],
+    ["Best 9 of 10 quizzes count toward the grade.",1,10],
     ["小测10次中取最高8次",2,10],
     ["小测去掉最低的两次",2,null],
   ]) assert.deepEqual(readDropRule(quote,planned),{count,total},quote);
   assert.equal(readDropRule("Drop the lowest quiz if all quizzes were attempted."),null);
   assert.equal(readDropRule("Lowest quiz will not be dropped."),null);
+  assert.equal(readDropRule("The lowest quiz grade will never be disregarded."),null);
+  assert.equal(readDropRule("Only your 9 highest quiz scores will count"),null);
 });
 
-function fixture({quote="Best 8 of 10", actual=quote, count=2, specialRule=""}={}) {
+function fixture({quote="Best 8 of 10", actual=quote, count=2, plannedCount, specialRule=""}={}) {
   const document = {id:"syllabus",title:"Syllabus",text:"Quizzes 100%\n" + actual,updatedAt:"v1"};
   let saved;
   const db = {
     getCourse:async()=>({id:"course"}),listDocuments:async()=>[document],getGradePlan:async()=>({categories:[],version:0}),
     saveGradePlan:async(user,course,body)=>{saved={...body,version:1};return saved;}
   };
-  const output = {categories:[{name:"Quizzes",weight:100,evidence:"Quizzes 100%",dropLowest:count,dropEvidence:quote,specialRule,sourceRefs:[{documentId:document.id,quote:"Quizzes 100%"}]}]};
+  const output = {categories:[{name:"Quizzes",weight:100,evidence:"Quizzes 100%",plannedCount,dropLowest:count,dropEvidence:quote,specialRule,sourceRefs:[{documentId:document.id,quote:"Quizzes 100%"}]}]};
   const service = createGradePlanner({db,apiKey:"fixture",model:"fixture",request:async()=>Response.json({output:[{content:[{type:"output_text",text:JSON.stringify(output)}]}]})});
   return {service,document,saved:()=>saved};
 }
@@ -107,6 +113,23 @@ test("both saved materials and direct uploads apply clear drop rules, but unsupp
       }
     }
   }
+});
+
+test("a real text PDF with different wording for 10 take 9 verifies the rule against its original page", async () => {
+  const quote = "Only your 9 highest quiz scores will count";
+  const { service } = fixture({quote,count:1,plannedCount:10});
+  const document = await PDFDocument.create();
+  const page = document.addPage();
+  const font = await document.embedFont(StandardFonts.Helvetica);
+  page.drawText("Quizzes 100%", { x:50,y:720,font,size:12 });
+  page.drawText(quote, { x:50,y:690,font,size:12 });
+  const dataUrl = await document.saveAsBase64({dataUri:true,useObjectStreams:false});
+  const result = await service.recognize("user","course",{
+    kind:"syllabus",name:"Course syllabus.pdf",mime:"application/pdf",dataUrl,autoSave:true,version:0
+  });
+  assert.equal(result.savedPlan.categories[0].plannedCount,10);
+  assert.equal(result.savedPlan.categories[0].dropLowest,1);
+  assert.equal(result.savedPlan.categories[0].dropEvidence,quote);
 });
 
 test("re-extraction preserves explicit manual choices and upgrades an identical legacy drop note", () => {

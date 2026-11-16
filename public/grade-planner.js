@@ -247,7 +247,7 @@
     return `<div class="gp-record-toolbar"><span data-save-status>${saveText()}</span><button class="gp-text" data-action="retry-save" ${state.saveError ? "" : "hidden"}>${t("重试保存", "Retry save")}</button><label><input type="checkbox" id="pending-only" ${state.pendingOnly ? "checked" : ""}>${t("只看未出分", "Pending only")}</label></div>${summary.categories.map((s) => {
       const c = s.category;
       const visible = c.items.filter((item) => !state.pendingOnly || item.status === "pending");
-      return `<details class="gp-category" data-category="${esc(c.id)}" ${state.expanded.has(c.id) ? "open" : ""}><summary><div class="gp-category-title"><span class="gp-chevron">${icon("chevron")}</span><strong>${esc(c.name)}</strong><small>${fmt(c.weight, 0)}%</small></div><span class="gp-category-progress" data-category-progress="${esc(c.id)}">${categoryProgress(s)}</span><span class="gp-category-average"><span data-category-average="${esc(c.id)}">${fmt(s.average)}</span><small>${t("当前类别均分", "Category average")}</small></span></summary><div class="gp-category-inner"><div class="gp-rule-caption"><span>${c.method === "points" ? t("按总得分 / 总满分汇总", "Weighted by available points") : c.method === "equal" ? t("每次等权，按百分比汇总", "Equal weight per assessment") : t("计算方式待补充", "Weighting method to be added")}</span><span>${esc(categoryCaption(s))}</span></div><div class="gp-location-row" data-location-for="${esc(c.id)}">${locationRow(c)}</div>${visible.length ? `<div class="gp-grade-head"><span>${t("项目", "Assessment")}</span><span>${t("得分 / 满分", "Score / Max")}</span><span class="gp-state-heading">${t("状态", "Status")}</span><span></span></div>${visible.map((item) => `<div class="gp-grade-row" data-item="${esc(item.id)}"><div class="gp-grade-name"><span>${esc(item.name)}</span><small class="gp-mobile-dropped" data-dropped-label ${s.dropped.has(item.id) ? "" : "hidden"}>${t("最低分不计入", "Dropped by rule")}</small><small data-row-caption class="${item.source ? "is-source" : ""}">${item.source === "sample" ? t("示例确认录入", "Confirmed sample") : item.source ? t("截图确认录入", "Confirmed from screenshot") : statusLabel(item)}</small></div><div class="gp-score-field"><input type="number" min="0" step="any" data-score="score" aria-label="${esc(item.name)} ${t("得分", "score")}" value="${item.score ?? ""}" placeholder="—" ${item.status === "excluded" ? "disabled" : ""}><span>/</span><input type="number" min="0.000001" step="any" data-score="max" aria-label="${esc(item.name)} ${t("满分", "maximum")}" value="${item.max ?? ""}" placeholder="—" ${item.status === "excluded" ? "disabled" : ""}></div><span class="gp-status ${s.dropped.has(item.id) ? "is-dropped" : G.isGraded(item) ? "graded" : ""}" data-row-status>${recordedStatus(item, s.dropped.has(item.id))}</span><button class="gp-row-menu" data-edit="${esc(item.id)}" aria-label="${t("编辑", "Edit")} ${esc(item.name)}">${icon("edit")}</button></div>`).join("")}` : `<p class="gp-note">${t("这一类暂无未出分项目。", "No pending assessments in this category.")}</p>`}<button class="gp-text gp-add-item" data-add="${esc(c.id)}">${icon("plus")}${t("添加项目", "Add assessment")}</button></div></details>`;
+      return `<details class="gp-category" data-category="${esc(c.id)}" ${state.expanded.has(c.id) ? "open" : ""}><summary><div class="gp-category-title"><span class="gp-chevron">${icon("chevron")}</span><strong>${esc(c.name)}</strong><small>${fmt(c.weight, 0)}%</small></div><span class="gp-category-progress" data-category-progress="${esc(c.id)}">${categoryProgress(s)}</span><span class="gp-category-average"><span data-category-average="${esc(c.id)}">${fmt(s.average)}</span><small>${t("当前类别均分", "Category average")}</small></span></summary><div class="gp-category-inner"><div class="gp-rule-caption"><span>${c.method === "points" ? t("按总得分 / 总满分汇总", "Weighted by available points") : c.method === "equal" ? t("每次等权，按百分比汇总", "Equal weight per assessment") : t("计算方式待补充", "Weighting method to be added")}</span><span data-category-caption>${esc(categoryCaption(s))}</span><button class="gp-text gp-drop-shortcut" data-action="repair-rule" data-repair-category="${esc(c.id)}" data-repair-code="dropCount" aria-label="${esc(c.name)} · ${t("设置最低分排除", "Set drop-lowest rule")}">${c.dropLowest ? t("修改排除", "Edit drop rule") : t("设置最低分排除", "Set drop-lowest rule")}</button></div><div class="gp-location-row" data-location-for="${esc(c.id)}">${locationRow(c)}</div>${visible.length ? `<div class="gp-grade-head"><span>${t("项目", "Assessment")}</span><span>${t("得分 / 满分", "Score / Max")}</span><span class="gp-state-heading">${t("状态", "Status")}</span><span></span></div>${visible.map((item) => `<div class="gp-grade-row" data-item="${esc(item.id)}"><div class="gp-grade-name"><span>${esc(item.name)}</span><small class="gp-mobile-dropped" data-dropped-label ${s.dropped.has(item.id) ? "" : "hidden"}>${t("最低分不计入", "Dropped by rule")}</small><small data-row-caption class="${item.source ? "is-source" : ""}">${item.source === "sample" ? t("示例确认录入", "Confirmed sample") : item.source ? t("截图确认录入", "Confirmed from screenshot") : statusLabel(item)}</small></div><div class="gp-score-field"><input type="number" min="0" step="any" data-score="score" aria-label="${esc(item.name)} ${t("得分", "score")}" value="${item.score ?? ""}" placeholder="—" ${item.status === "excluded" ? "disabled" : ""}><span>/</span><input type="number" min="0.000001" step="any" data-score="max" aria-label="${esc(item.name)} ${t("满分", "maximum")}" value="${item.max ?? ""}" placeholder="—" ${item.status === "excluded" ? "disabled" : ""}></div><span class="gp-status ${s.dropped.has(item.id) ? "is-dropped" : G.isGraded(item) ? "graded" : ""}" data-row-status>${recordedStatus(item, s.dropped.has(item.id))}</span><button class="gp-row-menu" data-edit="${esc(item.id)}" aria-label="${t("编辑", "Edit")} ${esc(item.name)}">${icon("edit")}</button></div>`).join("")}` : `<p class="gp-note">${t("这一类暂无未出分项目。", "No pending assessments in this category.")}</p>`}<button class="gp-text gp-add-item" data-add="${esc(c.id)}">${icon("plus")}${t("添加项目", "Add assessment")}</button></div></details>`;
     }).join("")}<div class="gp-location-status"><span data-location-status>${esc(locationStatus())}</span><button class="gp-text" data-action="refresh-locations" ${materialLocations.get(state.courseId)?.loading ? "disabled" : ""}>${t("重新查找", "Check again")}</button></div><p class="gp-note">${t("空白代表未出分，输入 0 才会计为零分。类别权重按照完整项目安排分配，模拟成绩不会写入这里。", "Blank means pending; an entered 0 counts as zero. Category weights use the complete assessment plan. Simulated scores never alter these records.")}</p>`;
   }
   function picker(kind, selected, options, label) {
@@ -331,7 +331,7 @@
       if (average) average.textContent = fmt(summary.average);
       const progress = root.querySelector(`[data-category-progress="${summary.category.id}"]`);
       if (progress) progress.textContent = categoryProgress(summary);
-      const caption = root.querySelector(`[data-category="${summary.category.id}"] .gp-rule-caption span:last-child`);
+      const caption = root.querySelector(`[data-category="${summary.category.id}"] [data-category-caption]`);
       if (caption) caption.textContent = categoryCaption(summary);
       for (const item of summary.category.items) {
         const itemRow = root.querySelector(`[data-item="${item.id}"]`);
@@ -670,12 +670,24 @@
     }
     renderDialog();
   }
+  function dropRulePreview(category) {
+    const { dropLowest, plannedCount } = category;
+    if (!G.validDropCount(dropLowest, plannedCount)) {
+      return t("排除次数须少于项目数", "Enter fewer drops than assessments");
+    }
+    if (!dropLowest) return t("全部计入", "Count all scores");
+    if (plannedCount === null) return t("填写项目数后即可计算", "Enter a total assessment count");
+    const keep = plannedCount - dropLowest;
+    return t(`${plannedCount} 次取最高 ${keep} 次`, `Best ${keep} of ${plannedCount}`);
+  }
+
   function dropRuleField(category) {
     return `<label class="gp-drop-field">
       <span>${t("排除最低分次数", "Drop lowest scores")}</span>
       <input data-rule="dropLowest" type="number" min="0" max="99" step="1" inputmode="numeric"
         aria-label="${esc(category.name)} ${t("排除最低分次数", "drop-lowest count")}"
         value="${esc(category.dropLowest ?? "")}" placeholder="0">
+      <span class="gp-drop-preview" data-drop-preview aria-live="polite">${esc(dropRulePreview(category))}</span>
       ${category.dropEvidence ? `<span class="gp-drop-source">${t("来自课程资料", "From course material")}</span>` : ""}
     </label>`;
   }
@@ -814,12 +826,17 @@
       row[el.dataset.review] = number(el.value);
     }
     if (el.dataset.rule) {
-      const row = modal.categories[Number(el.closest("[data-rule-index]").dataset.ruleIndex)];
+      const ruleRow = el.closest("[data-rule-index]");
+      const row = modal.categories[Number(ruleRow.dataset.ruleIndex)];
       if (el.dataset.rule === "gradeUrl") row.gradeLinks = [...(el.value.trim() ? [{url:el.value.trim(),origin:"manual",label:"",quote:"",sourceName:"",page:null}] : []),...(row.gradeLinks || []).filter((link)=>link.origin!=="manual")].slice(0,5);
       else if (el.dataset.rule === "dropLowest") {
         row.dropLowest = el.validity.badInput ? NaN : number(el.value) ?? 0;
         row.dropEvidence = "";
+        ruleRow.querySelector(".gp-drop-source")?.remove();
       } else row[el.dataset.rule] = ["weight", "plannedCount"].includes(el.dataset.rule) ? number(el.value) : el.value;
+      if (["dropLowest", "plannedCount"].includes(el.dataset.rule)) {
+        ruleRow.querySelector("[data-drop-preview]").textContent = dropRulePreview(row);
+      }
       const total = dialog.querySelector("#rule-total");
       if (total) {
         const weight = modal.categories.reduce((sum, c) => sum + (Number(c.weight) || 0), 0);

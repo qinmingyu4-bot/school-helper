@@ -3,6 +3,7 @@
 ## Unreleased — Drop lowest grades
 
 - Drop the lowest one or several grades in a category. Set the number manually or extract a clear rule such as “best 8 of 10” from a syllabus. Keep each recorded score visible and recalculate which ones count when grades or forecast assumptions change.
+- Recognize syllabus wording such as “Only your 9 highest quiz scores will count.” Open the setting directly from a grade category and preview which scores count before saving.
 
 ## 1.6.0 — 2026-11-16
 

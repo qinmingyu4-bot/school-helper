@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — Homepage framework, video pending
+
+- Keep the homepage structure and reserve a quiet, responsive walkthrough area.
+- Remove the draft video, poster, playback controls and timed captions from the
+  page; no media is requested until the owner supplies the final video.
+- Preserve bilingual copy and dormant playback/range support for later integration.
+- Task-branch review only; no production deployment.
+
 ## Unreleased — Real product walkthrough
 
 - Replace the abstract homepage animation with a 30-second MP4 edited from

@@ -1,9 +1,15 @@
-/* Real product footage, native decoding, quiet controls and visibility-aware playback. */
+/* Shared demo copy; the player stays dormant until final video markup is supplied. */
 (function () {
   'use strict';
   const root = document.querySelector('.usage-demo');
   if (!root) return;
+  const english = () => window.StudyBridgeI18n?.getLanguage() === 'en';
+  function translateCopy() {
+    root.querySelectorAll('[data-demo-zh]').forEach(el => { el.textContent = el.dataset[english() ? 'demoEn' : 'demoZh']; });
+  }
+  window.StudyBridgeI18n?.subscribe(translateCopy); translateCopy();
   const video = root.querySelector('video');
+  if (!video) return;
   const film = root.querySelector('.demo-film');
   const controls = root.querySelector('.demo-float');
   const play = root.querySelector('[data-film-play]');
@@ -15,7 +21,6 @@
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const chapters = [[0, '01 / 选择课程，上传讲义', '01 / Choose a course and upload notes'], [5.5, '02 / 输入问题，点击发送', '02 / Type a question and send'], [8.5, '03 / 看解释，沿着例子理解', '03 / Follow the explanation and example'], [19.5, '04 / 打开 SB Docs，编辑并保存', '04 / Open SB Docs, edit and save']];
   let visible = false, wanted = !reduced.matches, started = false, pending = false;
-  const english = () => window.StudyBridgeI18n?.getLanguage() === 'en';
   function state() {
     const paused = video.paused;
     play.textContent = paused ? '▶' : 'Ⅱ';
@@ -69,7 +74,6 @@
   document.addEventListener('visibilitychange', sync);
   reduced.addEventListener('change', () => { if (reduced.matches) { wanted = false; sync(); } });
   function translate() {
-    root.querySelectorAll('[data-demo-zh]').forEach(el => { el.textContent = el.dataset[english() ? 'demoEn' : 'demoZh']; });
     replay.setAttribute('aria-label', english() ? 'Replay' : '重新播放');
     full.setAttribute('aria-label', english() ? 'Watch fullscreen' : '全屏观看');
     scrub.setAttribute('aria-label', english() ? 'Playback position' : '演示进度');

@@ -19,8 +19,8 @@
     <link rel="stylesheet" href="/typography.css?v=1.1.111" />
     <link rel="stylesheet" href="/landing.css?v=1.2.12-start-guide" />
     <link rel="stylesheet" href="/landing-story.css?v=1.2.11-course-flow-2d" />
-    <script src="/landing-demo.js?v=2-real-film" defer></script>
-    <link rel="stylesheet" href="/landing-demo.css?v=2-real-film" />
+    <script src="/landing-demo.js?v=3-placeholder" defer></script>
+    <link rel="stylesheet" href="/landing-demo.css?v=3-placeholder" />
     <link rel="stylesheet" href="/brand.css?v=1.1.119-logo-1" />
   </head>
   <body>
@@ -68,17 +68,11 @@
 
       <section class="usage-demo wrap" id="usage-demo" aria-labelledby="demo-title" data-i18n-skip>
         <div class="demo-intro"><p class="eyebrow">SEE STUDYBRIDGE IN ACTION</p><h2 id="demo-title" data-demo-zh="打开课程，然后真正开始。" data-demo-en="Open a course. See what happens next.">打开课程，然后真正开始。</h2><p data-demo-zh="上传讲义，问清一个问题，再把理解写进自己的笔记。" data-demo-en="Upload your notes, work through a question, then write what you understand.">上传讲义，问清一个问题，再把理解写进自己的笔记。</p></div>
-        <div class="demo-film">
-          <video class="demo-video" controls muted playsinline preload="none" poster="/media/studybridge-usage-demo-poster.png" aria-label="StudyBridge 产品使用演示" aria-describedby="demo-disclosure">
-            <source src="/media/studybridge-usage-demo.mp4?v=20261116-real-1" type="video/mp4">
-            <p><a href="/media/studybridge-usage-demo.mp4?v=20261116-real-1">下载使用演示 / Download walkthrough</a></p>
-          </video>
-          <div class="demo-float" hidden><button type="button" data-film-play aria-label="播放演示">▶</button><button type="button" data-film-replay aria-label="重新播放">↺</button><button type="button" data-film-fullscreen aria-label="全屏观看">⛶</button></div>
-          <input class="demo-scrub" type="range" min="0" max="100" step="0.1" value="0" aria-label="演示进度" hidden>
-          <button class="demo-start" type="button" hidden><span aria-hidden="true">▶</span><span data-demo-zh="看看怎么用" data-demo-en="Watch the walkthrough">看看怎么用</span></button>
+        <!-- Reserved for the owner's final product walkthrough. No media loads here. -->
+        <div class="demo-placeholder" aria-labelledby="demo-placeholder-title">
+          <span id="demo-placeholder-title" data-demo-zh="产品使用演示" data-demo-en="Product walkthrough">产品使用演示</span>
+          <span data-demo-zh="敬请期待" data-demo-en="Coming soon">敬请期待</span>
         </div>
-        <div class="demo-caption"><span data-film-caption>01 / 选择课程，上传讲义</span><span id="demo-disclosure" data-demo-zh="真实界面操作剪辑 · 示例资料与 AI 回答" data-demo-en="Edited product walkthrough · Sample materials and AI response">真实界面操作剪辑 · 示例资料与 AI 回答</span></div>
-        <p class="demo-transcript" data-demo-zh="操作路径：学习 → 课程资料 → 选择文件并上传 → 输入问题并发送 → 工具 → SB Docs → 编辑并保存。" data-demo-en="Steps: Study → Course materials → Choose and upload a file → Type and send a question → Tools → SB Docs → Edit and save.">操作路径：学习 → 课程资料 → 选择文件并上传 → 输入问题并发送 → 工具 → SB Docs → 编辑并保存。</p>
       </section>
 
       <section class="product-story" id="product-story" data-product-story aria-labelledby="story-title">

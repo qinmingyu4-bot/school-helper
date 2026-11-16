@@ -243,7 +243,10 @@ const mimeTypes = {
   ".b64": "text/plain; charset=utf-8"
 };
 
+const { sendPublicVideo } = require("./lib/public-video");
+
 const staticAssetExtensions = new Set([
+  ".mp4",
   ".css",
   ".js",
   ".json",
@@ -480,6 +483,7 @@ async function serveStatic(req, res) {
   const extension = path.extname(filePath).toLowerCase();
   try {
     const file = await fs.readFile(filePath);
+    if (extension === ".mp4") return sendPublicVideo(req, res, file);
     res.writeHead(200, {
       "content-type": mimeTypes[extension] || "application/octet-stream",
       "cache-control": extension === ".woff2" ? "public, max-age=31536000, immutable" : "no-store"

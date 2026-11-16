@@ -4,14 +4,16 @@ const http = require("node:http");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const publicDir = path.resolve(__dirname, "../public");
+const { sendPublicVideo } = require("../lib/public-video");
 const assets = new Set([
+  "/media/studybridge-usage-demo.mp4", "/media/studybridge-usage-demo-poster.png",
   "/landing-demo.js", "/landing-demo.css", "/landing.html", "/landing.css", "/landing-grades.js", "/landing-motion.js",
   "/landing-story.js", "/landing-story.css", "/i18n-en.js", "/i18n.js",
   "/i18n-landing.js", "/i18n.css", "/typography.css", "/brand.css", "/privacy.html",
   "/brand/book-bridge-monochrome.svg", "/brand/icon-monochrome.svg",
   "/fonts/inter-variable-4.1.woff2", "/fonts/noto-sans-sc-gb2312-v2.004.woff2"
 ]);
-const mime = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "application/javascript; charset=utf-8", ".svg": "image/svg+xml", ".woff2": "font/woff2" };
+const mime = { ".png": "image/png", ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "application/javascript; charset=utf-8", ".svg": "image/svg+xml", ".woff2": "font/woff2" };
 function createPreviewServer() {
   return http.createServer(async (req, res) => {
     const host = req.headers.host || "";
@@ -25,6 +27,7 @@ function createPreviewServer() {
     }
     try {
       const content = await fs.readFile(path.join(publicDir, pathname));
+      if (pathname.endsWith(".mp4")) return sendPublicVideo(req, res, content);
       res.writeHead(200, { "content-type": mime[path.extname(pathname)], "cache-control": "no-store", "x-content-type-options": "nosniff", "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'" });
       res.end(req.method === "HEAD" ? undefined : content);
     } catch { res.writeHead(404); res.end(); }

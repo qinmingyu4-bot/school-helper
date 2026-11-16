@@ -1,12 +1,15 @@
 # Changelog
 
-## Unreleased — Homepage usage demo
+## Unreleased — Real product walkthrough
 
-- Add a 28-second native animated walkthrough from course materials to grounded
-  questions and SB Docs revision previews, with pause, replay, seeking and chapters.
-- Keep bilingual copy, responsive layouts and reduced-motion support; suspend
-  playback offscreen and in background tabs. No video download or account calls.
-- Available on a task branch for review; no production deployment.
+- Replace the abstract homepage animation with a 30-second MP4 edited from
+  actual StudyBridge UI captures: material upload, question entry, streamed
+  explanation, and SB Docs writing and saving. Label example materials and AI output.
+- Remove the framed player bar; use discreet floating play/replay/fullscreen
+  controls and a thin progress line, with bilingual step captions and a transcript.
+- Use native video decoding, lazy loading, background/offscreen pause and reduced
+  motion handling. Support byte-range video delivery in production and local preview.
+- Task-branch review only; no production deployment. See docs/homepage-video.md.
 
 ## Unreleased — Complete core course workflows
 

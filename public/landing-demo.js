@@ -1,89 +1,83 @@
-/* A seekable, silent product film. Only transform/opacity animate; no video download. */
+/* Real product footage, native decoding, quiet controls and visibility-aware playback. */
 (function () {
   'use strict';
   const root = document.querySelector('.usage-demo');
-  if (!root || !Element.prototype.animate) return;
-  const scenes = [...root.querySelectorAll('[data-scene]')];
-  const play = root.querySelector('[data-demo-play]');
-  const seek = root.querySelector('[data-demo-seek]');
-  const replay = root.querySelector('[data-demo-replay]');
-  const chapters = [...root.querySelectorAll('[data-demo-chapter]')];
-  const clock = root.querySelector('[data-demo-time]');
+  if (!root) return;
+  const video = root.querySelector('video');
+  const film = root.querySelector('.demo-film');
+  const controls = root.querySelector('.demo-float');
+  const play = root.querySelector('[data-film-play]');
+  const replay = root.querySelector('[data-film-replay]');
+  const full = root.querySelector('[data-film-fullscreen]');
+  const scrub = root.querySelector('.demo-scrub');
+  const start = root.querySelector('.demo-start');
+  const caption = root.querySelector('[data-film-caption]');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-  const starts = [0, 9000, 18500], duration = 28000;
-  let position = 0, playing = !reduced.matches, visible = false, frame = 0, previous = null, active = -1;
-  const tracks = [];
-  function track(selector, keyframes, start, length) {
-    root.querySelectorAll(selector).forEach(element => {
-      const animation = element.animate(keyframes, { duration: length, fill: 'both', easing: 'cubic-bezier(.22,.68,.2,1)' });
-      animation.pause();
-      tracks.push({ animation, start, length });
-    });
-  }
-  scenes.forEach((scene, index) => {
-    if (index < 2) track(`[data-scene="${index}"]`, [{ opacity: 1, transform: 'translateY(0)' }, { opacity: 0, transform: 'translateY(-12px)' }], starts[index + 1] - 500, 500);
-    track(`[data-scene="${index}"] .demo-scene-copy`, [{ opacity: 0, transform: 'translateY(18px)' }, { opacity: 1, transform: 'translateY(0)' }], starts[index], 900);
-    track(`[data-scene="${index}"] .demo-workspace`, [{ opacity: 0, transform: 'translateX(32px) scale(.96)' }, { opacity: 1, transform: 'translateX(0) scale(1)' }], starts[index] + 250, 1200);
-  });
-  track('.demo-file-one', [{ opacity: 0, transform: 'translate(70px,-90px) rotate(9deg)' }, { opacity: 1, transform: 'translate(0,0) rotate(0)' }], 1500, 1800);
-  track('.demo-file-two', [{ opacity: 0, transform: 'translate(90px,55px) rotate(-7deg)' }, { opacity: 1, transform: 'translate(0,0) rotate(0)' }], 2400, 1800);
-  track('.demo-file i, .demo-ready', [{ opacity: 0 }, { opacity: 1 }], 4200, 800);
-  track('.demo-bubble', [{ opacity: 0, transform: 'translateY(18px)' }, { opacity: 1, transform: 'translateY(0)' }], 9800, 900);
-  track('.demo-reply', [{ opacity: 0, transform: 'translateY(18px)' }, { opacity: 1, transform: 'translateY(0)' }], 11300, 1300);
-  track('.demo-tangent', [{ transform: 'rotate(-25deg)' }, { transform: 'rotate(0)' }], 12800, 3000);
-  track('.demo-citation', [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'translateY(0)' }], 15500, 900);
-  track('.demo-note, .demo-note-lines', [{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'translateY(0)' }], 20000, 1400);
-  track('.demo-revision', [{ opacity: 0, transform: 'translateY(20px)' }, { opacity: 1, transform: 'translateY(0)' }], 22200, 1400);
-  track('.demo-doc-end', [{ opacity: 0 }, { opacity: 1 }], 25000, 900);
+  const chapters = [[0, '01 / 选择课程，上传讲义', '01 / Choose a course and upload notes'], [5.5, '02 / 输入问题，点击发送', '02 / Type a question and send'], [8.5, '03 / 看解释，沿着例子理解', '03 / Follow the explanation and example'], [19.5, '04 / 打开 SB Docs，编辑并保存', '04 / Open SB Docs, edit and save']];
+  let visible = false, wanted = !reduced.matches, started = false, pending = false;
   const english = () => window.StudyBridgeI18n?.getLanguage() === 'en';
-  function controls() {
-    play.textContent = playing ? 'Ⅱ' : '▶';
-    play.setAttribute('aria-label', english() ? (playing ? 'Pause demo' : 'Play demo') : (playing ? '暂停演示' : '播放演示'));
+  function state() {
+    const paused = video.paused;
+    play.textContent = paused ? '▶' : 'Ⅱ';
+    play.setAttribute('aria-label', english() ? (paused ? 'Play demo' : 'Pause demo') : (paused ? '播放演示' : '暂停演示'));
+    film.classList.toggle('is-paused', paused);
+    start.hidden = started || !paused;
   }
-  function render() {
-    const index = position >= starts[2] ? 2 : position >= starts[1] ? 1 : 0;
-    if (index !== active) {
-      active = index;
-      scenes.forEach((scene, i) => { scene.hidden = i !== index; });
-      chapters.forEach((button, i) => i === index ? button.setAttribute('aria-current', 'step') : button.removeAttribute('aria-current'));
+  function progress() {
+    const duration = Number.isFinite(video.duration) ? video.duration : 0;
+    const value = duration ? video.currentTime / duration * 100 : 0;
+    scrub.value = value;
+    scrub.style.setProperty('--played', `${value}%`);
+    scrub.setAttribute('aria-valuetext', `${Math.floor(video.currentTime)} / ${Math.floor(duration)}`);
+    const chapter = [...chapters].reverse().find(item => video.currentTime >= item[0]) || chapters[0];
+    caption.textContent = chapter[english() ? 2 : 1];
+  }
+  async function sync() {
+    if (!visible || document.hidden || !wanted) { video.pause(); return; }
+    if (pending || !video.paused) return;
+    pending = true;
+    try {
+      await video.play();
+      if (!visible || document.hidden || !wanted) video.pause();
+    } catch (error) {
+      if (error.name !== 'AbortError' && visible && !document.hidden) wanted = false;
+      state();
+    } finally {
+      pending = false;
+      if (wanted && visible && !document.hidden && video.paused) sync();
     }
-    tracks.forEach(({ animation, start, length }) => { animation.currentTime = reduced.matches ? (animation.effect.target.matches('[data-scene]') ? 0 : length) : Math.max(0, Math.min(length, position - start)); });
-    seek.value = position / 1000;
-    const seconds = Math.floor(position / 1000);
-    const label = `0:${String(seconds).padStart(2, '0')} / 0:28`;
-    if (clock.textContent !== label) clock.textContent = label;
-    seek.setAttribute('aria-valuetext', label);
   }
-  function tick(now) {
-    frame = 0;
-    if (previous !== null) position = Math.min(duration, position + now - previous);
-    previous = now;
-    render();
-    if (position >= duration) { playing = false; controls(); }
-    if (playing && visible && !document.hidden) frame = requestAnimationFrame(tick);
-    else previous = null;
+  function toggle() {
+    wanted = video.paused;
+    if (video.ended) video.currentTime = 0;
+    sync();
   }
-  function sync() {
-    cancelAnimationFrame(frame); frame = 0; previous = null;
-    controls();
-    if (playing && visible && !document.hidden) frame = requestAnimationFrame(tick);
-  }
-  play.addEventListener('click', () => { if (position >= duration) position = 0; playing = !playing; render(); sync(); });
-  replay.addEventListener('click', () => { position = 0; playing = true; render(); sync(); });
-  seek.addEventListener('input', () => { position = Number(seek.value) * 1000; if (position === duration) playing = false; render(); sync(); });
-  chapters.forEach((button, index) => button.addEventListener('click', () => { position = starts[index] + (playing ? 0 : 5500); render(); sync(); }));
+  play.addEventListener('click', toggle);
+  start.addEventListener('click', toggle);
+  replay.addEventListener('click', () => { video.currentTime = 0; wanted = true; sync(); });
+  scrub.addEventListener('input', () => { if (Number.isFinite(video.duration)) video.currentTime = Number(scrub.value) / 100 * video.duration; progress(); });
+  full.addEventListener('click', async () => {
+    try { if (document.fullscreenElement) await document.exitFullscreen(); else if (film.requestFullscreen) await film.requestFullscreen(); else video.webkitEnterFullscreen?.(); } catch (_) { /* Playback remains usable if fullscreen is unavailable. */ }
+  });
+  full.hidden = !film.requestFullscreen && !video.webkitEnterFullscreen;
+  video.addEventListener('playing', () => { started = true; state(); });
+  video.addEventListener('pause', state);
+  video.addEventListener('ended', () => { wanted = false; state(); });
+  video.addEventListener('timeupdate', progress);
+  video.addEventListener('loadedmetadata', progress);
+  video.addEventListener('error', () => { wanted = false; video.controls = true; controls.hidden = scrub.hidden = start.hidden = true; });
   document.addEventListener('visibilitychange', sync);
-  reduced.addEventListener('change', () => { if (reduced.matches) playing = false; render(); sync(); });
-  if ('IntersectionObserver' in window) {
-    new IntersectionObserver(entries => { visible = entries[0].isIntersecting; sync(); }, { threshold: .15 }).observe(root.querySelector('.demo-player'));
-  } else visible = true;
+  reduced.addEventListener('change', () => { if (reduced.matches) { wanted = false; sync(); } });
   function translate() {
-    root.querySelectorAll('[data-demo-zh]').forEach(element => { element.textContent = element.dataset[english() ? 'demoEn' : 'demoZh']; });
-    seek.setAttribute('aria-label', english() ? 'Demo playback position' : '演示播放进度');
-    replay.setAttribute('aria-label', english() ? 'Replay demo' : '重新播放演示');
-    root.querySelector('.demo-stage').setAttribute('aria-label', english() ? 'Animated learning workflow' : '学习流程动画');
-    controls();
+    root.querySelectorAll('[data-demo-zh]').forEach(el => { el.textContent = el.dataset[english() ? 'demoEn' : 'demoZh']; });
+    replay.setAttribute('aria-label', english() ? 'Replay' : '重新播放');
+    full.setAttribute('aria-label', english() ? 'Watch fullscreen' : '全屏观看');
+    scrub.setAttribute('aria-label', english() ? 'Playback position' : '演示进度');
+    video.setAttribute('aria-label', english() ? 'StudyBridge product walkthrough (Chinese interface)' : 'StudyBridge 产品使用演示');
+    state(); progress();
   }
-  window.StudyBridgeI18n?.subscribe(translate);
-  translate(); render(); sync();
+  controls.hidden = scrub.hidden = false; video.controls = false;
+  window.StudyBridgeI18n?.subscribe(translate); translate();
+  if ('IntersectionObserver' in window) new IntersectionObserver(entries => { visible = entries[0].isIntersecting; sync(); }, { threshold: .25 }).observe(film);
+  else { visible = true; sync(); }
 })();

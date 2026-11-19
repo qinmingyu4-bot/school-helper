@@ -1,11 +1,8 @@
 {
-  "previousCommit": "1a2183375d2e4bf7fd92f563696cbdcf083e1c08",
-  "previousVersion": "1.8.0",
-  "version": "1.9.0",
-  "level": "minor",
-  "reason": "Add course PDF notes with pen, highlight, text and eraser annotations, cloud persistence and automatic course-code filing across desktop, phone and tablet.",
-  "features": [
-    "Course PDF annotations and note tools",
-    "Automatic course-code material filing"
-  ]
+  "previousCommit": "b809643834d0201c797a2d87e4b0daf241cb8fe0",
+  "previousVersion": "1.9.0",
+  "version": "1.9.1",
+  "level": "patch",
+  "reason": "Fix top-tab navigation within existing Tools and refine PDF upload and Docs/Sheets layout, typography and existing AI disclosure; no new product capability or data migration.",
+  "features": []
 }

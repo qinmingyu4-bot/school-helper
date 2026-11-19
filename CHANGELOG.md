@@ -1,22 +1,12 @@
 # Changelog
 
-## Unreleased — Refine office workspace layout
+## 1.9.1 — 2026-11-19
 
-- Align Docs and Sheets with the quiet Tools workspace: consistent compact typography, lighter controls, a flat editor surface and balanced title/project rows.
-- Collapse AI assistance until requested, retaining its prompt and open state while switching tools or updating revision scope.
-- Keep editor controls readable across desktop, tablet and phone layouts, with account palette and dark-mode support.
-
-## Unreleased — Switch tools within the workspace
-
-- Keep the Tools page shell and top tabs mounted when switching editors or manual/AI views; replace only the editor area so switching does not rebuild the outer navigation or lose tab focus.
-
-## Unreleased — Restore Course notes navigation
-
-- Allow selecting Course notes from the Tools tabs after opening Docs, Sheets or another tool; retain the mounted notes workspace when switching back.
-
-## Unreleased — Theme-aware PDF upload button
-
-- Give the course-note PDF upload control a compact rounded shape, preserve its accent text color and derive its background and interaction states from the selected palette and light/dark surface.
+- PATCH from verified production 1.9.0 (`b809643834d0201c797a2d87e4b0daf241cb8fe0`): fix navigation and refine existing tool controls; no new product capability or data migration.
+- Switch between Course notes, Docs and Sheets through the top tabs without rebuilding the page shell; retain the selected notes workspace.
+- Style Upload PDF as a compact rounded button using the selected account palette.
+- Simplify Docs and Sheets typography, spacing and toolbars, and collapse existing AI assistance until requested. Preserve draft and disclosure state across tool switches.
+- Keep responsive layouts, Chinese/English labels and independent light/dark mode.
 
 ## 1.9.0 — 2026-11-16
 

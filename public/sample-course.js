@@ -113,10 +113,10 @@
     }
     if (mobile.matches && panelOpen) return ["[data-sample-action=close-panel]",
       say("讲义已加入。点「返回学习」，开始提问。", "The notes are ready. Choose Back to Study to ask a question.")];
-    if (findQuestion(activeChat().draft) !== undefined) return ["#sample-compose .send",
+    if (activeChat().draft.trim()) return ["#sample-compose .send",
       say("问题已填好，点「发送」。", "Your question is ready. Choose Send.")];
-    return [".sample-intro [data-sample-action=prompt]",
-      say("点示例问题，把它填到底部输入框。", "Choose the sample question to fill the composer.")];
+    return ["#chatInput",
+      say("在底部输入框写下问题，例如：需求价格弹性怎么计算？", "Type a question in the composer, for example: How do I calculate price elasticity of demand?")];
   }
 
   function syncGuide() {
@@ -232,7 +232,7 @@
         ${action("attachments", icon("m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.19 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"), {
           className: "attach", attributes: `aria-label="${say("查看示例附件", "View sample attachments")}"`
         })}
-        <textarea id="chatInput" rows="1" maxlength="500" placeholder="${say("输入示例问题…", "Enter a sample question…")}" aria-label="${say("问题", "Question")}">${esc(chat.draft)}</textarea>
+        <textarea id="chatInput" rows="1" maxlength="500" placeholder="${say("输入问题…", "Enter a question…")}" aria-label="${say("问题", "Question")}">${esc(chat.draft)}</textarea>
         <button class="send" type="submit" aria-label="${say("发送", "Send")}">${icon("M12 19V5m-7 7 7-7 7 7")}</button>
       </div>
     </form>`;
@@ -292,7 +292,7 @@
             <strong>${guestCourse() ? esc(courseTitle()) : topic()}</strong>
             ${ready() ? say("课程资料已就绪，可以从一个问题开始。", "The course materials are ready. Start with a question.")
               : say("课程已创建，课程资料还是空的。", "Your course is ready for its first material.")}
-            ${available().length ? `<div class="sample-prompts">${available().map(index => action("prompt", copy(questions[index].prompt), { value: index })).join("")}</div>` : ""}
+            ${builtIn && available().length ? `<div class="sample-prompts">${available().map(index => action("prompt", copy(questions[index].prompt), { value: index })).join("")}</div>` : ""}
           </div></div>`}
         </div>` : `<div class="sample-empty-workspace">
           <h2>${state.guestCourses.length ? say("选择或新增课程", "Choose or add a course") : say("开始你的第一门课", "Start your first course")}</h2>
@@ -386,13 +386,16 @@
 
   function findQuestion(text) {
     const normalize = (value) => value.toLowerCase().replace(/[\s\p{P}]/gu, "");
-    return available().find(i => questions[i].prompt.some(prompt => normalize(text) === normalize(prompt)));
+    const exact = available().find(i => questions[i].prompt.some(prompt => normalize(text) === normalize(prompt)));
+    if (exact !== undefined) return exact;
+    if (guestCourse() && ready() && /弹性|中点|elasticity|elastic demand|midpoint/i.test(text)) return 3;
+    return undefined;
   }
 
   function send(text) {
     const index = findQuestion(text);
     if (index === undefined) {
-      notice = ready() ? say("请选择上方或对话中的一个示例问题再发送。", "Choose one of the prepared questions from the conversation or shortcuts.")
+      notice = ready() ? say("这份示例讲义可以演示弹性与中点法的讲解。请在输入框提问，例如：需求价格弹性怎么计算？", "This sample provides prepared explanations of elasticity and the midpoint method. Try typing: How do I calculate price elasticity of demand?")
         : say("先上传示例讲义，再发出第一个问题。", "Upload the sample lecture notes before sending your first question.");
       root.querySelector(".sample-status").textContent = notice;
       return;

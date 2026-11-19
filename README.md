@@ -59,8 +59,9 @@ course name. The guide highlights the current action on desktop and mobile.
 In **Course materials**, select the bundled sample lecture notes
 (or download the TXT and choose it in the file picker), then choose **Upload
 selected file**. The preview checks the sample TXT in the browser before adding
-it to that course. A prepared question then appears in the conversation. Fill
-the composer, send, and follow the citation to the uploaded notes.
+it to that course. The guide then highlights the question composer. Type a question about price
+elasticity or the midpoint method, send it, and follow the citation to the
+uploaded notes. Guest answers remain prepared examples.
 
 The introduction now leads with four strengths: AI grounded in uploaded course
 materials, learning organized by course, grade calculation/target planning, and

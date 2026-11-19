@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — Guest question entry
+
+- Highlight the Study composer after a guest uploads the sample lecture notes,
+  then highlight Send when the visitor enters a question.
+- Remove the question button from the new-course welcome message and accept
+  rephrased questions about elasticity and the midpoint method.
+- Align the guest language-selector chevron with a fixed, theme-aware shape.
+
+
 ## 1.9.0 — 2026-11-16
 
 - MINOR from verified production 1.8.0 (`1a2183375d2e4bf7fd92f563696cbdcf083e1c08`): introduce course PDF notes and automatic course-code filing.

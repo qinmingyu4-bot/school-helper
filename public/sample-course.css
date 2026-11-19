@@ -93,3 +93,30 @@
   -webkit-appearance: none;
   padding-inline-end: 34px;
 }
+
+.sample-shell .sample-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-inline: 46px;
+  color: var(--muted);
+}
+.sample-shell .sample-suggestion[hidden] { display: none; }
+.sample-shell .sample-suggestion small { font-size: 11px; line-height: 1.5; }
+.sample-shell .sample-suggestion button {
+  display: none;
+  border: 0;
+  padding: 4px 7px;
+  min-height: 36px;
+  background: transparent;
+  color: var(--green);
+  font-size: 12px;
+}
+:root .sample-shell .composer-light #chatInput.sample-has-suggestion {
+  min-height: 68px;
+}
+@media (max-width: 700px), (pointer: coarse) {
+  .sample-shell .sample-suggestion { padding-inline: 6px; }
+  .sample-shell .sample-suggestion small { display: none; }
+  .sample-shell .sample-suggestion button { display: inline-flex; min-height: 40px; }
+}

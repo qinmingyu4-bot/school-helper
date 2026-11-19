@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Guest example completion
+
+- Show a grey example in an empty first-question composer. Enter or Space inserts
+  it for editing; a separate Enter press or the Send button submits the question.
+- Offer a compact Use example action for small screens and touch input.
+- Preserve manual input, Chinese composition and Shift+Enter line breaks.
+
 ## Unreleased — Guest question entry
 
 - Highlight the Study composer after a guest uploads the sample lecture notes,

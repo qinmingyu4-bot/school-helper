@@ -74,6 +74,7 @@
   let sourceView = null;
   let learningView = "topics";
   let origin;
+  let composing = false;
 
   const guestCourse = () => state.guestCourses.find(item => item.id === state.courseId);
   const courseData = () => guestCourse() || state;
@@ -92,6 +93,21 @@
     const url = new URL(location.href);
     url.searchParams.set("course", id);
     history.replaceState(history.state, "", url);
+  }
+
+  function suggestQuestion() {
+    return Boolean(guestCourse() && ready() && activeChat()?.draft === ""
+      && !courseData().chats.some(chat => chat.turns.length));
+  }
+
+  function syncSuggestion() {
+    const input = root.querySelector("#chatInput");
+    if (!input) return;
+    const show = suggestQuestion() && !composing;
+    input.placeholder = show ? copy(questions[3].prompt) : say("输入问题…", "Enter a question…");
+    input.classList.toggle("sample-has-suggestion", show);
+    root.querySelector(".sample-suggestion").hidden = !show;
+    composer.resize();
   }
 
   function guideStep() {
@@ -116,10 +132,11 @@
     if (activeChat().draft.trim()) return ["#sample-compose .send",
       say("问题已填好，点「发送」。", "Your question is ready. Choose Send.")];
     return ["#chatInput",
-      say("在底部输入框写下问题，例如：需求价格弹性怎么计算？", "Type a question in the composer, for example: How do I calculate price elasticity of demand?")];
+      say("在输入框写下问题，或按 Enter / 空格填入灰色示例。", "Type your question, or press Enter / Space to insert the grey example.")];
   }
 
   function syncGuide() {
+    syncSuggestion();
     document.querySelector("[data-guide-next]")?.removeAttribute("data-guide-next");
     document.querySelector("[aria-describedby=sample-guide-copy], [aria-describedby=sample-mobile-guide-copy]")?.removeAttribute("aria-describedby");
     const step = guideStep();
@@ -235,6 +252,10 @@
         <textarea id="chatInput" rows="1" maxlength="500" placeholder="${say("输入问题…", "Enter a question…")}" aria-label="${say("问题", "Question")}">${esc(chat.draft)}</textarea>
         <button class="send" type="submit" aria-label="${say("发送", "Send")}">${icon("M12 19V5m-7 7 7-7 7 7")}</button>
       </div>
+      <div class="sample-suggestion" ${suggestQuestion() ? "" : "hidden"}>
+        <small>${say("按 Enter 或空格填入示例，再发送", "Press Enter or Space to insert the example, then send")}</small>
+        ${action("accept-suggestion", say("填入示例", "Use example"))}
+      </div>
     </form>`;
   }
 
@@ -265,7 +286,8 @@
     trigger.setAttribute("aria-expanded", String(active));
     if (focus && smallScreen) {
       const target = active ? shell.querySelector(".mobile-study-bar button")
-        : menu ? shell.querySelector(".side-nav button") : trigger;
+        : menu ? shell.querySelector(".side-nav button")
+          : suggestQuestion() ? shell.querySelector("#chatInput") : trigger;
       target.focus();
     }
     syncGuide();
@@ -453,7 +475,8 @@
     if (state.courseId === course.id) {
       render();
       root.querySelector("#courseUploadStatus").setAttribute("tabindex", "-1");
-      root.querySelector("#courseUploadStatus").focus({ preventScroll: true });
+      const focus = suggestQuestion() && !mobile.matches ? root.querySelector("#chatInput") : root.querySelector("#courseUploadStatus");
+      focus.focus({ preventScroll: true });
     }
   }
 
@@ -462,6 +485,7 @@
     if (!button) return;
     const { sampleAction: id, value } = button.dataset;
     if (id === "prompt") return fill(Number(value));
+    if (id === "accept-suggestion" && suggestQuestion()) return fill(3);
     if (id === "add-course") { drawAddCourse(); addCourse.showModal(); syncGuide(); return; }
     if (id === "cancel-add") { addCourse.close(); syncGuide(); return; }
     if (id === "select-sample") return stageFile(sampleFile, '[data-sample-action="upload-doc"]');
@@ -564,10 +588,30 @@
       learning.querySelector(".learning-body").scrollTop = 0;
     }
   });
+  document.addEventListener("compositionstart", (event) => {
+    if (event.target.id !== "chatInput") return;
+    composing = true;
+    syncSuggestion();
+  });
+  document.addEventListener("compositionend", (event) => {
+    if (event.target.id !== "chatInput") return;
+    composing = false;
+    activeChat().draft = event.target.value;
+    save();
+    syncGuide();
+  });
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" && !event.shiftKey && !event.isComposing && event.target.id === "chatInput") {
-      event.preventDefault();
-      event.target.form.requestSubmit();
+    if (event.target.id === "chatInput") {
+      if (composing || event.isComposing || event.keyCode === 229) return;
+      const plainKey = !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey;
+      if (plainKey && (event.key === "Enter" || event.key === " ")) {
+        if (event.repeat) { event.preventDefault(); return; }
+        if (suggestQuestion()) { event.preventDefault(); fill(3); return; }
+      }
+      if (event.key === "Enter" && plainKey) {
+        event.preventDefault();
+        event.target.form.requestSubmit();
+      }
     }
     if (!panelOpen || addCourse.open || source.open || learning.open) return;
     if (event.key === "Escape") { panelOpen = false; syncPanel(true); }

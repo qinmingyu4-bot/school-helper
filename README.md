@@ -61,7 +61,10 @@ In **Course materials**, select the bundled sample lecture notes
 selected file**. The preview checks the sample TXT in the browser before adding
 it to that course. The guide then highlights the question composer. Type a question about price
 elasticity or the midpoint method, send it, and follow the citation to the
-uploaded notes. Guest answers remain prepared examples.
+uploaded notes. At the first empty composer, a grey example can be accepted
+with Enter or Space, or with Use example on touch screens. Accepting fills an
+editable draft; sending is a separate action. Guest answers remain prepared
+examples.
 
 The introduction now leads with four strengths: AI grounded in uploaded course
 materials, learning organized by course, grade calculation/target planning, and

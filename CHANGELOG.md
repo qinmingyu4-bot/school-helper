@@ -1,25 +1,15 @@
 # Changelog
 
-## Unreleased — Guest composer spacing
+## 1.9.1 — 2026-11-19
 
-- Highlight the rounded composer boundary during input guidance and retain the
-  shared automatic text height. Use a light text action for example insertion.
-
-## Unreleased — Guest example completion
-
-- Show a grey example in an empty first-question composer. Enter or Space inserts
-  it for editing; a separate Enter press or the Send button submits the question.
-- Offer a compact Use example action for small screens and touch input.
-- Preserve manual input, Chinese composition and Shift+Enter line breaks.
-
-## Unreleased — Guest question entry
-
-- Highlight the Study composer after a guest uploads the sample lecture notes,
-  then highlight Send when the visitor enters a question.
-- Remove the question button from the new-course welcome message and accept
-  rephrased questions about elasticity and the midpoint method.
-- Align the guest language-selector chevron with a fixed, theme-aware shape.
-
+- PATCH from 1.9.0: refine the existing guest course's question-entry guidance.
+- Guide visitors to the real question composer and accept rephrased sample
+  questions about elasticity and the midpoint method.
+- Show a grey example in an empty first-question composer. Enter or Space fills
+  an editable draft; a separate Enter press or Send submits it. Support direct
+  typing, Chinese composition, Shift+Enter and a touch-friendly text action.
+- Keep the composer compact, highlight its rounded boundary and align the guest
+  language-selector chevron.
 
 ## 1.9.0 — 2026-11-16
 

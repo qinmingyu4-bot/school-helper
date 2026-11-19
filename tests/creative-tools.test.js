@@ -136,7 +136,8 @@ test("tool tabs return to Course notes from Docs and Sheets without loading a cr
     localStorage: { setItem: (key, value) => saved.set(key, value) },
     officeTools: { capture() {}, supports: tool => ["docs", "sheets", "slides"].includes(tool) },
     creativeTools: { capture() {}, load() { assert.fail("notes and office tabs must not load creative jobs"); } },
-    render: () => rendered.push(state.tool) });
+    render: () => assert.fail("tool tabs must not rebuild the outer page"),
+    renderToolsWorkspace: () => rendered.push(state.tool) });
   const choose = vm.runInContext(`(async () => { ${source.slice(start, end)} })`, context);
   for (const tool of ["docs", "sheets", "notes", "docs", "notes"]) {
     context.button.dataset.tool = tool;
@@ -145,4 +146,36 @@ test("tool tabs return to Course notes from Docs and Sheets without loading a cr
     assert.equal(saved.get("studybridge.tool"), tool);
     assert.equal(rendered.at(-1), tool);
   }
+});
+
+test("switching the tools workspace preserves the shell and tab controls", () => {
+  const source = fs.readFileSync(require.resolve("../public/app"), "utf8");
+  const start = source.indexOf("  function renderToolsWorkspace() {");
+  const end = source.indexOf("  function creativeContext()", start);
+  assert.ok(start >= 0 && end > start);
+  const children = ["old editor", "old trailing text"], mounted = [];
+  const buttons = ["notes", "docs", "sheets"].map(tool => ({
+    dataset: { tool }, attributes: {}, active: false,
+    classList: { toggle(name, value) { buttons.find(button => button.dataset.tool === tool).active = value; } },
+    setAttribute(name, value) { this.attributes[name] = value; }
+  }));
+  const tabs = {
+    get nextSibling() { return children.length ? { remove() { children.shift(); } } : null; },
+    insertAdjacentHTML(position, html) { assert.equal(position, "afterend"); children.push(html); },
+    querySelectorAll() { return buttons; }
+  };
+  const state = { page: "tools", tool: "sheets" };
+  const context = vm.createContext({ state,
+    root: { querySelector(selector) { assert.equal(selector, ".tools-tabs"); return tabs; },
+      set innerHTML(value) { assert.fail("the shell must remain mounted"); } },
+    render() { assert.fail("switching tools must not render the full page"); },
+    toolsWorkspaceHtml: () => "new editor", creativeContext: () => state,
+    officeTools: { mount(ctx) { mounted.push(ctx.tool); } },
+    window: { StudyBridgeCourseNotes: { mount(ctx) { mounted.push(ctx.tool); } } }
+  });
+  vm.runInContext(`${source.slice(start, end)}; renderToolsWorkspace();`, context);
+  assert.deepEqual(children, ["new editor"]);
+  assert.deepEqual(buttons.map(button => button.active), [false, false, true]);
+  assert.deepEqual(buttons.map(button => button.attributes["aria-pressed"]), ["false", "false", "true"]);
+  assert.deepEqual(mounted, ["sheets", "sheets"]);
 });

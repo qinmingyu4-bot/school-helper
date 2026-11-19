@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — Switch tools within the workspace
+
+- Keep the Tools page shell and top tabs mounted when switching editors or manual/AI views; replace only the editor area so switching does not rebuild the outer navigation or lose tab focus.
+
 ## Unreleased — Restore Course notes navigation
 
 - Allow selecting Course notes from the Tools tabs after opening Docs, Sheets or another tool; retain the mounted notes workspace when switching back.

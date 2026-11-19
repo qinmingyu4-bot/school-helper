@@ -2292,9 +2292,29 @@
       <section class="tools-tabs" aria-label="工具选择">
         ${["notes", "docs", "sheets", "slides", "images", "cheatsheet", ...(creativeTools.videoEnabled() ? ["video"] : [])].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" aria-pressed="${(state.tool || "docs") === tool}" data-action="tool-mode" data-tool="${tool}" ${tool === "video" && !creativeTools.videoEnabled() ? ui.text('disabled title="视频生成暂未开放"') : ""}>${({ notes: ui.text("课件笔记"), docs: "SB Docs", sheets: "SB Sheets", slides: "SB Slides", images: ui.text("图片"), cheatsheet: "Cheatsheet PDF", video: creativeTools.videoEnabled() ? ui.text("视频") : ui.text("视频 · 未开放") })[tool]}</button>`).join("")}
       </section>
+      ${toolsWorkspaceHtml()}
+    `;
+  }
+
+  function toolsWorkspaceHtml() {
+    return ui.html`
       ${officeTools.supports(state.tool || "docs") ? ui.html`<nav class="office-view-switch" aria-label="工作方式"><button data-action="office-view-edit" aria-pressed="${state.toolView !== "generate"}">自主编辑</button><button data-action="office-view-generate" aria-pressed="${state.toolView === "generate"}">AI 文件生成</button></nav>` : ""}
       ${state.tool === "notes" ? '<div id="courseNotesSlot"></div>' : officeTools.supports(state.tool || "docs") && state.toolView !== "generate" ? officeTools.html(state.tool || "docs") : creativeTools.html(creativeContext())}
     `;
+  }
+  function renderToolsWorkspace() {
+    const tabs = state.page === "tools" && root.querySelector(".tools-tabs");
+    if (!tabs) return render();
+    // Keep the page shell and tab buttons mounted; replace only the editor area.
+    while (tabs.nextSibling) tabs.nextSibling.remove();
+    tabs.insertAdjacentHTML("afterend", toolsWorkspaceHtml());
+    for (const tab of tabs.querySelectorAll("[data-tool]")) {
+      const selected = tab.dataset.tool === state.tool;
+      tab.classList.toggle("active", selected);
+      tab.setAttribute("aria-pressed", String(selected));
+    }
+    void officeTools.mount(creativeContext());
+    void window.StudyBridgeCourseNotes.mount(creativeContext());
   }
 
   function creativeContext() {
@@ -3626,16 +3646,16 @@
         state.tool = button.dataset.tool || "docs";
         state.toolView = "edit";
         localStorage.setItem("studybridge.tool", state.tool);
-        render();
-        if (state.tool !== "notes" && state.tool !== "email" && !officeTools.supports(state.tool)) { await creativeTools.load(creativeContext()); render(); }
+        renderToolsWorkspace();
+        if (state.tool !== "notes" && state.tool !== "email" && !officeTools.supports(state.tool)) { await creativeTools.load(creativeContext()); renderToolsWorkspace(); }
         return;
       }
       if (action === "office-view-edit" || action === "office-view-generate") {
         officeTools.capture();
         creativeTools.capture();
         state.toolView = action === "office-view-generate" ? "generate" : "edit";
-        render();
-        if (state.toolView === "generate") { await creativeTools.load(creativeContext()); render(); }
+        renderToolsWorkspace();
+        if (state.toolView === "generate") { await creativeTools.load(creativeContext()); renderToolsWorkspace(); }
         return;
       }
       if (action === "copy-output") {

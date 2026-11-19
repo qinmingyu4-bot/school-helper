@@ -125,3 +125,24 @@ test("video output is rejected and the fixed rule reaches AI creation instructio
   const { DOCUMENT_INSTRUCTION } = require("../lib/creative-service");
   assert.match(DOCUMENT_INSTRUCTION, /does not support video production in any form/);
 });
+
+test("tool tabs return to Course notes from Docs and Sheets without loading a creative job", async () => {
+  const source = fs.readFileSync(require.resolve("../public/app"), "utf8");
+  const start = source.indexOf('      if (action === "tool-mode") {');
+  const end = source.indexOf('      if (action === "office-view-edit"', start);
+  assert.ok(start >= 0 && end > start);
+  const state = { tool: "notes", toolView: "edit" }, saved = new Map(), rendered = [];
+  const context = vm.createContext({ state, action: "tool-mode", button: { dataset: {} },
+    localStorage: { setItem: (key, value) => saved.set(key, value) },
+    officeTools: { capture() {}, supports: tool => ["docs", "sheets", "slides"].includes(tool) },
+    creativeTools: { capture() {}, load() { assert.fail("notes and office tabs must not load creative jobs"); } },
+    render: () => rendered.push(state.tool) });
+  const choose = vm.runInContext(`(async () => { ${source.slice(start, end)} })`, context);
+  for (const tool of ["docs", "sheets", "notes", "docs", "notes"]) {
+    context.button.dataset.tool = tool;
+    await choose();
+    assert.equal(state.tool, tool);
+    assert.equal(saved.get("studybridge.tool"), tool);
+    assert.equal(rendered.at(-1), tool);
+  }
+});

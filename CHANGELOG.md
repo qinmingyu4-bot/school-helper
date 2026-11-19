@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — Restore Course notes navigation
+
+- Allow selecting Course notes from the Tools tabs after opening Docs, Sheets or another tool; retain the mounted notes workspace when switching back.
+
 ## Unreleased — Theme-aware PDF upload button
 
 - Give the course-note PDF upload control a compact rounded shape, preserve its accent text color and derive its background and interaction states from the selected palette and light/dark surface.

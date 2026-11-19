@@ -3620,7 +3620,7 @@
         return;
       }
       if (action === "tool-mode") {
-        if (!["docs", "sheets", "slides", "images", "cheatsheet"].includes(button.dataset.tool)) return;
+        if (!["notes", "docs", "sheets", "slides", "images", "cheatsheet"].includes(button.dataset.tool)) return;
         creativeTools.capture();
         officeTools.capture();
         state.tool = button.dataset.tool || "docs";

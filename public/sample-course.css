@@ -57,7 +57,7 @@
 .sample-empty-workspace h2 { margin: 0; font-size: 22px; }
 .sample-empty-workspace p { margin: 8px 0 14px; color: var(--muted); line-height: 1.6; }
 .sample-shell .sample-alternate-entry { display: block; width: fit-content; margin-top: 8px; }
-:root :is(.sample-shell, #sample-add-course) :is(button, textarea)[data-guide-next] {
+:root :is(.sample-shell, #sample-add-course) button[data-guide-next] {
   outline: 2px solid var(--green);
   outline-offset: 2px;
   box-shadow: 0 0 0 5px color-mix(in srgb, var(--green) 14%, transparent);
@@ -103,20 +103,29 @@
 }
 .sample-shell .sample-suggestion[hidden] { display: none; }
 .sample-shell .sample-suggestion small { font-size: 11px; line-height: 1.5; }
-.sample-shell .sample-suggestion button {
+:root .sample-shell .composer-light .compose-row:has(textarea[data-guide-next]) {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 12%, transparent);
+}
+:root .sample-shell .composer-light .compose-row textarea:focus-visible {
+  outline: none;
+}
+:root .sample-shell .composer-light .sample-suggestion button {
   display: none;
   border: 0;
-  padding: 4px 7px;
-  min-height: 36px;
+  border-radius: 0;
+  padding: 0;
+  min-height: 28px;
   background: transparent;
+  box-shadow: none;
   color: var(--green);
   font-size: 12px;
-}
-:root .sample-shell .composer-light #chatInput.sample-has-suggestion {
-  min-height: 68px;
+  font-weight: 400;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 @media (max-width: 700px), (pointer: coarse) {
-  .sample-shell .sample-suggestion { padding-inline: 6px; }
+  .sample-shell .sample-suggestion { padding-inline: 54px 8px; }
   .sample-shell .sample-suggestion small { display: none; }
-  .sample-shell .sample-suggestion button { display: inline-flex; min-height: 40px; }
+  :root .sample-shell .composer-light .sample-suggestion button { display: inline-flex; align-items: center; }
 }

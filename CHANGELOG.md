@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — Guest composer spacing
+
+- Highlight the rounded composer boundary during input guidance and retain the
+  shared automatic text height. Use a light text action for example insertion.
+
 ## Unreleased — Guest example completion
 
 - Show a grey example in an empty first-question composer. Enter or Space inserts

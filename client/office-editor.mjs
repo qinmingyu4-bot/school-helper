@@ -116,6 +116,7 @@ class Workspace {
     this.undo = [];
     this.redo = [];
     this.aiPrompt = "";
+    this.aiOpen = false;
     this.aiResult = null;
     this.aiBusy = false;
     this.aiScope = { docs: "document", slides: "slide", sheets: "sheet" }[kind];
@@ -253,6 +254,7 @@ class Workspace {
       };
     }
     if (this.host?.isConnected) {
+      this.aiOpen = this.host.querySelector(".office-ai-disclosure")?.open ?? this.aiOpen;
       this.aiPrompt =
         this.host.querySelector("[data-ai-prompt]")?.value || this.aiPrompt;
     }
@@ -411,7 +413,7 @@ class Workspace {
     this.editor?.unmount();
     const doc = this.kind === "docs",
       slide = this.kind === "slides";
-    this.host.innerHTML = ui.html`<div class="office-topbar"><strong>${names[this.kind]}</strong><input class="office-name" data-name aria-label="作品名称" value="${esc(this.current.name)}"><label class="office-project-label">打开作品<select data-project-picker>${this.projectOptions()}</select></label><span class="office-top-actions">${button("new", ui.text("新建"))}${button("import", ui.text("导入 ") + formats[this.kind].toUpperCase())}${button("save", ui.text("保存"))}${button("copy", ui.text("另存副本"))}${button("export", ui.text("导出 ") + formats[this.kind].toUpperCase())}</span></div>
+    this.host.innerHTML = ui.html`<div class="office-topbar"><input class="office-name" data-name aria-label="作品名称" value="${esc(this.current.name)}"><label class="office-project-label">打开作品<select data-project-picker>${this.projectOptions()}</select></label><span class="office-top-actions">${button("new", ui.text("新建"))}${button("import", ui.text("导入 ") + formats[this.kind].toUpperCase())}${button("save", ui.text("保存"))}${button("copy", ui.text("另存副本"))}${button("export", ui.text("导出 ") + formats[this.kind].toUpperCase())}</span></div>
    ${this.aiHTML()}
    <div class="office-statusbar"><span data-save-status role="status"></span><span>${doc ? "<span data-doc-count></span>" : slide ? ui.text("16:9 · 可编辑文字和图片") : ui.text("支持公式与跨工作表引用")}</span></div>
    ${this.current.importWarnings?.length ? `<div class="office-import-notice" role="status">${this.current.importWarnings.map(esc).join(" ")}</div>` : ""}
@@ -657,7 +659,7 @@ class Workspace {
     const sheet =
       this.current.model.sheets[this.sheetIndex] ||
       this.current.model.sheets[0];
-    return ui.html`<div class="office-toolbar" aria-label="表格工具">${button("undo", ui.text("撤销"))}${button("redo", ui.text("重做"))}${button("rows", ui.text("＋ 20 行"))}${button("cols", ui.text("＋ 1 列"))}${button("sheet-add", ui.text("新工作表"))}${button("sheet-rename", ui.text("重命名"))}${button("sheet-delete", ui.text("删除工作表"))}${button("cell-bold", ui.text("粗体"))}${select("cellSize", ui.text("字号"), [10, 11, 12, 14, 16, 18, 24], 12)}<label>文字色<input data-setting="cellColor" type="color" value="#172d42"></label>${select(
+    return ui.html`<div class="office-toolbar office-sheet-toolbar" aria-label="表格工具"><div class="office-toolbar-group">${button("undo", ui.text("撤销"))}${button("redo", ui.text("重做"))}${button("rows", ui.text("＋ 20 行"))}${button("cols", ui.text("＋ 1 列"))}${button("sheet-add", ui.text("新工作表"))}${button("sheet-rename", ui.text("重命名"))}${button("sheet-delete", ui.text("删除工作表"))}</div><div class="office-toolbar-group">${button("cell-bold", ui.text("粗体"))}${select("cellSize", ui.text("字号"), [10, 11, 12, 14, 16, 18, 24], 12)}<label>文字色<input data-setting="cellColor" type="color" value="#172d42"></label>${select(
       "cellFormat",
       ui.text("数字格式"),
       [
@@ -680,7 +682,7 @@ class Workspace {
         ["=VLOOKUP(A1,A2:C10,2,FALSE)", ui.text("VLOOKUP · 查找")],
       ],
       "",
-    )}</div><div class="office-formula-bar"><span data-cell-name>${this.cell}</span><b>fx</b><input data-formula maxlength="4000" aria-label="公式栏" placeholder="输入数值、文字或以 = 开头的公式"></div><div class="office-grid-scroll"><table class="office-grid" role="grid" aria-label="电子表格"><thead><tr><th></th>${Array.from({ length: sheet.cols }, (_, c) => `<th scope="col">${Model.col(c + 1)}</th>`).join("")}</tr></thead><tbody>${Array.from({ length: sheet.rows }, (_, r) => `<tr><th scope="row">${r + 1}</th>${Array.from({ length: sheet.cols }, (_, c) => `<td><input aria-label="${Model.col(c + 1)}${r + 1}" data-cell="${Model.col(c + 1)}${r + 1}" autocomplete="off" spellcheck="false" maxlength="4000"></td>`).join("")}</tr>`).join("")}</tbody></table></div><nav class="office-sheet-tabs" aria-label="工作表">${this.current.model.sheets.map((s, i) => `<button data-sheet="${i}" aria-pressed="${i === this.sheetIndex}">${esc(s.name)}</button>`).join("")}</nav><p class="office-formula-help">Enter / Tab 移动 · 可粘贴多行多列 · 支持 SUM、AVERAGE、IF、COUNT、ROUND、VLOOKUP 等函数，以及 Sheet2!A1 引用。</p>`;
+    )}</div></div><div class="office-formula-bar"><span data-cell-name>${this.cell}</span><b>fx</b><input data-formula maxlength="4000" aria-label="公式栏" placeholder="输入数值、文字或以 = 开头的公式"></div><div class="office-grid-scroll"><table class="office-grid" role="grid" aria-label="电子表格"><thead><tr><th></th>${Array.from({ length: sheet.cols }, (_, c) => `<th scope="col">${Model.col(c + 1)}</th>`).join("")}</tr></thead><tbody>${Array.from({ length: sheet.rows }, (_, r) => `<tr><th scope="row">${r + 1}</th>${Array.from({ length: sheet.cols }, (_, c) => `<td><input aria-label="${Model.col(c + 1)}${r + 1}" data-cell="${Model.col(c + 1)}${r + 1}" autocomplete="off" spellcheck="false" maxlength="4000"></td>`).join("")}</tr>`).join("")}</tbody></table></div><nav class="office-sheet-tabs" aria-label="工作表">${this.current.model.sheets.map((s, i) => `<button data-sheet="${i}" aria-pressed="${i === this.sheetIndex}">${esc(s.name)}</button>`).join("")}</nav><p class="office-formula-help">Enter / Tab 移动 · 可粘贴多行多列 · 支持 SUM、AVERAGE、IF、COUNT、ROUND、VLOOKUP 等函数，以及 Sheet2!A1 引用。</p>`;
   }
   sheet() {
     return (
@@ -779,7 +781,7 @@ class Workspace {
     const config = this.aiConfig(), stale = this.aiResult && !this.revisionCurrent();
     const edits = this.aiResult?.edits || this.aiResult?.changes || [];
     const applyLabel = this.kind === "docs" ? this.aiSource?.scope === "selection" ? ui.text("应用到选中文字") : ui.text("应用到文档") : this.kind === "slides" ? ui.text("应用到演示") : ui.text("应用到表格");
-    return ui.html`<section class="office-ai office-ai-inline" aria-label="AI 赋能"><div class="office-ai-heading"><h3>AI 赋能</h3><p>${config.description}</p></div><div class="office-ai-compose"><label class="office-ai-request">想让 AI 怎样改进？<textarea data-ai-prompt rows="2" maxlength="4000" placeholder="${config.placeholder}">${esc(this.aiPrompt)}</textarea></label><label>修改范围<select data-ai-scope>${config.scopes.map(([value, label]) => `<option value="${value}" ${this.aiScope === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>${this.kind === "sheets" && this.aiScope === "range" ? ui.html`<label>单元格区域<input data-ai-range aria-label="AI 修改区域" maxlength="24" placeholder="例如 A1:D10" value="${esc(this.aiRange)}"></label>` : ""}${button("ai-generate", this.aiBusy ? ui.text("正在修改…") : ui.text("预览修改"), this.aiBusy ? "disabled" : "")}</div><div class="office-ai-shortcuts"><span>快捷要求</span>${config.presets.map(([label], i) => button("ai-preset-" + i, label)).join("")}</div>${this.aiResult ? `<div class="office-ai-preview"><div class="office-ai-heading"><strong>${edits.length ? ui.message`修改预览 · ${edits.length} 处` : ui.text("AI 认为无需修改")}</strong><span>${esc(this.aiSource?.label || "")}</span></div><div data-ai-result aria-live="polite">${this.aiResultHTML()}</div><div class="office-ai-preview-actions">${edits.length ? button("ai-apply", applyLabel, stale || this.aiBusy ? "disabled" : "") : ""}${button("ai-discard", ui.text("放弃这次修改"))}</div></div>` : ""}<p class="office-ai-warning" role="alert">${esc(this.aiError || (stale ? this.staleMessage() : ""))}</p><p class="office-ai-hint" role="status">${esc(this.aiNotice || ui.text("AI 只在你点击后参与；预览不会改动内容，应用后可撤销。"))}</p></section>`;
+    return ui.html`<section class="office-ai office-ai-inline" aria-label="AI 赋能"><details class="office-ai-disclosure" ${this.aiOpen ? "open" : ""}><summary>AI 赋能</summary><div class="office-ai-body"><p>${config.description}</p><div class="office-ai-compose"><label class="office-ai-request">想让 AI 怎样改进？<textarea data-ai-prompt rows="2" maxlength="4000" placeholder="${config.placeholder}">${esc(this.aiPrompt)}</textarea></label><label>修改范围<select data-ai-scope>${config.scopes.map(([value, label]) => `<option value="${value}" ${this.aiScope === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>${this.kind === "sheets" && this.aiScope === "range" ? ui.html`<label>单元格区域<input data-ai-range aria-label="AI 修改区域" maxlength="24" placeholder="例如 A1:D10" value="${esc(this.aiRange)}"></label>` : ""}${button("ai-generate", this.aiBusy ? ui.text("正在修改…") : ui.text("预览修改"), this.aiBusy ? "disabled" : "")}</div><div class="office-ai-shortcuts"><span>快捷要求</span>${config.presets.map(([label], i) => button("ai-preset-" + i, label)).join("")}</div>${this.aiResult ? `<div class="office-ai-preview"><div class="office-ai-heading"><strong>${edits.length ? ui.message`修改预览 · ${edits.length} 处` : ui.text("AI 认为无需修改")}</strong><span>${esc(this.aiSource?.label || "")}</span></div><div data-ai-result aria-live="polite">${this.aiResultHTML()}</div><div class="office-ai-preview-actions">${edits.length ? button("ai-apply", applyLabel, stale || this.aiBusy ? "disabled" : "") : ""}${button("ai-discard", ui.text("放弃这次修改"))}</div></div>` : ""}<p class="office-ai-warning" role="alert">${esc(this.aiError || (stale ? this.staleMessage() : ""))}</p><p class="office-ai-hint" role="status">${esc(this.aiNotice || ui.text("AI 只在你点击后参与；预览不会改动内容，应用后可撤销。"))}</p></div></details></section>`;
   }
   aiResultHTML() {
     if (this.aiResult.edits) {
@@ -814,7 +816,10 @@ class Workspace {
   }
   refreshAI() {
     const panel = this.host?.querySelector(".office-ai");
-    if (panel) panel.outerHTML = this.aiHTML();
+    if (panel) {
+      this.aiOpen = panel.querySelector(".office-ai-disclosure")?.open ?? this.aiOpen;
+      panel.outerHTML = this.aiHTML();
+    }
   }
   revisionCurrent() {
     return this.aiSource?.project === this.current && this.aiSource.signature ===

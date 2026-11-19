@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Refine office workspace layout
+
+- Align Docs and Sheets with the quiet Tools workspace: consistent compact typography, lighter controls, a flat editor surface and balanced title/project rows.
+- Collapse AI assistance until requested, retaining its prompt and open state while switching tools or updating revision scope.
+- Keep editor controls readable across desktop, tablet and phone layouts, with account palette and dark-mode support.
+
 ## Unreleased — Switch tools within the workspace
 
 - Keep the Tools page shell and top tabs mounted when switching editors or manual/AI views; replace only the editor area so switching does not rebuild the outer navigation or lose tab focus.

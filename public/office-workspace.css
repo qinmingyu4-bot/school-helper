@@ -1,0 +1,174 @@
+/* Office chrome follows the quiet workspace. Document and cell typography is
+   user content and deliberately stays under the editor's own formatting. */
+:root .app-shell .workspace > .office-shell {
+  border: 0;
+  border-radius: 0;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 13px;
+}
+:root .app-shell .workspace .office-view-switch { margin-top: 12px; }
+:root .app-shell .workspace .office-topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 210px);
+  gap: 8px 24px;
+  padding: 0 0 10px;
+  align-items: end;
+}
+:root .app-shell .workspace .office-shell :is(input, textarea, select):not(.office-grid input) {
+  min-width: 0;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  box-shadow: none;
+}
+:root .app-shell .workspace .office-shell .office-topbar .office-name {
+  width: 100%;
+  padding: 7px 0;
+  font-size: 18px;
+  font-weight: 500;
+  border-color: transparent;
+}
+:root .app-shell .workspace .office-shell .office-name:hover { border-bottom-color: var(--line); }
+:root .app-shell .workspace .office-shell label {
+  gap: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: 400;
+  color: var(--muted);
+}
+:root .app-shell .workspace .office-project-label { max-width: none; min-width: 0; }
+:root .app-shell .workspace .office-project-label select { width: 100%; text-overflow: ellipsis; }
+:root .app-shell .workspace .office-top-actions {
+  grid-column: 1 / -1;
+  margin: 0;
+  gap: 4px;
+}
+:root .app-shell .workspace .office-shell button {
+  min-height: 32px;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 450;
+  line-height: 20px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink);
+  box-shadow: none;
+}
+:root .app-shell .workspace .office-shell button:hover:not(:disabled) { background: var(--soft); }
+:root .app-shell .workspace .office-shell button[aria-pressed="true"] {
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 10%, var(--panel));
+}
+:root .app-shell .workspace .office-top-actions button:first-child { margin-left: -9px; }
+:root .app-shell .workspace .office-top-actions [data-office="save"] { color: var(--green); font-weight: 550; }
+:root .app-shell .workspace .office-ai-inline {
+  display: block;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+:root .app-shell .workspace .office-ai-disclosure > summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 42px;
+  padding: 9px 0;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+}
+.office-ai-disclosure > summary::-webkit-details-marker { display: none; }
+.office-ai-disclosure > summary::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-right: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  transform: rotate(-45deg);
+}
+.office-ai-disclosure[open] > summary::before { transform: rotate(45deg); }
+.office-ai-body { display: grid; gap: 12px; padding: 0 0 16px; }
+:root .app-shell .workspace .office-ai p { color: var(--muted); font-size: 12px; line-height: 1.6; }
+:root .app-shell .workspace .office-ai-compose { gap: 12px; align-items: end; }
+:root .app-shell .workspace .office-ai-request { flex: 1 1 280px; }
+:root .app-shell .workspace .office-ai-compose > label:not(:first-child) { flex: 0 1 180px; min-width: 0; }
+:root .app-shell .workspace .office-ai textarea { min-height: 66px; padding: 8px 10px; }
+:root .app-shell .workspace .office-ai-shortcuts { gap: 4px 12px; }
+:root .app-shell .workspace .office-ai-shortcuts button { padding: 3px 0; border-radius: 0; color: var(--muted); }
+:root .app-shell .workspace .office-ai-shortcuts button:hover { color: var(--green); background: transparent; }
+:root .app-shell .workspace .office-ai-compose > button,
+:root .app-shell .workspace .office-ai-preview-actions > button:first-child:not(:last-child) {
+  background: var(--green);
+  color: var(--panel);
+  padding-inline: 12px;
+}
+:root .app-shell .workspace .office-ai-hint { font-size: 11px; }
+:root .app-shell .workspace .office-ai-preview { background: var(--panel); border-color: var(--line); }
+:root .app-shell .workspace .office-statusbar {
+  padding: 7px 0;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--panel);
+}
+:root .app-shell .workspace .office-toolbar {
+  padding: 10px 0;
+  gap: 8px 6px;
+  background: var(--panel);
+}
+:root .app-shell .workspace .office-toolbar label { max-width: 160px; }
+:root .app-shell .workspace .office-sheet-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); }
+.office-toolbar-group { display: flex; align-items: end; flex-wrap: wrap; gap: 6px; min-width: 0; }
+:root .app-shell .workspace .office-toolbar select { min-height: 32px; padding: 5px 7px; max-width: 100%; }
+:root .app-shell .workspace .office-toolbar [data-setting="font"] { width: 150px; }
+:root .app-shell .workspace .office-toolbar [data-setting="function"] { width: 150px; }
+:root .app-shell .workspace .office-toolbar input[type="color"] { width: 32px; height: 32px; }
+:root .app-shell .workspace .office-formula-bar {
+  grid-template-columns: 44px 20px minmax(0, 1fr);
+  padding: 6px 0;
+  font-size: 12px;
+}
+:root .app-shell .workspace .office-formula-bar b { color: var(--muted); }
+:root .app-shell .workspace .office-page-settings { padding: 8px 0; gap: 8px 16px; background: var(--panel); }
+:root .app-shell .workspace .office-doc-scroll { background: var(--soft); padding: 20px; }
+:root .app-shell .workspace .office-paper { box-shadow: 0 1px 8px #00000009; }
+:root .app-shell .workspace .office-shell :is(button, input, textarea, select, summary):focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+@media (max-width: 700px) {
+  :root .app-shell .workspace:has(> .tools-tabs) > .page-header { display: none; }
+  :root .app-shell .workspace > .office-shell { margin: 12px 28px 24px; }
+}
+@media (max-width: 600px) {
+  :root .app-shell .workspace > .office-shell { margin-inline: 16px; }
+}
+@container (max-width: 480px) {
+  :root .app-shell .workspace .office-topbar { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  :root .app-shell .workspace .office-project-label { flex-direction: row; align-items: center; gap: 12px; }
+  :root .app-shell .workspace .office-project-label select { flex: 1; width: 0; }
+  :root .app-shell .workspace .office-top-actions { flex-wrap: nowrap; overflow-x: auto; padding-block: 3px; }
+  :root .app-shell .workspace .office-toolbar { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 12px; }
+  :root .app-shell .workspace .office-toolbar > * { flex-shrink: 0; }
+  :root .app-shell .workspace .office-toolbar-group { flex-wrap: nowrap; overflow-x: auto; }
+  :root .app-shell .workspace .office-toolbar-group > * { flex-shrink: 0; }
+  :root .app-shell .workspace .office-ai-compose > label:first-child { flex-basis: 100%; }
+  :root .app-shell .workspace .office-statusbar { font-size: 10px; }
+  :root .app-shell .workspace .office-doc-scroll { padding: 10px; }
+}
+@media (pointer: coarse) {
+  :root .app-shell .workspace .office-shell :is(button, summary) { min-height: 44px; }
+  :root .app-shell .workspace .office-shell :is(input, textarea, select):not(.office-grid input):not([type="color"]) {
+    font-size: 16px;
+    min-height: 40px;
+  }
+}

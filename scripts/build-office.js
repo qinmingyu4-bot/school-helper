@@ -7,6 +7,7 @@ async function main() {
   fs.mkdirSync(destination, { recursive: true });
   const result = await esbuild.build({
     absWorkingDir: root,
+    preserveSymlinks: true,
     entryPoints: ["client/office-editor.mjs"],
     outfile: "public/vendor/office-editor.min.js",
     bundle: true,

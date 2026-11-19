@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — Theme-aware PDF upload button
+
+- Give the course-note PDF upload control a compact rounded shape, preserve its accent text color and derive its background and interaction states from the selected palette and light/dark surface.
+
 ## 1.9.0 — 2026-11-16
 
 - MINOR from verified production 1.8.0 (`1a2183375d2e4bf7fd92f563696cbdcf083e1c08`): introduce course PDF notes and automatic course-code filing.

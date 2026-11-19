@@ -18,7 +18,9 @@
 .note-picker-actions{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-left:auto}
 .course-notes .note-picker-actions button{padding:5px 0;font-size:11px}
 .course-notes .note-picker-actions button:hover{background:transparent;color:var(--ink)}
-.note-upload{display:inline-flex;align-items:center;gap:6px;position:relative;overflow:hidden;cursor:pointer;padding:5px 0;color:var(--green);font-weight:500;white-space:nowrap}
+.note-upload{display:inline-flex;align-items:center;gap:6px;position:relative;overflow:hidden;cursor:pointer;padding:7px 14px;border-radius:8px;background:color-mix(in srgb,var(--green) 10%,var(--panel));color:var(--green);font-weight:500;white-space:nowrap}
+.note-upload:hover{background:color-mix(in srgb,var(--green) 16%,var(--panel))}
+.note-upload:active{background:color-mix(in srgb,var(--green) 22%,var(--panel))}
 .note-upload input{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}
 .note-upload:focus-within{outline:2px solid var(--green);outline-offset:3px}
 .note-picker-menu{position:absolute;z-index:30;top:calc(100% + 8px);left:-10px;width:max-content;min-width:210px;max-width:min(340px,calc(100vw - 48px));max-height:280px;overflow:auto;padding:6px;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px #0000000a}

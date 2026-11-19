@@ -2,6 +2,16 @@
 
 This file records stable StudyBridge versions so a broken update can be rolled back safely.
 
+## 1.9.2 — 2026-11-19
+
+- PATCH from production 1.9.1, `5b7fd8fe864cc60ef6b157e20b06cdf92228fe7e`.
+- Refine the existing guest workflow's first-question entry, example acceptance,
+  composer spacing and language-selector alignment.
+- Validate source/assets, release policy, regressions and responsive bilingual
+  interactions. Verify live assets, service health and the guest workflow.
+- Rollback code target: `5b7fd8fe864cc60ef6b157e20b06cdf92228fe7e`.
+  No database migration or production configuration changes are required.
+
 ## 1.9.1 — 2026-11-19
 
 - PATCH from verified production 1.9.0 (`b809643834d0201c797a2d87e4b0daf241cb8fe0`): fixes and presentation improvements to existing tools.

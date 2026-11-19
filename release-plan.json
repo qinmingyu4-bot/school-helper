@@ -1,8 +1,8 @@
 {
-  "previousCommit": "b809643834d0201c797a2d87e4b0daf241cb8fe0",
-  "previousVersion": "1.9.0",
-  "version": "1.9.1",
+  "previousCommit": "5b7fd8fe864cc60ef6b157e20b06cdf92228fe7e",
+  "previousVersion": "1.9.1",
+  "version": "1.9.2",
   "level": "patch",
-  "reason": "Fix top-tab navigation within existing Tools and refine PDF upload and Docs/Sheets layout, typography and existing AI disclosure; no new product capability or data migration.",
+  "reason": "Refine the existing guest course question-entry workflow, keyboard example acceptance, composer sizing and language-selector alignment. Focused usability fixes with no new module or data migration.",
   "features": []
 }

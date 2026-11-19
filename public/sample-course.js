@@ -74,6 +74,7 @@
   let sourceView = null;
   let learningView = "topics";
   let origin;
+  let composing = false;
 
   const guestCourse = () => state.guestCourses.find(item => item.id === state.courseId);
   const courseData = () => guestCourse() || state;
@@ -92,6 +93,21 @@
     const url = new URL(location.href);
     url.searchParams.set("course", id);
     history.replaceState(history.state, "", url);
+  }
+
+  function suggestQuestion() {
+    return Boolean(guestCourse() && ready() && activeChat()?.draft === ""
+      && !courseData().chats.some(chat => chat.turns.length));
+  }
+
+  function syncSuggestion() {
+    const input = root.querySelector("#chatInput");
+    if (!input) return;
+    const show = suggestQuestion() && !composing;
+    input.placeholder = show ? copy(questions[3].prompt) : say("输入问题…", "Enter a question…");
+    input.classList.toggle("sample-has-suggestion", show);
+    root.querySelector(".sample-suggestion").hidden = !show;
+    composer.resize();
   }
 
   function guideStep() {
@@ -113,13 +129,14 @@
     }
     if (mobile.matches && panelOpen) return ["[data-sample-action=close-panel]",
       say("讲义已加入。点「返回学习」，开始提问。", "The notes are ready. Choose Back to Study to ask a question.")];
-    if (findQuestion(activeChat().draft) !== undefined) return ["#sample-compose .send",
+    if (activeChat().draft.trim()) return ["#sample-compose .send",
       say("问题已填好，点「发送」。", "Your question is ready. Choose Send.")];
-    return [".sample-intro [data-sample-action=prompt]",
-      say("点示例问题，把它填到底部输入框。", "Choose the sample question to fill the composer.")];
+    return ["#chatInput",
+      say("在输入框写下问题，或按 Enter / 空格填入灰色示例。", "Type your question, or press Enter / Space to insert the grey example.")];
   }
 
   function syncGuide() {
+    syncSuggestion();
     document.querySelector("[data-guide-next]")?.removeAttribute("data-guide-next");
     document.querySelector("[aria-describedby=sample-guide-copy], [aria-describedby=sample-mobile-guide-copy]")?.removeAttribute("aria-describedby");
     const step = guideStep();
@@ -232,8 +249,12 @@
         ${action("attachments", icon("m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.19 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"), {
           className: "attach", attributes: `aria-label="${say("查看示例附件", "View sample attachments")}"`
         })}
-        <textarea id="chatInput" rows="1" maxlength="500" placeholder="${say("输入示例问题…", "Enter a sample question…")}" aria-label="${say("问题", "Question")}">${esc(chat.draft)}</textarea>
+        <textarea id="chatInput" rows="1" maxlength="500" placeholder="${say("输入问题…", "Enter a question…")}" aria-label="${say("问题", "Question")}">${esc(chat.draft)}</textarea>
         <button class="send" type="submit" aria-label="${say("发送", "Send")}">${icon("M12 19V5m-7 7 7-7 7 7")}</button>
+      </div>
+      <div class="sample-suggestion" ${suggestQuestion() ? "" : "hidden"}>
+        <small>${say("按 Enter 或空格填入示例，再发送", "Press Enter or Space to insert the example, then send")}</small>
+        ${action("accept-suggestion", say("填入示例", "Use example"))}
       </div>
     </form>`;
   }
@@ -265,7 +286,8 @@
     trigger.setAttribute("aria-expanded", String(active));
     if (focus && smallScreen) {
       const target = active ? shell.querySelector(".mobile-study-bar button")
-        : menu ? shell.querySelector(".side-nav button") : trigger;
+        : menu ? shell.querySelector(".side-nav button")
+          : suggestQuestion() ? shell.querySelector("#chatInput") : trigger;
       target.focus();
     }
     syncGuide();
@@ -292,7 +314,7 @@
             <strong>${guestCourse() ? esc(courseTitle()) : topic()}</strong>
             ${ready() ? say("课程资料已就绪，可以从一个问题开始。", "The course materials are ready. Start with a question.")
               : say("课程已创建，课程资料还是空的。", "Your course is ready for its first material.")}
-            ${available().length ? `<div class="sample-prompts">${available().map(index => action("prompt", copy(questions[index].prompt), { value: index })).join("")}</div>` : ""}
+            ${builtIn && available().length ? `<div class="sample-prompts">${available().map(index => action("prompt", copy(questions[index].prompt), { value: index })).join("")}</div>` : ""}
           </div></div>`}
         </div>` : `<div class="sample-empty-workspace">
           <h2>${state.guestCourses.length ? say("选择或新增课程", "Choose or add a course") : say("开始你的第一门课", "Start your first course")}</h2>
@@ -386,13 +408,16 @@
 
   function findQuestion(text) {
     const normalize = (value) => value.toLowerCase().replace(/[\s\p{P}]/gu, "");
-    return available().find(i => questions[i].prompt.some(prompt => normalize(text) === normalize(prompt)));
+    const exact = available().find(i => questions[i].prompt.some(prompt => normalize(text) === normalize(prompt)));
+    if (exact !== undefined) return exact;
+    if (guestCourse() && ready() && /弹性|中点|elasticity|elastic demand|midpoint/i.test(text)) return 3;
+    return undefined;
   }
 
   function send(text) {
     const index = findQuestion(text);
     if (index === undefined) {
-      notice = ready() ? say("请选择上方或对话中的一个示例问题再发送。", "Choose one of the prepared questions from the conversation or shortcuts.")
+      notice = ready() ? say("这份示例讲义可以演示弹性与中点法的讲解。请在输入框提问，例如：需求价格弹性怎么计算？", "This sample provides prepared explanations of elasticity and the midpoint method. Try typing: How do I calculate price elasticity of demand?")
         : say("先上传示例讲义，再发出第一个问题。", "Upload the sample lecture notes before sending your first question.");
       root.querySelector(".sample-status").textContent = notice;
       return;
@@ -450,7 +475,8 @@
     if (state.courseId === course.id) {
       render();
       root.querySelector("#courseUploadStatus").setAttribute("tabindex", "-1");
-      root.querySelector("#courseUploadStatus").focus({ preventScroll: true });
+      const focus = suggestQuestion() && !mobile.matches ? root.querySelector("#chatInput") : root.querySelector("#courseUploadStatus");
+      focus.focus({ preventScroll: true });
     }
   }
 
@@ -459,6 +485,7 @@
     if (!button) return;
     const { sampleAction: id, value } = button.dataset;
     if (id === "prompt") return fill(Number(value));
+    if (id === "accept-suggestion" && suggestQuestion()) return fill(3);
     if (id === "add-course") { drawAddCourse(); addCourse.showModal(); syncGuide(); return; }
     if (id === "cancel-add") { addCourse.close(); syncGuide(); return; }
     if (id === "select-sample") return stageFile(sampleFile, '[data-sample-action="upload-doc"]');
@@ -561,10 +588,30 @@
       learning.querySelector(".learning-body").scrollTop = 0;
     }
   });
+  document.addEventListener("compositionstart", (event) => {
+    if (event.target.id !== "chatInput") return;
+    composing = true;
+    syncSuggestion();
+  });
+  document.addEventListener("compositionend", (event) => {
+    if (event.target.id !== "chatInput") return;
+    composing = false;
+    activeChat().draft = event.target.value;
+    save();
+    syncGuide();
+  });
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" && !event.shiftKey && !event.isComposing && event.target.id === "chatInput") {
-      event.preventDefault();
-      event.target.form.requestSubmit();
+    if (event.target.id === "chatInput") {
+      if (composing || event.isComposing || event.keyCode === 229) return;
+      const plainKey = !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey;
+      if (plainKey && (event.key === "Enter" || event.key === " ")) {
+        if (event.repeat) { event.preventDefault(); return; }
+        if (suggestQuestion()) { event.preventDefault(); fill(3); return; }
+      }
+      if (event.key === "Enter" && plainKey) {
+        event.preventDefault();
+        event.target.form.requestSubmit();
+      }
     }
     if (!panelOpen || addCourse.open || source.open || learning.open) return;
     if (event.key === "Escape") { panelOpen = false; syncPanel(true); }

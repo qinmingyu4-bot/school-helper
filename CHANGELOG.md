@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.9.2 — 2026-11-19
+
+- PATCH from 1.9.1: refine the existing guest course's question-entry guidance.
+- Guide visitors to the question composer and accept rephrased sample questions
+  about elasticity and the midpoint method.
+- Show a grey example in the first empty composer. Enter or Space fills an
+  editable draft; a separate Enter press or Send submits it. Support manual
+  input, Chinese composition, Shift+Enter and a touch-friendly text action.
+- Keep the composer compact, highlight its rounded boundary and align the
+  guest language-selector chevron.
+
+
 ## 1.9.1 — 2026-11-19
 
 - PATCH from verified production 1.9.0 (`b809643834d0201c797a2d87e4b0daf241cb8fe0`): fix navigation and refine existing tool controls; no new product capability or data migration.

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add an always-available “Add course” action to the course notes picker. Save current notes before opening Study’s existing course creation dialog; newly created courses share the same files and upload workflow. Support empty course lists, keyboard access and Chinese/English labels.
+
 ## 1.11.1 — 2026-11-20
 
 - PATCH from 1.11.0: fix false login redirects when session verification encounters network failures, rate limits, server errors or malformed responses. Only a confirmed 401 opens login; other failures preserve the URL and show a bilingual refresh prompt.

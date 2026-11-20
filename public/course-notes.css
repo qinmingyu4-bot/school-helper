@@ -27,6 +27,7 @@
 .course-notes .note-picker-menu button{display:flex;align-items:center;justify-content:space-between;gap:20px;width:100%;min-height:38px;padding:8px 10px;font-size:12px;font-weight:400;color:var(--ink);text-align:left;white-space:normal}
 .course-notes .note-picker-menu button[aria-selected=true]{color:var(--green)}
 .note-picker-menu p{margin:8px 10px;font-size:12px;color:var(--muted)}
+.course-notes .note-picker-menu .note-add-course{margin-top:4px;border-top:1px solid var(--line);border-radius:0;color:var(--green)}
 .note-picker-check{flex-shrink:0;font-size:12px;color:var(--green)}
 .course-notes [role=status]{min-height:18px;margin:0 0 20px;color:var(--muted);font-size:11px;line-height:18px}
 .note-toolbar,.note-navigation{display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px;padding:8px 0;border-bottom:1px solid var(--line)}

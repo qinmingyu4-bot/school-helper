@@ -228,6 +228,7 @@
         if(action==='sticky-delete' && sticky?.type==='sticky') {remember();items.splice(selectedSticky,1);selectedSticky=-1;changed();}
         if (action === 'pdf') await exportFullPdf();
         if (action === 'save') await save();
+        if (action === 'add-course') { closePickers(); await save(); if(epoch===operationEpoch)await ctx.addStudyCourse(); }
         if (action === 'study' && course) { await save(); await ctx.openStudyCourse(course); }
         if (action === 'focus') { host.classList.toggle('note-focus'); button.textContent=host.classList.contains('note-focus')?t('退出专注','Exit focus'):t('专注书写','Focus'); }
         if (action === 'undo' && undo.length) { selectedSticky=-1; redo.push(JSON.stringify(items)); items=JSON.parse(undo.pop()); changed(); }
@@ -379,7 +380,7 @@
     host.addEventListener('keydown',e=> { if (!(e.ctrlKey||e.metaKey) || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return; if(e.key.toLowerCase()==='z') {e.preventDefault();$(`[data-note=${e.shiftKey?'redo':'undo'}]`).click();} if(e.key.toLowerCase()==='s'){e.preventDefault();$('[data-note=save]').click();} });
   }
   function picker(key, label, placeholder) {
-    return `<div class="note-field" data-picker="${key}"><span class="note-field-label">${label}</span><button type="button" class="note-picker-trigger" data-picker-toggle="${key}" aria-haspopup="listbox" aria-expanded="false" aria-controls="note-${key}-menu" aria-label="${label}"><span>${placeholder}</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m5 6 3 3 3-3"/></svg></button><select data-${key} hidden tabindex="-1" aria-hidden="true"><option value="">${placeholder}</option></select><div id="note-${key}-menu" class="note-picker-menu" role="listbox" aria-label="${label}" hidden></div></div>`;
+    return `<div class="note-field" data-picker="${key}"><span class="note-field-label">${label}</span><button type="button" class="note-picker-trigger" data-picker-toggle="${key}" aria-haspopup="${key==='course'?'dialog':'listbox'}" aria-expanded="false" aria-controls="note-${key}-menu" aria-label="${label}"><span>${placeholder}</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m5 6 3 3 3-3"/></svg></button><select data-${key} hidden tabindex="-1" aria-hidden="true"><option value="">${placeholder}</option></select><div id="note-${key}-menu" class="note-picker-menu" role="${key==='course'?'dialog':'listbox'}" aria-label="${label}" hidden></div></div>`;
   }
   function closePickers() {
     if (!host) return;
@@ -394,7 +395,12 @@
       trigger.querySelector('span').textContent=select.selectedOptions[0]?.textContent || select.options[0]?.textContent || '';
       trigger.disabled=busy || key==='document' && select.options.length<2;
       trigger.setAttribute('aria-label',`${key==='course'?t('课程','Course'):t('课件','Material')}: ${trigger.textContent}`);
-      if (menu.hidden) menu.innerHTML=[...select.options].filter(option=>option.value).map(option=>`<button type="button" role="option" tabindex="-1" data-picker-option="${key}" data-value="${esc(option.value)}" aria-selected="${option.selected}"><span>${esc(option.textContent)}</span><span class="note-picker-check" aria-hidden="true">${option.selected?'✓':''}</span></button>`).join('') || `<p>${t('暂无可选项目','Nothing to select yet')}</p>`;
+      if (menu.hidden) {
+        const options=[...select.options].filter(option=>option.value).map(option=>`<button type="button" role="option" tabindex="-1" data-picker-option="${key}" data-value="${esc(option.value)}" aria-selected="${option.selected}"><span>${esc(option.textContent)}</span><span class="note-picker-check" aria-hidden="true">${option.selected?'✓':''}</span></button>`).join('') || `<p>${t('暂无可选项目','Nothing to select yet')}</p>`;
+        menu.innerHTML=key==='course'
+          ? `<div role="listbox" aria-label="${t('课程','Course')}">${options}</div><button type="button" class="note-add-course" data-note="add-course"><span>${t('添加课程','Add course')}</span><span aria-hidden="true">＋</span></button>`
+          : options;
+      }
     }
   }
   function openPicker(key, focus=false) {

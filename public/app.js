@@ -2347,6 +2347,7 @@
     const courseId = [preferredCourse, state.activeCourseId, state.courses[0]?.id].find((id) => state.courses.some((course) => course.id === id)) || "";
     return { userId, tool, courseId, courses: state.courses, api, readFiles, esc, render,
       openStudyCourse: (id) => selectConversation(id, "default"),
+      addStudyCourse: () => addStudyCourse({ fromNotes: true }),
       selectCourse: (id) => {
         if (state.user?.id !== userId || !state.courses.some((course) => course.id === id)) return;
         cheatsheetCourses.set(userId, id);
@@ -2490,6 +2491,24 @@
       if (courseFolderLoads.get(courseId) === request) courseFolderLoads.delete(courseId);
       if (refresh) updateCourseFolder(courseId);
     }
+  }
+
+  async function addStudyCourse({ fromNotes = false } = {}) {
+    const userId = state.user?.id;
+    if (fromNotes) {
+      const generation = pageLoadGeneration + 1;
+      await loadPage("study");
+      // Do not open a late dialog after the user navigates away or changes accounts.
+      if (pageLoadGeneration !== generation || state.page !== "study" || state.user?.id !== userId) return;
+      mobileNavigation.closeStudyPanel();
+    }
+    const data = await studyCourseDialog({
+      title: ui.text("新增课程"), description: ui.text("创建课程后，就可以添加资料并开始对话。"),
+      submitLabel: ui.text("创建课程"), askName: true,
+      submit: (name) => api("/api/courses", { method: "POST", body: { name, term: "Current term" } })
+    });
+    if (!data || state.user?.id !== userId) return;
+    await selectConversation(data.course.id, "default");
   }
 
   async function selectConversation(courseId, conversationId) {
@@ -3106,13 +3125,7 @@
         return;
       }
       if (action === "add-course") {
-        const data = await studyCourseDialog({
-          title: ui.text("新增课程"), description: ui.text("创建课程后，就可以添加资料并开始对话。"),
-          submitLabel: ui.text("创建课程"), askName: true,
-          submit: (name) => api("/api/courses", { method: "POST", body: { name, term: "Current term" } })
-        });
-        if (!data) return;
-        await selectConversation(data.course.id, "default");
+        await addStudyCourse();
         return;
       }
       if (action === "select-course") {

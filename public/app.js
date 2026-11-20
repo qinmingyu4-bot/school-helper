@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.12.4";
+  const VERSION = "1.12.5";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -2998,7 +2998,7 @@
   async function handleAction(button) {
     const action = button.dataset.action;
     if (!action || button.disabled) return;
-    const authSubmission = action === "register" || action === "login";
+    const authSubmission = action === "register" || action === "login" || action === "logout";
     if (authSubmission) button.disabled = true;
     try {
       if (action === "daily-back") {
@@ -3033,11 +3033,13 @@
         return;
       }
       if (action === "login") {
+        const entryUrl = new URL(location.href);
         state.toast = "";
         const data = await api("/api/auth/login", { method: "POST", body: { email: $("authEmail")?.value || "", password: $("authPassword")?.value || "" } });
         state.user = data.user;
         state.mode = isAdmin() && feedbackView.hasLink() ? "admin" : "student";
-        await loadPage(new URL(location.href).searchParams.get("page") || "study");
+        await loadPage(entryUrl.searchParams.get("page") || "study");
+        if (entryUrl.searchParams.has("scheduleItem") || entryUrl.searchParams.has("classmateChat")) await openPushLink(entryUrl);
         return;
       }
       if (action === "register") {
@@ -3098,6 +3100,10 @@
       if (action === "google-login") {
         const params = new URLSearchParams({ mode: button.dataset.authMode || "login" });
         if (button.dataset.authMode === "register") params.set("inviteCode", $("authInvite")?.value || "");
+        const entry = new URL(location.href);
+        for (const key of ["page", "scheduleItem", "classmateChat"]) {
+          if (entry.searchParams.has(key)) params.set(key, entry.searchParams.get(key));
+        }
         location.assign(`/api/auth/google/start?${params}`);
         return;
       }
@@ -3154,6 +3160,8 @@
         appearanceController.open(); document.querySelector('[data-settings-section="reminders"]')?.click(); return;
       }
       if (action === "logout") {
+        try { await api("/api/auth/logout", { method: "POST" }); }
+        catch { throw new Error(ui.text("退出登录未完成，请检查网络后重试。当前页面和草稿已保留。")); }
         learningLoop.reset();
         classmateNotifications.stop();
         dmAttachments.reset();
@@ -3171,7 +3179,6 @@
         for (const reply of studyReplies.values()) reply.controller.abort();
         studyTasks?.clear();
         studyHistoryCache.clear();
-        await api("/api/auth/logout", { method: "POST" }).catch(() => null);
         localStorage.removeItem("studybridge.page");
         location.replace("/login");
         return;
@@ -3847,7 +3854,11 @@
         return;
       }
     } catch (error) {
-      if (!state.user && root.querySelector(".auth-feedback")) {
+      if (action === "logout") {
+        setToast(error.message);
+        root.querySelector(".toast")?.remove();
+        root.insertAdjacentHTML("beforeend", `<div class="toast" role="status" aria-live="polite">${esc(state.toast)}</div>`);
+      } else if (!state.user && root.querySelector(".auth-feedback")) {
         authMessage(action === "login" && error.status === 429 && error.retryAfter > 0
           ? ui.message`登录尝试过于频繁，请在 ${Math.ceil(error.retryAfter)} 秒后重试。`
           : ui.text(error.message));

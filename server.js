@@ -1922,14 +1922,14 @@ async function linkGoogleIdentity(user, googleProfile) {
 }
 
 async function signInWithGoogle(req, res, url) {
-  const redirect = (params, session) => sendRedirect(res, authRedirect(req, params), {
+  let statePayload;
+  const redirect = (params, session) => sendRedirect(res, authRedirect(req, { ...statePayload?.target, ...params }), {
     "set-cookie": session ? [clearGoogleOAuthCookie(), sessionCookie(session)] : clearGoogleOAuthCookie()
   });
   if (!googleAuthEnabled()) {
     return redirect({ authError: "Google login is not configured yet." });
   }
 
-  let statePayload;
   try {
     statePayload = verifyGoogleOAuth(url.searchParams.get("state"), req.headers.cookie);
   } catch (error) {
@@ -2016,6 +2016,10 @@ async function signInWithGoogle(req, res, url) {
 const productHelp = require("./lib/product-help").createProductHelp({
   generate: process.env.OPENAI_API_KEY ? (messages) => callAiWithChatCompletions(messages, "gpt-6-luna", null,
     { signal: AbortSignal.timeout(20000), store: false, maxCompletionTokens: 512, platformFunded: true }) : null
+});
+
+const serviceHealth = require("./lib/service-health").createServiceHealth({
+  db, workers: () => ({ push: schedulePush.health(), study: studyJobs.health(), mailbox: mailbox.health() })
 });
 
 async function routeApi(req, res) {
@@ -2200,7 +2204,8 @@ async function routeApi(req, res) {
   }
 
   if (url.pathname === "/api/health") {
-    return sendJson(res, 200, { ok: true, db: process.env.STUDYBRIDGE_DB || "local", schedulePush: schedulePush.health() });
+    const health = await serviceHealth();
+    return sendJson(res, health.ok ? 200 : 503, { ...health, schedulePush: schedulePush.health() });
   }
 
   if (url.pathname === "/api/auth/config" && method === "GET") {
@@ -2218,7 +2223,7 @@ async function routeApi(req, res) {
     const mode = url.searchParams.get("mode") === "register" ? "register" : "login";
     const inviteCode = normalizeInviteCode(url.searchParams.get("inviteCode"));
     const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-    const oauth = startGoogleOAuth({ mode, inviteCode });
+    const oauth = startGoogleOAuth({ mode, inviteCode, target: Object.fromEntries(url.searchParams) });
     authUrl.searchParams.set("client_id", googleClientId);
     authUrl.searchParams.set("redirect_uri", googleRedirectUri(req));
     authUrl.searchParams.set("response_type", "code");

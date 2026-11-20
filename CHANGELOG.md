@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.12.5 — 2026-11-20
+
+- PATCH from verified production 1.12.4 (`628321680af4b5b9677ecda0b80bfe405e9f50f2`): repair sign-out and notification continuity and improve existing health diagnostics. Preserve default-chat/history fixes; no new product features, dependencies or data migration.
+
+- Confirm sign-out on the server before clearing the workspace. Failed sign-out keeps drafts and shows a localized retry message instead of implying the session ended.
+- Resume the exact schedule or classmate notification after password login and Google OAuth. Only signed, allowlisted internal notification identifiers pass through OAuth.
+- Extend `/api/health` with bounded, cached database readiness and background-loop failure/staleness reporting. Return 503 for failed checks; retain existing deployment fields. Expose push-provider acceptance/failure timestamps without claiming device receipt. See [health monitoring](docs/health-monitoring.md).
+
 ## 1.12.4 — 2026-11-20
 
 - PATCH from verified production 1.12.3 (`415e033cb7da52f20d6f5bdceb4a4ba4ff576ab0`): show the implicit default chat immediately for unvisited courses and refresh the folder before history and schedule finish loading.

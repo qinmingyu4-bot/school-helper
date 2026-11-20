@@ -1,8 +1,8 @@
 {
-  "previousCommit": "415e033cb7da52f20d6f5bdceb4a4ba4ff576ab0",
-  "previousVersion": "1.12.3",
-  "version": "1.12.4",
+  "previousCommit": "628321680af4b5b9677ecda0b80bfe405e9f50f2",
+  "previousVersion": "1.12.4",
+  "version": "1.12.5",
   "level": "patch",
-  "reason": "Fix delayed default chat visibility and misleading empty history during existing course navigation.",
+  "reason": "Fix existing sign-out failure handling and post-login notification destinations; strengthen existing service health diagnostics while retaining current default-chat and history behavior.",
   "features": []
 }

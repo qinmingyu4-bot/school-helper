@@ -1,5 +1,12 @@
 # StudyBridge Version Archive
 
+## 1.12.5 — 2026-11-20
+
+- PATCH from verified production 1.12.4 (`628321680af4b5b9677ecda0b80bfe405e9f50f2`): repair existing sign-out and post-login notification workflows and strengthen existing health diagnostics.
+- Preserve current default-chat/history loading, account data and private configuration. No new product features, dependencies or migrations.
+- Validate merged full regressions, readiness faults, source/assets and release policy; verify exact deployed assets and HTTP health after the authorized AWS deployment.
+- Rollback code target: `628321680af4b5b9677ecda0b80bfe405e9f50f2`; retain all user data.
+
 ## 1.12.4 — 2026-11-20
 
 - PATCH from verified production 1.12.3 (`415e033cb7da52f20d6f5bdceb4a4ba4ff576ab0`): show the implicit default chat immediately for unvisited courses and refresh the folder before history and schedule finish loading.

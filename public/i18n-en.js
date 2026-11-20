@@ -5,6 +5,7 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+退出登录未完成，请检查网络后重试。当前页面和草稿已保留。|Sign-out did not complete. Check your connection and try again. Your current page and drafts have been kept.
 暂时无法确认登录状态，请检查网络后刷新重试。|Unable to verify your sign-in status. Check your connection and refresh to try again.
 对话列表暂时无法加载。|Conversations could not be loaded.
 正在加载对话…|Loading conversations…

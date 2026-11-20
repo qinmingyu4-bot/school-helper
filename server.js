@@ -1397,8 +1397,8 @@ async function callAiWithResponses(messages, model, toolType = "web_search", str
   return extractResponsesText(payload) || "AI \u6ca1\u6709\u8fd4\u56de\u5185\u5bb9\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5\u3002";
 }
 
-async function callAiWithChatCompletions(messages, model, stream = null, { signal, store } = {}) {
-  const response = await aiUsage.fetch("https://api.openai.com/v1/chat/completions", {
+async function callAiWithChatCompletions(messages, model, stream = null, { signal, store, maxCompletionTokens, platformFunded = false } = {}) {
+  const response = await (platformFunded ? fetch : aiUsage.fetch)("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -1408,6 +1408,7 @@ async function callAiWithChatCompletions(messages, model, stream = null, { signa
     body: JSON.stringify({
       model,
       ...(store === false ? { store: false } : {}),
+      ...(maxCompletionTokens ? { max_completion_tokens: maxCompletionTokens } : {}),
       ...(stream ? { stream: true } : {}),
       messages: messages.map((item) => ({
         role: item.role,
@@ -2011,6 +2012,12 @@ async function signInWithGoogle(req, res, url) {
   }
 }
 
+// Product help stays on Luna independently of the study-chat model configuration.
+const productHelp = require("./lib/product-help").createProductHelp({
+  generate: process.env.OPENAI_API_KEY ? (messages) => callAiWithChatCompletions(messages, "gpt-6-luna", null,
+    { signal: AbortSignal.timeout(20000), store: false, maxCompletionTokens: 512, platformFunded: true }) : null
+});
+
 async function routeApi(req, res) {
   res.setHeader("Cache-Control", "private, no-store");
   const gradeUrl = new URL(req.url, "http://localhost");
@@ -2053,6 +2060,16 @@ async function routeApi(req, res) {
 
   const url = new URL(req.url, "http://localhost");
   const method = req.method || "GET";
+
+  if (url.pathname === "/api/product-help" && method === "POST") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    if (!/^application\/json(?:;|$)/i.test(req.headers["content-type"] || "") || req.headers["sec-fetch-site"] === "cross-site") return sendError(res, 403, "Please use StudyBridge / 请在本站使用帮助。");
+    const body = await readJson(req, 32768);
+    try {
+      return sendJson(res, 200, await productHelp(user.id, body), { "cache-control": "private, no-store" });
+    } catch (error) { return sendError(res, error.status || 503, error.message); }
+  }
 
   if (["/api/billing/webhook", "/api/billing/alipay/webhook"].includes(url.pathname) && method === "POST") {
     const chunks = []; let size = 0;

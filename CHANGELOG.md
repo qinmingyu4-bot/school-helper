@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.11.0 — 2026-11-20
+
+- MINOR from production 1.10.0: add platform-funded product help in Study using fixed `gpt-6-luna`.
+- Open a compact AI button into a right-side help panel; preserve Chinese/English, account themes, mobile layout and Study drafts.
+- Route learning requests back to Study; return only reviewed product guidance with bounded requests and per-account rate limits.
+- Explicitly bypass personal AI allowance metering for product help only, including accounts with exhausted allowances.
+- No data migration; preserve existing production features and private configuration.
+
+
+
+
 ## 1.10.0 — 2026-11-20
 
 - MINOR from verified production 1.9.5 (`2c56b6516c21b981424698a00480065ca5eedc2f`): add sticky notes and complete annotated PDF export; preserve the latest landscape tablet and account appearance fixes.

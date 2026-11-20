@@ -1,11 +1,10 @@
 {
-  "previousCommit": "2c56b6516c21b981424698a00480065ca5eedc2f",
-  "previousVersion": "1.9.5",
-  "version": "1.10.0",
+  "previousCommit": "da34646b9daa5146b5ff9f734d9198bb634609a0",
+  "previousVersion": "1.10.0",
+  "version": "1.11.0",
   "level": "minor",
-  "reason": "Add movable sticky notes with attached handwriting and complete annotated PDF export, plus note-tool feedback and reliable course-folder expansion. Preserve latest tablet layout and appearance fixes. Retain the concurrent Grades opening fix.",
+  "reason": "Add a platform-funded Luna product-help conversation panel without consuming personal AI allowance; no data migration.",
   "features": [
-    "Course PDF sticky notes with typing, attached ink, move, resize, duplicate and background colors",
-    "Complete annotated PDF export including all pages and local drafts"
+    "Platform-funded product help panel in Study"
   ]
 }

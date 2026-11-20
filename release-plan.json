@@ -1,12 +1,8 @@
 {
-  "previousCommit": "f59ccfb2e2c204b876061554be1d89e6fafbbfa1",
-  "previousVersion": "1.13.0",
-  "version": "1.14.0",
-  "level": "minor",
-  "reason": "Add persistent platform/account cost protection, developer-only failure attribution and archived official history; replace automatic calendar discovery with demand-driven reuse while retaining automatic reminders.",
-  "features": [
-    "Durable gross-spend budgets, concurrent-call deduplication and failure cooldowns",
-    "Developer cost breakdown including failed calls, unallocated differences and quiet operational diagnostics",
-    "Persistent official daily cost history beyond the provider lookback window"
-  ]
+  "previousCommit": "14a317a55b30560527947baf478f9f070e9ae4b7",
+  "previousVersion": "1.14.0",
+  "version": "1.14.1",
+  "level": "patch",
+  "reason": "Reduce startup latency of existing Office editors through public-resource preloading, concurrent reads, account-scoped metadata caching and content-addressed static assets; preserve editing and recovery behavior.",
+  "features": []
 }

@@ -26,9 +26,30 @@ The original performance branch passed all 600 Linux/Nginx regressions before in
   File content and representations are an in-memory process snapshot, keyed by
   canonical paths rather than arbitrary query parameters. Restart after public-file
   edits. No build dependency, checked-in bundle, database migration or private cache.
-- The three boot requests start concurrently. Office stays on demand. Chinese
+- The three boot requests start concurrently. Office execution stays on demand. Chinese
   font loading is driven by text actually rendered rather than an eager preload;
   `font-display: swap` continues to allow fallback text during download.
+
+## Office first-open optimization (1.14.1)
+
+- Entering the tools page adds a low-priority script preload for the shared Office
+  bundle. This downloads public code only; execution and private project reads
+  wait for an editor to open. Data saver and reported 2G connections skip preload.
+- The first editor starts its project-list request while its script is downloading.
+  Docs, Sheets and Slides share the in-flight result and a 30-second memory cache
+  scoped to the current account. Failed reads are retryable; successful saves and
+  account changes invalidate the cache. Already initialized workspaces do not
+  fetch the list again just because the page renders.
+- Local draft lookup starts alongside the project list. Drafts still take priority
+  over cloud content, and version conflict checks still finish before editing.
+  Cloud content is requested only when no valid local draft is recovered.
+- `build:office` writes the bundle's SHA-256 prefix into the loader URL. Existing
+  static serving grants that verified URL a year of immutable caching; changed
+  bytes change the URL. `npm run check` rejects mismatched bundle/loader pairs.
+- Startup regressions cover overlapping requests, cache expiry/invalidation,
+  account isolation, failed-load retry, rapid tab changes and draft conflicts.
+  Static HTTP tests verify immutable caching and stale-key revalidation. No
+  specific production speedup is promised; timings depend on network and device.
 
 ## Measured payload
 

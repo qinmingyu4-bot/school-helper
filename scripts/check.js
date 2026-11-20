@@ -25,6 +25,13 @@ for (const file of files) {
 for (const name of ["office-editor.min.js", "office-editor-LICENSE.txt"]) {
   if (!fs.existsSync(path.join(root, "public/vendor", name))) throw new Error(`Missing Office editor asset: ${name}; run npm run build:office.`);
 }
+const officeHash = require("node:crypto").createHash("sha256")
+  .update(fs.readFileSync(path.join(root, "public/vendor/office-editor.min.js")))
+  .digest("hex").slice(0, 24);
+if (!fs.readFileSync(path.join(root, "public/office-loader.js"), "utf8")
+  .includes(`/vendor/office-editor.min.js?asset=${officeHash}`)) {
+  throw new Error("Office editor cache key is stale; run npm run build:office.");
+}
 for (const entry of ["index.html", "landing.html", "sample-course.html"]) {
   const html = fs.readFileSync(path.join(root, "public", entry), "utf8");
   for (const match of html.matchAll(/(?:src|href)="(\/[^"?#]*)(?:\?[^"#]*)?"/g)) {

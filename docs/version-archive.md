@@ -1,5 +1,12 @@
 # StudyBridge Version Archive
 
+## 1.14.1 — 2026-11-20
+
+- PATCH from verified AWS production 1.14.0 (`14a317a55b30560527947baf478f9f070e9ae4b7`): reduce startup waits in existing Docs, Sheets and Slides with low-priority public preloading, overlapping requests, short-lived account-scoped metadata reuse and immutable editor caching.
+- Preserve draft priority, version conflict checks, successful-save invalidation, account isolation and data-saver behavior. No new features, dependencies, private data migration or quota changes.
+- The owner authorized deployment on 2026-11-20. Validate full regressions, source/assets and release policy, then verify deployment status, exact assets, immutable caching and service health.
+- Rollback code target: `14a317a55b30560527947baf478f9f070e9ae4b7`; retain all user data.
+
 ## 1.14.0 — 2026-11-20
 
 - MINOR from verified AWS production 1.13.0 (`f59ccfb2e2c204b876061554be1d89e6fafbbfa1`): add durable platform/account gross-spend controls, developer-only failure attribution and persistent official cost history.

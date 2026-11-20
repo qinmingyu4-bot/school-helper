@@ -127,8 +127,9 @@ class Workspace {
     this.cell = "A1";
   }
   async init() {
+    const recoveryPromise = backup("get", this.recoveryKey()).catch(() => null);
     try {
-      const result = await this.ctx.api("/api/office");
+      const result = await (this.ctx.officeProjects?.() || this.ctx.api("/api/office"));
       this.projects = (result.projects || []).filter(
         (p) => p.kind === this.kind,
       );
@@ -137,9 +138,7 @@ class Workspace {
       );
       const selected =
         this.projects.find((p) => p.id === last) || this.projects[0];
-      const recovery = await backup("get", this.recoveryKey()).catch(
-        () => null,
-      );
+      const recovery = await recoveryPromise;
       if (recovery && recovery.kind === this.kind) {
         recovery.model = Model.normalize(this.kind, recovery.model);
         this.current = recovery;
@@ -157,9 +156,7 @@ class Workspace {
     } catch (error) {
       this.newProject();
       this.status = "暂时无法读取云端作品：" + error.message;
-      const recovery = await backup("get", this.recoveryKey()).catch(
-        () => null,
-      );
+      const recovery = await recoveryPromise;
       if (recovery) {
         try {
           recovery.model = Model.normalize(this.kind, recovery.model);
@@ -344,6 +341,7 @@ class Workspace {
             model,
           },
         });
+        this.ctx.invalidateOfficeProjects?.();
         this.backupError = "";
         current.version = project.version;
         current.dirty = (current.edits || 0) !== edits;
@@ -1734,6 +1732,9 @@ class Workspace {
     this.changed();
     this.draw();
   }
+}
+export function hasWorkspace(ctx) {
+  return sessions.has(ctx.userId + ":" + ctx.tool);
 }
 export function attach(host, ctx) {
   if (mounted?.host === host) return;

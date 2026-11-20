@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.12.8";
+  const VERSION = "1.12.9";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -2620,6 +2620,18 @@
     }
   }
 
+  function prefetchStudyChat(courseId, conversationId) {
+    const suffix = `?conversationId=${encodeURIComponent(conversationId)}`;
+    // Settle speculative reads immediately: a deleted saved ID may be replaced
+    // by the directory response, and its failure must never become unhandled.
+    const read = path => api(path).then(data => ({ data }), error => ({ error }));
+    return {
+      courseId, conversationId,
+      history: read(`/api/courses/${courseId}/messages${suffix}`),
+      tasks: studyTasks ? api(`/api/courses/${courseId}/study-jobs${suffix}`).catch(error => ({ error })) : Promise.resolve({ jobs: [] })
+    };
+  }
+
   async function loadStudy(isCurrent = () => true, reuseCourses = false) {
     if (!reuseCourses || !state.courses.some(course => course.id === state.activeCourseId)) {
       const coursesData = await api("/api/courses");
@@ -2639,7 +2651,8 @@
       state.conversationCourseId = state.activeCourseId;
     }
     if (isGeneralChat()) state.activeConversationId = "default";
-    else {
+    let prefetched = prefetchStudyChat(state.activeCourseId, state.activeConversationId);
+    if (!isGeneralChat()) {
       const courseId = state.activeCourseId;
       let chats = await refreshCourseConversations(courseId, isCurrent);
       if (!isCurrent() || state.activeCourseId !== courseId) return;
@@ -2670,15 +2683,18 @@
       void loadScheduleItems(false, false, isCurrent).then(() => {
         if (isCurrent()) updateStudySchedule();
       }).catch(() => {});
-      const messagesData = await api(`/api/courses/${courseId}/messages?conversationId=${encodeURIComponent(conversationId)}`);
+      if (prefetched.courseId !== courseId || prefetched.conversationId !== conversationId) prefetched = prefetchStudyChat(courseId, conversationId);
+      const historyResult = await prefetched.history;
       if (!isCurrent() || courseId !== state.activeCourseId || conversationId !== state.activeConversationId) return;
+      if (historyResult.error) throw historyResult.error;
+      const messagesData = historyResult.data;
       if (!Array.isArray(messagesData.messages)) throw new Error(ui.text("聊天记录暂时无法刷新，已显示的记录会保留。"));
       state.messages = mergeStudyReply(messagesData.messages, activeStudyReply() || replyAtLoad);
       state.studyHistoryKey = studyReplyKey();
       state.studyHistoryLoading = false;
       rememberStudyHistory();
       render();
-      if (studyTasks) { await studyTasks.load({ userId: state.user.id, courseId, conversationId }); if (!isCurrent() || courseId !== state.activeCourseId || conversationId !== state.activeConversationId) return; state.messages = studyTasks.mergeMessages(state.messages); }
+      if (studyTasks) { await studyTasks.load({ userId: state.user.id, courseId, conversationId }, prefetched.tasks); if (!isCurrent() || courseId !== state.activeCourseId || conversationId !== state.activeConversationId) return; state.messages = studyTasks.mergeMessages(state.messages); }
     } else {
       state.docs = [];
       state.messages = [];

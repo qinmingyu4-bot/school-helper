@@ -1,8 +1,8 @@
 {
-  "previousCommit": "2d490fda72651809c8a79d398631add28bb53c45",
-  "previousVersion": "1.12.7",
-  "version": "1.12.8",
+  "previousCommit": "89b1af32f060641348053e7831c41005c4dc794c",
+  "previousVersion": "1.12.8",
+  "version": "1.12.9",
   "level": "patch",
-  "reason": "Correct allowance settlement for abandoned or failed requests and refund precisely linked interrupted creative jobs, while retaining current course navigation and input behavior.",
+  "reason": "Reduce existing course-chat load latency by fetching its conversation list, history and background-task state concurrently while retaining scoped cache and deleted-chat fallback.",
   "features": []
 }

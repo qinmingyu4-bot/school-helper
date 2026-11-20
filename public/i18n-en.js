@@ -5,6 +5,12 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+总 AI 成本|Total AI cost
+总 AI 成本（已记录）|Total AI cost (recorded)
+用户请求与平台后台合计，不含待核对费用|User and platform costs combined; excludes unresolved costs
+近 90 天|Last 90 days
+近 180 天|Last 180 days
+近 365 天|Last 365 days
 已记录 AI 成本|Recorded AI cost
 按返回用量计价，非官方账单|Calculated from returned usage, not the provider invoice
 用户请求|User requests

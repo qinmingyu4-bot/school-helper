@@ -53,6 +53,14 @@
     </details>`;
   }
 
+  function costOverview(data) {
+    const c = data.aiCosts;
+    return coverage(data) + metricRows([
+      ["总 AI 成本（已记录）", money(c.calculatedUsd), ui.text("用户请求与平台后台合计，不含待核对费用")],
+      ["用户请求成本", money(c.userUsd)], ["平台后台成本", money(c.platformUsd)]
+    ]) + costs(data);
+  }
+
   function coverage(data) {
     const day = (value) => date(value, { dateStyle: "medium", timeZone: "UTC" });
     return `<p class="admin-usage-note">${esc(ui.message`统计区间：${day(data.from)} 至 ${day(data.through)}（UTC）。数据从 ${date(data.since)} 开始记录。`)}</p>`;
@@ -76,9 +84,8 @@
       ["首次学习完成率", ...rate(data.firstStudy)],
       ["次日回访率", ...rate(data.retention.day1)],
       ["第七日回访率", ...rate(data.retention.day7)],
-      ["操作失败率", percent(data.failed, data.failed + data.completed), `${number(data.failed)} / ${number(data.failed + data.completed)}`],
-      costRow(data)
-    ]) + costs(data) + `<div class="admin-usage-columns"><div>${chart(data)}</div><div>${featureList(data)}</div></div>
+      ["操作失败率", percent(data.failed, data.failed + data.completed), `${number(data.failed)} / ${number(data.failed + data.completed)}`]
+    ]) + `<div class="admin-usage-columns"><div>${chart(data)}</div><div>${featureList(data)}</div></div>
       <p class="admin-usage-note">${label("活跃按前台交互或功能操作去重。回访仅统计目标日期已经结束的新用户。首次学习指收到课程回答或提交练习。AI 成本为估算。")}</p>`;
   }
 
@@ -109,9 +116,9 @@
         `<p class="muted">${label("此时段暂无失败记录。")}</p>`}</div>`;
   }
 
-  function controls(days) {
+  function controls(days, costsOnly = false) {
     return `<div class="admin-usage-controls" role="group" aria-label="${label("统计时段")}">
-      ${[7, 30].map((value) => `<button type="button" data-admin-usage-days="${value}" aria-pressed="${days === value}">${label(value === 7 ? "近 7 天" : "近 30 天")}</button>`).join("")}
+      ${(costsOnly ? [7, 30, 90, 180, 365, "all"] : [7, 30]).map((value) => `<button type="button" data-admin-usage-days="${value}" aria-pressed="${days === value}">${label(({ 7: "近 7 天", 30: "近 30 天", 90: "近 90 天", 180: "近 180 天", 365: "近 365 天", all: "全部" })[value])}</button>`).join("")}
       <button type="button" data-admin-usage-refresh>${label("刷新")}</button>
     </div>`;
   }
@@ -120,24 +127,24 @@
   const toggleLabel = (expanded) => ui.text(expanded ? "收起使用摘要" : "展开使用摘要");
 
   function create({ api, getAdmin, root }) {
-    let actor, panel, detail, period = 7;
+    let actor, panel, costPanel, detail, period = 7, costPeriod = 7;
     const view = (userId) => ({ days: period, userId, pending: false, request: 0 });
     function active() { return Boolean(actor && actor === getAdmin()); }
 
     function render(target) {
-      const element = target.userId ? document.getElementById(summaryId(target.userId)) : root.querySelector("[data-admin-usage]");
+      const element = target.userId ? document.getElementById(summaryId(target.userId)) : root.querySelector(target.costsOnly ? "[data-admin-costs]" : "[data-admin-usage]");
       if (!element?.isConnected) return;
       const control = element.querySelector("[data-admin-usage-controls]");
       const focused = document.activeElement?.closest(".admin-usage-controls");
       const focusSelector = focused && focused === control.firstElementChild
         ? document.activeElement.matches("[data-admin-usage-refresh]") ? "[data-admin-usage-refresh]" : `[data-admin-usage-days="${target.days}"]` : "";
-      control.innerHTML = controls(target.days);
+      control.innerHTML = controls(target.days, target.costsOnly);
       if (focusSelector) control.querySelector(focusSelector)?.focus({ preventScroll: true });
       const content = element.querySelector("[data-admin-usage-content]");
       content.setAttribute("aria-busy", String(target.pending));
       content.innerHTML = target.pending ? `<p class="muted" role="status">${label("正在读取使用数据…")}</p>`
         : target.error ? `<p class="muted" role="status">${label("无法读取使用数据，请刷新重试。")}</p>`
-          : target.data ? (target.userId ? summary(target.data) : overview(target.data)) : "";
+          : target.data ? (target.costsOnly ? costOverview(target.data) : target.userId ? summary(target.data) : overview(target.data)) : "";
     }
 
     async function load(target) {
@@ -149,13 +156,13 @@
       const request = ++target.request;
       render(target);
       try {
-        const path = target.userId ? `/api/admin/users/${encodeURIComponent(target.userId)}/usage` : "/api/admin/usage";
-        const data = await api(`${path}?days=${target.days}`, { signal: controller.signal });
-        if (active() && request === target.request && (target === panel || target === detail)) target.data = data;
+        const path = target.costsOnly ? "/api/admin/ai-costs" : target.userId ? `/api/admin/users/${encodeURIComponent(target.userId)}/usage` : "/api/admin/usage";
+        const data = await api(`${path}?${target.costsOnly ? "period" : "days"}=${target.days}`, { signal: controller.signal });
+        if (active() && request === target.request && (target === panel || target === costPanel || target === detail)) target.data = data;
       } catch {
         if (!controller.signal.aborted) target.error = true;
       } finally {
-        if (active() && request === target.request && (target === panel || target === detail)) {
+        if (active() && request === target.request && (target === panel || target === costPanel || target === detail)) {
           target.pending = false;
           render(target);
         }
@@ -167,10 +174,11 @@
       if (!button || !active()) return;
       const selection = button.dataset.adminUsageDays;
       if (selection) {
-        const days = Number(selection);
+        const days = selection === "all" ? "all" : Number(selection);
         if (days === target.days && !target.error) return;
         target.days = days;
-        if (!target.userId) period = days;
+        if (target.costsOnly) costPeriod = days;
+        else if (!target.userId) period = days;
         target.data = null;
       }
       void load(target);
@@ -216,10 +224,17 @@
       if (actor !== current || !host) {
         panel?.controller?.abort();
         panel = null;
+        costPanel?.controller?.abort(); costPanel = null;
         closeDetail();
         actor = current;
       }
       if (!current || !host) return;
+      const costHost = root.querySelector("[data-admin-costs]");
+      if (costHost) {
+        costHost.onclick = (event) => onControl(event, costPanel);
+        if (!costPanel) { costPanel = { ...view(), days: costPeriod, costsOnly: true }; void load(costPanel); }
+        else render(costPanel);
+      }
       host.onclick = (event) => onControl(event, panel);
       if (!panel) {
         panel = view();
@@ -236,7 +251,10 @@
     }
 
     return {
-      html: () => `<section class="admin-usage" data-admin-usage aria-labelledby="adminUsageTitle">
+      html: () => `<section class="admin-usage" data-admin-costs aria-labelledby="adminCostsTitle">
+        <div class="admin-usage-heading"><h2 id="adminCostsTitle">${label("总 AI 成本")}</h2><div data-admin-usage-controls></div></div>
+        <div data-admin-usage-content></div>
+      </section><section class="admin-usage" data-admin-usage aria-labelledby="adminUsageTitle">
         <div class="admin-usage-heading"><h2 id="adminUsageTitle">${label("使用概况")}</h2><div data-admin-usage-controls></div></div>
         <div data-admin-usage-content></div>
       </section>`,

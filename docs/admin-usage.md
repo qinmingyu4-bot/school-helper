@@ -48,3 +48,8 @@ requests. It includes platform calendars, product help and health checks, shows
 unknown/pending records and supports optional official Costs API reconciliation.
 See [AI cost accounting](ai-cost-accounting.md) for configuration, UTC coverage,
 retention and the distinction between calculated usage and provider spend.
+
+The dedicated **Total AI cost** section has independent 7/30/90/180/365-day and
+all-time filters. It sums user and platform recorded costs and retains cost history
+without automatic expiration. All-time coverage begins at collection start.
+These filters do not extend the separate 35-day activity dataset.

@@ -2,6 +2,8 @@
 
 ## Unreleased — complete AI cost accounting
 
+- Add a prominent total AI cost section with independent last 7/30/90/180/365-day and all-time filters. Retain cost records without expiration and sum integer microdollars before display; keep activity-report periods separate.
+
 - Record user and platform AI calls independently of activity metrics, including shared calendars, product help and health checks. Add source/model cost details and explicit unknown/pending records to the existing bilingual developer console.
 - Correct cache-write pricing and reservations for 30-minute/12-hour cache lifetimes; keep personal allowance limits unchanged. Preserve durable pending records on interruption or settlement failure.
 - Add optional project/key-scoped OpenAI Costs reconciliation with pagination, UTC windows and explicit missing-configuration/error states. Historical gaps are not fabricated; official spend and calculated usage remain separate.

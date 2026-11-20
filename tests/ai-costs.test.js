@@ -116,3 +116,35 @@ test("official reconciliation is project-scoped, paginated, cached and never add
   const unavailable = createAiCosts({ db, env, request: async () => new Response("forbidden", { status: 403 }) });
   assert.equal((await unavailable.report(date, date)).official.status, "unavailable");
 });
+
+test("cost periods are inclusive UTC days and all covers collection start", () => {
+  const { costWindow } = require("../lib/ai-costs");
+  const since = "2024-02-29T13:00:00.000Z", time = Date.parse("2026-11-20T23:59:59Z");
+  for (const period of ["7", "30", "90", "180", "365"]) {
+    const range = costWindow(period, since, time);
+    assert.equal((Date.parse(range.through) - Date.parse(range.from)) / 86400000 + 1, Number(period));
+    assert.equal(range.through, "2026-11-20");
+  }
+  assert.equal(costWindow("all", since, time).from, "2024-02-29");
+  assert.throws(() => costWindow("0", since, time), { statusCode: 400 });
+});
+
+for (const dynamo of [false, true]) test(`${dynamo ? 'DynamoDB' : 'local'} retains costs beyond one year for all-time totals`, async (t) => {
+  const db = await fixture(t, dynamo), since = "2024-02-29T12:00:00Z";
+  await db.aiCostSince(since);
+  const writes = [];
+  if (dynamo) {
+    const original = db.dynamo.transactPut.bind(db.dynamo);
+    db.dynamo.transactPut = async (rows) => { writes.push(...rows); return original(rows); };
+  }
+  const make = (id, startedAt, payer, amountMicros) => ({ id, startedAt, payer, amountMicros, status: "calculated", source: "study", model: "gpt-6-luna" });
+  await db.putAiCost(make("old", since, "user", 100001));
+  await db.putAiCost(make("new", "2026-11-20T12:00:00Z", "platform", 200002));
+  const service = createAiCosts({ db, env: {}, now: () => Date.parse("2026-11-20T15:00:00Z") });
+  const all = await service.periodReport("all"), year = await service.periodReport("365");
+  assert.equal(all.aiCosts.calculatedUsd, 0.300003);
+  assert.equal(all.aiCosts.userUsd, 0.100001); assert.equal(all.aiCosts.platformUsd, 0.200002);
+  assert.equal(year.aiCosts.calculatedUsd, 0.200002);
+  assert.equal(all.from, "2024-02-29");
+  assert.ok(writes.every((r) => r.expiresAt === undefined), "Cost records must not expire with activity records");
+});

@@ -2787,6 +2787,12 @@ async function routeApi(req, res) {
     return sendJson(res, 200, { issue: await feedback.update(id, body.action, auth.user) });
   }
 
+  if (method === "GET" && url.pathname === "/api/admin/ai-costs") {
+    const auth = await requireAdminSession(req, res);
+    if (!auth) return;
+    return sendJson(res, 200, await aiCosts.periodReport(url.searchParams.get("period") || "7"));
+  }
+
   const userUsage = url.pathname.match(/^\/api\/admin\/users\/([\w-]{1,100})\/usage$/);
   if (method === "GET" && (url.pathname === "/api/admin/usage" || userUsage)) {
     const auth = await requireAdminSession(req, res);
@@ -2796,7 +2802,7 @@ async function routeApi(req, res) {
     const window = reportWindow(Number(period), await usage.started());
     if (!userUsage) {
       const [rows, users] = await Promise.all([db.listUsageDays(window.calendar), db.listUsers()]);
-      return sendJson(res, 200, { ...usageOverview(rows, users, window), aiCosts: await aiCosts.report(window.from, window.through) });
+      return sendJson(res, 200, usageOverview(rows, users, window));
     }
     const id = userUsage[1], target = await db.getUser(id);
     if (!target) return sendError(res, 404, "Account not found.");

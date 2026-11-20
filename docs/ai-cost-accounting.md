@@ -1,6 +1,13 @@
 # AI cost accounting and reconciliation
 
-The developer overview and per-user summary now show **recorded AI cost**, calculated
+The developer console has a dedicated **Total AI cost** section with independent
+last 7/30/90/180/365 days and **All** filters. These are rolling UTC dates including
+today, rather than calendar-month boundaries. **All** starts on the recorded
+collection-start date; unavailable historical costs are not invented. Total cost
+is the sum of user and platform calculated costs; pending/unknown estimates remain
+separate. Activity statistics retain their independent 7/30-day controls.
+
+The developer overview and per-user summary show **recorded AI cost**, calculated
 from returned provider usage, independently of foreground activity analytics. Expand
 **AI cost details and reconciliation** for user/platform totals, source/model groups,
 unknown and pending requests, collection start, and optional official spend.
@@ -49,8 +56,9 @@ Configure only on the server, never in source or browser fields:
 
 No credential is created or enabled by this change. Without the first two settings,
 the UI says **Official billing not connected**, not $0. Errors say unavailable.
-The read-only Costs API is queried in UTC day buckets for the selected 7/30-day
-window, follows pagination, and caches successful reads for five minutes. It shows
+The read-only Costs API is queried in UTC day buckets for the selected
+window (including the extended cost ranges), follows pagination in up to 180-day
+pages, and caches successful reads for five minutes. It shows
 its project/key scope, retrieval time and line items. Current-day values may lag.
 Official totals are shown alongside local costs, never added to them. They can
 include historical spending from before local collection and other programs using
@@ -62,9 +70,11 @@ The same administrator-only/no-store routes protect this information. Per-user
 reports filter out platform costs and never expose official organization data.
 Local storage uses `aiCosts[UTC day][random request id]` and `aiCostSince`. DynamoDB
 uses `AI_COST#YYYY-MM-DD` partitions and request IDs, a separate start record, and
-numeric `expiresAt` TTL. Enable existing DynamoDB TTL for 90-day retention; expired
-rows are excluded by reporting windows even before physical deletion. Local old
-buckets are pruned on writes. Existing backups include these additive fields.
+no expiration. AI cost records are retained indefinitely in both stores to support
+yearly and all-time totals; they are independent of the 35-day activity retention.
+The earlier unreleased 90-day cost-retention design is removed. At higher volume,
+archive request detail only after durable daily cost rollups are implemented; never
+discard cost history to reduce storage. Existing backups include these additive fields.
 
 Deploy this task branch through the normal owner-authorized release process. No
 historical request costs are fabricated and no prior user allowance is recalculated.

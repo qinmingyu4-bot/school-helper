@@ -22,6 +22,7 @@ function harness(defer = []) {
       state.page = state.mode === "admin" ? "admin" : ["study", "schedule", "tools", "email", "profile", "community", "classmates"].includes(page) ? page : "study";
     },
     render() { renders.push(state.page); formDraft = ""; },
+    updateStudyMaterials() {}, updateStudySchedule() {},
     updateCourseFolder(id) { renders.push(`folder:${id}:${state.expandedCourses[id]}`); },
     setToast: (message) => notices.push(message), syncClassmatesLive: () => {},
     communityQuery: () => "channel=all", communityValue: () => "",
@@ -330,7 +331,7 @@ test("default list is updated before slow history and schedule finish, and repea
   assert.ok(h.renders.includes("folder:kept:true"));
   assert.equal(h.state.studyHistoryLoading, true);
   await h.context.selectConversation("kept", "default");
-  assert.equal(h.requests.filter(r => r.path === "/api/courses").length, 1);
+  assert.equal(h.requests.filter(r => r.path === "/api/courses").length, 0);
   resolveHistory({ messages: [] }); await loading;
   assert.equal(h.state.studyHistoryLoading, false);
   assert.equal(h.state.studyHistoryError, "");
@@ -353,4 +354,52 @@ test("malformed conversation responses do not create a replacement chat", async 
   await h.context.selectCourse("kept");
   assert.ok(h.state.studyHistoryError);
   assert.equal(h.state.courseConversations.kept, undefined);
+});
+
+test("a loaded empty default chat is stable on repeated course and conversation clicks", async () => {
+  const h = harness(); Object.assign(h.state, { uploadFiles: [], docs: [], messages: [] });
+  await h.context.selectCourse("kept");
+  const count = h.requests.length, renders = h.renders.length;
+  await h.context.selectCourse("kept");
+  await h.context.selectConversation("kept", "default");
+  assert.equal(h.requests.length, count);
+  assert.equal(h.renders.length, renders);
+  assert.equal(h.state.studyHistoryLoading, false);
+});
+
+test("slow materials and calendar do not block history or discard a draft on arrival", async () => {
+  const h = harness(["/api/courses/kept/documents", "/api/schedule/items"]);
+  Object.assign(h.state, { uploadFiles: [], docs: [], messages: [] });
+  let materials = 0, schedule = 0;
+  h.context.updateStudyMaterials = () => materials++;
+  h.context.updateStudySchedule = () => schedule++;
+  await h.context.selectCourse("kept");
+  assert.equal(h.state.busy, false, "chat is ready even while optional requests are unresolved");
+  assert.equal(h.state.studyHistoryLoading, false);
+  assert.equal(h.state.studyDocsLoading, true);
+  assert.equal(h.requests.some(r => r.path === "/api/courses"), false, "known course selection avoids reloading the entire directory");
+  h.type("Keep typing"); const renders = h.renders.length;
+  h.requests.find(r => r.path.endsWith("/documents")).resolve({ documents: [{ id: "material" }] });
+  h.requests.find(r => r.path === "/api/schedule/items").resolve({ items: [] });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(h.state.docs[0].id, "material");
+  assert.equal(h.state.studyDocsLoading, false);
+  assert.equal(h.draft(), "Keep typing"); assert.equal(h.renders.length, renders);
+  assert.equal(materials, 2); assert.equal(schedule, 1);
+});
+
+test("material and calendar failures leave chat usable and material retry recovers independently", async () => {
+  const h = harness(["/api/courses/kept/documents", "/api/schedule/items"]);
+  Object.assign(h.state, { uploadFiles: [], docs: [], messages: [] });
+  await h.context.selectCourse("kept");
+  h.requests.find(r => r.path.endsWith("/documents")).reject(new Error("Unavailable"));
+  h.requests.find(r => r.path === "/api/schedule/items").reject(new Error("Unavailable"));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(h.state.studyDocsError, true);
+  assert.equal(h.state.studyHistoryError, ""); assert.equal(h.state.busy, false);
+  h.context.api = async () => ({ documents: [{ id: "recovered" }] });
+  h.type("My question"); const renders = h.renders.length;
+  await h.context.loadStudyMaterials("kept", () => true);
+  assert.equal(h.state.studyDocsError, false); assert.equal(h.state.docs[0].id, "recovered");
+  assert.equal(h.draft(), "My question"); assert.equal(h.renders.length, renders);
 });

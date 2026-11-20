@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.12.6";
+  const VERSION = "1.12.7";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -677,6 +677,24 @@
       !String(doc.title || "").startsWith("[SCHEDULE ITEM]"));
   }
 
+  function studyMaterialListHtml() {
+    const materials = courseMaterials();
+    const status = state.studyDocsError ? ui.html`<p class="muted" role="status">课程资料暂时无法刷新，聊天仍可使用。<button data-action="retry-study-materials">重试加载</button></p>`
+      : state.studyDocsLoading && !materials.length ? ui.html`<p class="muted" role="status">正在加载课程资料…</p>` : "";
+    return status + (materials.length ? materials.map(doc => `<div class="mini-row"><b>${esc(doc.title)}</b><small>${esc(doc.type || "Note")}</small></div>`).join("")
+      : status ? "" : ui.html`<p class="muted">暂无课程资料</p>`);
+  }
+  function updateStudyMaterials() {
+    const section = root.querySelector(".study-materials");
+    if (!section) return;
+    section.querySelector(".section-title span").textContent = courseMaterials().length;
+    section.querySelector(".study-material-list").innerHTML = studyMaterialListHtml();
+  }
+  function updateStudySchedule() {
+    const banner = root.querySelector(".study-workspace .deadline-banner");
+    if (banner) banner.outerHTML = upcomingBanner();
+  }
+
   function studySidebarHtml() {
     const courses = courseChats.visibleCourses(state.courses);
     const materials = courseMaterials();
@@ -701,7 +719,7 @@
           <input id="docFile" type="file" aria-label="选择课程资料文件" accept="${SUPPORTED_UPLOAD_ACCEPT}" multiple>
           <button class="study-side-icon" data-action="upload-doc" title="上传所选文件" aria-label="上传所选文件"><svg aria-hidden="true"><use href="/classmates-icons.svg#upload"></use></svg></button>
         </div>
-        <div class="study-material-list">${materials.length ? materials.map((doc) => `<div class="mini-row"><b>${esc(doc.title)}</b><small>${esc(doc.type || "Note")}</small></div>`).join("") : ui.html`<p class="muted">暂无课程资料</p>`}</div>
+        <div class="study-material-list">${studyMaterialListHtml()}</div>
         <p class="muted">课程资料每个文件最多 50 MB，多文件逐个上传。较大 PDF 优先使用提取文字；扫描件建议拆分或先做文字识别。</p>
         <p id="courseUploadStatus" class="muted" role="status" aria-live="polite"></p>
       </section>`}
@@ -926,8 +944,12 @@
     if (restoreToggle) next.querySelector('[data-action="toggle-course"]').focus({preventScroll:true});
   }
 
+  function studyHistoryPending() {
+    return state.studyHistoryLoading && state.studyHistoryKey !== studyReplyKey();
+  }
+
   function onboardingHtml() {
-    if (state.messages.length || state.page !== "study" || state.studyHistoryLoading || state.studyHistoryError) return "";
+    if (state.messages.length || state.page !== "study" || studyHistoryPending() || state.studyHistoryError) return "";
     const hasCourse = !isGeneralChat() && state.courses.some((c) => c.id === state.activeCourseId);
     const hasDocs = hasCourse && courseMaterials().length > 0;
     const firstCourse = courseChats.visibleCourses(state.courses)[0];
@@ -980,7 +1002,7 @@
       ${upcomingBanner()}
       <section class="chat-area">
         <div class="messages" id="messages">
-          ${state.studyHistoryError ? ui.html`<p class="course-chat-status" role="status">聊天记录暂时无法刷新，已显示的记录会保留。<button data-action="retry-study">重试加载</button></p>` : state.studyHistoryLoading ? ui.html`<p class="course-chat-status" role="status">正在加载聊天记录…</p>` : ""}${onboardingHtml()}${state.messages.length ? state.messages.map(messageHtml).join("") : state.studyHistoryLoading || state.studyHistoryError ? "" : `<div class="message ai"><b>AI</b><div>${isGeneralChat() ? ui.text("你好，有什么想问的？") : ui.text("欢迎回来。先保存课程资料，然后问我预习、复习、deadline、作业要求或模拟考试。")}</div></div>`}
+          ${state.studyHistoryError ? ui.html`<p class="course-chat-status" role="status">聊天记录暂时无法刷新，已显示的记录会保留。<button data-action="retry-study">重试加载</button></p>` : studyHistoryPending() ? ui.html`<p class="course-chat-status" role="status">正在加载聊天记录…</p>` : ""}${onboardingHtml()}${state.messages.length ? state.messages.map(messageHtml).join("") : studyHistoryPending() || state.studyHistoryError ? "" : `<div class="message ai"><b>AI</b><div>${isGeneralChat() ? ui.text("你好，有什么想问的？") : ui.text("欢迎回来。先保存课程资料，然后问我预习、复习、deadline、作业要求或模拟考试。")}</div></div>`}
         </div>
       </section>
       ${composerHtml()}
@@ -2478,6 +2500,7 @@
     state.docs = saved ? [...saved.docs] : [];
     state.studyHistoryKey = saved ? key : "";
     state.studyHistoryError = "";
+    state.studyDocsError = false; state.studyDocsLoading = !isGeneralChat();
   }
   function createEmptyCourseChat(courseId) {
     const key = studyReplyKey(state.user.id, courseId, "default");
@@ -2551,10 +2574,10 @@
     // Selecting the visible chat is navigation within the same workspace, not a reload.
     // Keep its history, draft and any in-flight load/reply intact.
     if (state.page === "study" && state.activeCourseId === courseId && state.activeConversationId === conversationId
-      && !state.studyHistoryError && (state.messages.length || state.busy)) {
+      && !state.studyHistoryError && (state.studyHistoryKey === studyReplyKey() || state.messages.length || state.busy)) {
       if (courseId !== chatSpaces.general.id && !state.expandedCourses[courseId]) {
         state.expandedCourses[courseId] = true;
-        render();
+        updateCourseFolder(courseId);
       }
       mobileNavigation.closeStudyPanel();
       return;
@@ -2572,14 +2595,37 @@
       localStorage.setItem(`studybridge.chatSpace.${state.user.id}`, courseId);
       localStorage.setItem(`studybridge.conversation.${state.user.id}.${courseId}`, state.activeConversationId);
     } catch { /* Storage may be disabled. */ }
-    await loadPage("study");
     mobileNavigation.closeStudyPanel();
+    await loadPage("study", { reuseStudyCourses: true });
   }
 
-  async function loadStudy(isCurrent = () => true) {
-    const coursesData = await api("/api/courses");
-    if (!isCurrent()) return;
-    state.courses = coursesData.courses || [];
+  async function loadStudyMaterials(courseId, isCurrent) {
+    const docsAtStart = [...state.docs];
+    state.studyDocsLoading = true; state.studyDocsError = false;
+    updateStudyMaterials();
+    try {
+      const data = await api(`/api/courses/${courseId}/documents`);
+      if (!isCurrent() || state.activeCourseId !== courseId) return;
+      if (!Array.isArray(data.documents)) throw new Error("Invalid course materials");
+      if (state.docs.length !== docsAtStart.length || state.docs.some((doc, index) => doc !== docsAtStart[index])) return;
+      state.docs = data.documents;
+      rememberStudyHistory();
+    } catch {
+      if (isCurrent() && state.activeCourseId === courseId) state.studyDocsError = true;
+    } finally {
+      if (isCurrent() && state.activeCourseId === courseId) {
+        state.studyDocsLoading = false;
+        updateStudyMaterials();
+      }
+    }
+  }
+
+  async function loadStudy(isCurrent = () => true, reuseCourses = false) {
+    if (!reuseCourses || !state.courses.some(course => course.id === state.activeCourseId)) {
+      const coursesData = await api("/api/courses");
+      if (!isCurrent()) return;
+      state.courses = coursesData.courses || [];
+    }
     if (!state.activeCourseId) {
       try { state.activeCourseId = localStorage.getItem(`studybridge.chatSpace.${state.user.id}`) || ""; } catch { /* Storage may be disabled. */ }
     }
@@ -2619,12 +2665,13 @@
       const courseId = state.activeCourseId;
       const conversationId = state.activeConversationId;
       const replyAtLoad = activeStudyReply();
-      const [docsData, messagesData] = await Promise.all([
-        isGeneralChat() ? Promise.resolve({ documents: [] }) : api(`/api/courses/${courseId}/documents`),
-        api(`/api/courses/${courseId}/messages?conversationId=${encodeURIComponent(conversationId)}`)
-      ]);
+      // Materials and calendar must never gate chat history or replace the composer.
+      if (!isGeneralChat()) void loadStudyMaterials(courseId, isCurrent);
+      void loadScheduleItems(false, false, isCurrent).then(() => {
+        if (isCurrent()) updateStudySchedule();
+      }).catch(() => {});
+      const messagesData = await api(`/api/courses/${courseId}/messages?conversationId=${encodeURIComponent(conversationId)}`);
       if (!isCurrent() || courseId !== state.activeCourseId || conversationId !== state.activeConversationId) return;
-      state.docs = docsData.documents || [];
       if (!Array.isArray(messagesData.messages)) throw new Error(ui.text("聊天记录暂时无法刷新，已显示的记录会保留。"));
       state.messages = mergeStudyReply(messagesData.messages, activeStudyReply() || replyAtLoad);
       state.studyHistoryKey = studyReplyKey();
@@ -2636,7 +2683,6 @@
       state.docs = [];
       state.messages = [];
     }
-    await loadScheduleItems(false, false, isCurrent);
   }
 
   async function loadScheduleItems(refreshCourses = true, strict = false, isCurrent = () => true) {
@@ -2661,7 +2707,7 @@
     return course;
   }
 
-  async function loadPage(page, { scheduleView = "calendar" } = {}) {
+  async function loadPage(page, { scheduleView = "calendar", reuseStudyCourses = false } = {}) {
     if (state.page === "grades" && page !== "grades") {
       const planner = root.querySelector("#grade-module")?.gradePlanner;
       if (planner && !await planner.flush()) return;
@@ -2684,7 +2730,7 @@
     if (page === "community") { state.community = null; state.communityError = ""; state.communityFocusedPost = null; state.communityMoreLoading = false; }
     render();
     try {
-      if (page === "study") await loadStudy(isCurrent);
+      if (page === "study") await loadStudy(isCurrent, reuseStudyCourses);
       if (page === "community") {
         const query = communityQuery();
         const hasSelection = state.communityChannel === "all" || Boolean(communityValue().trim());
@@ -3197,6 +3243,11 @@
       }
       if (action === "add-course") {
         await addStudyCourse();
+        return;
+      }
+      if (action === "retry-study-materials") {
+        const userId = state.user.id, generation = pageLoadGeneration;
+        await loadStudyMaterials(state.activeCourseId, () => state.user?.id === userId && pageLoadGeneration === generation && state.page === "study");
         return;
       }
       if (action === "retry-study") { await loadPage("study"); return; }
@@ -3959,7 +4010,10 @@
     const wasOnboardingOpen = previousChat?.querySelector(".study-start")?.open;
     const previousMessages = previousChat?.querySelector(".messages")?.innerHTML;
     const previousScrollTop = previousChat?.scrollTop || 0;
-    const previousChatDraft = $("chatInput")?.value || "";
+    const previousChatInput = $("chatInput");
+    const previousChatFocus = previousChatInput && document.activeElement === previousChatInput;
+    const previousChatSelection = previousChatInput ? [previousChatInput.selectionStart, previousChatInput.selectionEnd, previousChatInput.selectionDirection] : null;
+    const previousChatDraft = previousChatInput?.value || "";
     if (previousChatKey) studyDrafts.set(previousChatKey, { ...studyDrafts.get(previousChatKey), text: previousChatDraft });
     try {
       root.innerHTML = routeHtml();
@@ -3988,7 +4042,7 @@
     if (state.page === "schedule" && previousSchedule && root.querySelector(".schedule-layout")) {
       window.scrollTo(previousPageScroll.x, previousPageScroll.y);
     }
-    if (state.busy) root.insertAdjacentHTML("beforeend", `<div class="busy">Loading...</div>`);
+    if (state.busy && state.page !== "study") root.insertAdjacentHTML("beforeend", `<div class="busy">Loading...</div>`);
     for (const id of ["emailOriginal", "emailGoal", "emailTone", "emailOutput"]) {
       if ($(id) && emailDraft[id] !== undefined) $(id).value = emailDraft[id];
     }
@@ -4014,7 +4068,15 @@
     if (chat) {
       const onboarding = chat.querySelector(".study-start");
       if (onboarding && previousChatKey === studyReplyKey()) onboarding.open = Boolean(wasOnboardingOpen);
-      $("chatInput").value = studyDrafts.get(studyReplyKey())?.text || "";
+      if (previousChatInput && previousChatKey === studyReplyKey()) {
+        const nextInput = $("chatInput");
+        for (const attribute of ["placeholder", "aria-label"]) previousChatInput.setAttribute(attribute, nextInput.getAttribute(attribute));
+        nextInput.replaceWith(previousChatInput);
+        if (previousChatFocus) {
+          previousChatInput.focus({ preventScroll: true });
+          previousChatInput.setSelectionRange(...previousChatSelection);
+        }
+      } else $("chatInput").value = studyDrafts.get(studyReplyKey())?.text || "";
       const showLatest = !previousChat || previousChatKey !== studyReplyKey()
         || previousMessages !== chat.querySelector(".messages")?.innerHTML;
       if (!state.messages.length) chat.scrollTop = 0;

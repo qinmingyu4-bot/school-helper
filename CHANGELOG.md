@@ -2,6 +2,9 @@
 
 ## Unreleased — complete AI cost accounting
 
+- Preserve automatic calendar updates and independent schedule reminders while persisting refresh claims, source digests and retry backoff across restarts. Reuse unchanged official pages; use Luna for validated simple date extraction and Sol for ambiguity, makeup rules and official discovery.
+- Reuse identical saved material text and indexed excerpts; omit unrelated padding from focused retrieval while retaining broad reviews, fresh uploads and source citations.
+
 - Add a prominent total AI cost section with independent last 7/30/90/180/365-day and all-time filters. Retain cost records without expiration and sum integer microdollars before display; keep activity-report periods separate.
 
 - Record user and platform AI calls independently of activity metrics, including shared calendars, product help and health checks. Add source/model cost details and explicit unknown/pending records to the existing bilingual developer console.

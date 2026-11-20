@@ -117,13 +117,16 @@ const aiCosts = createAiCosts({ db });
 const loginAttempts = createLoginAttempts();
 const resetEmailRequests = createLoginAttempts();
 const academicCalendars = createCalendarService({
-  archive: { get: (key) => db.getAcademicCalendar(key), put: (key, calendar) => db.putAcademicCalendar(key, calendar) },
+  archive: { get: (key) => db.getAcademicCalendar(key), put: (key, calendar) => db.putAcademicCalendar(key, calendar),
+    changeState: (key, mutate) => db.changeCalendarRefresh(key, mutate) },
+  sources: require("./lib/calendar-sources").createCalendarSources({ parsePdf: pdfParse }),
+  simpleModel: () => simpleAiModel,
   onError: (message) => console.warn(message),
   request: async (body) => {
     const response = await aiCosts.fetch("https://api.openai.com/v1/responses", {
       method: "POST", signal: AbortSignal.timeout(60000), headers: { authorization: `Bearer ${process.env.OPENAI_API_KEY}`, "content-type": "application/json" }, body: JSON.stringify(body)
     }, { payer: "platform", source: "academic-calendar" });
-    if (!response.ok) throw new Error("大学校历检索失败。");
+    if (!response.ok) throw Object.assign(new Error("大学校历检索失败。"), { statusCode: response.status });
     return response.json();
   }
 });

@@ -83,3 +83,23 @@ test("DynamoDB query reads every page of a large course", async () => {
   };
   assert.deepEqual(await store.query("user", "course"), [{ id: "first" }, { id: "last" }]);
 });
+
+test("repeated named uploads reuse text while changed revisions and citation locations remain available", () => {
+  const text = 'ORIGINAL_FACT_123', revised = 'REVISED_FACT_456';
+  const context = buildMaterialContext({ documents: [{ title: 'notes.txt', text }], attachments: [
+    { name: 'notes.txt', kind: 'text', text }, { name: 'notes.txt', kind: 'text', text: revised }
+  ], message: 'Compare versions' });
+  assert.equal(context.split(text).length - 1, 1);
+  assert.ok(context.includes(revised));
+});
+
+test("focused retrieval omits irrelevant source padding without removing new uploads or broad review coverage", () => {
+  const documents = [{ title: 'Evidence', text: 'Opportunity cost means the best alternative forgone.\n' + 'neutral '.repeat(1800) },
+    { title: 'Unrelated', text: 'IRRELEVANT_SOURCE_MARKER ' + 'noise '.repeat(15000) }];
+  const selected = buildMaterialContext({ documents, message: 'Explain opportunity cost', budget: 12000 });
+  assert.ok(selected.includes('best alternative forgone'));
+  assert.ok(!selected.includes('IRRELEVANT_SOURCE_MARKER'));
+  assert.ok(selected.length < 7000);
+  const broad = buildMaterialContext({ documents, message: 'Review all materials', budget: 12000 });
+  assert.ok(broad.includes('IRRELEVANT_SOURCE_MARKER'));
+});

@@ -90,22 +90,58 @@ References checked 2026-11-20:
 - https://developers.openai.com/api/docs/pricing
 - https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/usage/methods/costs
 
-## Cost reduction options, preserving functionality
+## Implemented cost controls, preserving automatic reminders
 
-These are proposals, not silently enabled by the accounting patch:
+Calendar refresh remains automatic. At startup and hourly thereafter the worker
+checks durable due times for each configured school/campus/faculty/term. Current
+and near-term calendars check official sources every 12 hours; terms starting more
+than 90 days away check weekly. An unchanged verified source digest makes no model
+request. HTML link targets and PDF file bytes participate in change detection.
+Parsed official pages are reused across terms for 15 minutes, with a bounded cache.
+No browser visit or manual refresh is needed to run the worker.
 
-| Priority | Task | Proposed handling | Quality guard |
-| --- | --- | --- | --- |
-| 1 | Shared calendar refresh | Persist last attempt, success and next retry; refresh due records on a schedule, not every deploy; reuse the last verified calendar | Expiry checks, official source dates and manual refresh remain |
-| 1 | Invalid/unpublished future terms | Durable retry backoff per school/campus/term; do not repeatedly search missing next-year calendars | Show last verified coverage; retain retry and manual entry |
-| 2 | Dates, weekday expansion, timezone, duplicate detection | Deterministic code; zero model calls | Existing calendar validation and tests |
-| 2 | Extract dates from a known official page | Luna for bounded structured extraction, then schema/date/source validation | Escalate to Sol only on ambiguity or failed validation |
-| 2 | Discover changed official pages, resolve make-up days and conflicting campuses | Sol + bounded search, with cached evidence | Require verified official URLs; never guess missing dates |
-| 2 | Parse short schedule text or simple event edits | Luna + structured schema and confirmation | Keep manual correction and Sol fallback for ambiguous instructions |
-| 3 | Complex syllabi, exam solutions, multi-step reasoning | Retain Sol; narrow retrieved context and reuse extraction | Compare outputs on representative cases before changing routing |
-| 3 | Product navigation help | Rules for exact known navigation intents, Luna for ambiguous intent | Preserve curated responses and study-question routing |
-| 3 | Global platform spending | Separate platform budget/alerts and queue non-urgent refreshes | Never silently disable user learning; expose delay/retry state |
+Before work starts, a durable claim reserves a 10-minute lease and a six-hour
+crash cooldown. DynamoDB uses conditional writes; the local store uses its existing
+single-process serialized writer. Failed attempts retry automatically after 6, 12,
+then 24 hours for current/near terms, up to seven days for distant terms. Restarts
+and concurrent workers cannot bypass the saved retry time. Failures preserve the
+last verified calendar. Calendar records remain separate from refresh state in
+`calendarRefresh` / DynamoDB `CALENDAR_REFRESH`; an unavailable state store prevents
+new paid work. Missing/failed public-page retrieval falls back to verified search;
+when no readable digest can be retained after success, revalidation is weekly.
 
-Measure search counts, cache writes, repeated failures and per-source cost before
-and after each step. Evaluate simple-model extraction on real calendar formats with
-unchanged source/schema validation before enabling fallback routing in production.
+Known official HTML/PDF pages are fetched with HTTPS, university-domain redirect
+validation, time/size limits and no account credentials. Bounded, uncomplicated
+page text goes to the configured simple model (default Luna), without web tools.
+Acceptance requires explicit unambiguous scope, real dates, exact source quotes,
+consulted official URLs, a complete teaching/closure structure and matching timezone.
+Ambiguity, invalid output, new/unconsulted sources or makeup/substitution rules use
+the configured complex model (default Sol) with official search. Provider outages,
+authorization failures and rate limits back off instead of causing a second call.
+The discovery step allows up to six tool calls and 12,000 output tokens; incomplete
+results never replace a good calendar. Both routes enter the platform cost ledger.
+
+Date validation, weekday expansion, timezone conversion and duplicate detection
+continue to use `public/schedule-import.js`, without model calls. Existing saved
+schedule reminders continue on the independent 30-second push worker, subject to
+the user's notification settings. Calendar lookup failures do not stop reminders.
+This change does not rewrite previously confirmed personal schedules when the
+shared university calendar changes, or create unsolicited notifications.
+
+Saved material text and revision-aware indexes are reused. Identical named uploads
+are sent once, while changed versions retain their citations. Focused fallback
+retrieval includes matching passages and adjacent context, rather than padding the
+prompt with unrelated sources. Indexed retrieval removes identical excerpts.
+Broad reviews, fresh uploads, source locations and original PDF/image access remain
+available; no learning-answer model is downgraded.
+
+Tests use simulated sources/providers without live charges: local/DynamoDB restart
+and concurrent-claim behavior, due times, unchanged/changed sources, malformed dates,
+source quotes, campus conflicts, complex-date fallback, bounded HTML/PDF retrieval,
+existing automatic pushes, and material/citation/coverage regression tests. Production
+savings must be measured from the ledger after deployment; no percentage is assumed.
+
+Official model reference: https://developers.openai.com/api/docs/models/gpt-6-luna
+
+Remaining optional work: platform spending alerts/queues and product-navigation
+intent shortcuts. These are not enabled by this change.

@@ -1,8 +1,8 @@
 {
-  "previousCommit": "958a9a3fde1d5750be985cc1c5c161f38c9a734c",
-  "previousVersion": "1.12.6",
-  "version": "1.12.7",
+  "previousCommit": "2d490fda72651809c8a79d398631add28bb53c45",
+  "previousVersion": "1.12.7",
+  "version": "1.12.8",
   "level": "patch",
-  "reason": "Remove redundant loading and auxiliary-resource blocking from existing course chats, preserving empty chat selection and composer focus.",
+  "reason": "Correct allowance settlement for abandoned or failed requests and refund precisely linked interrupted creative jobs, while retaining current course navigation and input behavior.",
   "features": []
 }

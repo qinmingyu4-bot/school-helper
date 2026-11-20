@@ -39,12 +39,32 @@ requests include usage and consume the trailing usage chunk after `finish_reason
 Quota errors propagate without provider fallback. Background problem-set work
 pauses in a retryable failed state with its completed answers retained.
 
-Known unsuccessful HTTP provider responses release their reservation. Network
-interruptions, canceled streams, invalid or missing usage, and abandoned holds
-cannot establish the final bill. They retain the reserved estimate and show an
-estimated-usage notice. Holds expire after ten minutes and provider calls are
-bounded to five minutes. An operator can inspect the private ledger to reconcile
-estimates against provider records. There is no administrative refund UI yet.
+Known unsuccessful HTTP provider responses, transport failures, invalid JSON and
+incomplete/error streams release their reservation; these platform failures do
+not consume user allowance. Abandoned holds expire after ten minutes without
+becoming estimated spending. Provider calls remain bounded to five minutes.
+Successful responses with missing usage and deliberately canceled streams retain
+the estimate policy; the provider invoice is independent of the user's allowance.
+
+New creative jobs carry a server-assigned accounting version and operation ID.
+Each reservation and settled amount is associated with that job in its original
+weekly period. If generation fails (including timeout, restart, output validation
+or persistence failure before delivery), its settled amount and pending holds are
+refunded by an atomic per-user ledger mutation. Refund markers survive restart,
+prevent duplicate refunds and reject late settlements/new reservations for that
+operation. Actual token counters remain as operational telemetry. A refund of an
+old week does not increase the current week's limit. Successful jobs and unrelated
+requests are never refunded by this path. Explicit creative cancellation retains
+its existing completed-request accounting.
+
+`GET /api/me/ai-usage` reconciles orphaned/failed creative jobs before reporting the
+balance. Failed refunds are retried on a later read; the job only displays a
+confirmed refund after the durable ledger change. Current pending holds from older
+versions also expire without charging. Already-settled legacy estimates have no
+job identity; old restart-failed jobs are marked `needs_review`, without assuming
+that all estimated user spending came from that task. Historical compensation
+requires an operator decision and cannot be inferred from the percentage alone.
+There is no cash refund or administrative adjustment UI in this change.
 Actual usage can exceed a reservation, especially for tool-created context or
 image inputs. The excess is recorded and blocks subsequent requests once the
 weekly allowance is exhausted. These limits are admission budgets rather than a

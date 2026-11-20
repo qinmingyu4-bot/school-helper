@@ -5,6 +5,9 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+本次失败任务不扣额度，预占及相关扣额已退还。|This failed task does not use your allowance. Its reservation and related charges have been returned.
+该历史任务的扣额需要核对，尚未自动退还。|This older task needs a charge review; no automatic refund has been applied.
+部分请求缺少实际用量，余额包含预估扣额；历史中断扣额可联系管理员核对。|Some requests have no reported usage, so your balance includes estimates. Contact the administrator to review older interrupted requests.
 退出登录未完成，请检查网络后重试。当前页面和草稿已保留。|Sign-out did not complete. Check your connection and try again. Your current page and drafts have been kept.
 暂时无法确认登录状态，请检查网络后刷新重试。|Unable to verify your sign-in status. Check your connection and refresh to try again.
 对话列表暂时无法加载。|Conversations could not be loaded.

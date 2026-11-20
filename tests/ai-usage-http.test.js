@@ -51,6 +51,20 @@ test("HTTP allowance is private, meters both chat transports, blocks exhausted a
   await stop();
   const db = new StudyBridgeDatabase(); db.local.file = file; db.dynamo = null;
   const service = createAiUsage({ db });
+  const interrupted = await service.runOperation(alice.user.id, "interrupted-image", () => service.reserve(alice.user.id, 100000));
+  await service.settle(interrupted, 80000);
+  await db.saveCreativeJob({ id: "interrupted-image", userId: alice.user.id, kind: "image", allowanceVersion: 1,
+    status: "checking", files: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+  await start();
+  for (let i = 0; i < 2; i++) {
+    const recovered = (await (await req("/api/me/ai-usage", alice.cookie)).json()).usage;
+    assert.equal(recovered.usedUsd, usage.usedUsd, "refresh refunds only the interrupted job, once");
+    assert.equal(recovered.pendingUsd, 0);
+  }
+  const jobs = (await (await req("/api/creative", alice.cookie)).json()).jobs;
+  assert.equal(jobs.find(job => job.id === "interrupted-image").allowanceRefund.status, "refunded");
+  assert.equal((await (await req("/api/me/ai-usage", bob.cookie)).json()).usage.usedUsd, 0);
+  await stop(); db.local.state = null;
   const ticket = await service.reserve(alice.user.id, Math.round((await service.status(alice.user.id)).remainingUsd * 1e6));
   await service.settle(ticket, ticket.amount);
   await start();

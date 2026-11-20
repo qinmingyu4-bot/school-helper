@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.12.8 — 2026-11-20
+
+- PATCH from verified production 1.12.7 (`2d490fda72651809c8a79d398631add28bb53c45`): correct allowance charged for interrupted work; preserve the latest responsive course chats and stable input. No new product features or dependencies.
+
+- Release expired AI reservations instead of converting abandoned work into estimated user spending. Network failures, invalid responses and incomplete/error streams release their reservation.
+- Associate generated-image/document charges with server-created job IDs. Failed or restart-interrupted jobs refund linked spending and reservations atomically, including restart recovery on allowance refresh; successful jobs and unrelated requests retain their charges. Late callbacks and repeated recovery cannot charge or refund twice.
+- Show confirmed refunds beside failed generation results. Legacy settled totals lack per-job identifiers and are marked for review rather than guessed; successful responses without usage and deliberate stream cancellation retain their existing estimate policy.
+
 ## 1.12.7 — 2026-11-20
 
 - PATCH from verified production 1.12.6 (`958a9a3fde1d5750be985cc1c5c161f38c9a734c`): complete existing course navigation fixes by keeping loaded empty chats stable, closing mobile course navigation immediately and avoiding a redundant directory fetch for known courses.

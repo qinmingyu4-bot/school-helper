@@ -21,7 +21,7 @@
       <progress max="100" value="${percent}" aria-label="${ui.text("剩余 AI 额度")}"></progress>
       <p>${esc(reset)}</p>
       ${data.pendingUsd ? `<p>${ui.text("正在生成的任务已暂留部分额度，完成后按实际用量结算。")}</p>` : ""}
-      ${data.estimatedUsd ? `<p>${ui.text("部分中断请求缺少实际用量，暂按预估扣减，可联系管理员核对。")}</p>` : ""}
+      ${data.estimatedUsd ? `<p>${ui.text("部分请求缺少实际用量，余额包含预估扣额；历史中断扣额可联系管理员核对。")}</p>` : ""}
       ${data.remainingUsd <= 0 ? `<p role="status">${ui.text("本周 AI 额度已用完，将在恢复时间自动补充。")}</p>` : ""}
       <div class="ai-usage-actions">${refreshButton()}${data.canUpgrade ? `<button type="button" data-usage-upgrade>${ui.text("升级 Plus")}</button>` : data.tier === "standard" ? `<span>${ui.text("充值开放后可升级 Plus，获得 4 倍每周额度。")}</span>` : ""}</div>
       ${error ? `<p role="status">${esc(error)}</p>` : ""}`;

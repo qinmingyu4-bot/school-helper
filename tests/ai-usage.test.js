@@ -42,9 +42,9 @@ for (const dynamo of [false, true]) test(`${dynamo ? "DynamoDB" : "local"} atomi
   assert.equal((await s.status("alice")).remainingUsd, 0.5);
   const interrupted = await s.reserve("alice", 10000);
   f.advance(11 * 60000);
-  assert.equal((await f.create().status("alice")).estimatedUsd, 0.01);
+  assert.equal((await f.create().status("alice")).estimatedUsd, 0);
   await s.settle(interrupted, 10000);
-  assert.equal((await s.status("alice")).usedUsd, 0.01);
+  assert.equal((await s.status("alice")).usedUsd, 0);
 });
 test("pricing includes cached input, reasoning totals, long context, searches, containers, images and audio", () => {
   assert.equal(cost("gpt-6.1-sol", { usage: { input_tokens: 1000, output_tokens: 200, input_tokens_details: { cached_tokens: 500 }, output_tokens_details: { reasoning_tokens: 100 } } }), 3050);
@@ -109,14 +109,74 @@ for (const dynamo of [false, true]) test(`${dynamo ? "DynamoDB" : "local"} allow
   assert.equal(writes, 0, "unchanged polls must not rewrite the database");
   assert.deepEqual(await f.db.getAiUsage("alice"), before);
   f.advance(11 * 60000);
-  assert.equal((await s.status("alice")).estimatedUsd, 0.01);
+  assert.equal((await s.status("alice")).estimatedUsd, 0);
   assert.equal(writes, 1, "expired reservations still reconcile durably");
   await s.status("alice"); assert.equal(writes, 1);
   await s.settle(ticket, 10000);
-  assert.equal((await s.status("alice")).usedUsd, 0.01);
+  assert.equal((await s.status("alice")).usedUsd, 0);
   f.advance(WEEK);
   assert.equal((await s.status("alice")).remainingUsd, 0.5);
   const afterReset = writes;
   await s.status("alice"); assert.equal(writes, afterReset);
   assert.equal((await s.status("bob")).resetsAt, null);
+});
+
+for (const dynamo of [false, true]) test(`${dynamo ? 'DynamoDB' : 'local'} failed-operation refunds are durable, isolated and idempotent across races`, async t => {
+  const f = await fixture(t, dynamo), s = f.service;
+  const tickets = await s.runOperation('alice', 'image-job', async () => [await s.reserve('alice', 100000), await s.reserve('alice', 100000)]);
+  await s.settle(tickets[0], 70000, null, true);
+  const good = await s.reserve('alice', 100000); await s.settle(good, 30000);
+  await Promise.all([s.refundOperation('alice', 'image-job'), f.create().refundOperation('alice', 'image-job')]);
+  await s.settle(tickets[1], 100000); // A late provider result cannot re-charge a refunded job.
+  const status = await f.create().status('alice');
+  assert.equal(status.usedUsd, 0.03); assert.equal(status.pendingUsd, 0); assert.equal(status.estimatedUsd, 0);
+  assert.equal((await s.status('bob')).remainingUsd, 0.5);
+  await assert.rejects(s.runOperation('alice', 'image-job', () => s.reserve('alice', 10000)), { statusCode: 409 });
+  f.advance(WEEK);
+  await s.refundOperation('alice', 'image-job');
+  assert.equal((await s.status('alice')).remainingUsd, 0.5, 'old refunds cannot inflate the new week');
+});
+
+test('network failures, invalid JSON and abruptly closed/error streams release reservations', async t => {
+  let mode = 'network';
+  const f = await fixture(t, false, async url => {
+    if (url.endsWith('input_tokens')) return Response.json({ input_tokens: 100 });
+    if (mode === 'network') throw new TypeError('connection reset');
+    if (mode === 'json') return new Response('broken JSON');
+    if (mode === 'failed-json') return Response.json({ status: 'failed', usage: { input_tokens: 100, output_tokens: 50 } });
+    if (mode === 'error-stream') return new Response('data: {"type":"error","error":{"message":"internal"}}\n\ndata: [DONE]\n\n');
+    return new Response('data: {"choices":[{"delta":{"content":"partial"}}]}\n\n');
+  });
+  const send = stream => f.service.run('alice', () => f.service.fetch('https://api.openai.com/v1/responses', {
+    method: 'POST', body: JSON.stringify({ model: 'gpt-6-luna', input: 'test', stream }) }));
+  for (mode of ['network', 'json']) await assert.rejects(send(false));
+  mode = 'failed-json'; await send(false);
+  for (mode of ['truncated', 'error-stream']) await (await send(true)).text();
+  const status = await f.service.status('alice');
+  assert.equal(status.usedUsd, 0); assert.equal(status.pendingUsd, 0); assert.equal(status.estimatedUsd, 0);
+});
+
+test('restart recovery refunds linked creative charges and retries a failed refund without guessing legacy charges', async t => {
+  const { createCreativeService } = require('../lib/creative-service');
+  const f = await fixture(t), s = f.service;
+  const ticket = await s.runOperation('alice', 'restart-job', () => s.reserve('alice', 250000));
+  await s.settle(ticket, 120000);
+  await f.db.saveCreativeJob({ id: 'restart-job', userId: 'alice', kind: 'image', allowanceVersion: 1,
+    status: 'checking', files: [], createdAt: '2026-11-06T00:00:00Z', updatedAt: '2026-11-06T00:01:00Z' });
+  let failRefund = true;
+  const service = createCreativeService({ db: f.db, refund: job => {
+    if (failRefund) { failRefund = false; throw Error('temporary storage failure'); }
+    return s.refundCreative(job);
+  } });
+  await assert.rejects(service.reconcile('alice'));
+  assert.equal((await s.status('alice')).usedUsd, 0.12);
+  await service.reconcile('alice'); await service.reconcile('alice');
+  assert.equal((await s.status('alice')).usedUsd, 0);
+  assert.equal((await service.get('alice', 'restart-job')).allowanceRefund.status, 'refunded');
+  const good = await s.reserve('alice', 50000); await s.settle(good, 50000, null, true);
+  await f.db.saveCreativeJob({ id: 'legacy-job', userId: 'alice', kind: 'image', status: 'failed',
+    error: '服务重启中断了生成，请重新提交。', files: [] });
+  await service.reconcile('alice');
+  assert.equal((await service.get('alice', 'legacy-job')).allowanceRefund.status, 'needs_review');
+  assert.equal((await s.status('alice')).usedUsd, 0.05);
 });

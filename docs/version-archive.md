@@ -1,5 +1,12 @@
 # StudyBridge Version Archive
 
+## 1.12.8 — 2026-11-20
+
+- PATCH from verified production 1.12.7 (`2d490fda72651809c8a79d398631add28bb53c45`): fix interrupted-request allowance accounting and refund linked failed creative jobs exactly once.
+- Retain latest course navigation and composer behavior. Only traceable charges are refunded; legacy aggregated charges remain for review. No blanket compensation, account reset or price/model changes.
+- Add lazy per-job accounting metadata for new creative work; preserve existing ledger data and deployment backups. Validate full regressions, release policy and exact deployed assets.
+- Rollback code target: `2d490fda72651809c8a79d398631add28bb53c45`; keep current user data. Older code retains the new metadata but does not provide the refund guarantees.
+
 ## 1.12.7 — 2026-11-20
 
 - PATCH from verified production 1.12.6 (`958a9a3fde1d5750be985cc1c5c161f38c9a734c`): complete existing course navigation fixes by keeping loaded empty chats stable, closing mobile course navigation immediately and avoiding a redundant directory fetch for known courses.

@@ -15,11 +15,12 @@
       clearTimeout(timer);
       if (jobs.some(active) && visible()) timer = setTimeout(() => void sync(), pollMs);
     }
-    async function sync() {
+    async function sync(prefetched) {
       const expected = context, sequence = generation;
       if (!expected || !current(expected, sequence)) return;
       try {
-        const response = await request(`/api/courses/${expected.courseId}/study-jobs?conversationId=${encodeURIComponent(expected.conversationId)}`);
+        const response = await (prefetched || request(`/api/courses/${expected.courseId}/study-jobs?conversationId=${encodeURIComponent(expected.conversationId)}`));
+        if (response.error) throw response.error;
         if (!current(expected, sequence)) return;
         const next = response.jobs || [], changed = JSON.stringify(next) !== JSON.stringify(jobs) || failure;
         jobs = next; failure = ""; if (changed) onChange?.();
@@ -28,11 +29,11 @@
         failure = "进度暂时无法更新，后台任务仍在继续。"; onChange?.();
       } finally { if (current(expected, sequence)) schedule(); }
     }
-    async function load(next) {
+    async function load(next, prefetched) {
       clearTimeout(timer); generation++;
       if (owner !== next.userId || key(context) !== key(next)) jobs = [];
       owner = next.userId; context = { ...next }; failure = "";
-      await sync();
+      await sync(prefetched);
     }
     function accept(expected, job) {
       if (key(getContext()) !== key(expected)) return;

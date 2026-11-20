@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.12.3";
+  const VERSION = "1.12.4";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -889,7 +889,7 @@
 
   function courseFolderHtml(course) {
     const open = Boolean(state.expandedCourses[course.id]);
-    const rows = state.courseConversations[course.id] || [];
+    const rows = state.courseConversations[course.id] ?? [{ id: "default", title: ui.text("默认对话") }];
     const failed = state.courseConversationErrors[course.id];
     const pending = courseFolderLoads.has(course.id);
     return ui.html`<section class="course-folder" aria-label="${esc(course.name)} 的对话">
@@ -927,7 +927,7 @@
   }
 
   function onboardingHtml() {
-    if (state.messages.length || state.page !== "study") return "";
+    if (state.messages.length || state.page !== "study" || state.studyHistoryLoading || state.studyHistoryError) return "";
     const hasCourse = !isGeneralChat() && state.courses.some((c) => c.id === state.activeCourseId);
     const hasDocs = hasCourse && courseMaterials().length > 0;
     const firstCourse = courseChats.visibleCourses(state.courses)[0];
@@ -980,7 +980,7 @@
       ${upcomingBanner()}
       <section class="chat-area">
         <div class="messages" id="messages">
-          ${onboardingHtml()}${state.messages.length ? state.messages.map(messageHtml).join("") : `<div class="message ai"><b>AI</b><div>${isGeneralChat() ? ui.text("你好，有什么想问的？") : ui.text("欢迎回来。先保存课程资料，然后问我预习、复习、deadline、作业要求或模拟考试。")}</div></div>`}
+          ${state.studyHistoryError ? ui.html`<p class="course-chat-status" role="status">聊天记录暂时无法刷新，已显示的记录会保留。<button data-action="retry-study">重试加载</button></p>` : state.studyHistoryLoading ? ui.html`<p class="course-chat-status" role="status">正在加载聊天记录…</p>` : ""}${onboardingHtml()}${state.messages.length ? state.messages.map(messageHtml).join("") : state.studyHistoryLoading || state.studyHistoryError ? "" : `<div class="message ai"><b>AI</b><div>${isGeneralChat() ? ui.text("你好，有什么想问的？") : ui.text("欢迎回来。先保存课程资料，然后问我预习、复习、deadline、作业要求或模拟考试。")}</div></div>`}
         </div>
       </section>
       ${composerHtml()}
@@ -2463,9 +2463,36 @@
     };
   }
 
+  const studyHistoryCache = new Map();
+  const emptyCourseChatLoads = new Map();
+  function rememberStudyHistory() {
+    const key = studyReplyKey();
+    if (state.studyHistoryKey !== key) return;
+    studyHistoryCache.delete(key);
+    studyHistoryCache.set(key, { messages: [...state.messages], docs: [...state.docs] });
+    if (studyHistoryCache.size > 20) studyHistoryCache.delete(studyHistoryCache.keys().next().value);
+  }
+  function restoreStudyHistory() {
+    const key = studyReplyKey(), saved = studyHistoryCache.get(key);
+    state.messages = saved ? [...saved.messages] : [];
+    state.docs = saved ? [...saved.docs] : [];
+    state.studyHistoryKey = saved ? key : "";
+    state.studyHistoryError = "";
+  }
+  function createEmptyCourseChat(courseId) {
+    const key = studyReplyKey(state.user.id, courseId, "default");
+    if (!emptyCourseChatLoads.has(key)) {
+      const request = api(`/api/courses/${courseId}/conversations`, { method: "POST", body: { title: "默认对话" } })
+        .finally(() => emptyCourseChatLoads.delete(key));
+      emptyCourseChatLoads.set(key, request);
+    }
+    return emptyCourseChatLoads.get(key);
+  }
+
   async function refreshCourseConversations(courseId, isCurrent = () => true) {
     const userId = state.user.id;
     const data = await api(`/api/courses/${courseId}/conversations`);
+    if (!Array.isArray(data.conversations)) throw new Error(ui.text("对话列表暂时无法加载。"));
     if (state.user?.id === userId && isCurrent()) state.courseConversations[courseId] = data.conversations || [];
     return data.conversations || [];
   }
@@ -2524,7 +2551,7 @@
     // Selecting the visible chat is navigation within the same workspace, not a reload.
     // Keep its history, draft and any in-flight load/reply intact.
     if (state.page === "study" && state.activeCourseId === courseId && state.activeConversationId === conversationId
-      && (state.messages.length || state.busy)) {
+      && !state.studyHistoryError && (state.messages.length || state.busy)) {
       if (courseId !== chatSpaces.general.id && !state.expandedCourses[courseId]) {
         state.expandedCourses[courseId] = true;
         render();
@@ -2532,11 +2559,12 @@
       mobileNavigation.closeStudyPanel();
       return;
     }
+    rememberStudyHistory();
     studyDrafts.set(studyReplyKey(), { text: $("chatInput")?.value ?? studyDrafts.get(studyReplyKey())?.text ?? "", files: [...state.uploadFiles] });
     state.activeCourseId = courseId;
     state.activeConversationId = conversationId || "default";
     state.conversationCourseId = courseId;
-    state.messages = []; state.docs = [];
+    restoreStudyHistory();
     state.uploadFiles = studyDrafts.get(studyReplyKey())?.files || [];
     state.renamingConversation = null;
     if (courseId !== chatSpaces.general.id) state.expandedCourses[courseId] = true;
@@ -2570,7 +2598,7 @@
       let chats = await refreshCourseConversations(courseId, isCurrent);
       if (!isCurrent() || state.activeCourseId !== courseId) return;
       if (!chats.length) {
-        const data = await api(`/api/courses/${courseId}/conversations`, { method: "POST", body: { title: "新对话" } });
+        const data = await createEmptyCourseChat(courseId);
         if (!isCurrent() || state.activeCourseId !== courseId) return;
         chats = [data.conversation];
         state.courseConversations[courseId] = chats;
@@ -2578,12 +2606,14 @@
       if (!isCurrent() || state.activeCourseId !== courseId) return;
       if (!chats.some((chat) => chat.id === state.activeConversationId)) state.activeConversationId = chats[0].id;
       if (state.expandedCourses[courseId] === undefined) state.expandedCourses[courseId] = true;
+      updateCourseFolder(courseId);
     }
     // Persist the resolved chat, including fallback from a deleted/stale saved ID.
     try {
       localStorage.setItem(`studybridge.chatSpace.${state.user.id}`, state.activeCourseId);
       localStorage.setItem(`studybridge.conversation.${state.user.id}.${state.activeCourseId}`, state.activeConversationId);
     } catch { /* Storage may be disabled. */ }
+    if (state.studyHistoryKey !== studyReplyKey()) restoreStudyHistory();
     loadStudyMode();
     if (state.activeCourseId) {
       const courseId = state.activeCourseId;
@@ -2595,7 +2625,12 @@
       ]);
       if (!isCurrent() || courseId !== state.activeCourseId || conversationId !== state.activeConversationId) return;
       state.docs = docsData.documents || [];
-      state.messages = mergeStudyReply(messagesData.messages || [], activeStudyReply() || replyAtLoad);
+      if (!Array.isArray(messagesData.messages)) throw new Error(ui.text("聊天记录暂时无法刷新，已显示的记录会保留。"));
+      state.messages = mergeStudyReply(messagesData.messages, activeStudyReply() || replyAtLoad);
+      state.studyHistoryKey = studyReplyKey();
+      state.studyHistoryLoading = false;
+      rememberStudyHistory();
+      render();
       if (studyTasks) { await studyTasks.load({ userId: state.user.id, courseId, conversationId }); if (!isCurrent() || courseId !== state.activeCourseId || conversationId !== state.activeConversationId) return; state.messages = studyTasks.mergeMessages(state.messages); }
     } else {
       state.docs = [];
@@ -2645,6 +2680,7 @@
     // shadow tree twice in the same turn before the browser can paint it.
     if (page === "grades") { state.busy = false; render(); return; }
     state.busy = true;
+    if (page === "study") { state.studyHistoryLoading = true; state.studyHistoryError = ""; }
     if (page === "community") { state.community = null; state.communityError = ""; state.communityFocusedPost = null; state.communityMoreLoading = false; }
     render();
     try {
@@ -2700,12 +2736,14 @@
       }
     } catch (error) {
       if (!isCurrent()) return;
+      if (page === "study" && state.studyHistoryLoading) state.studyHistoryError = error.message;
       if (page === "community") {
         state.communityError = error.message;
       }
       setToast(error.message);
     } finally {
       if (isCurrent()) {
+        if (page === "study") state.studyHistoryLoading = false;
         state.busy = false;
         render();
         if (state.page === "classmates") void syncClassmatesLive();
@@ -3132,6 +3170,7 @@
         learningStyleEditor = null;
         for (const reply of studyReplies.values()) reply.controller.abort();
         studyTasks?.clear();
+        studyHistoryCache.clear();
         await api("/api/auth/logout", { method: "POST" }).catch(() => null);
         localStorage.removeItem("studybridge.page");
         location.replace("/login");
@@ -3153,6 +3192,7 @@
         await addStudyCourse();
         return;
       }
+      if (action === "retry-study") { await loadPage("study"); return; }
       if (action === "select-course") {
         await selectCourse(button.dataset.id);
         return;

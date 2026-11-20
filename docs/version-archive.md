@@ -1,5 +1,12 @@
 # StudyBridge Version Archive
 
+## 1.12.3 — 2026-11-20
+
+- PATCH from verified production 1.12.2 (`a2fe6e8938d401a3466ca71bb044182af9713ed1`): refine existing notes spacing, readable control labels, dropdown arrow insets, rounded fields/menus and repeated-click dismissal.
+- Use one shared dropdown layer across Office tools, replacing the Docs-only adapter while preserving its toggle behavior. Preserve the production chat-history fix.
+- Validate source/assets, full regression suite, release policy and local browser interaction. Verify AWS health, version and exact public assets after deployment. No dependencies, production configuration or data migration.
+- Rollback code target: `a2fe6e8938d401a3466ca71bb044182af9713ed1`; retain all user/course/annotation data.
+
 ## 1.12.2 — 2026-11-20
 
 - PATCH from verified production 1.12.1 (`974bd6585763fc9684c55beff98369889183be77`): preserve active chat history and drafts when reselecting its course or conversation; resolve stale saved conversation IDs consistently.

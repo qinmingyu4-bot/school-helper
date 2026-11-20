@@ -12,7 +12,7 @@
     if (!promise)
       promise = new Promise((resolve, reject) => {
         const script = document.createElement("script");
-        script.src = "/vendor/office-editor.min.js?v=1.12.1";
+        script.src = "/vendor/office-editor.min.js?v=1.12.3";
         script.onload = () => {
           module = window.StudyBridgeOfficeEditor;
           resolve(module);

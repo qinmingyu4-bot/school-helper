@@ -1,8 +1,8 @@
 {
-  "previousCommit": "974bd6585763fc9684c55beff98369889183be77",
-  "previousVersion": "1.12.1",
-  "version": "1.12.2",
+  "previousCommit": "a2fe6e8938d401a3466ca71bb044182af9713ed1",
+  "previousVersion": "1.12.2",
+  "version": "1.12.3",
   "level": "patch",
-  "reason": "Fix existing course chat navigation clearing visible history and choosing stale saved conversation IDs.",
+  "reason": "Refine existing notes and Office control spacing, rounded dropdown presentation and repeated-click dismissal; retain current production chat history fixes.",
   "features": []
 }

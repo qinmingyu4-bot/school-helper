@@ -24,8 +24,32 @@
   color: var(--ink);
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 5px;
+  border-radius: 8px;
   box-shadow: none;
+}
+/* Place a theme-colored chevron inside the field instead of the platform edge. */
+:root .app-shell .workspace .office-shell label:has(> select) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+:root .app-shell .workspace .office-shell label > select {
+  grid-area: 2 / 1;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-inline: 9px 32px;
+}
+:root .app-shell .workspace .office-shell label:has(> select)::after {
+  content: "";
+  grid-area: 2 / 1;
+  justify-self: end;
+  align-self: center;
+  width: 6px;
+  height: 6px;
+  margin: -3px 12px 0 0;
+  border-right: 1.25px solid var(--ink);
+  border-bottom: 1.25px solid var(--ink);
+  transform: rotate(45deg);
+  pointer-events: none;
 }
 :root .app-shell .workspace .office-shell .office-topbar .office-name {
   width: 100%;
@@ -56,7 +80,7 @@
   font-weight: 450;
   line-height: 20px;
   border: 1px solid transparent;
-  border-radius: 5px;
+  border-radius: 8px;
   background: transparent;
   color: var(--ink);
   box-shadow: none;
@@ -117,6 +141,7 @@
 :root .app-shell .workspace .office-statusbar {
   padding: 7px 0;
   font-size: 11px;
+  line-height: 1.5;
   color: var(--muted);
   background: var(--panel);
 }
@@ -129,7 +154,7 @@
 :root .app-shell .workspace .office-sheet-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); }
 .office-toolbar-group { display: flex; align-items: end; flex-wrap: wrap; gap: 6px; min-width: 0; }
 :root .app-shell .workspace .office-toolbar select { min-height: 32px; padding: 5px 7px; max-width: 100%; }
-:root .app-shell .workspace .office-toolbar [data-setting="font"] { width: 150px; }
+:root .app-shell .workspace .office-toolbar [data-setting="font"] { width: 160px; }
 :root .app-shell .workspace .office-toolbar [data-setting="function"] { width: 150px; }
 :root .app-shell .workspace .office-toolbar input[type="color"] { width: 32px; height: 32px; }
 :root .app-shell .workspace .office-formula-bar {
@@ -154,15 +179,17 @@
 }
 @container (max-width: 480px) {
   :root .app-shell .workspace .office-topbar { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  :root .app-shell .workspace .office-project-label { flex-direction: row; align-items: center; gap: 12px; }
-  :root .app-shell .workspace .office-project-label select { flex: 1; width: 0; }
-  :root .app-shell .workspace .office-top-actions { flex-wrap: nowrap; overflow-x: auto; padding-block: 3px; }
-  :root .app-shell .workspace .office-toolbar { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 12px; }
+  :root .app-shell .workspace .office-shell .office-project-label { grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 12px; }
+  :root .app-shell .workspace .office-shell .office-project-label > select { grid-area: 1 / 2; width: 100%; }
+  :root .app-shell .workspace .office-shell .office-project-label::after { grid-area: 1 / 2; }
+  :root .app-shell .workspace .office-top-actions { flex-wrap: nowrap; overflow-x: auto; padding: 4px; scroll-padding-inline: 4px; }
+  :root .app-shell .workspace .office-toolbar { flex-wrap: nowrap; overflow-x: auto; padding: 10px 4px 12px; scroll-padding-inline: 4px; }
   :root .app-shell .workspace .office-toolbar > * { flex-shrink: 0; }
-  :root .app-shell .workspace .office-toolbar-group { flex-wrap: nowrap; overflow-x: auto; }
+  :root .app-shell .workspace .office-toolbar-group { flex-wrap: nowrap; overflow-x: auto; padding: 4px; scroll-padding-inline: 4px; }
   :root .app-shell .workspace .office-toolbar-group > * { flex-shrink: 0; }
   :root .app-shell .workspace .office-ai-compose > label:first-child { flex-basis: 100%; }
-  :root .app-shell .workspace .office-statusbar { font-size: 10px; }
+  :root .app-shell .workspace .office-top-actions button:first-child { margin-left: 0; }
+  :root .app-shell .workspace .office-statusbar { gap: 4px 12px; }
   :root .app-shell .workspace .office-doc-scroll { padding: 10px; }
 }
 @media (pointer: coarse) {
@@ -172,3 +199,23 @@
     min-height: 40px;
   }
 }
+
+/* The popup sits outside scrolling toolbars so its rounded edges are not clipped. */
+.office-select-menu {
+  position: fixed; z-index: 1500; width: max-content; overflow: auto;
+  padding: 5px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--panel); color: var(--ink); box-shadow: 0 6px 20px #00000012;
+  font: 13px/1.5 var(--font-ui); outline: none; overscroll-behavior: contain;
+}
+.office-select-menu button {
+  display: flex; align-items: center; gap: 16px; justify-content: space-between;
+  width: 100%; min-height: 34px; padding: 7px 10px; border: 0; border-radius: 6px;
+  background: transparent; color: var(--ink); font: inherit; text-align: left;
+  white-space: normal; overflow-wrap: anywhere; box-shadow: none;
+}
+.office-select-menu button::after { content: ""; width: 12px; flex-shrink: 0; }
+.office-select-menu button[aria-selected="true"] { color: var(--green); }
+.office-select-menu button[aria-selected="true"]::after { content: "✓"; }
+.office-select-menu button.is-current { background: var(--soft); }
+.office-select-menu button:disabled { opacity: .45; }
+@media (pointer: coarse) { .office-select-menu button { min-height: 44px; } }

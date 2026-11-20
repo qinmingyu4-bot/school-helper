@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.3 — 2026-11-20
+
+- PATCH from verified production 1.12.2: refine existing notes/Office layouts and unify dropdown presentation and toggle behavior. Preserve the latest chat-history fix. No new features, dependencies or data migration.
+
+- Fix Office dropdowns so clicking the same font, font-size or other selector again closes its menu. Handle each pointer gesture once, preserving selection and switching between menus.
+
+- Round Office fields and their expanded dropdown menus consistently. Keep menus within the viewport and outside toolbar clipping, follow account palette/mode, and support keyboard navigation, type-to-find, Escape and outside-click dismissal.
+
+- Inset Office dropdown chevrons consistently from the right border, reserve space between text and arrow, and inherit the current theme color across Docs, Sheets and Slides. Preserve existing selection values and compact mobile project selection.
+
+- Remove the unused sticky-note toolbar gap from the notes workspace. Show contextual actions below the paper only when a note is selected, keeping the canvas position stable while editing.
+- Keep course labels, tool hints and narrow-screen Office status text at a readable 11px; preserve document/cell formatting and account colors.
+- Give horizontally scrolling Office controls room for keyboard focus outlines and remove the clipped first-action margin on narrow layouts.
+
 ## 1.12.2 — 2026-11-20
 
 - PATCH from verified production 1.12.1 (`974bd6585763fc9684c55beff98369889183be77`): preserve active chat history and drafts when reselecting its course or conversation; resolve stale saved conversation IDs consistently.

@@ -1,5 +1,12 @@
 # StudyBridge Version Archive
 
+## 1.9.5 — 2026-11-20
+
+- PATCH from verified production 1.9.4 (`632232068cfd6aa3575a4332f3713eb49a96eed9`): remove blank feedback and redundant work when opening Grades. No new features or database migration.
+- Preserve server-fresh grade records, calculation behavior and tablet layout fixes.
+- Validate source/assets, release policy, regression tests and slow-response browser behavior; verify deployed version, health and exact assets.
+- Rollback code target: `632232068cfd6aa3575a4332f3713eb49a96eed9`; retain account data.
+
 ## 1.9.4 — 2026-11-20
 
 - PATCH from production 1.9.3: repair existing tablet responsive layouts; no new features or data migration.

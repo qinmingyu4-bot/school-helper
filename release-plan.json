@@ -1,8 +1,8 @@
 {
-  "previousCommit": "f2e4da17ddb0fea3185676e1c5c6bad8ae63aeb8",
-  "previousVersion": "1.9.3",
-  "version": "1.9.4",
+  "previousCommit": "632232068cfd6aa3575a4332f3713eb49a96eed9",
+  "previousVersion": "1.9.4",
+  "version": "1.9.5",
   "level": "patch",
-  "reason": "Repair tablet landscape spacing, narrow-screen navigation and rotation draft retention in existing workspaces; no new product features or data migration.",
+  "reason": "Repair blank feedback and redundant rendering when opening existing Grades; skip unnecessary source scans for empty rules. No new features or data migration.",
   "features": []
 }

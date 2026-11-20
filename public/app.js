@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.9.4";
+  const VERSION = "1.9.5";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -2552,6 +2552,9 @@
     // finally blocks must leave the newer page's data, drafts and busy state alone.
     const isCurrent = () => pageGeneration === pageLoadGeneration && state.user?.id === userId && state.page === page
       && (page !== "classmates" || generation === classmatesGeneration);
+    // Grades owns its asynchronous loading state. Avoid rebuilding its new
+    // shadow tree twice in the same turn before the browser can paint it.
+    if (page === "grades") { state.busy = false; render(); return; }
     state.busy = true;
     if (page === "community") { state.community = null; state.communityError = ""; state.communityFocusedPost = null; state.communityMoreLoading = false; }
     render();

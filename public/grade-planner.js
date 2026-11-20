@@ -6,6 +6,9 @@
   const GL = window.StudyBridgeGradeLocations;
   const root = scope.getElementById("grade-app");
   const dialog = scope.getElementById("grade-dialog");
+  // Paint feedback before waiting for the account request (including cold connections).
+  const loadingEnglish = document.documentElement.lang.startsWith("en");
+  root.innerHTML = `<main class="gp-empty" role="status" aria-live="polite" style="padding:28px;color:var(--muted)">${loadingEnglish ? "Loading course grades…" : "正在读取课程成绩…"}</main>`;
   let bootstrap;
   try {
     const response = await fetch("/api/grade-planner", { cache:"no-store" });
@@ -91,6 +94,8 @@
     if (modal?.kind === "locations") renderDialog();
   }
   async function loadLocations(courseId,force=false) {
+    // Empty courses have no grade rows to attach discovered links to.
+    if (!courses.find(course => course.id === courseId)?.categories.length) return;
     if (!force && materialLocations.has(courseId)) return;
     const value = { loading:true, data:materialLocations.get(courseId)?.data || null, error:false };
     materialLocations.set(courseId,value); if (courseId===state.courseId) refreshLocationDisplay();
@@ -279,9 +284,9 @@
     return `<div class="gp-prediction"><div class="gp-planner-intro"><p>${t("拖动任意一侧，另一侧随之更新。", "Move either slider. The other follows.")}</p><span>${t("仅模拟，不更改已录入成绩", "A simulation, separate from your grades")}</span></div><div class="gp-linked-planner" aria-label="${t("成绩与总评联动预测", "Linked assessment and final grade planner")}"><section class="gp-linked-side"><div class="gp-linked-label">${focusPicker(summary)}<span class="gp-focus-weight">${forecastWeight(summary, focus)}</span></div><div class="gp-linked-number"><input id="assessment-number" type="number" min="0" max="100" step="any" inputmode="decimal" aria-label="${t("项目成绩", "Assessment score")}" aria-describedby="linked-result" value="${fmt(Math.min(100, state.exam), 2)}"><span>%</span><small id="assessment-hint"></small></div><input class="gp-range" id="assessment-slider" type="range" min="0" max="100" step="0.01" value="${Math.min(100, state.exam)}" aria-label="${t("项目成绩滑条", "Assessment score slider")}" aria-describedby="linked-result"><div class="gp-range-scale"><span>0</span><span>100</span></div></section><div class="gp-linked-connector" aria-hidden="true">${icon("link")}</div><section class="gp-linked-side"><div class="gp-linked-label"><label for="total-number">${t("最终总评", "Final grade")}</label><span id="total-caption">${t("课程总成绩", "Course total")}</span></div><div class="gp-linked-number"><input id="total-number" type="number" min="0" max="100" step="any" inputmode="decimal" aria-label="${t("最终总评", "Final grade")}" aria-describedby="linked-result" value="${fmt(state.goal, 2)}"><span>/ 100</span></div><input class="gp-range" id="total-slider" type="range" min="0" max="100" step="0.01" value="${state.goal}" aria-label="${t("最终总评滑条", "Final grade slider")}" aria-describedby="linked-result"><div class="gp-range-scale"><span>0</span><span>100</span></div></section></div><div class="gp-linked-result" id="linked-result" role="status" aria-live="polite"></div>${others.length ? `<details class="gp-other-assumptions"><summary><span>${t("其他未出分项目", "Other pending assessments")}</span><span id="assumption-summary"></span><span class="gp-adjust-label">${t("调整", "Adjust")}${icon("down")}</span></summary><div class="gp-assumption-fields">${others.map(({category:c}) => `<label><span>${esc(c.name)}</span><span><input class="gp-assumption-number" type="number" min="0" max="100" step="any" data-assumption="${esc(c.id)}" aria-label="${esc(c.name)} ${t("预测百分比", "assumed percentage")}" value="${state.assumptions[c.id] ?? 85}"><small>%</small></span></label>`).join("")}</div></details>` : ""}<p class="gp-simulation-note">${t("按已确认的评分规则计算，未包含额外调分。", "Based on confirmed grading rules, without additional curves.")}</p></div>`;
   }
   function projection(activeId) {
-    const summary = G.summarize(course());
     const result = scope.getElementById("linked-result");
     if (!result) return;
+    const summary = G.summarize(course());
     const linked = G.linkedForecast(course(), { driver:state.driver, score:state.exam, goal:state.goal, assumptions:state.assumptions, focus:state.focus });
     if (!linked) return;
     state.exam = linked.score;

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.9.5 — 2026-11-20
+
+- PATCH from 1.9.4: show localized Grades loading feedback immediately instead of a blank workspace while waiting for account data.
+- Mount Grades once per navigation, skip source/PDF link scans for empty grading rules and avoid unused forecast summaries.
+- Preserve fresh account reads, recorded grades, calculations, palette tokens and the latest tablet layout fixes.
+
 ## 1.9.4 — 2026-11-20
 
 - PATCH from production 1.9.3: repair existing tablet responsive layouts; no new features or data migration.

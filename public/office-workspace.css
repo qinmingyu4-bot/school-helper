@@ -117,6 +117,7 @@
 :root .app-shell .workspace .office-statusbar {
   padding: 7px 0;
   font-size: 11px;
+  line-height: 1.5;
   color: var(--muted);
   background: var(--panel);
 }
@@ -156,13 +157,14 @@
   :root .app-shell .workspace .office-topbar { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   :root .app-shell .workspace .office-project-label { flex-direction: row; align-items: center; gap: 12px; }
   :root .app-shell .workspace .office-project-label select { flex: 1; width: 0; }
-  :root .app-shell .workspace .office-top-actions { flex-wrap: nowrap; overflow-x: auto; padding-block: 3px; }
-  :root .app-shell .workspace .office-toolbar { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 12px; }
+  :root .app-shell .workspace .office-top-actions { flex-wrap: nowrap; overflow-x: auto; padding: 4px; scroll-padding-inline: 4px; }
+  :root .app-shell .workspace .office-toolbar { flex-wrap: nowrap; overflow-x: auto; padding: 10px 4px 12px; scroll-padding-inline: 4px; }
   :root .app-shell .workspace .office-toolbar > * { flex-shrink: 0; }
-  :root .app-shell .workspace .office-toolbar-group { flex-wrap: nowrap; overflow-x: auto; }
+  :root .app-shell .workspace .office-toolbar-group { flex-wrap: nowrap; overflow-x: auto; padding: 4px; scroll-padding-inline: 4px; }
   :root .app-shell .workspace .office-toolbar-group > * { flex-shrink: 0; }
   :root .app-shell .workspace .office-ai-compose > label:first-child { flex-basis: 100%; }
-  :root .app-shell .workspace .office-statusbar { font-size: 10px; }
+  :root .app-shell .workspace .office-top-actions button:first-child { margin-left: 0; }
+  :root .app-shell .workspace .office-statusbar { gap: 4px 12px; }
   :root .app-shell .workspace .office-doc-scroll { padding: 10px; }
 }
 @media (pointer: coarse) {

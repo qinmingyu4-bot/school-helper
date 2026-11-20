@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Remove the unused sticky-note toolbar gap from the notes workspace. Show contextual actions below the paper only when a note is selected, keeping the canvas position stable while editing.
+- Keep course labels, tool hints and narrow-screen Office status text at a readable 11px; preserve document/cell formatting and account colors.
+- Give horizontally scrolling Office controls room for keyboard focus outlines and remove the clipped first-action margin on narrow layouts.
+
 ## 1.12.0 — 2026-11-20
 
 - MINOR from verified production 1.11.1: add in-place course creation from Course notes. Preserve the existing workspace, shared course store and upload flow; no database migration.

@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.10.0";
+  const VERSION = "1.11.0";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -3911,6 +3911,7 @@
     void window.StudyBridgeCourseNotes.mount(creativeContext());
     if (state.toast && state.user) root.insertAdjacentHTML("beforeend", `<div class="toast">${esc(state.toast)}</div>`);
     mobileNavigation.sync(root, { userId: state.user?.id, mode: state.mode, page: state.page });
+    window.StudyBridgeProductHelp.sync({ userId: state.user?.id, active: state.mode === "student" && state.page === "study", lang: ui.getLanguage() });
     const sidebar = root.querySelector(".sidebar");
     if (sidebar && sidebar.dataset.sidebarContext === previousSidebarContext) {
       // Mobile sidebars scroll with the page instead of their own container.

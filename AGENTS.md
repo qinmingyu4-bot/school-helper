@@ -24,6 +24,9 @@ components and design proposals without requiring the owner to repeat it.
 - Respect the user's selected account palette and independent light/dark mode;
   do not hardcode a new module to one palette. Preserve Chinese/English support,
   readable contrast and mobile usability.
+- Treat landscape as the primary tablet layout, retaining side-by-side navigation
+  and workspace where space allows. Support portrait and split view as fallbacks
+  without forcing screen orientation or discarding in-progress work.
 - Make focused, consistent improvements within the established style. Introduce
   a different visual direction only when the owner explicitly asks for it.
 

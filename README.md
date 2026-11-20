@@ -165,7 +165,7 @@ occupying a side column. Empty deadline placeholders do not consume phone readin
 space; actual upcoming schedules remain visible. Desktop reply typography and
 scrollable formula/table rendering are unchanged.
 
-At widths up to 700 px, the student app uses a main menu and separate full-screen
+At widths up to 900 px, the student app uses a main menu and separate full-screen
 pages for Community, Classmates, Schedule, Study and Tools. Opening an entry slides
 the page in from the right. **主菜单** in the upper left returns to the menu;
 the browser Back button also returns after opening a menu entry. Returning and
@@ -175,6 +175,17 @@ Study opens directly to chat; **课程与资料** opens course selection, shared
 and learning preferences, with a separate return to Study. Larger layouts and the
 creator console keep their existing navigation. Reduced-motion preferences disable
 the slide transition.
+
+## Tablet layout
+
+Tablet use is optimized for landscape: at 901–1366 px the student app retains
+side-by-side navigation and workspace, with a 280–300 px sidebar. Narrow workspaces
+stack creative input/results and community reading/composing to preserve readable
+content. Touch controls in navigation, uploads and chat use at least 44 px targets.
+At 900 px and below (portrait or split view), the full-page navigation above applies.
+Crossing this breakpoint keeps the current page and mounted drafts visible and
+closes the temporary course panel. Screen orientation is not locked; account
+palettes, dark mode and Chinese/English labels continue to use the shared styles.
 
 ## Manual Office editors
 

@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const { test } = require("node:test");
 const { create } = require("../public/mobile-navigation");
 
-function harness({ mobile = true, url = "http://localhost/app", historyState = null } = {}) {
+function harness({ mobile = true, width = null, url = "http://localhost/app", historyState = null } = {}) {
   const listeners = {}, documentListeners = {}, navigations = [], animations = [];
   const button = { focus() {}, setAttribute() {} };
   const sidebar = { inert: false, scrollTop: 0, querySelector: () => button, setAttribute() {}, removeAttribute() {} };
@@ -13,7 +13,11 @@ function harness({ mobile = true, url = "http://localhost/app", historyState = n
   const entries = [{ state: historyState, url }]; let index = 0;
   const win = {
     location: { href: url }, document: { addEventListener: (name, fn) => { documentListeners[name] = fn; } },
-    matchMedia: (query) => query.includes("reduced-motion") ? { matches: false } : media,
+    matchMedia: (query) => {
+      if (query.includes("reduced-motion")) return { matches: false };
+      if (width !== null) media.matches = width <= Number(query.match(/max-width:\s*(\d+)px/)[1]);
+      return media;
+    },
     addEventListener: (name, fn) => { listeners[name] = fn; },
     history: {
       get state() { return entries[index].state; },
@@ -82,4 +86,31 @@ test("browser forward restores the destination while stale history from another 
   h.listeners.popstate({ state: { sbMobile: { userId: "alice", view: "page", page: "tools", hasMenuEntry: true } } });
   assert.deepEqual(h.navigations, ["tools"]);
   h.sync({ page: "tools" }); assert.equal(h.shell.dataset.mobileView, "page");
+});
+
+
+test("portrait tablets use page navigation; landscape tablets keep both panes interactive", () => {
+  for (const width of [768, 820, 834, 900, 901, 1024, 1194, 1366]) {
+    const h = harness({ width, url: "http://localhost/app?page=study" }); h.sync();
+    assert.equal(h.controller.snapshot().active, width <= 900, `width ${width}`);
+    assert.equal(h.sidebar.inert, width <= 900);
+    assert.equal(h.workspace.inert, false);
+  }
+});
+
+test("rotating landscape into portrait keeps the mounted page and a usable menu return", () => {
+  const h = harness({ mobile: false }); h.sync();
+  h.media.matches = true; h.media.change();
+  assert.equal(h.controller.snapshot().view, "page");
+  assert.equal(h.workspace.inert, false);
+  assert.equal(h.sidebar.inert, true);
+  assert.equal(new URL(h.win.location.href).searchParams.get("page"), "study");
+  h.click("menu"); assert.equal(h.controller.snapshot().view, "menu");
+  assert.equal(h.controller.enter("study"), true);
+  h.click("study-panel");
+  h.media.matches = false; h.media.change();
+  assert.equal(h.controller.snapshot().panel, false);
+  h.media.matches = true; h.media.change();
+  assert.equal(h.workspace.inert, false);
+  assert.equal(h.navigations.length, 0, "rotation must not rebuild the page or discard drafts");
 });

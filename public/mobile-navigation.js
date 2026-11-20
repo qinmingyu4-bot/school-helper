@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
   function create({ window: win = global, navigate, resizeComposer = () => {} }) {
-    const media = win.matchMedia("(max-width: 700px)");
+    const media = win.matchMedia("(max-width: 900px)");
     const initialHasPage = new URL(win.location.href).searchParams.has("page");
     const initialHistory = win.history.state?.sbMobile;
     let root, userId, page, student = false, view = "menu", panel = false, initialized = false;
@@ -117,7 +117,16 @@
     win.addEventListener("popstate", popstate);
     win.document.addEventListener("click", click);
     win.document.addEventListener("keydown", keydown);
-    media.addEventListener("change", () => { panel = false; apply(); });
+    media.addEventListener("change", () => {
+      panel = false;
+      // Rotation/split view keeps the mounted page and drafts visible.
+      if (active()) {
+        view = "page";
+        hasMenuEntry = false;
+        win.history.replaceState(marker(), "", `/app?page=${encodeURIComponent(page)}`);
+      }
+      apply();
+    });
     return { sync, enter, historyState: () => active() ? win.history.state : null,
       closeStudyPanel: () => { if (active() && panel) closePanel(); },
       snapshot: () => ({ view, page, panel, active: active() }) };

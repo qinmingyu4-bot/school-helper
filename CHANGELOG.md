@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.9.4 — 2026-11-20
+
+- PATCH from production 1.9.3: repair existing tablet responsive layouts; no new features or data migration.
+- Prioritize landscape with a compact sidebar, readable workspaces and larger touch targets.
+- Use full-page navigation up to 900 px and preserve the active page and drafts across rotation/split view.
+- Preserve latest production workflows, account appearance and bilingual UI.
+
 ## 1.9.3 — 2026-11-20
 
 - PATCH from 1.9.2: fix existing account appearance consistency without adding features.

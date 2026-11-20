@@ -1,0 +1,58 @@
+/* Landscape-first tablet workspace. Narrow portrait/split view uses mobile-navigation. */
+@media (min-width: 901px) and (max-width: 1366px) {
+  .app-shell:not(.admin-shell) {
+    grid-template-columns: clamp(280px, 24vw, 300px) minmax(0, 1fr);
+  }
+  .app-shell:not(.admin-shell) > .sidebar { min-width: 0; }
+  .app-shell:not(.admin-shell) .side-head { gap: 8px; }
+  :root .app-shell:not(.admin-shell) .side-head .brand-mark { width: 32px; height: 32px; }
+  .app-shell:not(.admin-shell) .side-head .sb-brand-symbol { width: 32px; }
+  .app-shell:not(.admin-shell) .side-head strong { font-size: 18px; }
+  .app-shell:not(.admin-shell) .side-head span { overflow-wrap: anywhere; }
+  .app-shell:not(.admin-shell) .side-head > button { padding-inline: 8px; font-size: 12px; flex-shrink: 0; }
+  .app-shell:not(.admin-shell) > .workspace { min-width: 0; }
+  .app-shell:not(.admin-shell) .page-header { padding-inline: 20px; }
+  .app-shell:not(.admin-shell) .study-workspace .chat-area { padding-inline: 20px; }
+  :root .app-shell:not(.admin-shell) .composer-light { padding-inline: 20px; }
+}
+
+/* Account for the sidebar when deciding whether two content columns fit. */
+@media (min-width: 901px) and (max-width: 1200px) {
+  :root .app-shell:not(.admin-shell) .creative-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 24px 20px;
+    gap: 24px;
+  }
+  :root .app-shell:not(.admin-shell) .creative-result {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding: 24px 0 0;
+  }
+  .app-shell:not(.admin-shell) .creative-history { max-height: 160px; }
+  :root .app-shell:not(.admin-shell) .community-layout { grid-template-columns: minmax(0, 1fr); }
+  .app-shell:not(.admin-shell) .community-compose-column { position: static; }
+  :root .app-shell:not(.admin-shell) .community-composer-card {
+    padding: 24px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+  :root .app-shell:not(.admin-shell) .community-guidance { margin-left: 0; }
+  .app-shell:not(.admin-shell) .profile-layout { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (pointer: coarse) {
+  .app-shell:not(.admin-shell) :is(.side-nav button, .side-head > button, .page-header > button, .study-side-icon) {
+    min-height: 44px;
+  }
+  .app-shell:not(.admin-shell) .study-material-row { grid-template-columns: minmax(0, 1fr) 44px; }
+  .app-shell:not(.admin-shell) .study-side-icon { width: 44px; }
+  :root .app-shell:not(.admin-shell) .composer-light .compose-row {
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+  }
+  :root .app-shell:not(.admin-shell) .composer-light :is(.attach, .send) {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    margin-block: 0;
+  }
+}

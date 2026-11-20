@@ -1,5 +1,13 @@
 # StudyBridge Version Archive
 
+## 1.9.4 — 2026-11-20
+
+- PATCH from production 1.9.3: repair existing tablet responsive layouts; no new features or data migration.
+- Prioritize landscape with a compact sidebar, readable workspaces and larger touch targets.
+- Use full-page navigation up to 900 px and preserve the active page and drafts across rotation/split view.
+- Preserve latest production workflows, account appearance and bilingual UI.
+- Rollback code target: `f2e4da17ddb0fea3185676e1c5c6bad8ae63aeb8`; retain user data and private configuration.
+
 This file records stable StudyBridge versions so a broken update can be rolled back safely.
 
 ## 1.9.3 — 2026-11-20

@@ -1,6 +1,6 @@
 .mobile-page-bar, .mobile-study-bar, .mobile-chat-menu { display: none; }
 
-@media (max-width: 700px) {
+@media (max-width: 900px) {
   /* Student navigation only. Desktop and the creator console keep their layout. */
   .app-shell:not(.admin-shell) {
     position: relative;

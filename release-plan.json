@@ -1,8 +1,8 @@
 {
-  "previousCommit": "0a6ce3709f29a98eaa935f54821067c205e1e38d",
-  "previousVersion": "1.9.2",
-  "version": "1.9.3",
+  "previousCommit": "f2e4da17ddb0fea3185676e1c5c6bad8ae63aeb8",
+  "previousVersion": "1.9.3",
+  "version": "1.9.4",
   "level": "patch",
-  "reason": "Fix existing workspace palette and dark-mode control styling, selected note material accents and PDF paper color isolation. No new features or data migration.",
+  "reason": "Repair tablet landscape spacing, narrow-screen navigation and rotation draft retention in existing workspaces; no new product features or data migration.",
   "features": []
 }

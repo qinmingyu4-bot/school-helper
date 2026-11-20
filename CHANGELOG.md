@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Grades opening responsiveness
+
+- Show localized loading feedback immediately while fetching account grades.
+- Mount the Grades workspace once per navigation instead of rebuilding it twice before the first paint.
+- Skip automatic source/PDF link discovery for courses without grading categories, and avoid forecast summaries when the forecast controls are absent.
+- Preserve fresh account reads, grade calculations, saved records, and existing palette tokens.
+
 ## 1.9.3 — 2026-11-20
 
 - PATCH from 1.9.2: fix existing account appearance consistency without adding features.

@@ -78,3 +78,9 @@ body:has(.note-focus){overflow:hidden}
 .course-notes [data-note=pdf]{color:var(--green);font-weight:500}
 .course-notes [data-note=cancel-export]{color:var(--muted)}
 .note-ink{touch-action:none}
+
+.note-sticky-tools{display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px;padding:6px 0;border-bottom:1px solid var(--line);font-size:11px;color:var(--muted)}
+.note-sticky-tools label{display:flex;align-items:center;gap:8px;font-size:11px;margin:0}
+.course-notes .note-sticky-tools input[type=color]{width:28px;height:28px;min-height:28px;padding:2px;border:0;background:transparent}
+.note-sticky-tools>span{margin-left:auto;font-size:10px}
+.note-ink [data-sticky]{cursor:inherit}

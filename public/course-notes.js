@@ -4,7 +4,7 @@
   let host, ctx, owner, pdf, course = '', doc = '', page = 1, version = 0, items = [], undo = [], redo = [];
   let mode = 'pen', color = '#24344a', width = .003, zoom = 1, dirty = false, saving, timer, busy = false, stroke, penOnly = false, renderTask, language = '', epoch = 0;
   const model = window.StudyBridgeNoteModel;
-  let finishGesture = () => {}, exportJob, erasePreview;
+  let finishGesture = () => {}, exportJob, erasePreview, selectedSticky=-1;
   const $ = s => host.querySelector(s);
   const esc = s => String(s).replace(/[&<>"']/g,c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const route = kind => `/api/courses/${encodeURIComponent(course)}/${kind}/${encodeURIComponent(doc)}?page=${page}`;
@@ -41,13 +41,23 @@
     const ratio = Number(svg.dataset.ratio || 1);
     $('[data-color]').value=color; for (const option of $('[data-width]').options) option.selected=Number(option.value)===width; $('[data-pen-only]').checked=penOnly;
     svg.innerHTML = model.markup([...(erasePreview || items),...(stroke ? [stroke] : [])],ratio);
+    const selected=(erasePreview || items)[selectedSticky];
+    const stickySelected=selected?.type==='sticky';
+    $('[data-sticky-tools]').style.visibility=stickySelected?'visible':'hidden';
+    $('[data-sticky-tools]').inert=!stickySelected;
+    if(stickySelected) {
+      $('[data-sticky-color]').value=selected.background;
+      const x=selected.x*1000,y=selected.y*1000*ratio,w=selected.w*1000,h=selected.h*1000*ratio;
+      const handle=Math.min(w,h,44*1000/Math.max(1,svg.getBoundingClientRect().width));
+      svg.insertAdjacentHTML('beforeend',`<g data-sticky-control="true" data-index="${selectedSticky}"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="${model.contrast(selected.background)}" stroke-width="1" stroke-dasharray="4 3" pointer-events="none"/><rect data-resize="true" x="${x+w-handle}" y="${y+h-handle}" width="${handle}" height="${handle}" fill="transparent" style="cursor:nwse-resize"/><rect pointer-events="none" x="${x+w-24}" y="${y+h-24}" width="24" height="24" rx="4" fill="${model.contrast(selected.background)}" fill-opacity=".15" style="cursor:nwse-resize"/><path d="M${x+w-17} ${y+h-5}l12-12m-5 12 5-5" stroke="${model.contrast(selected.background)}" stroke-width="1.5" pointer-events="none"/></g>`);
+    }
     $('[data-note=undo]').disabled = !undo.length;
     $('[data-note=redo]').disabled = !redo.length;
-    svg.style.touchAction = mode === 'hand' || penOnly ? 'pan-x pan-y' : 'none';
+    svg.style.touchAction = mode === 'hand' || (penOnly && ['pen','highlight','eraser'].includes(mode)) ? 'pan-x pan-y' : 'none';
     svg.style.cursor = busy ? 'progress' : model.cursor(mode,mode==='highlight'&&color==='#24344a'?'#ffd447':color);
-    $('[data-color]').disabled=busy || ['hand','eraser'].includes(mode);
-    $('[data-width]').disabled=busy || ['hand','eraser','text'].includes(mode);
-    $('[data-tool-status]').textContent=({hand:t('浏览 · 拖动移动课件','Browse · Drag to pan'),pen:t('画笔','Pen'),highlight:t('高亮','Highlight'),text:t('文字 · 点击添加或编辑','Text · Click to add or edit'),eraser:t('橡皮 · 拖动擦除整条标注','Eraser · Drag to erase annotations')})[mode];
+    $('[data-color]').disabled=busy || ['hand','eraser','sticky'].includes(mode);
+    $('[data-width]').disabled=busy || ['hand','eraser','text','sticky'].includes(mode);
+    $('[data-tool-status]').textContent=({sticky:t('便签 · 点击添加，拖动移动，右下角调整大小','Sticky note · Click to add, drag to move, drag corner to resize'),hand:t('浏览 · 拖动移动课件','Browse · Drag to pan'),pen:t('画笔','Pen'),highlight:t('高亮','Highlight'),text:t('文字 · 点击添加或编辑','Text · Click to add or edit'),eraser:t('橡皮 · 拖动擦除整条标注','Eraser · Drag to erase annotations')})[mode];
     syncControls();
     host.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed',b.dataset.mode === mode));
   }
@@ -73,7 +83,7 @@
     try {
       const result = loaded || await ctx.api(`/api/courses/${course}/notes/${doc}?page=${next}`);
       if (token !== epoch) return;
-      page = next; version = result.version; items = result.items; undo = []; redo = []; dirty = false;
+      selectedSticky=-1; page = next; version = result.version; items = result.items; undo = []; redo = []; dirty = false;
       let local; try { local = localStorage.getItem(draftKey()); } catch { /* Cloud notes remain available without browser storage. */ }
       if (local) { const draft = JSON.parse(local); items = draft.items; version = draft.version; dirty = true; }
       await drawPage();
@@ -106,7 +116,7 @@
     status(documents.length ? t('选择课件开始笔记。','Choose a PDF to start.') : t('还没有 PDF 课件，请上传。PPT 请先导出为 PDF。','Upload a PDF to start. Export PowerPoint to PDF first.'));
   }
   async function switchCourse(id) {
-    await save(); course = id; doc = ''; items = []; dirty = false;
+    await save(); selectedSticky=-1; course = id; doc = ''; items = []; dirty = false;
     if (pdf) { await pdf.destroy(); pdf = null; }
     $('.note-work').hidden = true;
     if (course) await listDocuments();
@@ -117,7 +127,7 @@
   function syncControls() {
     if(!host)return;
     host.setAttribute('aria-busy',String(busy));
-    host.querySelectorAll('[data-note],[data-mode],[data-upload],[data-page],[data-pen-only],[data-picker-toggle]').forEach(el=>{
+    host.querySelectorAll('[data-note],[data-mode],[data-upload],[data-page],[data-pen-only],[data-picker-toggle],[data-sticky-color]').forEach(el=>{
       el.disabled=busy;
       if(el.dataset.note==='cancel-export') {el.disabled=false;el.hidden=!exportJob;}
     });
@@ -128,8 +138,8 @@
     $('[data-note=zoom-out]').disabled=busy || zoom<=1;
     $('[data-note=zoom-in]').disabled=busy || zoom>=3;
     $('[data-picker-toggle="document"]').disabled=busy || $('[data-document]').options.length<2;
-    $('[data-color]').disabled=busy || ['hand','eraser'].includes(mode);
-    $('[data-width]').disabled=busy || ['hand','eraser','text'].includes(mode);
+    $('[data-color]').disabled=busy || ['hand','eraser','sticky'].includes(mode);
+    $('[data-width]').disabled=busy || ['hand','eraser','text','sticky'].includes(mode);
   }
   async function exportFullPdf() {
     const job={canceled:false,token:epoch,source:pdf,host,course,doc,owner};
@@ -163,6 +173,7 @@
   }
   function editText(point,index) {
     const dialog = $('[data-text-dialog]'), input = dialog.querySelector('textarea');
+    dialog.querySelector('label').firstChild.textContent=items[index]?.type==='sticky'?t('便签文字','Sticky note text'):t('文字笔记（清空可删除）','Text note (empty to delete)');
     input.value = index === undefined ? '' : items[index].text;
     dialog.returnValue='cancel'; dialog.showModal(); input.focus();
     dialog.onclose = () => {
@@ -170,7 +181,8 @@
       if(index===undefined && !input.value.trim())return;
       if(index!==undefined && input.value===items[index]?.text)return;
       remember();
-      if (index !== undefined) { if (input.value.trim()) items[index].text = input.value; else items.splice(index,1); }
+      if (items[index]?.type==='sticky') items[index].text=input.value;
+      else if (index !== undefined) { if (input.value.trim()) items[index].text = input.value; else items.splice(index,1); }
       else if (input.value.trim()) items.push({type:'text',x:point[0],y:point[1],text:input.value,color,width:.022});
       changed();
     };
@@ -210,12 +222,16 @@
         }
         finishGesture(false);busy=true;locked=true;syncControls();
         if (button.dataset.mode) { mode = button.dataset.mode; paint(); }
+        const sticky=items[selectedSticky];
+        if(action==='sticky-text' && sticky?.type==='sticky') editText(null,selectedSticky);
+        if(action==='sticky-copy' && sticky?.type==='sticky') {remember();items.push(model.transformSticky(JSON.parse(JSON.stringify(sticky)),.025,.025));selectedSticky=items.length-1;changed();}
+        if(action==='sticky-delete' && sticky?.type==='sticky') {remember();items.splice(selectedSticky,1);selectedSticky=-1;changed();}
         if (action === 'pdf') await exportFullPdf();
         if (action === 'save') await save();
         if (action === 'study' && course) { await save(); await ctx.openStudyCourse(course); }
         if (action === 'focus') { host.classList.toggle('note-focus'); button.textContent=host.classList.contains('note-focus')?t('退出专注','Exit focus'):t('专注书写','Focus'); }
-        if (action === 'undo' && undo.length) { redo.push(JSON.stringify(items)); items=JSON.parse(undo.pop()); changed(); }
-        if (action === 'redo' && redo.length) { undo.push(JSON.stringify(items)); items=JSON.parse(redo.pop()); changed(); }
+        if (action === 'undo' && undo.length) { selectedSticky=-1; redo.push(JSON.stringify(items)); items=JSON.parse(undo.pop()); changed(); }
+        if (action === 'redo' && redo.length) { selectedSticky=-1; undo.push(JSON.stringify(items)); items=JSON.parse(redo.pop()); changed(); }
         if (action === 'prev' && page>1) await loadPage(page-1);
         if (action === 'next' && page<pdf.numPages) await loadPage(page+1);
         if (action === 'zoom-in' || action === 'zoom-out') { zoom=Math.max(1,Math.min(3,zoom+(action==='zoom-in' ? .25 : -.25))); await drawPage(); }
@@ -224,7 +240,7 @@
         if (action === 'image') {
           const canvas = document.createElement('canvas'), base=$('canvas'); canvas.width=base.width; canvas.height=base.height;
           const g=canvas.getContext('2d'); g.drawImage(base,0,0);
-          const svg=$('svg.note-ink').cloneNode(true); svg.setAttribute('xmlns','http://www.w3.org/2000/svg'); svg.setAttribute('width',canvas.width); svg.setAttribute('height',canvas.height);
+          const svg=$('svg.note-ink').cloneNode(true); svg.querySelectorAll('[data-sticky-control]').forEach(el=>el.remove()); svg.setAttribute('xmlns','http://www.w3.org/2000/svg'); svg.setAttribute('width',canvas.width); svg.setAttribute('height',canvas.height);
           const url=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)],{type:'image/svg+xml'}));
           try { const img=new Image(); img.src=url; await img.decode(); g.drawImage(img,0,0); canvas.toBlob(blob => { if(blob) download(blob,`notes-page-${page}.png`,'image/png'); }); } finally { URL.revokeObjectURL(url); }
         }
@@ -237,6 +253,7 @@
         if (el.matches('[data-course]')) { try { await switchCourse(el.value); } finally { el.value=course; syncPickers(); } }
         if (el.matches('[data-document]') && el.value) { try { await openDocument(el.value); } finally { el.value=doc; syncPickers(); } }
         if (el.matches('[data-page]')) { const n=Number(el.value); if (Number.isInteger(n) && n>=1 && n<=pdf.numPages) await loadPage(n); else el.value=page; }
+        if (el.matches('[data-sticky-color]') && items[selectedSticky]?.type==='sticky') {remember();items[selectedSticky].background=el.value;changed();}
         if (el.matches('[data-color]')) { color=el.value; paint(); }
         if (el.matches('[data-width]')) { width=Number(el.value); paint(); }
         if (el.matches('[data-pen-only]')) { penOnly=el.checked; paint(); }
@@ -261,11 +278,12 @@
         }
       } catch(e) { if(epoch===operationEpoch)status(e.message); } finally { if(epoch===operationEpoch) { busy=false; if (el.matches('[data-upload]')) { el.value=''; el.disabled=false; } syncControls(); paint(); } }
     });
-    const svg=$('svg.note-ink'); let pointer,gesture,last,initial,pan;
+    const svg=$('svg.note-ink'); let pointer,gesture,last,initial,pan,stickyStart,stickyOrigin,stickyStroke;
     const point = e => { const r=svg.getBoundingClientRect(); return [Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))].map(n=>Math.round(n*100000)/100000); };
     function erase(from,to) {
       const size=svg.getBoundingClientRect();
       const remaining=erasePreview.filter((item,i)=>{
+        if(item.type==='sticky')return true;
         let box;
         if(item.type==='text') {
           const rect=svg.querySelector(`[data-index="${i}"]`)?.getBoundingClientRect();
@@ -275,22 +293,46 @@
       });
       if(remaining.length!==erasePreview.length){erasePreview=remaining;paint();}
     }
+    function eraseSticky(from,to) {
+      const note=erasePreview[selectedSticky],r=svg.getBoundingClientRect();
+      const local=p=>[(p[0]-note.x)/note.w,(p[1]-note.y)/note.h];
+      note.ink=note.ink.filter(ink=>!model.hit(ink,local(from),local(to),{width:r.width*note.w,height:r.height*note.h}));
+    }
     finishGesture=cancel=>{
       if(pointer===undefined)return;
       const id=pointer;pointer=undefined;
       if(svg.hasPointerCapture(id))svg.releasePointerCapture(id);
-      if(gesture==='eraser') {
+      if(gesture==='eraser' || gesture?.startsWith('sticky-')) {
         const remaining=erasePreview;erasePreview=null;
         if(!cancel && JSON.stringify(remaining)!==initial) {items=remaining;undo.push(initial);if(undo.length>60)undo.shift();redo=[];changed();}
       } else if(stroke && !cancel) {remember();items.push(stroke);stroke=null;changed();}
-      stroke=null;gesture=null;pan=null;paint();
+      stroke=null;gesture=null;pan=null;stickyStroke=null;paint();
     };
     svg.addEventListener('pointerdown',e=>{
       if(busy || !pdf || pointer!==undefined || e.button>0)return;
       // Finger panning remains native, including pinch zoom; stylus/mouse can draw.
-      if(e.pointerType==='touch' && (penOnly || mode==='hand'))return;
+      if(e.pointerType==='touch' && penOnly && ['pen','highlight','eraser'].includes(mode))return;
+      if(e.pointerType==='touch' && mode==='hand' && !e.target.closest('[data-sticky],[data-sticky-control]'))return;
       e.preventDefault();
       const p=point(e),target=e.target.closest('[data-index]'),index=target?Number(target.dataset.index):undefined;
+      const sticky=items[index]?.type==='sticky'?items[index]:null;
+      if(sticky) {
+        selectedSticky=index;
+        if(mode==='text'){editText(null,index);paint();return;}
+        pointer=e.pointerId;svg.setPointerCapture(pointer);initial=JSON.stringify(items);erasePreview=JSON.parse(initial);
+        last=p;stickyOrigin=p;stickyStart=JSON.parse(JSON.stringify(sticky));
+        if(mode==='eraser'){gesture='sticky-erase';eraseSticky(p,p);}
+        else if(e.target.closest('[data-resize]'))gesture='sticky-resize';
+        else if(['pen','highlight'].includes(mode)) {
+          gesture='sticky-ink';
+          stickyStroke={type:mode,color:mode==='highlight'&&color==='#24344a'?'#ffd447':color,width:Math.min(.1,width*(mode==='highlight'?7:1)/sticky.w),points:[[(p[0]-sticky.x)/sticky.w,(p[1]-sticky.y)/sticky.h]]};
+          if(sticky.ink.length>=500){pointer=undefined;svg.releasePointerCapture(e.pointerId);erasePreview=null;status(t('便签笔画已满，请新建便签。','This note is full. Add another sticky note.'));return;}
+          erasePreview[index].ink.push(stickyStroke);
+        } else gesture='sticky-move';
+        paint();return;
+      }
+      selectedSticky=-1;
+      if(mode==='sticky') {remember();items.push(model.sticky(p));selectedSticky=items.length-1;changed();return;}
       if(mode==='text'){editText(p,items[index]?.type==='text'?index:undefined);return;}
       pointer=e.pointerId;gesture=mode;last=p;svg.setPointerCapture(pointer);
       if(mode==='hand') {
@@ -304,9 +346,15 @@
       if(gesture==='hand') {
         const scroll=$('.note-scroll');scroll.scrollLeft=pan.left+pan.x-e.clientX;scroll.scrollTop=pan.top+pan.y-e.clientY;return;
       }
+      if(gesture==='sticky-move'||gesture==='sticky-resize') {
+        const p=point(e);erasePreview[selectedSticky]=model.transformSticky(stickyStart,p[0]-stickyOrigin[0],p[1]-stickyOrigin[1],gesture==='sticky-resize');paint();return;
+      }
       for(const sample of e.getCoalescedEvents?.().length?e.getCoalescedEvents():[e]) {
         const p=point(sample);
-        if(gesture==='eraser')erase(last,p);
+        if(gesture==='sticky-erase')eraseSticky(last,p);
+        else if(gesture==='sticky-ink') {
+          if(stickyStroke.points.length<12000)stickyStroke.points.push([Math.max(0,Math.min(1,(p[0]-stickyStart.x)/stickyStart.w)),Math.max(0,Math.min(1,(p[1]-stickyStart.y)/stickyStart.h))]);
+        } else if(gesture==='eraser')erase(last,p);
         else if(stroke && stroke.points.length<12000)stroke.points.push(p);
         last=p;
       }
@@ -360,6 +408,7 @@
   function build() {
     host=document.createElement('section'); host.className='course-notes';
     const icons={
+      sticky:'<path d="M4 3h16v12l-5 6H4V3Zm11 18v-6h5M8 8h8M8 12h5"/>',
       hand:'<path d="M8 13V6a2 2 0 0 1 4 0v6-8a2 2 0 0 1 4 0v8-6a2 2 0 0 1 4 0v9c0 4-2.5 6-6 6h-1c-2 0-3.5-1-5-3l-4-5a2 2 0 0 1 3-2l1 1"/>',
       pen:'<path d="m15 5 4 4M4 20l5-1L20 8a2.8 2.8 0 0 0-4-4L5 15l-1 5Z"/>',
       highlight:'<path d="m13 4 7 7-7 7-7-7 7-7ZM6 11l-2 5 4 4 5-2M4 16l-2 5h6M14 7l3 3"/>',
@@ -371,7 +420,8 @@
     const icon=id=>`<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${icons[id]}</svg>`;
     const button=(id,zh,en)=>`<button type="button" data-note="${id}"${icons[id]?` class="note-icon-button" aria-label="${t(zh,en)}" title="${t(zh,en)}"`:''}>${icons[id]?icon(id):t(zh,en)}</button>`;
     host.innerHTML=`<div class="note-picker"><div class="note-location">${picker('course',t('课程','Course'),t('选择课程','Choose a course'))}<span class="note-location-divider" aria-hidden="true">/</span>${picker('document',t('课件','Material'),t('选择 PDF 课件','Choose a PDF'))}</div><div class="note-picker-actions"><label class="note-upload"><span aria-hidden="true">＋</span>${t('上传 PDF','Upload PDF')}<input data-upload type="file" accept="application/pdf,.pdf"></label>${button('study','在学习区查看','View in Study')}</div></div>
-    <p role="status" aria-live="polite"></p><div class="note-work" hidden><div class="note-toolbar" role="toolbar" aria-label="${t('笔记工具','Note tools')}">${[['hand','浏览','Browse'],['pen','画笔','Pen'],['highlight','高亮','Highlight'],['text','文字','Text'],['eraser','橡皮','Eraser']].map(([id,zh,en])=>`<button type="button" class="note-icon-button" data-mode="${id}" aria-pressed="false" aria-label="${t(zh,en)}" title="${t(zh,en)}">${icon(id)}</button>`).join('')}<input type="color" data-color value="${color}" aria-label="${t('颜色','Color')}"><select data-width aria-label="${t('笔宽','Stroke width')}"><option value=".0015">${t('细','Fine')}</option><option value=".003" selected>${t('中','Medium')}</option><option value=".006">${t('粗','Broad')}</option></select>${button('undo','撤销','Undo')}${button('redo','重做','Redo')}<label><input type="checkbox" data-pen-only>${t('仅触控笔书写','Stylus only')}</label><span data-tool-status></span></div>
+    <p role="status" aria-live="polite"></p><div class="note-work" hidden><div class="note-toolbar" role="toolbar" aria-label="${t('笔记工具','Note tools')}">${[['hand','浏览','Browse'],['pen','画笔','Pen'],['highlight','高亮','Highlight'],['text','文字','Text'],['sticky','便签','Sticky note'],['eraser','橡皮','Eraser']].map(([id,zh,en])=>`<button type="button" class="note-icon-button" data-mode="${id}" aria-pressed="false" aria-label="${t(zh,en)}" title="${t(zh,en)}">${icon(id)}</button>`).join('')}<input type="color" data-color value="${color}" aria-label="${t('颜色','Color')}"><select data-width aria-label="${t('笔宽','Stroke width')}"><option value=".0015">${t('细','Fine')}</option><option value=".003" selected>${t('中','Medium')}</option><option value=".006">${t('粗','Broad')}</option></select>${button('undo','撤销','Undo')}${button('redo','重做','Redo')}<label><input type="checkbox" data-pen-only>${t('仅触控笔书写','Stylus only')}</label><span data-tool-status></span></div>
+    <div data-sticky-tools class="note-sticky-tools" style="visibility:hidden" inert aria-label="${t('便签操作','Sticky note actions')}">${button('sticky-text','编辑文字','Edit note text')}${button('sticky-copy','复制便签','Duplicate note')}${button('sticky-delete','删除便签','Delete note')}<label>${t('背景','Background')}<input type="color" data-sticky-color value="#fff2a8" aria-label="${t('便签背景颜色','Sticky note background')}"></label><span>${t('切换画笔可在便签上手写','Use the pen to write on the note')}</span></div>
     <div class="note-navigation">${button('prev','上一页','Previous')}<input type="number" data-page min="1" value="1" aria-label="${t('页码','Page')}"><span data-total></span>${button('next','下一页','Next')}${button('zoom-out','缩小','Zoom out')}${button('zoom-in','放大','Zoom in')}${button('save','保存','Save')}${button('pdf','导出完整 PDF','Export PDF')}<button type="button" data-note="cancel-export" hidden>${t('取消导出','Cancel export')}</button>${button('focus','专注书写','Focus')}<details><summary>${t('更多','More')}</summary>${button('image','导出当前页图片','Export page image')}${button('backup','导出草稿','Export draft')}${button('reload','重新读取云端','Reload cloud')}</details></div>
     <div class="note-scroll"><div class="note-sheet"><canvas></canvas><svg class="note-ink" xmlns="http://www.w3.org/2000/svg" aria-label="${t('课件标注画布','Annotation canvas')}"></svg></div></div></div>
     <dialog data-filing-dialog><form method="dialog"><p></p><label>${t('归属课程','Destination course')}<select required></select></label><div><button value="cancel" formnovalidate>${t('取消','Cancel')}</button><button value="save">${t('归档并打开','File and open')}</button></div></form></dialog>
@@ -383,7 +433,7 @@
     ctx=context;
     if (owner!==ctx.userId) {
       if(exportJob)exportJob.canceled=true;
-      epoch++; saving=null; busy=false; stroke=null;
+      epoch++; saving=null; busy=false; stroke=null;selectedSticky=-1;
       clearTimeout(timer); if(pdf) void pdf.destroy(); host=null; pdf=null; course='';doc=''; dirty=false;owner=ctx.userId;items=[]; undo=[];redo=[];
     }
     const slot=document.getElementById('courseNotesSlot'); if(!slot || !owner) return;

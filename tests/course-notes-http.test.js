@@ -56,7 +56,7 @@ test("course notes HTTP isolates users, persists and guards concurrent saves", {
   assert.equal((await request(route,null,second.cookie,'GET')).status,404);
   assert.equal((await fetch(base+`/api/courses/${c}/note-source/${d}`,{headers:{cookie:second.cookie}})).status,404);
   const source=await fetch(base+`/api/courses/${c}/note-source/${d}`,{headers:{cookie}});assert.equal(source.status,200);assert.deepEqual(Buffer.from(await source.arrayBuffer()),bytes);
-  const items=[{type:'text',x:.2,y:.3,width:.02,color:'#112233',text:'课堂笔记 / lecture notes'}];
+  const items=[{type:'text',x:.2,y:.3,width:.02,color:'#112233',text:'课堂笔记 / lecture notes'},{type:'sticky',x:.1,y:.2,w:.3,h:.25,background:'#fff2a8',text:'复习重点',ink:[{type:'pen',color:'#112233',width:.01,points:[[.1,.2],[.3,.4]]}]}];
   assert.equal((await request(route,{version:0,items},cookie,'PUT')).status,200);
   assert.equal((await request(route,{version:0,items:[]},cookie,'PUT')).status,409);
   assert.equal((await request(route,{version:1,items:[{type:'bad'}]},cookie,'PUT')).status,400);

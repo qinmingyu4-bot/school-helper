@@ -4,14 +4,45 @@
 })(typeof globalThis==='object'?globalThis:this,function(){
   'use strict';
   const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function contrast(hex) {
+    const rgb=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
+    return .2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2]>.179?'#182b3a':'#ffffff';
+  }
+  function wrap(text,width,font) {
+    const lines=[];
+    for(const paragraph of text.split('\n')) {
+      let line='',used=0;
+      for(const char of Array.from(paragraph)) {
+        const advance=font*(char.charCodeAt(0)>255?1:.6);
+        if(used+advance>width && line){lines.push(line);line='';used=0;}
+        line+=char;used+=advance;
+      }
+      lines.push(line);
+    }
+    return lines;
+  }
+  function sticky(point) {return {type:'sticky',x:Math.min(.68,point[0]),y:Math.min(.76,point[1]),w:.32,h:.24,background:'#fff2a8',text:'',ink:[]};}
+  function transformSticky(item,dx,dy,resize=false) {
+    return resize?{...item,w:Math.min(1-item.x,Math.max(.08,item.w+dx)),h:Math.min(1-item.y,Math.max(.05,item.h+dy))}
+      :{...item,x:Math.max(0,Math.min(1-item.w,item.x+dx)),y:Math.max(0,Math.min(1-item.h,item.y+dy))};
+  }
   function markup(items,ratio) {
     return items.map((item,i)=>{
+      if(item.type==='sticky') {
+        const w=item.w*1000,h=item.h*1000*ratio;
+        let font=18,lines=wrap(item.text,w-24,font);
+        while(lines.length*font*1.3>h-30 && font>4){font-=.5;lines=wrap(item.text,w-24,font);}
+        const text=lines.map((line,n)=>`<tspan x="12" y="${22+n*font*1.3}">${escape(line)}</tspan>`).join('');
+        const ink=markup(item.ink,item.h*ratio/item.w).replace(/ data-index="\d+"/g,'');
+        return `<g data-index="${i}" data-sticky="${i}" transform="translate(${item.x*1000} ${item.y*1000*ratio})"><rect width="${w}" height="${h}" rx="3" fill="${escape(item.background)}"/><svg width="${w}" height="${h}" overflow="hidden"><text fill="${contrast(item.background)}" font-size="${font}" font-family="Arial, sans-serif">${text}</text><svg width="${w}" height="${h}" viewBox="0 0 1000 ${1000*item.h*ratio/item.w}">${ink}</svg></svg></g>`;
+      }
       if(item.type==='text') return `<text data-index="${i}" x="${item.x*1000}" y="${item.y*1000*ratio}" fill="${escape(item.color)}" font-size="${item.width*1000}" font-family="Arial, sans-serif">${item.text.split('\n').map((line,n)=>`<tspan x="${item.x*1000}" dy="${n?item.width*1250:0}">${escape(line)}</tspan>`).join('')}</text>`;
       const points=item.points.map(p=>`${p[0]*1000},${p[1]*1000*ratio}`).join(' ');
       return `<polyline data-index="${i}" points="${points}${item.points.length===1?' '+(item.points[0][0]*1000+.01)+','+item.points[0][1]*1000*ratio:''}" fill="none" stroke="${escape(item.color)}" stroke-width="${item.width*1000}" stroke-opacity="${item.type==='highlight'?.3:1}" stroke-linecap="round" stroke-linejoin="round"/>`;
     }).join('');
   }
   function cursor(mode,color) {
+    if(mode==='sticky')return 'crosshair';
     if(mode==='hand')return 'grab';
     if(mode==='text')return 'text';
     const shapes={
@@ -37,7 +68,8 @@
   // Work in screen pixels, so erasing stays usable at every page aspect/zoom.
   function hit(item,from,to,size,textBox) {
     const px=p=>[p[0]*size.width,p[1]*size.height],a=px(from),b=px(to),radius=8;
-    if(item.type==='text') {
+    if(item.type==='sticky')textBox={x:item.x*size.width,y:item.y*size.height,width:item.w*size.width,height:item.h*size.height};
+    if(item.type==='text'||item.type==='sticky') {
       if(!textBox)return false;
       const {x,y,width,height}=textBox;
       const inside=p=>p[0]>=x-radius&&p[0]<=x+width+radius&&p[1]>=y-radius&&p[1]<=y+height+radius;
@@ -54,5 +86,5 @@
     const p=inverse(0,viewport.height),x=inverse(viewport.width,viewport.height),y=inverse(0,0);
     return {x:p[0],y:p[1],width:Math.hypot(x[0]-p[0],x[1]-p[1]),height:Math.hypot(y[0]-p[0],y[1]-p[1]),angle:Math.atan2(x[1]-p[1],x[0]-p[0])*180/Math.PI};
   }
-  return {markup,cursor,hit,placement};
+  return {markup,cursor,hit,placement,sticky,transformSticky,contrast};
 });

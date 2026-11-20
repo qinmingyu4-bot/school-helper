@@ -2,6 +2,8 @@
 
 ## Unreleased — Course notes feedback
 
+- Add yellow sticky notes to course PDFs with bilingual typed text, attached handwriting, drag/resize, independent duplication and customizable backgrounds. Include them in cloud drafts, undo/redo and full PDF/page-image exports.
+
 - Give pen, highlighter and eraser distinct cursors and show a quiet active-tool hint.
 - Support continuous whole-annotation erasing with one undo per gesture; enable Browse dragging and guard editing during page changes/export.
 - Export the full original PDF with notes on all marked pages, including local drafts, Chinese text and rotated/cropped pages. Preserve unmarked pages and original selectable content.

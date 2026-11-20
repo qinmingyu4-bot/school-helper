@@ -27,6 +27,18 @@ the active tool on touch screens too. Drag the eraser across whole annotations;
 one undo restores everything removed in that gesture. Canceled gestures restore
 the previous state. Browse supports mouse/stylus dragging and native finger
 scrolling. Use Stylus only to avoid drawing with fingers.
+Choose **Sticky note**, then click/tap a page to place a pale yellow note. In this
+mode, drag a note to move it and its lower-right handle to resize it. Select a note
+to edit typed text, duplicate/delete it or change its background. Pen/highlighter
+strokes started inside a note stay attached when it is moved, resized or copied;
+the eraser removes its ink without deleting its background or typed text. Use
+Delete note to remove the whole note (undoable). Copies are independent. Text
+wraps and shrinks to fit; very small notes should be enlarged for readability.
+Each note supports 4,000 text characters and 500 ink strokes within the existing
+page storage limit. Note text chooses dark/light ink for background contrast.
+Sticky notes save with the page and appear in PDF and page-image exports; selection
+outlines and resize handles are omitted from exported files.
+
 Focus expands the workspace on tablets; Exit focus restores navigation.
 Ctrl/Cmd+Z, Shift+Ctrl/Cmd+Z and Ctrl/Cmd+S are supported outside text inputs.
 More exports the current annotated page as PNG or a JSON draft backup.

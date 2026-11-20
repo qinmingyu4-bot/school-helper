@@ -32,3 +32,18 @@ test('export overlay placement inverts cropped/rotated PDF.js viewports without 
    pdfCorners.forEach(([x,y],i)=>{assert.ok(Math.abs(a*x+c*y+e-expected[i][0])<1e-8);assert.ok(Math.abs(b*x+d*y+f-expected[i][1])<1e-8);});
  }
 });
+
+test('sticky notes move and resize within page bounds while retaining independent ink',()=>{
+ const note={...model.sticky([.99,.99]),text:'中文 <script>\nSecond line',ink:[pen]};
+ assert.equal(note.background,'#fff2a8');
+ const moved=model.transformSticky(note,-5,5);
+ assert.equal(moved.x,0);assert.equal(moved.y,1-note.h);assert.deepEqual(moved.ink,[pen]);
+ const resized=model.transformSticky(note,5,-5,true);
+ assert.ok(Math.abs(resized.w-(1-note.x))<1e-9);assert.equal(resized.h,.05);
+ const clone=model.transformSticky(JSON.parse(JSON.stringify(note)),.025,.025);
+ clone.ink[0].points[0][0]=.9;assert.equal(note.ink[0].points[0][0],.2);
+ const svg=model.markup([note],1.3);
+ assert.match(svg,/data-sticky="0"/);assert.match(svg,/fill="#fff2a8"/);assert.match(svg,/&lt;/);
+ assert.equal((svg.match(/data-index=/g)||[]).length,1);
+ assert.equal(model.contrast('#000000'),'#ffffff');assert.equal(model.contrast('#fff2a8'),'#182b3a');
+});

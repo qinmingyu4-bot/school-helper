@@ -1,5 +1,11 @@
 # StudyBridge Version Archive
 
+## 1.12.6 — 2026-11-20
+
+- PATCH from production 1.12.5 (`3dc6e8b697f9278dbef97960f46d17633188e764`): repair existing controls across pages. Prevent repeated clicks selecting button/disclosure labels, remove pointer-only focus rings after Office dropdown dismissal, and align single-select arrows with consistent inset and text spacing.
+- Preserve selectable body/editor text, keyboard focus, native listboxes, account palettes and dark mode. No new features, dependencies, configuration changes or data migration.
+- Validate Chrome/WebKit interactions and responsive themes, source/assets and release policy; verify deployment health and exact public assets. Rollback code target: `3dc6e8b697f9278dbef97960f46d17633188e764`; retain user data.
+
 ## 1.12.5 — 2026-11-20
 
 - PATCH from verified production 1.12.4 (`628321680af4b5b9677ecda0b80bfe405e9f50f2`): repair existing sign-out and post-login notification workflows and strengthen existing health diagnostics.

@@ -25,7 +25,7 @@
 .note-upload:focus-within{outline:2px solid var(--green);outline-offset:3px}
 .note-picker-menu{position:absolute;z-index:30;top:calc(100% + 8px);left:-10px;width:max-content;min-width:210px;max-width:min(340px,calc(100vw - 48px));max-height:280px;overflow:auto;padding:6px;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px #0000000a}
 .course-notes .note-picker-menu button{display:flex;align-items:center;justify-content:space-between;gap:20px;width:100%;min-height:38px;padding:8px 10px;font-size:12px;font-weight:400;color:var(--ink);text-align:left;white-space:normal}
-.note-picker-menu button[aria-selected=true]{color:var(--green)}
+.course-notes .note-picker-menu button[aria-selected=true]{color:var(--green)}
 .note-picker-menu p{margin:8px 10px;font-size:12px;color:var(--muted)}
 .note-picker-check{flex-shrink:0;font-size:12px;color:var(--green)}
 .course-notes [role=status]{min-height:18px;margin:0 0 20px;color:var(--muted);font-size:11px;line-height:18px}
@@ -49,7 +49,7 @@
 .note-navigation summary{cursor:pointer;padding:8px;color:var(--muted)}
 .note-navigation details[open]{display:flex;gap:5px;flex-wrap:wrap}
 .note-scroll{overflow:auto;max-height:72dvh;background:var(--soft);padding:20px;overscroll-behavior:contain}
-.note-sheet{position:relative;background:#fff;min-width:100%;isolation:isolate}
+.note-sheet{color-scheme:light;position:relative;background:#fff;min-width:100%;isolation:isolate}
 .note-sheet canvas{display:block;width:100%;height:100%}
 .note-ink{position:absolute;inset:0;width:100%;height:100%;user-select:none;-webkit-user-select:none}
 .note-ink polyline{pointer-events:stroke}.note-ink text{pointer-events:bounding-box}

@@ -1,8 +1,8 @@
 {
-  "previousCommit": "5b7fd8fe864cc60ef6b157e20b06cdf92228fe7e",
-  "previousVersion": "1.9.1",
-  "version": "1.9.2",
+  "previousCommit": "0a6ce3709f29a98eaa935f54821067c205e1e38d",
+  "previousVersion": "1.9.2",
+  "version": "1.9.3",
   "level": "patch",
-  "reason": "Refine the existing guest course question-entry workflow, keyboard example acceptance, composer sizing and language-selector alignment. Focused usability fixes with no new module or data migration.",
+  "reason": "Fix existing workspace palette and dark-mode control styling, selected note material accents and PDF paper color isolation. No new features or data migration.",
   "features": []
 }

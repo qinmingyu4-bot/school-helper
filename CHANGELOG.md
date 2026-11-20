@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.9.3 — 2026-11-20
+
+- PATCH from 1.9.2: fix existing account appearance consistency without adding features.
+- Preserve course note and grade planner control states in dark mode; restore selected note material accent colors.
+- Remove fixed blue from custom daytime primary actions and preserve PDF paper colors.
+- Remove the legacy standalone grade shell's fixed celadon palette. The current embedded Grades page inherits account appearance, including empty states.
+
 ## 1.9.2 — 2026-11-19
 
 - PATCH from 1.9.1: refine the existing guest course's question-entry guidance.

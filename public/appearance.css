@@ -30,7 +30,7 @@
 :root[data-sb-theme] :is(.message .markdown-table th, .markdown-table th, .community-tabs, .community-destination, .community-channel-badge, .community-topic-hints span, .creative-preview, .creative-empty) { background: #f5f5f5; }
 :root[data-sb-theme] :is(.markdown-table th, .markdown-table td, .message .markdown-table th, .message .markdown-table td, .quick-prompts button, .chat-image, .chat-file) { border-color: var(--line); }
 :root[data-sb-theme] :is(.markdown-table tr:nth-child(even) td, .message .markdown-table tr:nth-child(even) td) { background: #fafafa; }
-:root[data-sb-theme] .send { background: var(--sb-accent); border-color: var(--sb-accent); color: #fff; }
+:root[data-sb-theme] :is(.primary, .send) { background: var(--sb-accent); border-color: var(--sb-accent); color: #fff; }
 :root[data-sb-theme] :is(.composer.drop-ready, .side-section.drop-ready, .creative-history-item.selected) { background: var(--sb-tint); }
 :root[data-sb-theme] :is(.reply-status, .creative-course-label, .creative-history-item small, .creative-result-status, .creative-download small) { color: var(--muted); }
 :root[data-sb-theme] .reply-spinner { border-color: var(--line); border-top-color: var(--sb-accent); }

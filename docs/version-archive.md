@@ -2,6 +2,13 @@
 
 This file records stable StudyBridge versions so a broken update can be rolled back safely.
 
+## 1.9.3 — 2026-11-20
+
+- PATCH from production 1.9.2 (`0a6ce3709f29a98eaa935f54821067c205e1e38d`): repair existing palette and dark-mode styling in course notes and Grades.
+- Preserve PDF content colors and the latest embedded Grades architecture. No new features, dependencies, configuration or database migration.
+- Validate release policy, source/assets, automated tests and browser theme combinations. Verify deployed version and exact changed assets.
+- Rollback code target: `0a6ce3709f29a98eaa935f54821067c205e1e38d`; retain user data.
+
 ## 1.9.2 — 2026-11-19
 
 - PATCH from production 1.9.1, `5b7fd8fe864cc60ef6b157e20b06cdf92228fe7e`.

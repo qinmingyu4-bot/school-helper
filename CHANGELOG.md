@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.12.4 — 2026-11-20
+
+- PATCH from verified production 1.12.3 (`415e033cb7da52f20d6f5bdceb4a4ba4ff576ab0`): show the implicit default chat immediately for unvisited courses and refresh the folder before history and schedule finish loading.
+- Preserve recent per-account/per-conversation history while switching courses; show explicit loading and retry states instead of a false empty welcome. Deduplicate empty-course conversation creation and retain deletion semantics.
+- Validate new-course browser clicks, slow/failed navigation regressions, history isolation, source/assets and release policy. No new features, dependencies or data migration. Rollback code target: `415e033cb7da52f20d6f5bdceb4a4ba4ff576ab0`; retain user data.
+
 ## 1.12.3 — 2026-11-20
 
 - PATCH from verified production 1.12.2: refine existing notes/Office layouts and unify dropdown presentation and toggle behavior. Preserve the latest chat-history fix. No new features, dependencies or data migration.

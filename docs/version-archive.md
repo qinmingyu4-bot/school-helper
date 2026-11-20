@@ -1,5 +1,14 @@
 # StudyBridge Version Archive
 
+## 1.14.0 — 2026-11-20
+
+- MINOR from verified AWS production 1.13.0 (`f59ccfb2e2c204b876061554be1d89e6fafbbfa1`): add durable platform/account gross-spend controls, developer-only failure attribution and persistent official cost history.
+- Make calendar discovery demand-driven during timetable import/explicit term matching, share verified scope archives, and retain automatic reminders without AI. Fix interrupted/error usage accounting and remove blind paid fallbacks.
+- Measure audio duration and estimate image settings/reference inputs before dispatch. Keep personal failure refunds separate from provider expenses. Official consumption, local estimates, unknowns and cash funding remain distinct.
+- The owner authorized AWS deployment in this chat on 2026-11-20. Preserve private credentials, user data and all cost records. No destructive migration or student technical popup.
+- Validate source/assets, full regressions, release policy and dependency audit, then verify AWS version/health and authenticated cost reports. Rollback code target: `f59ccfb2e2c204b876061554be1d89e6fafbbfa1`; retain new ledger/guard/archive data.
+
+
 ## 1.13.0 — 2026-11-20
 
 - MINOR from verified AWS production 1.12.9 (`69ecb54a9eb8b8534e78a5e4c85188621fca1171`): add independent durable user/platform AI cost accounting, six total-cost periods and optional official reconciliation.

@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased — AI cost controls
+## 1.14.0 — 2026-11-20 — AI cost controls
+
+MINOR from verified AWS 1.13.0 (`f59ccfb`): add persistent cost protections and
+official-history archives alongside the approved accounting/calendar fixes.
 
 - Calendar discovery is now demand-driven on timetable import/explicit matching;
   verified scoped calendars persist across course sets and service restarts, while

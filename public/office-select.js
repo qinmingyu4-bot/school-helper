@@ -3,7 +3,7 @@
   'use strict';
   let active, sequence = 0, search = '', searchAt = 0;
   const targetSelect = target => target?.closest?.('.office-shell select:not([multiple])');
-  function close(restoreFocus = false) {
+  function close(restoreFocus = false, pointer = false) {
     if (!active) return;
     const { select, menu, expanded, controls } = active;
     active = null;
@@ -11,7 +11,10 @@
     for (const [name, value] of [['aria-expanded', expanded], ['aria-controls', controls]]) {
       if (value === null) select.removeAttribute(name); else select.setAttribute(name, value);
     }
-    if (restoreFocus && select.isConnected) select.focus({ preventScroll: true });
+    if (restoreFocus && select.isConnected) {
+      select.toggleAttribute('data-office-pointer-focus', pointer);
+      select.focus({ preventScroll: true });
+    }
   }
   function highlight(index) {
     if (!active || !active.buttons.length) return;
@@ -21,13 +24,13 @@
     active.menu.setAttribute('aria-activedescendant', button.id);
     button.scrollIntoView({ block: 'nearest' });
   }
-  function choose(index) {
+  function choose(index, pointer = false) {
     if (!active) return;
     const { select, buttons } = active, optionIndex = Number(buttons[index]?.dataset.optionIndex);
     if (!Number.isInteger(optionIndex) || select.options[optionIndex]?.disabled) return;
     const changed = select.selectedIndex !== optionIndex;
     select.selectedIndex = optionIndex;
-    close(true);
+    close(true, pointer);
     if (changed) {
       select.dispatchEvent(new Event('input', { bubbles: true }));
       select.dispatchEvent(new Event('change', { bubbles: true }));
@@ -79,7 +82,7 @@
     });
     menu.addEventListener('click', event => {
       const index = buttons.indexOf(event.target.closest('button'));
-      if (index >= 0 && active?.menu === menu) choose(index);
+      if (index >= 0 && active?.menu === menu) choose(index, event.detail > 0);
     });
     menu.focus({ preventScroll: true });
     highlight(Math.max(0, buttons.findIndex(button => Number(button.dataset.optionIndex) === select.selectedIndex)));
@@ -97,10 +100,14 @@
     const select = targetSelect(event.target);
     if (select) {
       event.preventDefault();
-      if (active?.select === select) close(true); else open(select);
+      if (active?.select === select) close(true, event.detail > 0); else open(select);
     }
   }, true);
+  document.addEventListener('focusout', event => {
+    targetSelect(event.target)?.removeAttribute('data-office-pointer-focus');
+  }, true);
   document.addEventListener('keydown', event => {
+    targetSelect(event.target)?.removeAttribute('data-office-pointer-focus');
     if (!active) {
       const select = targetSelect(event.target);
       if (select && ['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(event.key)) { event.preventDefault(); open(select); }

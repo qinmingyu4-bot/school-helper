@@ -2,6 +2,7 @@
 
 ## Unreleased — Prevent control-label selection
 
+- Avoid leaving a keyboard focus ring on Office dropdowns after pointer dismissal or selection; retain focus for Tab and restore visible focus on keyboard interaction.
 - Prevent repeated clicks on buttons, dropdowns, tabs and disclosure summaries from selecting their labels across pages. Preserve normal selection and copying in body text, inputs, textareas and document editors, including editable fields inside disclosure headers.
 
 ## 1.12.3 — 2026-11-20

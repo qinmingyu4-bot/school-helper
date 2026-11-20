@@ -219,3 +219,8 @@
 .office-select-menu button.is-current { background: var(--soft); }
 .office-select-menu button:disabled { opacity: .45; }
 @media (pointer: coarse) { .office-select-menu button { min-height: 44px; } }
+
+/* Returning from a pointer-operated popup keeps focus for Tab without a keyboard ring. */
+:root .app-shell .workspace .office-shell select[data-office-pointer-focus]:focus {
+  outline: none;
+}

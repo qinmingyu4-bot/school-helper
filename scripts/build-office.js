@@ -1,5 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const crypto = require("node:crypto");
 const esbuild = require("esbuild");
 async function main() {
   const root = path.resolve(__dirname, ".."),
@@ -20,6 +21,13 @@ async function main() {
     legalComments: "eof",
   });
   const packages = new Map();
+  // Match the server's content-addressed cache key for this on-demand asset.
+  const fingerprint = crypto.createHash("sha256")
+    .update(fs.readFileSync(path.join(destination, "office-editor.min.js")))
+    .digest("hex").slice(0, 24);
+  const loader = path.join(root, "public/office-loader.js");
+  fs.writeFileSync(loader, fs.readFileSync(loader, "utf8")
+    .replace(/\/vendor\/office-editor\.min\.js\?[^"\s]+/, `/vendor/office-editor.min.js?asset=${fingerprint}`));
   for (const file of Object.keys(result.metafile.inputs)) {
     if (!file.includes("node_modules/")) continue;
     let dir = path.dirname(path.join(root, file));

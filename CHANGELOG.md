@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased — Office first-open performance
+
+- Preload the shared Docs/Sheets/Slides editor at low network priority on the
+  tools page, without executing it or fetching private files; skip preloading
+  when data saver or a slow 2G connection is reported.
+- Fetch the project list alongside the editor download, share it across tools
+  for at most 30 seconds, and invalidate it after saves and account changes.
+  Read local recovery drafts concurrently with the list while preserving cloud
+  conflict checks and draft priority.
+- Content-fingerprint the lazy editor URL for immutable caching; builds refresh
+  the key automatically and source checks reject stale keys.
+
 ## 1.14.0 — 2026-11-20 — AI cost controls
 
 MINOR from verified AWS 1.13.0 (`f59ccfb`): add persistent cost protections and

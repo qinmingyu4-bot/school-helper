@@ -65,6 +65,13 @@ test("release entries preserve script order, CSS cascade and fonts with two immu
     assert.equal(unchanged.status, 304); assert.equal(unchanged.body.length, 0);
   }
   const plain = await get("/app.js?v=old");
+  const officeLoader = await fs.readFile(path.resolve(__dirname, "../public/office-loader.js"), "utf8");
+  const officeURL = officeLoader.match(/"(\/vendor\/office-editor\.min\.js\?asset=[a-f0-9]+)"/)[1];
+  const office = await get(officeURL);
+  assert.equal(office.status, 200);
+  assert.match(office.headers["cache-control"], /immutable/);
+  assert.deepEqual(office.body, await fs.readFile(path.resolve(__dirname, "../public/vendor/office-editor.min.js")));
+  assert.match((await get("/vendor/office-editor.min.js?asset=stale")).headers["cache-control"], /must-revalidate/);
   assert.match(plain.headers["cache-control"], /must-revalidate/);
   assert.equal((await get("/app.js?v=old", { "if-none-match": plain.headers.etag })).status, 304);
   assert.equal((await get("/push-worker.js")).headers["cache-control"], "no-store");

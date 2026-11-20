@@ -1,6 +1,37 @@
 (function () {
   "use strict";
   const ui = window.StudyBridgeI18n;
+  const editorURL = "/vendor/office-editor.min.js?asset=b79a260f19bd8f92bacf7d8b";
+  let preload = null, account = null, listing = null;
+  function warm() {
+    const connection = navigator.connection;
+    if (preload || promise || connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType || "")) return;
+    preload = document.createElement("link");
+    preload.rel = "preload";
+    preload.as = "script";
+    preload.href = editorURL;
+    preload.fetchPriority = "low";
+    preload.onerror = () => { preload?.remove(); preload = null; };
+    document.head.appendChild(preload);
+  }
+  function projects(ctx) {
+    if (account !== ctx.userId) { account = ctx.userId; listing = null; }
+    if (listing && (listing.pending || Date.now() - listing.at < 30000)) return listing.promise;
+    const entry = { pending: true, at: 0 };
+    listing = entry;
+    entry.promise = Promise.resolve().then(() => ctx.api("/api/office")).then((result) => {
+      entry.pending = false;
+      entry.at = Date.now();
+      return result;
+    }, (error) => {
+      if (listing === entry) listing = null;
+      throw error;
+    });
+    // Loading the script and the list overlap; a script failure must not leave
+    // an unobserved list rejection while the user retries the editor.
+    void entry.promise.catch(() => {});
+    return entry.promise;
+  }
 
   let promise = null,
     module = null,
@@ -12,7 +43,7 @@
     if (!promise)
       promise = new Promise((resolve, reject) => {
         const script = document.createElement("script");
-        script.src = "/vendor/office-editor.min.js?v=1.12.3";
+        script.src = editorURL;
         script.onload = () => {
           module = window.StudyBridgeOfficeEditor;
           resolve(module);
@@ -27,15 +58,22 @@
     return promise;
   }
   async function mount(ctx) {
+    if (account !== ctx.userId) { account = ctx.userId; listing = null; }
     const token = ++generation,
       host = document.getElementById("officeHost");
     if (!host) {
       module?.detach();
+      if (ctx.userId && document.querySelector(".tools-tabs")) warm();
       return;
     }
     try {
+      if (ctx.userId && !module?.hasWorkspace(ctx)) void projects(ctx);
       const editor = await load();
-      if (token === generation && host.isConnected) editor.attach(host, ctx);
+      if (token === generation && host.isConnected) editor.attach(host, {
+        ...ctx,
+        officeProjects: () => projects(ctx),
+        invalidateOfficeProjects: () => { if (account === ctx.userId) listing = null; },
+      });
     } catch (error) {
       if (token === generation && host.isConnected)
         host.textContent = error.message;

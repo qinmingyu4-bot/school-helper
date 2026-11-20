@@ -18,3 +18,14 @@
 body { font-weight: 400; font-optical-sizing: auto; }
 h1, h2, h3, b, strong { font-weight: 600; }
 body input, body textarea, body select { font-weight: 400; }
+
+/* Repeated control clicks toggle the UI, without selecting their labels. */
+:where(button, summary, select, [role="button"], [role="tab"], [role="menuitem"], [role="switch"]) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* Editable fields remain selectable, including fields inside disclosure headers. */
+:where(input, textarea, [contenteditable]:not([contenteditable="false"])) {
+  -webkit-user-select: text;
+  user-select: text;
+}

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — Prevent control-label selection
+
+- Prevent repeated clicks on buttons, dropdowns, tabs and disclosure summaries from selecting their labels across pages. Preserve normal selection and copying in body text, inputs, textareas and document editors, including editable fields inside disclosure headers.
+
 ## 1.12.3 — 2026-11-20
 
 - PATCH from verified production 1.12.2: refine existing notes/Office layouts and unify dropdown presentation and toggle behavior. Preserve the latest chat-history fix. No new features, dependencies or data migration.

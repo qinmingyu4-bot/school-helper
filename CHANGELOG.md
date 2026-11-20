@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — 2026-11-20
+
+- Confirm sign-out on the server before clearing the workspace. Failed sign-out keeps drafts and shows a localized retry message instead of implying the session ended.
+- Resume the exact schedule or classmate notification after password login and Google OAuth. Only signed, allowlisted internal notification identifiers pass through OAuth.
+- Extend `/api/health` with bounded, cached database readiness and background-loop failure/staleness reporting. Return 503 for failed checks; retain existing deployment fields. Expose push-provider acceptance/failure timestamps without claiming device receipt. See [health monitoring](docs/health-monitoring.md).
+
 ## 1.12.3 — 2026-11-20
 
 - PATCH from verified production 1.12.2: refine existing notes/Office layouts and unify dropdown presentation and toggle behavior. Preserve the latest chat-history fix. No new features, dependencies or data migration.

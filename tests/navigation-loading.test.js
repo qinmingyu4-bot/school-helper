@@ -133,11 +133,11 @@ test("late conversation and document loads cannot repopulate abandoned study sta
   };
   const old = h.context.loadPage("study");
   await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(h.requests[0].path, "/api/courses/kept/conversations");
+  assert.ok(h.requests.some(request => request.path === "/api/courses/kept/conversations"));
   await h.context.loadPage("profile");
-  h.requests[0].resolve({ conversations: [] });
+  h.requests.find(request => request.path.endsWith("/conversations")).resolve({ conversations: [] });
   await old;
-  assert.equal(h.requests.length, 1, "an abandoned page must not create an unnecessary conversation");
+  assert.equal(h.requests.length, 2, "an abandoned page must not create an unnecessary conversation beyond its speculative reads");
   assert.equal(h.state.courseConversations.kept, undefined);
 
   const docs = harness(["/api/courses/kept/documents", "/api/courses/kept/messages?conversationId=default"]);
@@ -402,4 +402,40 @@ test("material and calendar failures leave chat usable and material retry recove
   await h.context.loadStudyMaterials("kept", () => true);
   assert.equal(h.state.studyDocsError, false); assert.equal(h.state.docs[0].id, "recovered");
   assert.equal(h.draft(), "My question"); assert.equal(h.renders.length, renders);
+});
+
+test("directory, history and task state start together and task restoration makes no second request", async () => {
+  const h = harness(); Object.assign(h.state, { uploadFiles: [], docs: [], messages: [] });
+  const pending = new Map();
+  h.context.api = (path) => {
+    h.requests.push({ path });
+    if (/\/conversations$|\/messages\?|\/study-jobs\?/.test(path)) return new Promise(resolve => pending.set(path, resolve));
+    return Promise.resolve({ documents: [], items: [] });
+  };
+  h.context.studyTasks = require("../public/study-tasks").create({ request: h.context.api,
+    getContext: () => ({ userId: h.state.user.id, courseId: h.state.activeCourseId, conversationId: h.state.activeConversationId }) });
+  const loading = h.context.selectCourse("kept");
+  assert.equal(pending.size, 3, "all three critical reads are in flight before any result arrives");
+  pending.get("/api/courses/kept/messages?conversationId=default")({ messages: [{ id: "saved" }] });
+  pending.get("/api/courses/kept/study-jobs?conversationId=default")({ jobs: [] });
+  pending.get("/api/courses/kept/conversations")({ conversations: [{ id: "default" }] });
+  await loading;
+  assert.equal(h.state.messages[0].id, "saved");
+  assert.equal(h.requests.filter(r => r.path.includes("/study-jobs?")).length, 1);
+  assert.equal(h.state.busy, false);
+  h.context.studyTasks.clear();
+});
+
+test("failed speculative reads for a deleted saved chat cannot replace the resolved default history", async () => {
+  const h = harness(); Object.assign(h.state, { uploadFiles: [], docs: [], messages: [] });
+  h.context.api = async path => {
+    if (path.endsWith("/conversations")) return { conversations: [{ id: "default" }] };
+    if (path.includes("conversationId=deleted")) throw new Error("Conversation not found");
+    if (path.includes("/messages?")) return { messages: [{ id: "default-history" }] };
+    return { documents: [], items: [] };
+  };
+  await h.context.selectConversation("kept", "deleted");
+  assert.equal(h.state.activeConversationId, "default");
+  assert.equal(h.state.messages[0].id, "default-history");
+  assert.equal(h.state.studyHistoryError, "");
 });

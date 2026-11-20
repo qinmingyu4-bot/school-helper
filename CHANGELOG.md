@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.12.0 — 2026-11-20
+
+- MINOR from verified production 1.11.1: add in-place course creation from Course notes. Preserve the existing workspace, shared course store and upload flow; no database migration.
 
 - Add an always-available “Add course” action to the course notes picker. Open the shared course creation dialog in place and stay on the notes page. Save current notes, add the new course to Study’s shared course list and select it for uploading; cancellation preserves the current material. Support empty course lists, keyboard access and Chinese/English labels.
 

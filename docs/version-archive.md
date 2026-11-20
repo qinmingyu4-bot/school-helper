@@ -1,5 +1,12 @@
 # StudyBridge Version Archive
 
+## 1.12.0 — 2026-11-20
+
+- MINOR from verified production 1.11.1 (`ad02d44660bfd37a1bf152337b03fffb5b3a8127`): add course creation directly in the notes workspace. Keep the current page open, save annotations first, share the course with Study and select the newly created course for upload.
+- Preserve current course/material on cancellation and block creation when saving fails. Cover empty course lists, keyboard access, stale responses and bilingual labels.
+- Validate source/assets, release policy and regression checks; verify deployment health and exact public assets. No dependencies, production configuration or database migration.
+- Rollback code target: `ad02d44660bfd37a1bf152337b03fffb5b3a8127`; retain all account/course data.
+
 ## 1.11.1 — 2026-11-20
 
 - PATCH from production 1.11.0 (`54500e85fe67fe187cee7be80adf4d7047e51a98`): repair false login redirects on transient session-check failures. No new features, dependencies or data migration.

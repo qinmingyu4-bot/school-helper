@@ -1,8 +1,8 @@
 {
-  "previousCommit": "a2fe6e8938d401a3466ca71bb044182af9713ed1",
-  "previousVersion": "1.12.2",
-  "version": "1.12.3",
+  "previousCommit": "415e033cb7da52f20d6f5bdceb4a4ba4ff576ab0",
+  "previousVersion": "1.12.3",
+  "version": "1.12.4",
   "level": "patch",
-  "reason": "Refine existing notes and Office control spacing, rounded dropdown presentation and repeated-click dismissal; retain current production chat history fixes.",
+  "reason": "Fix delayed default chat visibility and misleading empty history during existing course navigation.",
   "features": []
 }

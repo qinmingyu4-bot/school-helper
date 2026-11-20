@@ -54,3 +54,22 @@ test("unreadable-only and mixed failures keep actionable recovery entries with t
   assert.doesNotMatch(controller.html({ ...job, status: "completed" }), /study-task-(?:retry|supplement)/);
   controller.clear();
 });
+
+test("prefetched task snapshots retain scope guards and normal polling without duplicate initial reads", async () => {
+  let context = { ...scope }, requests = 0, finish;
+  const controller = create({ getContext: () => context, request: async () => { requests++; return { jobs: [] }; } });
+  await controller.load(scope, Promise.resolve({ jobs: [{ ...job, status: "completed" }] }));
+  assert.equal(requests, 0);
+  assert.equal(controller.mergeMessages([{ id: "question" }])[1].content, job.content);
+  const loading = controller.load(scope, new Promise(resolve => { finish = resolve; }));
+  context = { ...scope, courseId: "other" };
+  finish({ jobs: [job] }); await loading;
+  assert.equal(controller.active(), null);
+  controller.clear(); context = { ...scope };
+  await controller.load(scope, Promise.resolve({ error: new Error("Offline") }));
+  assert.match(controller.html(job), /进度暂时无法更新/);
+  assert.equal(requests, 0);
+  await controller.load(scope);
+  assert.equal(requests, 1);
+  controller.clear();
+});

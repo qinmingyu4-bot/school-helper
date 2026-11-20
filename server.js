@@ -3450,9 +3450,10 @@ if (directMessageMatch && method === "POST") {
         res.writeHead(200, { "Content-Type": "application/pdf", "Content-Length": bytes.length, "Content-Disposition": "inline" });
         return res.end(bytes);
       }
+      const notes = require("./lib/course-notes").create(db);
+      if (child === "notes" && method === "GET" && url.searchParams.get("all") === "true") return sendJson(res, 200, await notes.readAll(user.id, courseId, childId));
       const page = Number(url.searchParams.get("page"));
       if (!Number.isInteger(page) || page < 1 || page > (document.sourcePageCount || 10000)) return sendError(res, 400, "Invalid page.");
-      const notes = require("./lib/course-notes").create(db);
       if (child === "notes" && method === "GET") return sendJson(res, 200, await notes.read(user.id, courseId, childId, page));
       if (child === "notes" && method === "PUT") return sendJson(res, 200, await notes.save(user.id, courseId, childId, page, await readJson(req, 300000)));
       return sendError(res, 405, "Method not allowed.");

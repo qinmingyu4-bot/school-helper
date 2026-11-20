@@ -22,11 +22,28 @@ controls. The editor uses line icons with localized tooltips and accessible name
 The responsive web workspace supports mouse, touch and stylus pointer input:
 pen, translucent highlighter, editable multiline text, whole-object eraser,
 undo/redo (60 operations per open page), page navigation and 100–300% zoom.
-Use Browse for scrolling and Stylus only to avoid drawing with fingers.
+Pen, highlighter and eraser use distinct cursors; a compact localized hint identifies
+the active tool on touch screens too. Drag the eraser across whole annotations;
+one undo restores everything removed in that gesture. Canceled gestures restore
+the previous state. Browse supports mouse/stylus dragging and native finger
+scrolling. Use Stylus only to avoid drawing with fingers.
 Focus expands the workspace on tablets; Exit focus restores navigation.
 Ctrl/Cmd+Z, Shift+Ctrl/Cmd+Z and Ctrl/Cmd+S are supported outside text inputs.
 More exports the current annotated page as PNG or a JSON draft backup.
-This release does not export a complete annotated PDF or import JSON backups.
+**Export PDF** downloads the entire original PDF with annotations on every marked
+page, including pages not opened in the current session. Unmarked pages remain
+included. Original page content stays vector/selectable; annotations are flattened
+as transparent images (up to 2× resolution, capped at 2,400 pixels per dimension).
+Chinese/multiline text, highlight transparency, page rotation and crop origins
+match the viewer. The original stored PDF is never replaced. JSON backup import
+is not supported.
+
+Export first attempts a save, then combines cloud notes with available local drafts
+and the currently displayed page. A conflict does not prevent downloading your own
+draft and does not overwrite newer cloud notes. Export requires the cloud notes
+request to succeed; failures do not silently produce a partial document. Progress
+and cancellation are provided, and editing/navigation is temporarily disabled to
+keep the exported snapshot consistent.
 
 Notes save automatically after 800 ms, separately per account/course/PDF/page.
 Reopening reads cloud notes. A local draft survives refresh and failed saves;
@@ -43,6 +60,9 @@ An explicit owned `courseId` completes filing; foreign/general destinations are 
 
 `GET /api/courses/:course/note-source/:document` serves an authenticated PDF.
 `GET|PUT /api/courses/:course/notes/:document?page=N` reads/saves page records.
+`GET /api/courses/:course/notes/:document?all=true` returns all annotated pages
+under the same account/course/document authorization. The response is capped at
+16 MiB; larger note collections must use individual-page exports.
 PUT requires the last version and a validated items array; stale versions return
 409. Notes are limited to 2,000 objects and 260 KB per page; each stroke is limited
 to 12,000 points. Coordinates are normalized to page size. DynamoDB writes use
@@ -54,6 +74,9 @@ PDF.js 5.4.624 is vendored under `public/vendor/pdfjs`, including worker, CMaps,
 fonts, WASM decoders and Apache license, from the npm pdfjs-dist distribution.
 The viewer uses same-origin assets without a CDN or new runtime npm dependency.
 Its rendering integration follows https://mozilla.github.io/pdf.js/examples/.
+PDF export lazy-loads the existing pdf-lib 1.17.1 dependency as a same-origin ESM
+bundle in `public/vendor/note-pdf`, with its MIT license. Rebuild that copy using
+`node scripts/vendor-note-pdf.js`.
 
 Verification: model/validation and HTTP tests cover invalid data, account/page
 isolation, conflicts, persistence, source access, static module MIME and deletion.
@@ -62,5 +85,12 @@ isolation, PNG export, save/reload and desktop,
 834px tablet and 390px phone layouts. Real iPad/Apple Pencil pressure, latency and
 palm behavior are not certified by desktop emulation. Pen width is selected
 manually; this release does not implement pressure-sensitive width.
+
+Feedback verification (2026-11-20): continuous erasing and single-step undo,
+mouse panning, and a five-page PDF exported through the browser were checked.
+The exported pages were rendered and visually inspected with Chinese notes,
+highlights, 90/180/270° rotation, a cropped page and an unannotated final page.
+Model tests cover eraser hit geometry and inverse PDF transforms; HTTP tests
+cover authenticated whole-document note reads, persistence and deletion.
 
 Release 1.9.0 validation: 715 tests passed, with one Linux-only Nginx check skipped on macOS; 364-file source/assets/version checks, 12 release-policy tests, dependency audit (zero vulnerabilities) and deployment script syntax checks passed. The merged release preview renders the PDF with the production asset bundler.

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — Course notes feedback
+
+- Give pen, highlighter and eraser distinct cursors and show a quiet active-tool hint.
+- Support continuous whole-annotation erasing with one undo per gesture; enable Browse dragging and guard editing during page changes/export.
+- Export the full original PDF with notes on all marked pages, including local drafts, Chinese text and rotated/cropped pages. Preserve unmarked pages and original selectable content.
+- Add export progress/cancellation and authenticated whole-document note reads; avoid incomplete exports when notes cannot be loaded.
+- Preserve the previous document when its replacement notes fail to load, and retain the material selection when returning to the tool.
+
 ## 1.9.2 — 2026-11-19
 
 - PATCH from 1.9.1: refine the existing guest course's question-entry guidance.

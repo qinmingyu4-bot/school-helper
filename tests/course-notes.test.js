@@ -17,7 +17,18 @@ test('local notes isolate pages and reject stale saves without overwriting conte
  await assert.rejects(service.save('u','c','d',1,{version:0,items:[]}),e=>e.statusCode===409);
  assert.deepEqual((await service.read('u','c','d',1)).items,[item]);
  assert.deepEqual((await service.read('u','c','d',2)).items,[]);
+ await service.save('u','c','d',2,{version:0,items:[]});
+ assert.deepEqual((await service.readAll('u','c','d')).pages.map(p=>p.page),[1,2]);
+ assert.deepEqual((await service.readAll('other','c','d')).pages,[]);
+ assert.deepEqual((await service.readAll('u','other','d')).pages,[]);
  await assert.rejects(service.save('other','c','d',1,{version:0,items:[]}),e=>e.statusCode===404);
+});
+test('all-page snapshots use the exact account/document prefix and numeric page order',async()=>{
+ const service=create({dynamo:{query:async(pk,prefix)=>{
+   assert.equal(pk,'USER#u');assert.equal(prefix,'COURSE#c#NOTES#d#');
+   return [{page:10,version:1,items:[item]},{page:2,version:3,items:[]}];
+ }}});
+ assert.deepEqual((await service.readAll('u','c','d')).pages.map(p=>p.page),[2,10]);
 });
 test('Dynamo saves use conditional transactions and document guards',async()=>{
  let writes;

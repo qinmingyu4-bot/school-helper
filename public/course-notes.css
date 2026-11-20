@@ -73,3 +73,8 @@ body:has(.note-focus){overflow:hidden}
 :root .course-notes .note-navigation input{font-size:12px;font-weight:450}
 
 @media(pointer:coarse){.course-notes .note-toolbar .note-icon-button{width:44px;min-width:44px}}
+/* A small mode hint complements the existing icon buttons without new chrome. */
+.course-notes [data-tool-status]{flex-basis:100%;font-size:10px;line-height:16px;color:var(--muted);padding:0 0 2px}
+.course-notes [data-note=pdf]{color:var(--green);font-weight:500}
+.course-notes [data-note=cancel-export]{color:var(--muted)}
+.note-ink{touch-action:none}

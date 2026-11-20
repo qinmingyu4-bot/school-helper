@@ -1,8 +1,8 @@
 {
-  "previousCommit": "acbdf7cd0db4b7fbcfb030f8c73bdae3e2ff3391",
-  "previousVersion": "1.12.0",
-  "version": "1.12.1",
+  "previousCommit": "974bd6585763fc9684c55beff98369889183be77",
+  "previousVersion": "1.12.1",
+  "version": "1.12.2",
   "level": "patch",
-  "reason": "Fix repeat-click dismissal of existing document formatting and paper dropdowns while preserving their settings and appearance.",
+  "reason": "Fix existing course chat navigation clearing visible history and choosing stale saved conversation IDs.",
   "features": []
 }

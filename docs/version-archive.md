@@ -1,5 +1,11 @@
 # StudyBridge Version Archive
 
+## 1.12.4 — 2026-11-20
+
+- PATCH from verified production 1.12.3 (`415e033cb7da52f20d6f5bdceb4a4ba4ff576ab0`): show the implicit default chat immediately for unvisited courses and refresh the folder before history and schedule finish loading.
+- Preserve recent per-account/per-conversation history while switching courses; show explicit loading and retry states instead of a false empty welcome. Deduplicate empty-course conversation creation and retain deletion semantics.
+- Validate new-course browser clicks, slow/failed navigation regressions, history isolation, source/assets and release policy. No new features, dependencies or data migration. Rollback code target: `415e033cb7da52f20d6f5bdceb4a4ba4ff576ab0`; retain user data.
+
 ## 1.12.3 — 2026-11-20
 
 - PATCH from verified production 1.12.2 (`a2fe6e8938d401a3466ca71bb044182af9713ed1`): refine existing notes spacing, readable control labels, dropdown arrow insets, rounded fields/menus and repeated-click dismissal.

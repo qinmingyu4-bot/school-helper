@@ -6,6 +6,8 @@
 - Make calendar discovery demand-driven during timetable import/explicit term matching, share verified scope archives, and retain automatic reminders without AI. Fix interrupted/error usage accounting and remove blind paid fallbacks.
 - Measure audio duration and estimate image settings/reference inputs before dispatch. Keep personal failure refunds separate from provider expenses. Official consumption, local estimates, unknowns and cash funding remain distinct.
 - The owner authorized AWS deployment in this chat on 2026-11-20. Preserve private credentials, user data and all cost records. No destructive migration or student technical popup.
+- Deployed commit `14a317a55b30560527947baf478f9f070e9ae4b7` through GitHub Actions run `44760635427` (successful retry). Disabled the legacy per-minute `studybridge-auto-deploy.sh` cron after it raced the release workflow and rewrote four peer-dependency metadata flags. Saved its crontab and lock-file diff privately on AWS, restored the committed lock file, and retained GitHub Actions as the sole automatic deployment path.
+- Post-deploy checks: AWS reports 1.14.0; database and push/study/mailbox workers are healthy; public app/admin/i18n assets match the release. Ledger retained 27 rows, including the same 24 calendar rows across restart. The official-cost UI respects the provider retry window and shows unavailable/stale state instead of inventing a total.
 - Validate source/assets, full regressions, release policy and dependency audit, then verify AWS version/health and authenticated cost reports. Rollback code target: `f59ccfb2e2c204b876061554be1d89e6fafbbfa1`; retain new ledger/guard/archive data.
 
 

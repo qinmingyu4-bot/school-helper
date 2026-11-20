@@ -1,5 +1,11 @@
 # StudyBridge Version Archive
 
+## 1.12.7 — 2026-11-20
+
+- PATCH from verified production 1.12.6 (`958a9a3fde1d5750be985cc1c5c161f38c9a734c`): complete existing course navigation fixes by keeping loaded empty chats stable, closing mobile course navigation immediately and avoiding a redundant directory fetch for known courses.
+- Load materials and calendar independently of chat history, patch only their display regions, and retry material failures without interrupting chat. Preserve the composer node, focus and selection when the same chat renders.
+- Validate navigation/error/slow-resource regressions, real browser input with 15-second auxiliary delays, source/assets and release policy. No new features, dependencies or data migration. Rollback code target: `958a9a3fde1d5750be985cc1c5c161f38c9a734c`; retain all user data.
+
 ## 1.12.6 — 2026-11-20
 
 - PATCH from production 1.12.5 (`3dc6e8b697f9278dbef97960f46d17633188e764`): repair existing controls across pages. Prevent repeated clicks selecting button/disclosure labels, remove pointer-only focus rings after Office dropdown dismissal, and align single-select arrows with consistent inset and text spacing.

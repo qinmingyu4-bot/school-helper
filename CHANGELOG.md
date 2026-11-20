@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Inset Office dropdown chevrons consistently from the right border, reserve space between text and arrow, and inherit the current theme color across Docs, Sheets and Slides. Preserve native select interaction and compact mobile project selection.
+- Round Office fields and their expanded dropdown menus consistently. Keep menus within the viewport and outside toolbar clipping, follow account palette/mode, and support keyboard navigation, type-to-find, Escape and outside-click dismissal.
+
+- Inset Office dropdown chevrons consistently from the right border, reserve space between text and arrow, and inherit the current theme color across Docs, Sheets and Slides. Preserve existing selection values and compact mobile project selection.
 
 - Remove the unused sticky-note toolbar gap from the notes workspace. Show contextual actions below the paper only when a note is selected, keeping the canvas position stable while editing.
 - Keep course labels, tool hints and narrow-screen Office status text at a readable 11px; preserve document/cell formatting and account colors.

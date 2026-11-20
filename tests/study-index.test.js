@@ -37,3 +37,16 @@ test("a five-question batch loads each of seven persisted source indexes once", 
   const supplied = JSON.stringify(evidence).length, full = sources.reduce((sum, source) => sum + source.text.length, 0) * questions.length;
   assert.ok(supplied < full / 5, "Per-question context sends selected fragments rather than the full seven sources repeatedly");
 });
+
+test("identical indexed excerpts are supplied once without dropping distinct relevant evidence", async (t) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "studybridge-index-duplicates-"));
+  t.after(() => fs.rm(directory, { recursive: true, force: true }));
+  const db = new StudyBridgeDatabase(); db.dynamo = null; db.local.file = path.join(directory, "db.json");
+  const sources = [{ id: 'a', name: 'First', text: 'Opportunity cost is the best alternative forgone.' },
+    { id: 'b', name: 'Copy', text: 'Opportunity cost is the best alternative forgone.' },
+    { id: 'c', name: 'Example', text: 'Opportunity cost example: time spent studying instead of working.' }];
+  const result = await createStudyIndex({ db }).retrieve('alice', 'math', sources, 'opportunity cost');
+  assert.equal(result.length, 2);
+  assert.ok(result.some((item) => item.sourceId === 'c'));
+  assert.equal(new Set(result.map((item) => item.text)).size, 2);
+});

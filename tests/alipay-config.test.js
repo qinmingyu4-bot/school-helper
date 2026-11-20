@@ -29,3 +29,14 @@ test("private Alipay installer rejects mismatched account, environment, webhook 
   ]) { const provider = fixture(); mutate(provider); await assert.rejects(prepare(payload, provider, { findUserByEmail: async () => ({ id: "owner" }) })); }
   await assert.rejects(prepare({ ...payload, secretKey: "sk_test_wrong" }, fixture(), {}));
 });
+
+
+test("unchanged payment configuration skips deploy restarts while file/runtime changes require application", () => {
+  const { configurationMatches } = require("../aws/configure-alipay");
+  const values = { ALIPAY_MODE: "live", ALIPAY_CHECKOUT_ACCESS: "closed" };
+  const source = "ALIPAY_CHECKOUT_ACCESS=closed\nOTHER=keep\nALIPAY_MODE='live'\n";
+  assert.equal(configurationMatches(source, { ...values }, values), true);
+  assert.equal(configurationMatches(source, { ...values, ALIPAY_MODE: "disabled" }, values), false);
+  assert.equal(configurationMatches(source.replace("closed", "public"), values, values), false);
+  assert.equal(configurationMatches(source + "ALIPAY_MODE=live\n", values, values), false);
+});

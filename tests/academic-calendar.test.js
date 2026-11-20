@@ -97,7 +97,7 @@ test("preloaded undergraduate terms retain official closures and stay separate f
   }
 });
 
-test("scheduled prefetch skips recent records and stores newly verified terms without replacing good data on failure", async () => {
+test("scheduled refresh checks current and future terms without replacing good data on failure", async () => {
   const records = new Map();
   const archive = { get: async (key) => records.get(key), put: async (key, value) => records.set(key, value) };
   let now = new Date("2026-11-07T12:00:00Z");
@@ -117,7 +117,7 @@ test("scheduled prefetch skips recent records and stores newly verified terms wi
   };
   const service = createCalendarService({ archive, request, now: () => now });
   await Promise.all([service.refresh("test-model"), service.refresh("test-model")]);
-  assert.deepEqual(requests.filter((entry) => entry.school === "University of Waterloo").map(({ year, season }) => [year, season]), [[2027, "fall"]]);
+  assert.deepEqual(requests.filter((entry) => entry.school === "University of Waterloo").map(({ year, season }) => [year, season]), [[2026, "fall"], [2027, "winter"], [2027, "fall"]]);
   const term = { school: "waterloo", termHint: { year: 2027, season: "fall", faculty: "Undergraduate" }, today: "2027-09-01", allowSearch: false };
   const saved = await service.lookup(term);
   assert.equal(saved.calendar.teachingPeriods[0].startDate, "2027-09-08");

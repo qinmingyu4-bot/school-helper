@@ -1,8 +1,12 @@
 {
-  "previousCommit": "89b1af32f060641348053e7831c41005c4dc794c",
-  "previousVersion": "1.12.8",
-  "version": "1.12.9",
-  "level": "patch",
-  "reason": "Reduce existing course-chat load latency by fetching its conversation list, history and background-task state concurrently while retaining scoped cache and deleted-chat fallback.",
-  "features": []
+  "previousCommit": "69ecb54a9eb8b8534e78a5e4c85188621fca1171",
+  "previousVersion": "1.12.9",
+  "version": "1.13.0",
+  "level": "minor",
+  "reason": "Add complete user/platform AI cost accounting and six reporting periods; preserve automated calendars and reminders with durable refresh retries, source reuse and validated simple-model extraction.",
+  "features": [
+    "Durable provider-call cost ledger for user and platform requests",
+    "Total AI costs with 7/30/90/180/365-day and all-time reporting",
+    "Optional project-scoped official cost reconciliation"
+  ]
 }

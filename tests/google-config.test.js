@@ -50,6 +50,15 @@ with tempfile.TemporaryDirectory(prefix='studybridge-google-config-test-') as di
         assert 'GOCSPX' not in output.getvalue()
         assert restarted[0]['GOOGLE_CLIENT_ID'] == values['GOOGLE_CLIENT_ID']
         assert restarted[0]['NODE_ENV'] == 'production'
+        # Another installer may reorder lines; equal effective values must not restart.
+        reordered = '\n'.join(reversed(rendered.strip().splitlines())) + '\nOTHER=unchanged\n'
+        env_file.write_text(reordered)
+        restarted.clear()
+        runtime = types.SimpleNamespace(stdout=json.dumps([{'name':'studybridge','pm2_env':values}]).encode())
+        with patch.dict(namespace, {'restart':restart,'verify':lambda client: None}), patch.object(sys,'argv',['configure-google-login.py','a'*40]), patch.object(sys,'stdin',io.StringIO(json.dumps(values))), patch.object(ns['subprocess'],'check_output',return_value='a'*40), patch.object(ns['subprocess'],'run',return_value=runtime), contextlib.redirect_stdout(io.StringIO()):
+            ns['main']()
+        assert not restarted
+        assert env_file.read_text() == reordered
     finally: os.chdir(before)
 print('Private configuration success, rollback and credential validation passed.')
 `;

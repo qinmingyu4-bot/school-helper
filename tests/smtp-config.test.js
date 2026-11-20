@@ -49,6 +49,14 @@ with tempfile.TemporaryDirectory(prefix='studybridge-smtp-config-test-') as dire
                 assert restarted[0]['REQUIRE_EMAIL_VERIFICATION'] == 'true'
                 assert env_file.stat().st_mode & 0o777 == 0o600
         assert all((p.stat().st_mode & 0o077) == 0 for p in (root/'.studybridge-private-backups').rglob('*') if p.is_file())
+        reordered = '\n'.join(reversed(rendered.strip().splitlines())) + '\nOTHER=unchanged\n'
+        env_file.write_text(reordered)
+        restarted.clear()
+        matching = types.SimpleNamespace(stdout=json.dumps([{'name':'studybridge','pm2_env':values}]).encode())
+        with patch.dict(ns, {'restart':restart,'preflight':lambda config:None,'verify':lambda config:None}), patch.object(sys,'argv',['configure-smtp-email.py','a'*40]), patch.object(sys,'stdin',io.StringIO(json.dumps(payload))), patch.object(ns['subprocess'],'check_output',return_value='a'*40), patch.object(ns['subprocess'],'run',return_value=matching), contextlib.redirect_stdout(io.StringIO()):
+            ns['main']()
+        assert not restarted
+        assert env_file.read_text() == reordered
         env_file.write_bytes(original)
         restarted.clear()
         with patch.dict(ns, {'restart':restart,'preflight':fail}), patch.object(sys,'argv',['configure-smtp-email.py','a'*40]), patch.object(sys,'stdin',io.StringIO(json.dumps(payload))), patch.object(ns['subprocess'],'check_output',return_value='a'*40):

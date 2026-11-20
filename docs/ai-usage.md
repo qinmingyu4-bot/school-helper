@@ -121,3 +121,11 @@ consent. A checkout redirect never grants allowance. Verified payment entitlemen
 raise the limit on the next status/admission check. Closed or test-only payment
 configuration displays the availability explanation instead of a purchase action.
 This release does not change payment activation settings.
+
+## Cache-write accounting update
+
+Cache writes now use separate 30-minute (1.25× input) and 12-hour (2.5× input)
+rates, subtracting writes from ordinary input to avoid double counting.
+Reservations include cache-write headroom. Operational cost reporting now uses
+a separate durable ledger that also includes platform-funded calls; see
+[AI cost accounting](ai-cost-accounting.md). Personal allowance limits are unchanged.

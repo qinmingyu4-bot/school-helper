@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.13.0 — 2026-11-20
+
+- MINOR from verified AWS production 1.12.9 (`69ecb54a9eb8b8534e78a5e4c85188621fca1171`): introduce complete AI cost accounting and six reporting periods. Preserve the latest interrupted-task allowance refunds and concurrent chat loading.
+
+- Skip unnecessary deployment restarts when Google, SMTP and payment configuration values are unchanged, including reordered configuration lines.
+- Preserve automatic calendar updates and independent schedule reminders while persisting refresh claims, source digests and retry backoff across restarts. Reuse unchanged official pages; use Luna for validated simple date extraction and Sol for ambiguity, makeup rules and official discovery.
+- Reuse identical saved material text and indexed excerpts; omit unrelated padding from focused retrieval while retaining broad reviews, fresh uploads and source citations.
+
+- Add a prominent total AI cost section with independent last 7/30/90/180/365-day and all-time filters. Retain cost records without expiration and sum integer microdollars before display; keep activity-report periods separate.
+
+- Record user and platform AI calls independently of activity metrics, including shared calendars, product help and health checks. Add source/model cost details and explicit unknown/pending records to the existing bilingual developer console.
+- Correct cache-write pricing and reservations for 30-minute/12-hour cache lifetimes; keep personal allowance limits unchanged. Preserve durable pending records on interruption or settlement failure.
+- Add optional project/key-scoped OpenAI Costs reconciliation with pagination, UTC windows and explicit missing-configuration/error states. Historical gaps are not fabricated; official spend and calculated usage remain separate.
+- Document rollout, billing credentials, retention and model routing in `docs/ai-cost-accounting.md`. Keep learning-answer models and existing automatic reminders. Official Costs access remains optional and requires separately supplied server credentials.
+
 ## 1.12.9 — 2026-11-20
 
 - PATCH from verified production 1.12.8 (`89b1af32f060641348053e7831c41005c4dc794c`): reduce existing course-chat loading latency by starting conversation discovery, saved history and background-task state together instead of three serial reads.

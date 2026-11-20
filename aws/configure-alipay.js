@@ -16,6 +16,12 @@ function parseEnv(source) {
 function renderEnv(source, values) {
   return source.split(/\r?\n/).filter((line) => !Object.hasOwn(values, line.split("=", 1)[0])).join("\n").trimEnd() + "\n" + Object.entries(values).map(([key, value]) => `${key}=${value}`).join("\n") + "\n";
 }
+function configurationMatches(source, runtime, values) {
+  const fileValues = parseEnv(source);
+  const keys = source.split(/\r?\n/).filter((line) => /^[A-Z][A-Z0-9_]*=/.test(line)).map((line) => line.split("=", 1)[0]);
+  return Object.entries(values).every(([key, value]) => keys.filter((name) => name === key).length === 1 && fileValues[key] === value &&
+    String(runtime[key] ?? runtime.env?.[key] ?? fileValues[key] ?? "") === value);
+}
 async function prepare(payload, stripe, db) {
   if (!/^(?:sk|rk)_live_[A-Za-z0-9_]+$/.test(payload.secretKey || "") || !/^whsec_[A-Za-z0-9_]+$/.test(payload.webhookSecret || "") || !/^we_[A-Za-z0-9_]+$/.test(payload.webhookId || "") ||
       !/^acct_[A-Za-z0-9]+$/.test(payload.accountId || "") || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.ownerEmail || "") ||
@@ -62,6 +68,10 @@ async function main() {
     const runtime = JSON.parse(execFileSync("pm2", ["jlist"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] })).find((row) => row.name === "studybridge")?.pm2_env;
     if (!runtime) throw fail("The production application process was not found.");
     const previous = Object.fromEntries(Object.keys(values).map((key) => [key, runtime[key] ?? runtime.env?.[key] ?? fileValues[key] ?? ""]));
+    if (configurationMatches(original.toString(), runtime, values)) {
+      console.log("Alipay configuration already matches; provider checks passed. No restart required.");
+      return;
+    }
     const backupRoot = path.join(os.homedir(), ".studybridge-private-backups"); await fs.mkdir(backupRoot, { recursive: true, mode: 0o700 });
     const backup = await fs.mkdtemp(path.join(backupRoot, "alipay-"));
     await fs.writeFile(path.join(backup, ".env"), original, { mode: 0o600 });
@@ -88,4 +98,4 @@ async function main() {
   } finally { await lock.close(); await fs.rm(`${envFile}.alipay-lock`, { force: true }); }
 }
 if (require.main === module) main().catch((error) => { console.error(error.safe ? error.message : "Private Alipay setup failed; credential and provider output was suppressed."); process.exitCode = 1; });
-module.exports = { prepare, parseEnv, renderEnv, EVENTS, ORIGIN };
+module.exports = { prepare, parseEnv, renderEnv, configurationMatches, EVENTS, ORIGIN };

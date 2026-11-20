@@ -104,13 +104,15 @@ def main():
     processes = json.loads(pm2_result.stdout)
     runtime = next(row["pm2_env"] for row in processes if row.get("name") == "studybridge")
     file_values = {}
+    file_counts = {}
     for line in original.decode().splitlines():
         if "=" in line and not line.lstrip().startswith("#"):
             key, value = line.split("=", 1)
             file_values[key.strip()] = value.strip().strip("\"'")
+            file_counts[key.strip()] = file_counts.get(key.strip(), 0) + 1
     previous = {key: runtime.get(key, runtime.get("env", {}).get(key, file_values.get(key, ""))) for key in KEYS}
     updated = render_env(original.decode(), values).encode()
-    if updated == original and all(previous[key] == values[key] for key in KEYS):
+    if all(file_counts.get(key) == 1 and file_values.get(key) == values[key] and previous[key] == values[key] for key in KEYS):
         verify(values["GOOGLE_CLIENT_ID"])
         print("Google login configuration already matches and passed validation.")
         return

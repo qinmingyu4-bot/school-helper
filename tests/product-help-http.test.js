@@ -45,7 +45,12 @@ test("product help requires authentication and isolates help from course records
   assert.equal(answer.cache, "private, no-store");
   const academic = await request(help, "POST", { message: "Solve my homework" });
   assert.equal(academic.data.topic, "study"); assert.match(academic.data.reply, /回到学习区/);
-  assert.equal(await fs.readFile(path.join(directory, "db.json"), "utf8"), before);
+  const afterHelp = JSON.parse(await fs.readFile(path.join(directory, "db.json"), "utf8"));
+  const costRows = Object.values(afterHelp.aiCosts).flatMap(Object.values);
+  assert.equal(costRows.length, 2);
+  assert.ok(costRows.every((r) => r.payer === "platform" && r.source === "product-help"));
+  delete afterHelp.aiCosts; delete afterHelp.aiCostSince;
+  assert.deepEqual(afterHelp, JSON.parse(before), "Help records platform cost without modifying personal allowance or course data");
   const blocked = await fetch(base + help, { method: "POST", headers: { cookie, "content-type": "application/json", "sec-fetch-site": "cross-site" }, body: JSON.stringify({ message: "hello" }) });
   assert.equal(blocked.status, 403);
   await stop();

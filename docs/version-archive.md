@@ -1,5 +1,12 @@
 # StudyBridge Version Archive
 
+## 1.13.0 — 2026-11-20
+
+- MINOR from verified AWS production 1.12.9 (`69ecb54a9eb8b8534e78a5e4c85188621fca1171`): add independent durable user/platform AI cost accounting, six total-cost periods and optional official reconciliation.
+- Preserve automatic calendar updates and push reminders while caching official sources, routing validated simple extraction to Luna, keeping complex verification on Sol, and saving retry state across restarts. Reuse relevant material evidence without downgrading learning answers.
+- Skip unchanged Google/SMTP/payment configuration restarts, regardless of line order. Preserve the production refund and concurrent chat-loading fixes. Added cost/refresh records are retained; no user-data migration or credential change.
+- Validate merged regressions, source/assets, release policy and deployed version/health/accounting. Rollback code target: `69ecb54a9eb8b8534e78a5e4c85188621fca1171`; retain all user data and new ledger records.
+
 ## 1.12.9 — 2026-11-20
 
 - PATCH from verified production 1.12.8 (`89b1af32f060641348053e7831c41005c4dc794c`): reduce existing course-chat loading latency by starting conversation discovery, saved history and background-task state together instead of three serial reads.
@@ -1142,6 +1149,13 @@ Live checks used:
 - `http://3.98.63.195:3000/main-nav-stabilizer.js` returns the `1.0.95` script.
 - `http://3.98.63.195:3000/google-auth-patch.js` includes `main-nav-stabilizer` and no longer includes `six-zone-router-equalizer`.
 # StudyBridge Version Archive
+
+## 1.13.0 — 2026-11-20
+
+- MINOR from verified AWS production 1.12.9 (`69ecb54a9eb8b8534e78a5e4c85188621fca1171`): add independent durable user/platform AI cost accounting, six total-cost periods and optional official reconciliation.
+- Preserve automatic calendar updates and push reminders while caching official sources, routing validated simple extraction to Luna, keeping complex verification on Sol, and saving retry state across restarts. Reuse relevant material evidence without downgrading learning answers.
+- Preserve the production refund and concurrent chat-loading fixes. Added cost/refresh records are retained; no user-data migration or credential change.
+- Validate merged regressions, source/assets, release policy and deployed version/health/accounting. Rollback code target: `69ecb54a9eb8b8534e78a5e4c85188621fca1171`; retain all user data and new ledger records.
 
 ### 1.1.4 - 2026-10-08
 

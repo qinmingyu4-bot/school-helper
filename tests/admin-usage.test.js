@@ -71,6 +71,17 @@ test("developer usage queries enforce roles and retain only action metadata", { 
   assert.equal((await request("/api/admin/usage", student.cookie)).status, 403);
   assert.equal((await request(userPath, student.cookie)).status, 403);
   assert.equal((await request("/api/admin/usage?days=8", owner.cookie)).status, 400);
+  assert.equal((await request("/api/admin/ai-costs")).status, 401);
+  assert.equal((await request("/api/admin/ai-costs", student.cookie)).status, 403);
+  assert.equal((await request("/api/admin/ai-costs?period=8", owner.cookie)).status, 400);
+  for (const period of ["7", "30", "90", "180", "365", "all"]) {
+    const response = await request(`/api/admin/ai-costs?period=${period}`, owner.cookie);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("cache-control"), /private.*no-store/);
+    const result = await response.json();
+    assert.equal(result.period, period);
+    assert.equal(result.aiCosts.calculatedUsd, result.aiCosts.userUsd + result.aiCosts.platformUsd);
+  }
   assert.equal((await request("/api/admin/users/missing/usage", owner.cookie)).status, 404);
   assert.equal((await request("/api/me/activity", owner.cookie, {}, { "x-studybridge-context": "admin" })).status, 200);
   const course = (await (await request("/api/courses", student.cookie, { name: "PRIVATE_COURSE_TITLE" })).json()).course;

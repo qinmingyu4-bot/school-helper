@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Add an always-available “Add course” action to the course notes picker. Save current notes before opening Study’s existing course creation dialog; newly created courses share the same files and upload workflow. Support empty course lists, keyboard access and Chinese/English labels.
+- Add an always-available “Add course” action to the course notes picker. Open the shared course creation dialog in place and stay on the notes page. Save current notes, add the new course to Study’s shared course list and select it for uploading; cancellation preserves the current material. Support empty course lists, keyboard access and Chinese/English labels.
 
 ## 1.11.1 — 2026-11-20
 

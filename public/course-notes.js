@@ -228,7 +228,16 @@
         if(action==='sticky-delete' && sticky?.type==='sticky') {remember();items.splice(selectedSticky,1);selectedSticky=-1;changed();}
         if (action === 'pdf') await exportFullPdf();
         if (action === 'save') await save();
-        if (action === 'add-course') { closePickers(); await save(); if(epoch===operationEpoch)await ctx.addStudyCourse(); }
+        if (action === 'add-course') {
+          closePickers(); await save();
+          if(epoch!==operationEpoch)return;
+          const created=await ctx.addStudyCourse();
+          if(created && epoch===operationEpoch) {
+            await mount({...ctx,courseId:'',courses:[created,...ctx.courses.filter(item=>item.id!==created.id)]});
+            await switchCourse(created.id);
+            $('[data-course]').value=course; syncPickers();
+          }
+        }
         if (action === 'study' && course) { await save(); await ctx.openStudyCourse(course); }
         if (action === 'focus') { host.classList.toggle('note-focus'); button.textContent=host.classList.contains('note-focus')?t('退出专注','Exit focus'):t('专注书写','Focus'); }
         if (action === 'undo' && undo.length) { selectedSticky=-1; redo.push(JSON.stringify(items)); items=JSON.parse(undo.pop()); changed(); }

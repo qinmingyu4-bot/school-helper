@@ -2495,19 +2495,19 @@
 
   async function addStudyCourse({ fromNotes = false } = {}) {
     const userId = state.user?.id;
-    if (fromNotes) {
-      const generation = pageLoadGeneration + 1;
-      await loadPage("study");
-      // Do not open a late dialog after the user navigates away or changes accounts.
-      if (pageLoadGeneration !== generation || state.page !== "study" || state.user?.id !== userId) return;
-      mobileNavigation.closeStudyPanel();
-    }
+    const generation = pageLoadGeneration;
     const data = await studyCourseDialog({
       title: ui.text("新增课程"), description: ui.text("创建课程后，就可以添加资料并开始对话。"),
       submitLabel: ui.text("创建课程"), askName: true,
       submit: (name) => api("/api/courses", { method: "POST", body: { name, term: "Current term" } })
     });
     if (!data || state.user?.id !== userId) return;
+    if (fromNotes) {
+      state.courses = [data.course, ...state.courses.filter(course => course.id !== data.course.id)];
+      // Creation shares Study's course store without navigating or replacing the current workspace.
+      if (pageLoadGeneration === generation && state.page === "tools" && state.tool === "notes") return data.course;
+      return;
+    }
     await selectConversation(data.course.id, "default");
   }
 

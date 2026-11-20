@@ -1,5 +1,11 @@
 # StudyBridge Version Archive
 
+## 1.12.1 — 2026-11-20
+
+- PATCH from verified production 1.12.0 (`acbdf7cd0db4b7fbcfb030f8c73bdae3e2ff3391`): fix existing document dropdowns so a second click on the same trigger closes the options. No new features, dependencies or data migration.
+- Preserve toolbar appearance, editor settings and selection, keyboard navigation, outside-click dismissal and account themes.
+- Validate Chrome/WebKit mouse and touch interactions, source/assets and release policy. Rollback code target: `acbdf7cd0db4b7fbcfb030f8c73bdae3e2ff3391`; retain user data.
+
 ## 1.12.0 — 2026-11-20
 
 - MINOR from verified production 1.11.1 (`ad02d44660bfd37a1bf152337b03fffb5b3a8127`): add course creation directly in the notes workspace. Keep the current page open, save annotations first, share the course with Study and select the newly created course for upload.

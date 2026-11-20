@@ -13,6 +13,7 @@ import {
 import TextAlign from "@tiptap/extension-text-align";
 import Image from "@tiptap/extension-image";
 import Model from "../public/office-model.js";
+import { bindDocPickers } from "./office-pickers.mjs";
 import { calculator, renameFormulaSheet } from "../lib/office-formulas.js";
 import { revisionBlocks, revisionEdits } from "../lib/office-revision.js";
 import { contentRevisionSource, contentRevisionChanges, applyContentRevision, rangeBounds, inRange } from "../lib/office-content-revision.js";
@@ -261,6 +262,7 @@ class Workspace {
   }
   detach() {
     this.capture();
+    this.bindController?.abort();
     this.editor?.unmount();
     this.presentation?.remove();
     this.presentation = null;
@@ -419,6 +421,7 @@ class Workspace {
    ${this.current.importWarnings?.length ? `<div class="office-import-notice" role="status">${this.current.importWarnings.map(esc).join(" ")}</div>` : ""}
    <div class="office-layout"><div class="office-main">${doc ? this.docsHTML() : slide ? this.slidesHTML() : this.sheetsHTML()}</div></div><input data-office-image type="file" accept="image/png,image/jpeg,image/webp" hidden><input data-office-import type="file" accept=".${formats[this.kind]}" hidden>`;
     this.bind();
+    if (doc) bindDocPickers(this.host, this.bindController.signal);
     if (doc) this.mountDocs();
     if (slide) this.paintSlides();
     if (this.kind === "sheets") this.refreshCells();
@@ -564,6 +567,7 @@ class Workspace {
     for (const [key, value] of Object.entries(values)) {
       const el = this.host.querySelector(`[data-setting="${key}"]`);
       if (el && document.activeElement !== el) el.value = String(value);
+      el?.refreshPicker?.();
     }
   }
   slidesHTML() {

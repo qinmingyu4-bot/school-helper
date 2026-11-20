@@ -27,7 +27,7 @@
   border-radius: 8px;
   box-shadow: none;
 }
-/* Place a theme-colored chevron inside the field instead of the platform edge. */
+/* Keep labels aligned; shared typography.css owns the select chevron. */
 :root .app-shell .workspace .office-shell label:has(> select) {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -38,19 +38,7 @@
   -webkit-appearance: none;
   padding-inline: 9px 32px;
 }
-:root .app-shell .workspace .office-shell label:has(> select)::after {
-  content: "";
-  grid-area: 2 / 1;
-  justify-self: end;
-  align-self: center;
-  width: 6px;
-  height: 6px;
-  margin: -3px 12px 0 0;
-  border-right: 1.25px solid var(--ink);
-  border-bottom: 1.25px solid var(--ink);
-  transform: rotate(45deg);
-  pointer-events: none;
-}
+
 :root .app-shell .workspace .office-shell .office-topbar .office-name {
   width: 100%;
   padding: 7px 0;
@@ -181,7 +169,6 @@
   :root .app-shell .workspace .office-topbar { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   :root .app-shell .workspace .office-shell .office-project-label { grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 12px; }
   :root .app-shell .workspace .office-shell .office-project-label > select { grid-area: 1 / 2; width: 100%; }
-  :root .app-shell .workspace .office-shell .office-project-label::after { grid-area: 1 / 2; }
   :root .app-shell .workspace .office-top-actions { flex-wrap: nowrap; overflow-x: auto; padding: 4px; scroll-padding-inline: 4px; }
   :root .app-shell .workspace .office-toolbar { flex-wrap: nowrap; overflow-x: auto; padding: 10px 4px 12px; scroll-padding-inline: 4px; }
   :root .app-shell .workspace .office-toolbar > * { flex-shrink: 0; }

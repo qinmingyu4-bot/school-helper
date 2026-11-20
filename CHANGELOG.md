@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased — Prevent control-label selection
+## Unreleased — Consistent dropdown controls
 
+- Align single-value dropdown arrows consistently across image tools, Office, notes, settings and other forms: inset 12px from the edge, centered vertically and separated from text. Reuse the field text color for all palettes and dark mode; preserve native listboxes and existing custom pickers.
 - Avoid leaving a keyboard focus ring on Office dropdowns after pointer dismissal or selection; retain focus for Tab and restore visible focus on keyboard interaction.
 - Prevent repeated clicks on buttons, dropdowns, tabs and disclosure summaries from selecting their labels across pages. Preserve normal selection and copying in body text, inputs, textareas and document editors, including editable fields inside disclosure headers.
 

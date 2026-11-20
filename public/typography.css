@@ -29,3 +29,17 @@ body input, body textarea, body select { font-weight: 400; }
   -webkit-user-select: text;
   user-select: text;
 }
+
+/* One inset, vertically centered chevron for every single-value native dropdown.
+   Keep these longhands above page background/padding shorthands in the cascade. */
+select:not([multiple]):is(:not([size]), [size="0"], [size="1"]) {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  padding-inline-end: 36px !important;
+  background-image:
+    linear-gradient(45deg, transparent 43%, currentColor 43%, currentColor 57%, transparent 57%),
+    linear-gradient(135deg, transparent 43%, currentColor 43%, currentColor 57%, transparent 57%) !important;
+  background-position: right 17px center, right 12px center !important;
+  background-size: 6px 6px !important;
+  background-repeat: no-repeat !important;
+}

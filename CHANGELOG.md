@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.9 — 2026-11-20
+
+- PATCH from verified production 1.12.8 (`89b1af32f060641348053e7831c41005c4dc794c`): reduce existing course-chat loading latency by starting conversation discovery, saved history and background-task state together instead of three serial reads.
+- Reuse the prefetched task snapshot without a duplicate request; resolve deleted saved conversations against the directory before displaying history. Retain account/course guards, cache restoration, retry behavior and independent material/calendar loading.
+- Validate parallel request starts, deleted-chat fallback, stale responses and task polling. At a controlled 150 ms per-request delay, three complete-load runs improved from 455–456 ms to 151 ms; this is a simulated latency benchmark, not a production timing guarantee. No new features, dependencies or data migration.
+- Rollback code target: `89b1af32f060641348053e7831c41005c4dc794c`; retain user data.
+
 ## 1.12.8 — 2026-11-20
 
 - PATCH from verified production 1.12.7 (`2d490fda72651809c8a79d398631add28bb53c45`): correct allowance charged for interrupted work; preserve the latest responsive course chats and stable input. No new product features or dependencies.

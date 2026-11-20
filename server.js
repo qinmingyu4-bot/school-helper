@@ -166,7 +166,8 @@ let lastAiRequest = null;
 const classmateStreams = new Map();
 const creative = createCreativeService({
   db, request: (...args) => aiUsage.fetch(...args),
-  observe: (userId, work) => usage.background(userId, "office", work),
+  observe: (userId, work, jobId) => aiUsage.runOperation(userId, jobId, () => usage.background(userId, "office", work)),
+  refund: (job) => aiUsage.refundCreative(job),
   reportOutcome: usage.outcome,
   documentModel: () => process.env.OPENAI_DOCUMENT_MODEL || complexAiModel,
   contextFor: (userId, courseId, message, cheatsheet) => courseContext(db, userId, courseId, message, cheatsheet)
@@ -2056,6 +2057,7 @@ async function routeApi(req, res) {
   if (req.url.split("?")[0] === "/api/me/ai-usage" && req.method === "GET") {
     const user = await requireUser(req, res);
     if (!user) return;
+    await creative.reconcile(user.id);
     const usage = await aiUsage.status(user.id);
     const payment = await alipay.status(user.id).catch(() => null);
     return sendJson(res, 200, { usage: { ...usage, canUpgrade: usage.tier === "standard" && Boolean(payment?.canCheckout && payment.realCharges),

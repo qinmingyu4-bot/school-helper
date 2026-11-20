@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — 2026-11-20
+
+- Release expired AI reservations instead of converting abandoned work into estimated user spending. Network failures, invalid responses and incomplete/error streams release their reservation.
+- Associate generated-image/document charges with server-created job IDs. Failed or restart-interrupted jobs refund linked spending and reservations atomically, including restart recovery on allowance refresh; successful jobs and unrelated requests retain their charges. Late callbacks and repeated recovery cannot charge or refund twice.
+- Show confirmed refunds beside failed generation results. Legacy settled totals lack per-job identifiers and are marked for review rather than guessed; successful responses without usage and deliberate stream cancellation retain their existing estimate policy.
+
 ## 1.12.6 — 2026-11-20
 
 - PATCH from production 1.12.5 (`3dc6e8b697f9278dbef97960f46d17633188e764`): repair existing controls across pages. Prevent repeated clicks selecting button/disclosure labels, remove pointer-only focus rings after Office dropdown dismissal, and align single-select arrows with consistent inset and text spacing.

@@ -727,6 +727,8 @@ Plus 用户|Plus member
 正在加载聊天记录…|Loading chat history…
 聊天记录暂时无法刷新，已显示的记录会保留。|Chat history could not be refreshed. Previously displayed messages are kept.
 重试加载|Retry loading
+课程资料暂时无法刷新，聊天仍可使用。|Course materials could not be refreshed. Chat is still available.
+正在加载课程资料…|Loading course materials…
 {0} 的对话|Chats for {0}
 在 {0} 下新增对话|New chat in {0}
 新增对话|New chat

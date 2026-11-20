@@ -7,13 +7,16 @@ const loaders = source.slice(source.indexOf("  async function refreshCourseConve
 
 function harness(defer = []) {
   const requests = [], notices = [], renders = [];
+  const storage = new Map(), drafts = new Map();
   const state = { user: { id: "alice", name: "Alice" }, mode: "student", page: "profile", tool: "docs",
     courses: [{ id: "kept", name: "Saved course" }], activeCourseId: "general", activeConversationId: "default",
     conversationCourseId: "general", courseConversations: {}, expandedCourses: {}, courseConversationErrors: {}, scheduleItems: [],
     communityChannel: "all", communityChoices: {}, activeClassmateId: "", classmateChatOpen: false };
   let formDraft = "";
   const context = vm.createContext({ ui: require("../public/i18n"), scheduleImport: require("../public/schedule-import"),
-    state, URLSearchParams,
+    state, URLSearchParams, studyTasks: null,
+    studyDrafts: drafts, studyReplyKey: () => JSON.stringify([state.user.id, state.activeCourseId, state.activeConversationId]),
+    $: () => ({ value: formDraft }), mobileNavigation: { closeStudyPanel() {} },
     setPage(page) {
       if (page === "tools" && state.tool === "email") { page = "email"; state.tool = "docs"; }
       state.page = state.mode === "admin" ? "admin" : ["study", "schedule", "tools", "email", "profile", "community", "classmates"].includes(page) ? page : "study";
@@ -24,7 +27,7 @@ function harness(defer = []) {
     communityQuery: () => "channel=all", communityValue: () => "",
     officeTools: { supports: () => true }, creativeTools: { load: async () => {} }, creativeContext: () => ({}),
     mailboxView: { load: async () => { requests.push({ path: "/api/mailbox" }); } },
-    localStorage: { getItem: () => null }, isGeneralChat: () => state.activeCourseId === "general",
+    localStorage: { getItem: (key) => storage.get(key), setItem: (key, value) => storage.set(key, value) }, isGeneralChat: () => state.activeCourseId === "general",
     chatSpaces: { general: { id: "general" } }, courseChats: { visibleCourses: (courses) => courses },
     loadStudyMode: () => {}, activeStudyReply: () => null, mergeStudyReply: (messages) => messages,
     api(path) {
@@ -35,7 +38,7 @@ function harness(defer = []) {
     }
   });
   vm.runInContext(`let pageLoadGeneration = 0, classmatesGeneration = 0;\n${loaders}`, context);
-  return { state, context, requests, notices, renders, type: (text) => { formDraft = text; }, draft: () => formDraft };
+  return { state, context, requests, notices, renders, storage, drafts, type: (text) => { formDraft = text; }, draft: () => formDraft };
 }
 
 test("late study responses cannot overwrite courses or redraw a newly edited profile", async () => {
@@ -213,4 +216,65 @@ test("feature loading failures preserve the signed-in user and current workspace
       assert.ok(h.notices.includes("Request failed"));
     }
   }
+});
+
+test("course heading and current conversation preserve history and drafts even when requests would fail", async () => {
+  const h = harness(["/api/courses"]);
+  Object.assign(h.state, { page: "study", activeCourseId: "kept", conversationCourseId: "kept",
+    activeConversationId: "default", messages: [{ id: "history", content: "Saved question" }], docs: [], uploadFiles: [] });
+  h.state.expandedCourses.kept = true;
+  h.storage.set("studybridge.conversation.alice.kept", "stale-other-chat");
+  h.type("Unsent question");
+  const history = h.state.messages;
+  await h.context.selectCourse("kept");
+  await h.context.selectConversation("kept", "default");
+  assert.equal(h.state.activeConversationId, "default");
+  assert.equal(h.state.messages, history);
+  assert.equal(h.draft(), "Unsent question");
+  assert.equal(h.requests.length, 0);
+  assert.equal(h.renders.length, 0);
+});
+
+test("switching conversations loads their own history and remembers resolved stale IDs", async () => {
+  const h = harness();
+  Object.assign(h.state, { page: "study", activeCourseId: "kept", conversationCourseId: "kept",
+    messages: [{ id: "default-history" }], uploadFiles: [] });
+  h.context.api = async (path) => {
+    h.requests.push({ path });
+    if (path === "/api/courses") return { courses: [{ id: "kept" }] };
+    if (path.endsWith("/conversations")) return { conversations: [{ id: "default" }, { id: "second" }] };
+    if (path.includes("/messages?")) return { messages: [{ id: path.endsWith("=second") ? "second-history" : "default-history" }] };
+    return { documents: [], items: [] };
+  };
+  await h.context.selectConversation("kept", "second");
+  assert.equal(h.state.messages[0].id, "second-history");
+  await h.context.selectConversation("kept", "default");
+  assert.equal(h.state.messages[0].id, "default-history");
+  await h.context.selectConversation("kept", "deleted-chat");
+  assert.equal(h.state.activeConversationId, "default");
+  assert.equal(h.storage.get("studybridge.conversation.alice.kept"), "default");
+  assert.equal(h.state.messages[0].id, "default-history");
+});
+
+test("reselecting a chat during loading does not invalidate the pending history request", async () => {
+  const h = harness(["/api/courses"]);
+  h.state.uploadFiles = [];
+  const loading = h.context.selectConversation("general", "default");
+  await h.context.selectCourse("general");
+  await h.context.selectConversation("general", "default");
+  assert.equal(h.requests.length, 1);
+  h.requests[0].resolve({ courses: [] });
+  await loading;
+  assert.ok(h.requests.some((request) => request.path === "/api/courses/general/messages?conversationId=default"));
+  assert.equal(h.state.busy, false);
+});
+
+test("an empty chat after a failed load can still be retried by selecting it", async () => {
+  const h = harness(["/api/courses"]);
+  Object.assign(h.state, { page: "study", messages: [], uploadFiles: [], busy: false });
+  const retry = h.context.selectConversation("general", "default");
+  assert.equal(h.requests.length, 1);
+  h.requests[0].resolve({ courses: [] });
+  await retry;
+  assert.equal(h.state.busy, false);
 });

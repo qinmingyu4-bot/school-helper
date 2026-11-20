@@ -133,7 +133,7 @@ const academicCalendars = createCalendarService({
 const feedback = createFeedback({ db, sendEmail, version: packageVersion, recipient: feedbackRecipient, origin: feedbackOrigin });
 const usage = createUsageAnalytics(db, { onFailure: feedback.observe });
 const aiUsage = createAiUsage({ db, entitlement: (userId) => alipay.entitlement(userId), onRequest: usage.recordAi,
-  request: (url, options, estimate) => aiCosts.fetch(url, options, { ...estimate, userId: aiUsage.context.getStore()?.userId, payer: "user", source: usage.currentFeature() }) });
+  request: (url, options, estimate) => aiCosts.fetch(url, options, { ...estimate, operationId: aiUsage.context.getStore()?.operationId, userId: aiUsage.context.getStore()?.userId, payer: "user", source: usage.currentFeature() }) });
 const office = createOfficeService(db);
 const schedulePush = createPushService({ db, listSchedule: (userId) => listUserScheduleItems(userId, { includeCompleted: true }) });
 const publicDir = path.join(__dirname, "public");
@@ -172,7 +172,11 @@ const classmateStreams = new Map();
 const creative = createCreativeService({
   db, request: (...args) => aiUsage.fetch(...args),
   observe: (userId, work, jobId) => aiUsage.runOperation(userId, jobId, () => usage.background(userId, "office", work)),
-  refund: (job) => aiUsage.refundCreative(job),
+  refund: async (job) => {
+    const result = await aiUsage.refundCreative(job);
+    await aiCosts.failedOperation(job);
+    return result;
+  },
   reportOutcome: usage.outcome,
   documentModel: () => process.env.OPENAI_DOCUMENT_MODEL || complexAiModel,
   contextFor: (userId, courseId, message, cheatsheet) => courseContext(db, userId, courseId, message, cheatsheet)
@@ -1396,7 +1400,11 @@ async function callAiWithResponses(messages, model, toolType = "web_search", str
     return content;
   }
   const text = await response.text();
-  if (!response.ok) throw new Error(`AI web request failed: ${text}`);
+  if (!response.ok) {
+    let failure; try { failure = JSON.parse(text).error; } catch {}
+    const unsupported = [400, 404, 422].includes(response.status) && ["unsupported_tool", "unsupported_parameter", "unknown_parameter", "unsupported_value"].includes(failure?.code) && /tool|web_search/.test(`${failure?.param || ""} ${failure?.message || ""}`);
+    throw Object.assign(new Error("暂时无法完成，请稍后再试。"), { statusCode: response.status, unsupportedTool: unsupported });
+  }
   const payload = JSON.parse(text);
   if (payload.status === "incomplete") throw new Error("AI answer was incomplete; please continue the unfinished parts.");
   lastAiRequest = { model, api: "Responses", completedAt: new Date().toISOString() };
@@ -1428,7 +1436,7 @@ async function callAiWithChatCompletions(messages, model, stream = null, { signa
     return content;
   }
   const text = await response.text();
-  if (!response.ok) throw new Error(`AI request failed: ${text}`);
+  if (!response.ok) throw Object.assign(new Error("暂时无法完成，请稍后再试。"), { statusCode: response.status });
   const payload = JSON.parse(text);
   const finishReason = payload.choices?.[0]?.finish_reason;
   if (finishReason && finishReason !== "stop") throw Object.assign(new Error("AI answer was incomplete; please continue the unfinished parts."), { finishReason });
@@ -1445,18 +1453,9 @@ async function callAi(messages, model = simpleAiModel, stream = null) {
     try {
       return await callAiWithResponses(messages, model, "web_search", stream);
     } catch (error) {
-      if (error.usageError || stream?.signal.aborted || error.delivered) throw error;
-      const message = String(error?.message || error);
-      if (message.includes("web_search")) {
-        try {
-          return await callAiWithResponses(messages, model, "web_search_preview", stream);
-        } catch (previewError) {
-          if (previewError.usageError || stream?.signal.aborted || previewError.delivered) throw previewError;
-          console.warn(`StudyBridge preview web route failed, falling back to chat completions: ${previewError?.message || previewError}`);
-        }
-      } else {
-        console.warn(`StudyBridge web AI route failed, falling back to chat completions: ${message}`);
-      }
+      if (!error.unsupportedTool || error.usageError || stream?.signal.aborted || error.delivered) throw error;
+      // A rejected unsupported tool did not execute. Fall back once, without
+      // replaying potentially paid timeouts/rate failures or trying a third API.
     }
   }
 
@@ -1846,21 +1845,26 @@ async function requestOpenAiChatHealth(model) {
   } catch { return { configured: true, ok: false, detail: "AI 连接失败或检测超时。" }; }
 }
 
+let pendingAiHealth;
 async function aiHealthStatus() {
   if (cachedAiHealth && Date.now() - cachedAiHealth.checkedAtMs < 60000) return cachedAiHealth.payload;
-  const health = await requestOpenAiChatHealth(simpleAiModel);
-  const payload = {
-    ...health,
-    simpleModel: simpleAiModel,
-    complexModel: complexAiModel,
-    complexRoutePercent: 100,
-    routing: "task-complexity",
-    webSearchEnabled,
-    webModelRouting: "selected-task-model",
-    checkedAt: new Date().toISOString()
-  };
-  cachedAiHealth = { checkedAtMs: Date.now(), payload };
-  return payload;
+  if (pendingAiHealth) return pendingAiHealth;
+  pendingAiHealth = (async () => {
+    const health = await requestOpenAiChatHealth(simpleAiModel);
+    const payload = {
+      ...health,
+      simpleModel: simpleAiModel,
+      complexModel: complexAiModel,
+      complexRoutePercent: 100,
+      routing: "task-complexity",
+      webSearchEnabled,
+      webModelRouting: "selected-task-model",
+      checkedAt: new Date().toISOString()
+    };
+    cachedAiHealth = { checkedAtMs: Date.now(), payload };
+    return payload;
+  })().finally(() => { pendingAiHealth = null; });
+  return pendingAiHealth;
 }
 
 function authRedirect(req, params = {}) {
@@ -3238,7 +3242,7 @@ if (directMessageMatch && method === "POST") {
     const termHint = timetableScope(user.profile?.school, { year: body.year, season: body.season, campus: scope.campus, faculty: scope.faculty }, body.courseCodes);
     if ((termHint.campus || "") !== scope.campus) return sendError(res, 400, "所选校区与课程代码不一致，或课表包含多个校区；请检查课程和校区后再匹配。");
     const result = await academicCalendars.lookup({ school: user.profile?.school, termHint, courseCodes: body.courseCodes,
-      today: new Date().toISOString().slice(0, 10), allowSearch: false });
+      today: new Date().toISOString().slice(0, 10), model: complexAiModel, allowSearch: webSearchEnabled, revalidate: body.revalidate === true });
     return sendJson(res, 200, result, { "cache-control": "private, no-store" });
   }
 
@@ -3736,7 +3740,7 @@ staticAssets.prepare().then(() => server.listen(port, () => {
   feedback.start();
   schedulePush.start();
   studyJobs.start();
-  if (webSearchEnabled && process.env.OPENAI_API_KEY && process.env.NODE_ENV === "production" && process.env.ACADEMIC_CALENDAR_REFRESH !== "false") academicCalendars.start(complexAiModel);
+  // Calendar lookup is demand-driven; saved schedule reminders remain automatic.
   void db.compactStudyMaterials().catch(() => console.warn("Private material compaction deferred; legacy data remains readable."));
 })).catch((error) => { console.error("Static asset preparation failed:", error); process.exit(1); });
 

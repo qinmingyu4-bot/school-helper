@@ -69,9 +69,9 @@ test("HTTP allowance is private, meters both chat transports, blocks exhausted a
   await service.settle(ticket, ticket.amount);
   await start();
   const blocked = await req(chat, alice.cookie, { message: "Explain limits", mode: "guided" });
-  assert.equal(blocked.status, 429); assert.match((await blocked.json()).error, /额度/);
+  assert.equal(blocked.status, 429); assert.match((await blocked.json()).error, /暂时无法开始新的 AI 请求/);
   const blockedStream = await req(chat, alice.cookie, { message: "Explain limits", mode: "guided", stream: true }, { accept: "text/event-stream" });
-  assert.match(await blockedStream.text(), /本周 AI 额度不足/);
+  assert.match(await blockedStream.text(), /暂时无法开始新的 AI 请求/);
   assert.equal((await (await req("/api/me/ai-usage", bob.cookie)).json()).usage.usedUsd, 0);
   await stop(); await db.setUserMembership(alice.user.id, "plus", "owner", "standard"); await start();
   const upgraded = (await (await req("/api/me/ai-usage", alice.cookie)).json()).usage;

@@ -114,7 +114,8 @@ test("official reconciliation is project-scoped, paginated, cached and never add
   const r = await service.report(date, date); assert.equal(r.official.amountUsd, 2.5); assert.equal(r.calculatedUsd, 0);
   await service.report(date, date); assert.equal(calls, 2); assert.doesNotMatch(JSON.stringify(r), /secret-test/);
   const unavailable = createAiCosts({ db, env, request: async () => new Response("forbidden", { status: 403 }) });
-  assert.equal((await unavailable.report(date, date)).official.status, "unavailable");
+  const stale = (await unavailable.report(date, date)).official;
+  assert.equal(stale.status, "available"); assert.equal(stale.stale, true);
 });
 
 test("cost periods are inclusive UTC days and all covers collection start", () => {

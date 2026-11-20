@@ -1,147 +1,133 @@
 # AI cost accounting and reconciliation
 
-The developer console has a dedicated **Total AI cost** section with independent
-last 7/30/90/180/365 days and **All** filters. These are rolling UTC dates including
-today, rather than calendar-month boundaries. **All** starts on the recorded
-collection-start date; unavailable historical costs are not invented. Total cost
-is the sum of user and platform calculated costs; pending/unknown estimates remain
-separate. Activity statistics retain their independent 7/30-day controls.
+The developer console shows total AI cost for rolling UTC 7/30/90/180/365-day
+windows and All. Official project/key-filtered consumption is the primary total
+when available; local request prices explain the approximate distribution by
+feature/model. Never add these two totals. Historical unallocated cost and the
+signed official-minus-local difference remain separate; never invent a user or
+feature attribution. The owner accepts approximate attribution, not missing costs.
 
-The developer overview and per-user summary show **recorded AI cost**, calculated
-from returned provider usage, independently of foreground activity analytics. Expand
-**AI cost details and reconciliation** for user/platform totals, source/model groups,
-unknown and pending requests, collection start, and optional official spend.
+## Financial meaning and coverage
 
-## Coverage and meaning
+Credit purchases/card charges are funding, not consumption. Taxes, currency
+conversion and balances cannot be inferred from the Costs API. These fields remain
+explicitly not connected rather than showing zero. Reconcile cash separately with
+OpenAI billing receipts and opening/closing credit balances. A project/key scope
+may also include another program sharing that credential.
 
-All production generation paths use `createAiCosts.fetch`: personal calls through
-`aiUsage`, shared academic calendars, product help and health checks. Personal quota
-limits remain US$0.50/US$2.00 per seven-day period; platform costs are recorded without
-charging a student's quota. This change does not remove features or change the
-calendar's model/refresh schedule. Source metadata is allowlisted server-side;
-prompts, replies, file contents, authorization headers and secrets are never stored.
+Local request recording has its own start timestamp. All official history starts
+at `OPENAI_COSTS_HISTORY_START` (default 2020-01-01, before the API launch), or an
+earlier local start. Live verification on 2026-11-20 confirmed the provider's
+one-year lookback (`reporting_lookback_exceeded`, earliest 2025-11-20 UTC). Reads
+respect that boundary and persist complete daily snapshots in monthly records.
+All combines available provider history with previously archived older days,
+replacing overlap rather than adding it twice. Gaps and the actual available start
+are explicit. Set the configured start to the verified project creation date to
+avoid implying unknown pre-project history. The UI shows both
+selected dates and local coverage; it does not imply old local details were recovered.
 
-A request is durably recorded before dispatch. If the initial write fails, no paid
-call is made. A settlement write failure leaves a pending record rather than silently
-losing a charge. Cancellation, transport failures, missing/invalid usage, unsupported
-prices and abandoned requests are **unknown**, not zero. Active pending requests
-become unresolved after ten minutes. Reserved estimates (when available) are shown
-separately and are not added to calculated totals. An explicit 4xx rejection other
-than 408 is recorded as zero; 5xx and timeouts remain unknown. Streaming accounting
-reads the trailing usage event, including a last line without a newline, and handles
-cancellation idempotently. Completed provider work is recorded even when downstream
-calendar validation rejects the result.
+All generation paths use `createAiCosts.fetch`, including shared calendars,
+product help and connectivity checks. A durable pending record precedes dispatch;
+request IDs are saved as soon as headers arrive. Prompts, replies, files, secrets
+and authorization headers are not retained. Missing/invalid usage, crashes and
+network failures remain unknown. Abandoned pending rows are durably marked unknown
+after ten minutes on the next report. Known response usage is charged in this
+ledger even on an HTTP error or an incomplete/failed result. An explicit supported
+4xx rejection without usage is zero; ambiguous failures remain unknown.
 
-The user allowance and operational ledger share the same price function. Text
-input excludes cache reads and writes before pricing ordinary input; 30-minute writes
-cost 1.25× input and 12-hour writes cost 2.5× input. Lifetime components are mutually
-exclusive. Legacy completions without lifetime breakdown use the request's lifetime
-(default 30 minutes). Long-context rates, output/reasoning, searches and supported
-containers are included. Reservation headroom includes cache-write pricing.
-Text transports request Standard service. Unknown tiers/pricing require reconciliation.
-Do not interpret this calculated amount as an exact provider invoice: rounding,
-provider adjustments, image cache discounts not exposed in response usage, tool
-container reuse, storage and other applications can differ. Official spend is the
-financial reference; no UI claims an unknown amount is final.
+Personal weekly allowances stay USD 0.50 / USD 2.00. Failure refunds never erase
+the provider expense. Both ledgers share stream completion parsing, including a
+last usage line without a newline, failure after usage, and cancellation. A
+request with reported usage can therefore be a failed user task and a real cost.
+Local prices include cache read/write, long-context text, image/audio and supported
+tools. Tools/container reuse and provider adjustments are estimates. Official
+spend remains authoritative, and current-day data can lag.
 
-## Optional official billing connection
+## Quiet protections
 
-Configure only on the server, never in source or browser fields:
+Operational warnings appear only in the developer console. Students receive an
+ordinary inline inability-to-complete message when an action cannot finish; no
+new technical quota/retry/report popups are introduced. Existing account allowance
+information remains available.
 
-- `OPENAI_COSTS_ADMIN_KEY`: organization Admin API credential with access to Costs.
-- `OPENAI_COSTS_PROJECT_ID`: required explicit project scope, e.g. a dedicated
-  StudyBridge project. An organization-wide total is never silently substituted.
-- `OPENAI_COSTS_API_KEY_ID`: optional key **identifier**, not a secret API key, to
-  exclude other callers within a shared project.
+- Paid calls are deduplicated while in progress using a content hash plus account
+  and feature scope. No prompt contents are stored in the admission record.
+- Three consecutive failed calls in one scope cool that scope for 15 minutes.
+  Creative output-validation failures are recorded independently and refunds are
+  idempotent. These controls survive service restarts in local/Dynamo storage.
+- `AI_PLATFORM_DAILY_BUDGET_USD` defaults to USD 5 per UTC day. It protects platform
+  calls and, separately, each account's gross provider spend across features,
+  including failed/refunded calls. This safety budget is distinct from personal
+  allowances. Reservations are estimates, not a provider-side hard dollar cap;
+  overruns remain fully recorded. Expired uncertain attempts retain their estimate
+  in the protective gross-spend counter. The developer panel shows blocked counts,
+  cooling sources and platform budget consumption, which can include absorbed failures.
+- Shared calendars are never queried on startup or on a timer. Import/explicit
+  term matching first reuse a verified applicable semester/academic-year record.
+  Explicit campus/faculty scopes share across course sets; unknown scopes remain
+  course-specific. Failures keep durable backoff. Explicit revalidation skips the
+  successful-check delay but does not override a failure cooldown or active lease.
+  Automatic reminders for already saved events remain independent and need no AI.
+- Unknown transport/rate/auth errors do not fan out into additional model calls.
+  Only an explicit unsupported-tool rejection can fall back once to chat.
+- Concurrent developer connectivity checks share one call and cache it for a minute.
 
-No credential is created or enabled by this change. Without the first two settings,
-the UI says **Official billing not connected**, not $0. Errors say unavailable.
-The read-only Costs API is queried in UTC day buckets for the selected
-window (including the extended cost ranges), follows pagination in up to 180-day
-pages, and caches successful reads for five minutes. It shows
-its project/key scope, retrieval time and line items. Current-day values may lag.
-Official totals are shown alongside local costs, never added to them. They can
-include historical spending from before local collection and other programs using
-the same project/key. Credit purchases, taxes and bank conversions are separate.
+Audio admission uses server-parsed file duration (including duration recovery for
+WebM recordings), with one second of rounding headroom. Files with unreadable
+length stop before a paid call. Image admission considers model, selected quality,
+size, prompt bytes and actual reference-image dimensions. Image estimates include
+10% headroom: GPT Image 2 uses published per-size examples; 2.6 uses a deliberately
+conservative envelope (5x for low, 2x for medium/high relative to those examples),
+not a claim to reproduce its exact calculator. Reference estimates use a high-fidelity
+pixel envelope. Actual returned usage settles the cost; an estimate is never labeled
+an invoice. Calibrate these envelopes from production evidence when available.
 
-## Storage, access and rollout
+## Official connection and storage
 
-The same administrator-only/no-store routes protect this information. Per-user
-reports filter out platform costs and never expose official organization data.
-Local storage uses `aiCosts[UTC day][random request id]` and `aiCostSince`. DynamoDB
-uses `AI_COST#YYYY-MM-DD` partitions and request IDs, a separate start record, and
-no expiration. AI cost records are retained indefinitely in both stores to support
-yearly and all-time totals; they are independent of the 35-day activity retention.
-The earlier unreleased 90-day cost-retention design is removed. At higher volume,
-archive request detail only after durable daily cost rollups are implemented; never
-discard cost history to reduce storage. Existing backups include these additive fields.
+Private server configuration only:
 
-Deploy this task branch through the normal owner-authorized release process. No
-historical request costs are fabricated and no prior user allowance is recalculated.
-Rollback code while retaining the added data. New data collected after rollback
-will again be incomplete, so show the coverage interval when reconciling.
+- `OPENAI_COSTS_ADMIN_KEY`: organization Admin key with Usage API Read only.
+- `OPENAI_COSTS_PROJECT_ID`: required project filter.
+- `OPENAI_COSTS_API_KEY_ID`: optional API key identifier, not its secret.
+- `OPENAI_COSTS_HISTORY_START`: earliest official history requested by All.
 
-Validation uses simulated providers only (no live charges), including local and
-DynamoDB persistence, mixed cache lifetimes, interrupted streams, write failures,
-provider pagination/errors and admin authorization.
+Costs reads follow pagination (up to 180 days per page), coalesce identical
+concurrent reads (including shared worker leases), serialize range changes, and persist successful snapshots for
+five minutes. A 429 honors Retry-After with at least five minutes of backoff across
+all ranges; other failures wait at least one minute. Last successful data remains
+available with its original timestamp and a stale label. No partial page total is
+published. Changing project/key scope changes the cache identity.
+
+Ledger rows have no TTL in local/Dynamo storage. Small admission/reconciliation
+states are stored under `aiCostControl` / `AI_COST_CONTROL`. Unknown requests retain
+provider IDs for investigation. Aggregate official differences reconcile total
+coverage, not individual unknown calls; store:false responses may be unrecoverable.
+At higher volume, roll up/archive detail before any retention change. Dynamo guard
+mutations use conditional writes; local storage requires the existing single-server
+writer deployment. Do not scale local storage to multiple processes without migration.
+
+Administrator authorization and no-store HTTP responses protect these reports.
+Per-user reports exclude official organization figures and platform records.
+See [owner decisions](ai-cost-controls-decisions.md). Follow the authorized release
+process for deployment; this document alone does not authorize publishing main.
+
+## Retained cost optimizations
+
+Known official HTML/PDF sources are bounded, domain-checked and hashed. Unchanged
+sources reuse verified parsing. Unambiguous date extraction uses Luna first;
+complex campus/makeup rules or validation failures use Sol with official evidence.
+Date/weekday/timezone calculations and deduplication stay in code. Saved material
+text and revision-aware indexes reuse relevant passages without changing the study
+answer model or dropping source citations. Source failures do not interrupt the
+independent saved-reminder worker.
+
+Validation uses simulated providers and sources, with no paid generation. Tests
+cover local/Dynamo persistence, competing admissions, restarts, failure refunds,
+media preflight, streaming endings, official pagination/backoff and authorization.
+Production savings must be measured after deployment; no saving percentage is assumed.
 
 References checked 2026-11-20:
+- https://developers.openai.com/api/docs/guides/image-generation
 - https://developers.openai.com/api/docs/guides/prompt-caching
 - https://developers.openai.com/api/docs/pricing
 - https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/usage/methods/costs
-
-## Implemented cost controls, preserving automatic reminders
-
-Calendar refresh remains automatic. At startup and hourly thereafter the worker
-checks durable due times for each configured school/campus/faculty/term. Current
-and near-term calendars check official sources every 12 hours; terms starting more
-than 90 days away check weekly. An unchanged verified source digest makes no model
-request. HTML link targets and PDF file bytes participate in change detection.
-Parsed official pages are reused across terms for 15 minutes, with a bounded cache.
-No browser visit or manual refresh is needed to run the worker.
-
-Before work starts, a durable claim reserves a 10-minute lease and a six-hour
-crash cooldown. DynamoDB uses conditional writes; the local store uses its existing
-single-process serialized writer. Failed attempts retry automatically after 6, 12,
-then 24 hours for current/near terms, up to seven days for distant terms. Restarts
-and concurrent workers cannot bypass the saved retry time. Failures preserve the
-last verified calendar. Calendar records remain separate from refresh state in
-`calendarRefresh` / DynamoDB `CALENDAR_REFRESH`; an unavailable state store prevents
-new paid work. Missing/failed public-page retrieval falls back to verified search;
-when no readable digest can be retained after success, revalidation is weekly.
-
-Known official HTML/PDF pages are fetched with HTTPS, university-domain redirect
-validation, time/size limits and no account credentials. Bounded, uncomplicated
-page text goes to the configured simple model (default Luna), without web tools.
-Acceptance requires explicit unambiguous scope, real dates, exact source quotes,
-consulted official URLs, a complete teaching/closure structure and matching timezone.
-Ambiguity, invalid output, new/unconsulted sources or makeup/substitution rules use
-the configured complex model (default Sol) with official search. Provider outages,
-authorization failures and rate limits back off instead of causing a second call.
-The discovery step allows up to six tool calls and 12,000 output tokens; incomplete
-results never replace a good calendar. Both routes enter the platform cost ledger.
-
-Date validation, weekday expansion, timezone conversion and duplicate detection
-continue to use `public/schedule-import.js`, without model calls. Existing saved
-schedule reminders continue on the independent 30-second push worker, subject to
-the user's notification settings. Calendar lookup failures do not stop reminders.
-This change does not rewrite previously confirmed personal schedules when the
-shared university calendar changes, or create unsolicited notifications.
-
-Saved material text and revision-aware indexes are reused. Identical named uploads
-are sent once, while changed versions retain their citations. Focused fallback
-retrieval includes matching passages and adjacent context, rather than padding the
-prompt with unrelated sources. Indexed retrieval removes identical excerpts.
-Broad reviews, fresh uploads, source locations and original PDF/image access remain
-available; no learning-answer model is downgraded.
-
-Tests use simulated sources/providers without live charges: local/DynamoDB restart
-and concurrent-claim behavior, due times, unchanged/changed sources, malformed dates,
-source quotes, campus conflicts, complex-date fallback, bounded HTML/PDF retrieval,
-existing automatic pushes, and material/citation/coverage regression tests. Production
-savings must be measured from the ledger after deployment; no percentage is assumed.
-
-Official model reference: https://developers.openai.com/api/docs/models/gpt-6-luna
-
-Remaining optional work: platform spending alerts/queues and product-navigation
-intent shortcuts. These are not enabled by this change.

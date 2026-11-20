@@ -55,7 +55,7 @@ globalThis.fetch = async (url, options) => {
     const responses = String(url).endsWith("/responses");
     const last = (body.messages || body.input).at(-1).content;
     const question = typeof last === "string" ? last : JSON.stringify(last);
-    if (responses && question.includes("STREAM_EARLY_FAIL")) return new Response('{"error":"web_search unavailable"}', { status: 400 });
+    if (responses && question.includes("STREAM_EARLY_FAIL")) return Response.json({ error: { code: 'unsupported_tool', param: 'tools[0]', message: 'web_search is unsupported' } }, { status: 400 });
     const answer = "逐步输出中文😀。\n\n" + JSON.stringify(body);
     const encode = (payload) => `data: ${JSON.stringify(payload)}\r\n\r\n`;
     const frames = responses ? [

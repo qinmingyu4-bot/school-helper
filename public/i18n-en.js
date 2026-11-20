@@ -5,6 +5,30 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+失败调用成本|Failed provider call costs
+尚未分配到功能的费用|Costs not yet attributed to features
+官方同步暂缓，正在显示上次成功读取的数据。|Official sync is paused; showing the last successful snapshot.
+下次可同步时间|Next sync available
+今日平台保护预算|Today’s platform protection budget
+已阻止重复或异常请求|Duplicate or abnormal requests prevented
+暂缓的异常来源|Sources cooling down
+功能分布为估算；历史未记录、工具计价和同步延迟产生的差异单独保留，不分摊到用户。|Feature costs are estimates. Historical gaps, tool pricing and sync delays stay separate and are not allocated to users.
+充值、税费与余额尚未接入；消费金额不等于银行卡扣款。|Top-ups, taxes and balance are not connected; consumption is not the same as card charges.
+总 AI 成本（官方消费）|Total AI cost (official spend)
+以官方消费为总额；功能分布按本地记录估算|Official spend is the total; feature distribution is estimated from local records
+暂时无法完成，请稍后再试。|Unable to complete this right now. Please try again later.
+暂时无法读取这个文件，请重新上传后再试。|Unable to read this file. Please upload it again.
+暂时无法开始新的 AI 请求，请稍后再试。|Unable to start a new AI request right now. Please try again later.
+官方与已记录差额|Official minus recorded costs
+生成服务暂时不可用，请稍后再试。|Generation is temporarily unavailable. Please try again later.
+上次官方同步：{0}|Last official sync: {0}
+官方可获取历史起点|Official history available from
+更早或缺失记录未计入官方总额；历史快照会持续保存。|Earlier or missing records are excluded from the official total; historical snapshots are retained.
+官方总额仅含可获取或已存档历史，展开查看覆盖范围|Official total covers available or archived history; expand for coverage
+并发重复请求|Concurrent duplicate requests
+连续失败暂缓|Repeated failures cooling down
+平台安全预算|Platform safety budget
+账号实际成本预算|Account gross provider budget
 总 AI 成本|Total AI cost
 总 AI 成本（已记录）|Total AI cost (recorded)
 用户请求与平台后台合计，不含待核对费用|User and platform costs combined; excludes unresolved costs

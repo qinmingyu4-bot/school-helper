@@ -25,7 +25,7 @@ async function fixture(t, dynamo) {
   const archive = (db) => ({ get: (k) => db.getAcademicCalendar(k), put: (k, v) => db.putAcademicCalendar(k, v), changeState: (k, fn) => db.changeCalendarRefresh(k, fn) });
   return { database, archive };
 }
-for (const dynamo of [false, true]) test(`${dynamo ? 'DynamoDB' : 'local'} automatic checks survive restart, avoid unchanged AI calls and re-parse changes`, async (t) => {
+for (const dynamo of [false, true]) test(`${dynamo ? 'DynamoDB' : 'local'} demand-only checks survive restart, reuse the term and revalidate changes explicitly`, async (t) => {
   const { database, archive } = await fixture(t, dynamo);
   let time = Date.parse('2026-11-20T12:00:00Z'), text = evidence, calls = 0;
   const options = { now: () => new Date(time), simpleModel: 'luna', sources: { read: async (source) => {
@@ -44,12 +44,13 @@ for (const dynamo of [false, true]) test(`${dynamo ? 'DynamoDB' : 'local'} autom
   service = createCalendarService({ ...options, archive: archive(database()) });
   await service.refresh('sol'); assert.equal(calls, 1, 'A restart does not skip the durable next-check time');
   time += 13 * 3600000;
-  await service.refresh('sol'); assert.equal(calls, 1, 'Unchanged pages do not trigger a model');
+  await service.lookup({ ...input, revalidate: true }); assert.equal(calls, 1, 'Unchanged pages do not trigger a model');
   const checked = await service.lookup(input);
   assert.equal(checked.calendar.verifiedAt, initial.calendar.verifiedAt);
   assert.notEqual(checked.calendar.checkedAt, initial.calendar.checkedAt);
   text += ' Updated official notice.'; time += 13 * 3600000;
-  await service.refresh('sol'); assert.equal(calls, 2);
+  await service.refresh('sol'); assert.equal(calls, 1, 'Time passing never schedules discovery');
+  await service.lookup({ ...input, revalidate: true }); assert.equal(calls, 2);
 });
 
 for (const dynamo of [false, true]) test(`${dynamo ? 'DynamoDB' : 'local'} failed lookups back off durably and concurrent workers claim once`, async (t) => {
@@ -92,11 +93,11 @@ test('storage failures and provider outages do not amplify paid requests', async
   assert.equal((await service.lookup(input)).calendar, null); assert.equal(calls, 1, 'No Sol retry after a rate limit');
 });
 
-test('scheduled startup checks automatically without user interaction', async (t) => {
-  let called; const started = new Promise((resolve) => { called = resolve; });
-  const service = createCalendarService({ now: () => new Date('2026-11-20'), request: async () => { called(); throw Error('unavailable'); } });
-  t.after(() => service.stop());
-  service.start('sol'); await started; service.stop();
+test('startup and scheduled compatibility entry points never query calendars', async () => {
+  let calls = 0;
+  const service = createCalendarService({ request: async () => { calls++; throw Error('unexpected'); } });
+  service.start('sol'); await service.refresh('sol'); service.stop();
+  assert.equal(calls,0);
 });
 
 test('official source reader reuses parsed pages, handles PDFs, and rejects off-domain redirects and oversized evidence', async () => {

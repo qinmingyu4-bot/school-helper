@@ -763,9 +763,9 @@ its scope, breaks and official sources.
 If the extracted term or campus/faculty is incomplete and a compatible saved
 term is available, the course preview opens immediately after extraction. The
 student confirms the missing scope before applying dates. Other misses can still
-use official web lookup with the Profile school and timetable details. Only the
-configured regular undergraduate scopes write shared date records to the local
-database or DynamoDB. Other verified results use a bounded in-memory cache.
+use official web lookup with the Profile school and timetable details. Verified date records persist in the local database or DynamoDB. Explicit
+campus/faculty/term scopes share records across course sets; unknown faculty
+lookups remain bound to the exact course set.
 Previously saved exact matches remain readable. Refresh and lookup use the same
 campus/faculty key, so Toronto campus archives cannot overwrite one another.
 Calendar lookup requires confirmed scope, confirmed no-class dates and consulted
@@ -773,16 +773,17 @@ official sources for each teaching period, break or makeup day. The archive
 works with web lookup disabled. Missing dates or uncertain scope can be entered
 once in the shared semester form. An inferred current term is flagged for review.
 
-With web lookup and an OpenAI key configured, the production server checks the
-configured undergraduate scopes on startup and weekly. It looks ahead through
-the following calendar year, rechecks active and upcoming terms after 90 days
-and preserves the last verified copy if the school has yet to publish dates or
-lookup fails. Set `ACADEMIC_CALENDAR_REFRESH=false` to disable background checks.
-Initial records and refresh targets live in `lib/academic-calendar-seeds.js`.
+Calendar discovery runs only during timetable import or an explicit term/calendar
+match. Startup and scheduled scans no longer call university sites or AI, even if
+legacy `ACADEMIC_CALENDAR_REFRESH` is set. Verified dates are reused for their term
+or academic year; a different term has a different key. Explicit revalidation
+checks source changes, retaining the last verified copy on failure and honoring
+failure cooldowns. Saved reminders continue automatically without AI. Initial
+verified records and supported scopes live in `lib/academic-calendar-seeds.js`.
 
 If automatic calendar lookup fails, the retained preview offers an explicit
 saved-calendar match by year, term and known campus/faculty scope. The authenticated
-`POST /api/schedule/calendar` endpoint reads only the account school's archive;
+`POST /api/schedule/calendar` endpoint checks the account school's archive first and searches only on a miss;
 it does not re-upload a file, call AI/web search, create courses or save reminders.
 Unknown years/scopes stay unresolved, and mixed or conflicting Toronto course
 campus codes are rejected. Matching keeps draft edits and selections and rechecks

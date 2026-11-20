@@ -49,7 +49,8 @@ test("product help requires authentication and isolates help from course records
   const costRows = Object.values(afterHelp.aiCosts).flatMap(Object.values);
   assert.equal(costRows.length, 2);
   assert.ok(costRows.every((r) => r.payer === "platform" && r.source === "product-help"));
-  delete afterHelp.aiCosts; delete afterHelp.aiCostSince;
+  assert.ok(Object.values(afterHelp.aiCostControl).some(row => row.spent > 0));
+  delete afterHelp.aiCostControl; delete afterHelp.aiCosts; delete afterHelp.aiCostSince;
   assert.deepEqual(afterHelp, JSON.parse(before), "Help records platform cost without modifying personal allowance or course data");
   const blocked = await fetch(base + help, { method: "POST", headers: { cookie, "content-type": "application/json", "sec-fetch-site": "cross-site" }, body: JSON.stringify({ message: "hello" }) });
   assert.equal(blocked.status, 403);

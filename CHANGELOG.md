@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased — AI cost controls
+
+- Calendar discovery is now demand-driven on timetable import/explicit matching;
+  verified scoped calendars persist across course sets and service restarts, while
+  saved-event reminders continue automatically without AI.
+- Added durable paid-call deduplication, failure cooldowns and gross-spend safety
+  budgets independent of personal failure refunds. Developer-only diagnostics show
+  prevented requests, failed call costs and unknown expenses.
+- Unified trailing-stream, incomplete-response and cancellation accounting; save
+  provider request IDs early and retain usage even on failed HTTP responses.
+- Audio admission measures file duration; image admission uses model/quality/size
+  and reference dimensions instead of fixed reservations. Actual usage settles costs.
+- Official consumption is the primary cost total with separate local feature
+  estimates and unallocated differences. All history is independent of local
+  collection start; persistent snapshots, request coalescing and rate-limit backoff
+  preserve dated results. Cash top-ups/taxes/balances remain explicitly unconnected.
+- Removed blind web/API retries and coalesced developer health checks. Operational
+  failures use simple student messages; detailed diagnostics stay in developer views.
+
+
 ## 1.13.0 — 2026-11-20
 
 - MINOR from verified AWS production 1.12.9 (`69ecb54a9eb8b8534e78a5e4c85188621fca1171`): introduce complete AI cost accounting and six reporting periods. Preserve the latest interrupted-task allowance refunds and concurrent chat loading.

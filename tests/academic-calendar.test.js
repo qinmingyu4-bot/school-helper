@@ -80,7 +80,8 @@ test("verified calendars survive a new service instance and match only the same 
   const archived = await second.lookup({ ...input, termHint, courseCodes: ["MAT100H1F"], allowSearch: false });
   assert.deepEqual(archived.calendar, original.calendar);
   assert.match(archived.notice, /存档/);
-  assert.equal((await second.lookup({ ...input, allowSearch: false })).calendar, null, "An ad hoc course-specific lookup is not persisted");
+  assert.ok((await second.lookup({ ...input, allowSearch: false })).calendar, "A verified ad hoc lookup is also persisted for its exact scope");
+  assert.equal((await second.lookup({ ...input, courseCodes: ["DIFFERENT"], allowSearch: false })).calendar, null, "Unknown faculties never share across course combinations");
 });
 
 test("preloaded undergraduate terms retain official closures and stay separate from special programs and winter sessions", async () => {
@@ -97,7 +98,7 @@ test("preloaded undergraduate terms retain official closures and stay separate f
   }
 });
 
-test("scheduled refresh checks current and future terms without replacing good data on failure", async () => {
+test("explicit imports fetch a future term and retain it on later lookup failure", async () => {
   const records = new Map();
   const archive = { get: async (key) => records.get(key), put: async (key, value) => records.set(key, value) };
   let now = new Date("2026-11-07T12:00:00Z");
@@ -117,13 +118,13 @@ test("scheduled refresh checks current and future terms without replacing good d
   };
   const service = createCalendarService({ archive, request, now: () => now });
   await Promise.all([service.refresh("test-model"), service.refresh("test-model")]);
-  assert.deepEqual(requests.filter((entry) => entry.school === "University of Waterloo").map(({ year, season }) => [year, season]), [[2026, "fall"], [2027, "winter"], [2027, "fall"]]);
+  assert.equal(requests.length, 0);
   const term = { school: "waterloo", termHint: { year: 2027, season: "fall", faculty: "Undergraduate" }, today: "2027-09-01", allowSearch: false };
-  const saved = await service.lookup(term);
+  const saved = await service.lookup({ ...term, allowSearch: true });
   assert.equal(saved.calendar.teachingPeriods[0].startDate, "2027-09-08");
   now = new Date("2027-08-01T12:00:00Z");
   await service.refresh("test-model");
-  assert.deepEqual(await service.lookup(term), saved);
+  assert.deepEqual((await service.lookup({ ...term, allowSearch: true, revalidate: true })).calendar, saved.calendar);
 });
 
 test("Toronto winter archives separate campuses, faculties and optional makeup dates without searching", async () => {

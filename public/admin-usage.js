@@ -33,22 +33,33 @@
     const c = data.aiCosts;
     if (!c) return "";
     const sourceNames = { ...features, user: "用户请求", "academic-calendar": "共享校历", "product-help": "使用帮助", "health-check": "连通检测" };
+    const blockedNames = { duplicate: "并发重复请求", "failure-cooldown": "连续失败暂缓", "platform-budget": "平台安全预算", "account-provider-budget": "账号实际成本预算" };
     const official = c.official;
     const status = official?.status === "available" ? money(official.amountUsd)
       : ui.text(official?.status === "not_configured" ? "尚未连接官方账单" : "官方账单暂不可用");
     const rows = [
       ["用户请求成本", money(c.userUsd)],
       ...(!data.user ? [["平台后台成本", money(c.platformUsd)], ["OpenAI 官方消费", status]] : []),
-      ["待核对请求", number(c.unknownRequests)], ["进行中请求", number(c.pendingRequests)]
+      ["待核对请求", number(c.unknownRequests)], ["进行中请求", number(c.pendingRequests)],
+      ["失败调用成本", money(c.failedUsd || 0)],
+      ...(!data.user && c.unallocatedUsd !== null && c.unallocatedUsd !== undefined ? [["尚未分配到功能的费用", money(c.unallocatedUsd)], ["官方与已记录差额", money(c.differenceUsd)]] : [])
     ];
-    const list = c.sources.map((r) => `<li><span>${label(sourceNames[r.source] || "用户请求")} · ${esc(r.model)}</span><small>${esc(money(r.calculatedUsd))} · ${esc(number(r.requests))} ${label("次请求")}${r.unknownRequests ? ` · ${label("待核对请求")} ${esc(number(r.unknownRequests))}` : ""}</small></li>`).join("");
+    const list = c.sources.map((r) => `<li><span>${label(sourceNames[r.source] || "用户请求")} · ${esc(r.model)}</span><small>${esc(money(r.calculatedUsd))} · ${esc(number(r.requests))} ${label("次请求")}${r.failedUsd ? ` · ${label("失败调用成本")} ${esc(money(r.failedUsd))}` : ""}${r.unknownRequests ? ` · ${label("待核对请求")} ${esc(number(r.unknownRequests))}` : ""}</small></li>`).join("");
     const officialItems = official?.status === "available" ? `<p class="admin-usage-note">${label("官方账单范围")}: ${esc(official.projectId)} · ${label(official.keyFiltered ? "已限定 API 密钥" : "项目全部密钥")} · ${label("读取时间")}: ${esc(date(official.fetchedAt))}</p>
       <ul class="admin-usage-list">${official.items.map((r) => `<li><span>${esc(r.label)}</span><small>${esc(money(r.amountUsd))}</small></li>`).join("")}</ul>` : "";
     return `<details class="admin-usage-days"><summary>${label("AI 费用明细与对账")}</summary>
       <p class="admin-usage-note">${label("完整费用记录开始于")}: ${esc(date(c.since))} · ${label("历史漏记不补算；当前日官方数据可能延迟。")}</p>
       ${metricRows(rows)}<p class="admin-usage-note">${label("待核对预留估算")}: ${esc(money(c.estimatedUsd))} · ${label("不计入已记录成本；平台未知费用可能没有估算。")}</p>
+      ${official?.coverageLimited ? `<p class="admin-usage-note">${label("官方可获取历史起点")}: ${esc(date(official.from, {dateStyle:"medium",timeZone:"UTC"}))} · ${label("更早或缺失记录未计入官方总额；历史快照会持续保存。")}</p>` : ""}
+      ${official?.stale ? `<p class="admin-usage-note" role="status">${label("官方同步暂缓，正在显示上次成功读取的数据。")}</p>` : ""}
+      ${official?.retryAt ? `<p class="admin-usage-note">${label("下次可同步时间")}: ${esc(date(official.retryAt))}</p>` : ""}
+      ${c.controls ? `<p class="admin-usage-note">${label("今日平台保护预算")}: ${esc(money(c.controls.spentUsd))} / ${esc(money(c.controls.budgetUsd))} · ${label("已阻止重复或异常请求")}: ${esc(number(Object.values(c.controls.blocked || {}).reduce((a,b)=>a+b,0)))} · ${label("暂缓的异常来源")}: ${esc(number(c.controls.coolingScopes))}</p>` : ""}
+      ${c.controls ? `<ul class="admin-usage-list">${Object.entries(c.controls.blocked || {}).map(([reason,count])=>`<li><span>${label(blockedNames[reason] || reason)}</span><small>${esc(number(count))}</small></li>`).join("")}</ul>` : ""}
       ${c.storageFailures ? `<p role="status">${label("费用结算写入失败，部分请求需要核对。")}</p>` : ""}
-      <ul class="admin-usage-list">${list}</ul>${officialItems}
+      <ul class="admin-usage-list">${list}</ul>
+      <p class="admin-usage-note">${label("功能分布为估算；历史未记录、工具计价和同步延迟产生的差异单独保留，不分摊到用户。")}</p>
+      ${officialItems}
+      ${!data.user ? `<p class="admin-usage-note">${label("充值、税费与余额尚未接入；消费金额不等于银行卡扣款。")}</p>` : ""}
       <p class="admin-usage-note">${label("个人额度与平台费用分开统计。官方消费与本地计价不可相加；充值、税费及其他程序调用须另行核对。")}</p>
     </details>`;
   }
@@ -56,7 +67,7 @@
   function costOverview(data) {
     const c = data.aiCosts;
     return coverage(data) + metricRows([
-      ["总 AI 成本（已记录）", money(c.calculatedUsd), ui.text("用户请求与平台后台合计，不含待核对费用")],
+      [c.official?.status === "available" ? "总 AI 成本（官方消费）" : "总 AI 成本（已记录）", money(c.official?.status === "available" ? c.official.amountUsd : c.calculatedUsd), c.official?.stale ? ui.message`上次官方同步：${date(c.official.fetchedAt)}` : c.official?.coverageLimited ? ui.text("官方总额仅含可获取或已存档历史，展开查看覆盖范围") : ui.text(c.official?.status === "available" ? "以官方消费为总额；功能分布按本地记录估算" : "用户请求与平台后台合计，不含待核对费用")],
       ["用户请求成本", money(c.userUsd)], ["平台后台成本", money(c.platformUsd)]
     ]) + costs(data);
   }

@@ -29,7 +29,9 @@ at 8,192 tokens by default, or the existing 16,000 document limit, and reduced t
 fit available allowance. Requests needing fewer than 256 possible output tokens
 are rejected. Tool calls are capped at two. Web requests reserve two searches and
 32K additional context tokens, priced with long-context headroom. Code interpreter
-reserves one 1 GB container. Images reserve US$0.25 and audio US$0.045.
+reserves one 1 GB container. Audio reserves its server-measured duration plus
+rounding headroom; images reserve model/quality/size, prompt and reference-image
+estimates. See [cost controls](ai-cost-accounting.md) for estimation limits.
 
 Successful responses use provider-reported input, cached input and output totals.
 Reported output already includes reasoning tokens. Responses web searches and
@@ -43,8 +45,8 @@ Known unsuccessful HTTP provider responses, transport failures, invalid JSON and
 incomplete/error streams release their reservation; these platform failures do
 not consume user allowance. Abandoned holds expire after ten minutes without
 becoming estimated spending. Provider calls remain bounded to five minutes.
-Successful responses with missing usage and deliberately canceled streams retain
-the estimate policy; the provider invoice is independent of the user's allowance.
+Successful responses with missing usage retain the estimate policy. Streams
+canceled before completion release their personal reservation; the provider invoice is independent of the user's allowance.
 
 New creative jobs carry a server-assigned accounting version and operation ID.
 Each reservation and settled amount is associated with that job in its original

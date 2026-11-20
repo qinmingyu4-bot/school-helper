@@ -1137,7 +1137,7 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
       const final = fallback.at(-1);
       assert.equal(final.event, "done");
       const outbound = JSON.parse(final.messages[1].content.split("\n\n")[1]);
-      assert.ok(outbound.messages, "both web tools failed, so Chat Completions must be used");
+      assert.ok(outbound.messages, "an explicit unsupported tool falls back once to Chat Completions");
       assert.equal(outbound.model, expected);
       assert.equal(final.model, expected);
     }
@@ -1187,6 +1187,9 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
         assert.equal(history.length, 2);
         assert.equal(history[1].content, packets.find((packet) => packet.event === "delta").text);
         assert.equal(history[1].interrupted, true);
+        // Keep each transport fault isolated; successful work clears its streak.
+        const recovered = await streamReply(await streamCourse("Recovery between fault cases"), "Hello");
+        assert.equal(recovered.at(-1).event, "done");
       }
     }
     const id = await streamCourse("Early web failure");

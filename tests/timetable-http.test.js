@@ -204,7 +204,14 @@ test("timetable images/PDFs retain layout, use school calendars and return recur
   assert.equal(repeat.data.items.length, 0); assert.match(repeat.data.clarification, /结束日期/);
   assert.equal((await request("/api/schedule/parse-text", { ...natural, text: "FORMAT_BAD" }, cookie)).status, 502);
   assert.equal((await request("/api/schedule/parse-text", { ...natural, timeZone: "bad/zone" }, cookie)).status, 400);
-  const audio = { fileData: Buffer.from("524946461400000057415645666d742000000000", "hex").toString("base64") };
+  // A real 2-second PCM header/data body lets admission measure duration.
+  const audioBytes = Buffer.alloc(44 + 16000);
+  audioBytes.write("RIFF"); audioBytes.writeUInt32LE(audioBytes.length - 8, 4); audioBytes.write("WAVEfmt ", 8);
+  audioBytes.writeUInt32LE(16, 16); audioBytes.writeUInt16LE(1, 20); audioBytes.writeUInt16LE(1, 22);
+  audioBytes.writeUInt32LE(8000, 24); audioBytes.writeUInt32LE(8000, 28);
+  audioBytes.writeUInt16LE(1, 32); audioBytes.writeUInt16LE(8, 34);
+  audioBytes.write("data", 36); audioBytes.writeUInt32LE(16000, 40);
+  const audio = { fileData: audioBytes.toString("base64") };
   assert.equal((await request("/api/schedule/transcribe", audio)).status, 401);
   const transcript = await request("/api/schedule/transcribe", audio, cookie);
   assert.equal(transcript.status, 200); assert.match(transcript.data.text, /图书馆/);

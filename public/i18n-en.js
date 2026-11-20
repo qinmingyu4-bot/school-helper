@@ -5,6 +5,9 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+对话列表暂时无法加载。|Conversations could not be loaded.
+正在加载对话…|Loading conversations…
+暂无对话，点击＋新建。|No conversations yet. Use + to create one.
 课件笔记|Course notes
 课件笔记、文档和创作|Course notes, documents and more
 课件笔记、文档、表格、演示和图片|Course notes, documents, spreadsheets, slides and images

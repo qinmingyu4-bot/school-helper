@@ -2,6 +2,8 @@
 
 ## Unreleased — Course notes feedback
 
+- Fix course-folder arrows so expand/collapse responds immediately, preserves cached chats on fetch failure, supports retry and ignores stale responses after rapid clicks or navigation. Refresh only the changed folder to preserve the active composer.
+
 - Add yellow sticky notes to course PDFs with bilingual typed text, attached handwriting, drag/resize, independent duplication and customizable backgrounds. Include them in cloud drafts, undo/redo and full PDF/page-image exports.
 
 - Give pen, highlighter and eraser distinct cursors and show a quiet active-tool hint.

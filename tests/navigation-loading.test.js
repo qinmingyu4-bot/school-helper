@@ -9,7 +9,7 @@ function harness(defer = []) {
   const requests = [], notices = [], renders = [];
   const state = { user: { id: "alice", name: "Alice" }, mode: "student", page: "profile", tool: "docs",
     courses: [{ id: "kept", name: "Saved course" }], activeCourseId: "general", activeConversationId: "default",
-    conversationCourseId: "general", courseConversations: {}, expandedCourses: {}, scheduleItems: [],
+    conversationCourseId: "general", courseConversations: {}, expandedCourses: {}, courseConversationErrors: {}, scheduleItems: [],
     communityChannel: "all", communityChoices: {}, activeClassmateId: "", classmateChatOpen: false };
   let formDraft = "";
   const context = vm.createContext({ ui: require("../public/i18n"), scheduleImport: require("../public/schedule-import"),
@@ -19,6 +19,7 @@ function harness(defer = []) {
       state.page = state.mode === "admin" ? "admin" : ["study", "schedule", "tools", "email", "profile", "community", "classmates"].includes(page) ? page : "study";
     },
     render() { renders.push(state.page); formDraft = ""; },
+    updateCourseFolder(id) { renders.push(`folder:${id}:${state.expandedCourses[id]}`); },
     setToast: (message) => notices.push(message), syncClassmatesLive: () => {},
     communityQuery: () => "channel=all", communityValue: () => "",
     officeTools: { supports: () => true }, creativeTools: { load: async () => {} }, creativeContext: () => ({}),
@@ -148,4 +149,53 @@ test("late conversation and document loads cannot repopulate abandoned study sta
   assert.equal(docs.state.docs, undefined);
   assert.equal(docs.state.messages, undefined);
   assert.equal(docs.draft(), "Keep profile input");
+});
+
+
+test("course arrows reopen immediately and remain usable when the list request fails", async () => {
+  const h = harness(["/api/courses/kept/conversations"]);
+  h.state.page = "study"; h.state.expandedCourses.kept = true;
+  h.state.courseConversations.kept = [{id:"saved",title:"Keep this chat"}];
+  h.type("Keep my unsent question");
+  await h.context.toggleCourseFolder("kept");
+  assert.equal(h.state.expandedCourses.kept,false);
+  const opening = h.context.toggleCourseFolder("kept");
+  assert.equal(h.state.expandedCourses.kept,true,"opening must not wait for the server");
+  h.requests[0].reject(new Error("Offline"));await opening;
+  assert.equal(h.state.expandedCourses.kept,true);
+  assert.equal(h.state.courseConversationErrors.kept,true);
+  assert.equal(h.state.courseConversations.kept[0].id,"saved");
+  assert.equal(h.draft(),"Keep my unsent question");
+  const retry=h.context.toggleCourseFolder("kept",true);
+  h.requests[1].resolve({conversations:[{id:"fresh"}]});await retry;
+  assert.equal(h.state.courseConversationErrors.kept,undefined);
+  assert.equal(h.state.courseConversations.kept[0].id,"fresh");
+});
+
+test("rapid course toggles follow the last click and reject stale list responses", async () => {
+  const h=harness(["/api/courses/kept/conversations"]);h.state.page="study";
+  const first=h.context.toggleCourseFolder("kept");
+  await h.context.toggleCourseFolder("kept");
+  const last=h.context.toggleCourseFolder("kept");
+  h.requests[1].resolve({conversations:[{id:"latest"}]});await last;
+  h.requests[0].resolve({conversations:[{id:"old"}]});await first;
+  assert.equal(h.state.expandedCourses.kept,true);
+  assert.equal(h.state.courseConversations.kept[0].id,"latest");
+  await h.context.toggleCourseFolder("kept");
+  const pending=h.context.toggleCourseFolder("kept");
+  await h.context.toggleCourseFolder("kept");
+  h.requests[2].resolve({conversations:[{id:"closed"}]});await pending;
+  assert.equal(h.state.expandedCourses.kept,false);
+  assert.equal(h.state.courseConversations.kept[0].id,"latest");
+});
+
+test("late course folder loads cannot update another page, account or deleted course", async () => {
+  for(const change of [h=>{h.state.user={id:"bob"};},h=>{h.state.page="profile";},h=>{h.state.courses=[];}]) {
+    const h=harness(["/api/courses/kept/conversations"]);h.state.page="study";
+    const pending=h.context.toggleCourseFolder("kept");change(h);
+    const renders=h.renders.length;
+    h.requests[0].resolve({conversations:[{id:"private"}]});await pending;
+    assert.equal(h.state.courseConversations.kept,undefined);
+    assert.equal(h.renders.length,renders);
+  }
 });

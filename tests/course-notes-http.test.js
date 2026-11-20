@@ -56,10 +56,14 @@ test("course notes HTTP isolates users, persists and guards concurrent saves", {
   assert.equal((await request(route,null,second.cookie,'GET')).status,404);
   assert.equal((await fetch(base+`/api/courses/${c}/note-source/${d}`,{headers:{cookie:second.cookie}})).status,404);
   const source=await fetch(base+`/api/courses/${c}/note-source/${d}`,{headers:{cookie}});assert.equal(source.status,200);assert.deepEqual(Buffer.from(await source.arrayBuffer()),bytes);
-  const items=[{type:'text',x:.2,y:.3,width:.02,color:'#112233',text:'课堂笔记 / lecture notes'}];
+  const items=[{type:'text',x:.2,y:.3,width:.02,color:'#112233',text:'课堂笔记 / lecture notes'},{type:'sticky',x:.1,y:.2,w:.3,h:.25,background:'#fff2a8',text:'复习重点',ink:[{type:'pen',color:'#112233',width:.01,points:[[.1,.2],[.3,.4]]}]}];
   assert.equal((await request(route,{version:0,items},cookie,'PUT')).status,200);
   assert.equal((await request(route,{version:0,items:[]},cookie,'PUT')).status,409);
   assert.equal((await request(route,{version:1,items:[{type:'bad'}]},cookie,'PUT')).status,400);
+  const allRoute=`/api/courses/${c}/notes/${d}?all=true`;
+  assert.equal((await request(allRoute,null,'','GET')).status,401);
+  assert.equal((await request(allRoute,null,second.cookie,'GET')).status,404);
+  assert.deepEqual((await request(allRoute,null,cookie,'GET')).data.pages,[{page:1,version:1,items}]);
   const eco=(await request('/api/courses',{name:'ECO101 Economics',term:'Fall'},cookie)).data.course;
   const autoFile={fileName:'ECO_101_week02.pdf',fileType:'application/pdf',fileData:bytes.toString('base64')};
   assert.equal((await request('/api/course-materials',autoFile)).status,401);
@@ -83,10 +87,12 @@ test("course notes HTTP isolates users, persists and guards concurrent saves", {
   assert.equal((await request('/api/course-materials',{...autoFile,fileData:''},cookie)).status,400);
   await stop();await start();
   assert.deepEqual((await request(route,null,cookie,'GET')).data.items,items);
+  assert.deepEqual((await request(allRoute,null,cookie,'GET')).data.pages,[{page:1,version:1,items}]);
   assert.equal((await request(`/api/courses/${c}/notes/${d}?page=0`,null,cookie,'GET')).status,400);
   assert.equal((await request(`/api/courses/${c}/notes/${d}?page=9999`,null,cookie,'GET')).status,400);
   const module=await fetch(base+'/vendor/pdfjs/pdf.min.mjs');assert.match(module.headers.get('content-type'),/javascript/);
   await request(`/api/courses/${c}/documents/${d}`,null,cookie,'DELETE');
   assert.equal((await request(route,null,cookie,'GET')).status,404);
+  assert.equal((await request(allRoute,null,cookie,'GET')).status,404);
   const state=JSON.parse(await fs.readFile(database,'utf8'));assert.equal(Object.keys(state.courseNotes).length,0);
 });

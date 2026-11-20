@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.9.4";
+  const VERSION = "1.10.0";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -176,6 +176,7 @@
     conversationCourseId: "",
     courseConversations: {},
     expandedCourses: {},
+    courseConversationErrors: {},
     renamingConversation: null,
     studyMode: studyModes.defaultMode,
     docs: [],
@@ -888,7 +889,9 @@
 
   function courseFolderHtml(course) {
     const open = Boolean(state.expandedCourses[course.id]);
-    const rows = state.courseConversations[course.id] || [{ id: "default", title: ui.text("默认对话") }];
+    const rows = state.courseConversations[course.id] || [];
+    const failed = state.courseConversationErrors[course.id];
+    const pending = courseFolderLoads.has(course.id);
     return ui.html`<section class="course-folder" aria-label="${esc(course.name)} 的对话">
       <div class="course-folder-heading">
         <button data-action="toggle-course" data-id="${esc(course.id)}" aria-expanded="${open}" aria-label="${open ? ui.text("收起") : ui.text("展开")}${esc(course.name)}">${open ? "▾" : "▸"}</button>
@@ -897,11 +900,30 @@
         <button class="course-archive-action" data-action="archive-course" data-id="${esc(course.id)}" aria-label="存档课程 ${esc(course.name)}" title="存档课程"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 9h16v11H4zM3 4h18v5H3zM9 13h6"/></svg></button>
         <button data-action="delete-course" data-id="${esc(course.id)}" aria-label="删除课程 ${esc(course.name)}" title="删除课程">×</button>
       </div>
-      ${open ? `<div class="course-chat-list">${rows.map((chat) => {
+      ${open ? `<div class="course-chat-list">${failed ? `<div class="course-chat-status" role="status">${esc(ui.text("对话列表暂时无法加载。"))}<button type="button" data-action="retry-course" data-id="${esc(course.id)}">${ui.text("重试刷新")}</button></div>` : !rows.length ? `<p class="course-chat-status" role="status">${esc(ui.text(pending ? "正在加载对话…" : "暂无对话，点击＋新建。"))}</p>` : ""}${rows.map((chat) => {
         const renaming = state.renamingConversation?.courseId === course.id && state.renamingConversation.id === chat.id;
         return renaming ? ui.html`<div class="course-chat-rename"><input id="conversationRename" data-course="${esc(course.id)}" data-conversation="${esc(chat.id)}" aria-label="对话标题" maxlength="120" value="${esc(state.renamingConversation.title ?? chat.title)}"><div><button data-action="save-conversation-name" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}">保存标题</button><button data-action="cancel-conversation-name">取消</button></div></div>`
           : ui.html`<div class="course-chat-row ${state.activeCourseId === course.id && state.activeConversationId === chat.id ? "active" : ""}"><button class="course-chat-title" data-action="select-conversation" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}" title="${esc(chat.title)}" ${state.activeCourseId === course.id && state.activeConversationId === chat.id ? 'aria-current="page"' : ""}>${esc(chat.title)}</button><button data-action="rename-conversation" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}" aria-label="重命名对话 ${esc(chat.title)}" title="重命名">✎</button><button data-action="delete-conversation" data-id="${esc(course.id)}" data-conversation="${esc(chat.id)}" aria-label="删除对话 ${esc(chat.title)}" title="删除对话">×</button></div>`;
       }).join("")}</div>` : ""}</section>`;
+  }
+
+  // Patch only the folder: a late list refresh must not replace the active composer.
+  function updateCourseFolder(courseId) {
+    const course = state.courses.find(item => item.id === courseId);
+    const toggle = [...root.querySelectorAll('[data-action="toggle-course"]')].find(button => button.dataset.id === courseId);
+    const folder = toggle?.closest('.course-folder');
+    if (!course || !folder) return;
+    const focused = document.activeElement;
+    const restoreToggle = focused === toggle || focused?.dataset.action === 'retry-course' && folder.contains(focused);
+    const rename = folder.querySelector('#conversationRename');
+    if (rename && state.renamingConversation?.courseId === courseId) state.renamingConversation.title = rename.value;
+    // Preserve an in-progress rename and its caret when a background refresh returns.
+    if (rename && focused === rename && state.expandedCourses[courseId]) return;
+    const template = document.createElement('template');
+    template.innerHTML = courseFolderHtml(course);
+    const next = template.content.firstElementChild;
+    folder.replaceWith(next);
+    if (restoreToggle) next.querySelector('[data-action="toggle-course"]').focus({preventScroll:true});
   }
 
   function onboardingHtml() {
@@ -2447,6 +2469,29 @@
     return data.conversations || [];
   }
 
+  const courseFolderLoads = new Map();
+  async function toggleCourseFolder(courseId, retry = false) {
+    const open = retry || !state.expandedCourses[courseId];
+    state.expandedCourses[courseId] = open;
+    delete state.courseConversationErrors[courseId];
+    if (!open) { courseFolderLoads.delete(courseId); updateCourseFolder(courseId); return; }
+    const request = {}, userId = state.user?.id, generation = pageLoadGeneration;
+    courseFolderLoads.set(courseId, request);
+    updateCourseFolder(courseId);
+    const current = () => state.user?.id === userId && generation === pageLoadGeneration
+      && state.page === 'study' && state.expandedCourses[courseId]
+      && courseFolderLoads.get(courseId) === request && state.courses.some(course => course.id === courseId);
+    try {
+      await refreshCourseConversations(courseId, current);
+    } catch {
+      if (current()) state.courseConversationErrors[courseId] = true;
+    } finally {
+      const refresh = current();
+      if (courseFolderLoads.get(courseId) === request) courseFolderLoads.delete(courseId);
+      if (refresh) updateCourseFolder(courseId);
+    }
+  }
+
   async function selectConversation(courseId, conversationId) {
     studyDrafts.set(studyReplyKey(), { text: $("chatInput")?.value ?? studyDrafts.get(studyReplyKey())?.text ?? "", files: [...state.uploadFiles] });
     state.activeCourseId = courseId;
@@ -3073,11 +3118,8 @@
         await selectConversation(button.dataset.id, conversationId);
         return;
       }
-      if (action === "toggle-course") {
-        const courseId = button.dataset.id;
-        if (!state.expandedCourses[courseId]) await refreshCourseConversations(courseId);
-        state.expandedCourses[courseId] = !state.expandedCourses[courseId];
-        render(); return;
+      if (action === "toggle-course" || action === "retry-course") {
+        await toggleCourseFolder(button.dataset.id, action === "retry-course"); return;
       }
       if (action === "new-conversation") {
         if (button.disabled) return;

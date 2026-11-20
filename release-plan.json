@@ -1,8 +1,11 @@
 {
-  "previousCommit": "f2e4da17ddb0fea3185676e1c5c6bad8ae63aeb8",
-  "previousVersion": "1.9.3",
-  "version": "1.9.4",
-  "level": "patch",
-  "reason": "Repair tablet landscape spacing, narrow-screen navigation and rotation draft retention in existing workspaces; no new product features or data migration.",
-  "features": []
+  "previousCommit": "632232068cfd6aa3575a4332f3713eb49a96eed9",
+  "previousVersion": "1.9.4",
+  "version": "1.10.0",
+  "level": "minor",
+  "reason": "Add movable sticky notes with attached handwriting and complete annotated PDF export, plus note-tool feedback and reliable course-folder expansion. Preserve latest tablet layout and appearance fixes.",
+  "features": [
+    "Course PDF sticky notes with typing, attached ink, move, resize, duplicate and background colors",
+    "Complete annotated PDF export including all pages and local drafts"
+  ]
 }

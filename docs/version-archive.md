@@ -1,5 +1,14 @@
 # StudyBridge Version Archive
 
+## 1.10.0 — 2026-11-20
+
+- MINOR from verified production 1.9.5, `2c56b6516c21b981424698a00480065ca5eedc2f`.
+- Add movable/resizable sticky notes with text, attached ink, independent copies and custom backgrounds; export complete annotated PDFs.
+- Improve tool cursors, continuous erasing, undo and panning; repair course-folder expansion and stale async responses.
+- Preserve 1.9.3 account appearance and 1.9.4 landscape tablet layouts. Preserve the 1.9.5 Grades opening fix. No database migration or production configuration change.
+- Validate release policy, source/assets, full regressions and dependency audit; verify deployment health and exact production assets.
+- Rollback code target: `2c56b6516c21b981424698a00480065ca5eedc2f`. Retain all stored notes and private backups; older clients cannot render the new sticky-note objects, so avoid editing those pages until the compatible release is restored.
+
 ## 1.9.5 — 2026-11-20
 
 - PATCH from verified production 1.9.4 (`632232068cfd6aa3575a4332f3713eb49a96eed9`): remove blank feedback and redundant work when opening Grades. No new features or database migration.

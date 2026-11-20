@@ -1,8 +1,11 @@
 {
-  "previousCommit": "632232068cfd6aa3575a4332f3713eb49a96eed9",
-  "previousVersion": "1.9.4",
-  "version": "1.9.5",
-  "level": "patch",
-  "reason": "Repair blank feedback and redundant rendering when opening existing Grades; skip unnecessary source scans for empty rules. No new features or data migration.",
-  "features": []
+  "previousCommit": "2c56b6516c21b981424698a00480065ca5eedc2f",
+  "previousVersion": "1.9.5",
+  "version": "1.10.0",
+  "level": "minor",
+  "reason": "Add movable sticky notes with attached handwriting and complete annotated PDF export, plus note-tool feedback and reliable course-folder expansion. Preserve latest tablet layout and appearance fixes. Retain the concurrent Grades opening fix.",
+  "features": [
+    "Course PDF sticky notes with typing, attached ink, move, resize, duplicate and background colors",
+    "Complete annotated PDF export including all pages and local drafts"
+  ]
 }

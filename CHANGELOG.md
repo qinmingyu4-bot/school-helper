@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.10.0 — 2026-11-20
+
+- MINOR from verified production 1.9.5 (`2c56b6516c21b981424698a00480065ca5eedc2f`): add sticky notes and complete annotated PDF export; preserve the latest landscape tablet and account appearance fixes.
+
+- Fix course-folder arrows so expand/collapse responds immediately, preserves cached chats on fetch failure, supports retry and ignores stale responses after rapid clicks or navigation. Refresh only the changed folder to preserve the active composer.
+
+- Add yellow sticky notes to course PDFs with bilingual typed text, attached handwriting, drag/resize, independent duplication and customizable backgrounds. Include them in cloud drafts, undo/redo and full PDF/page-image exports.
+
+- Give pen, highlighter and eraser distinct cursors and show a quiet active-tool hint.
+- Support continuous whole-annotation erasing with one undo per gesture; enable Browse dragging and guard editing during page changes/export.
+- Export the full original PDF with notes on all marked pages, including local drafts, Chinese text and rotated/cropped pages. Preserve unmarked pages and original selectable content.
+- Add export progress/cancellation and authenticated whole-document note reads; avoid incomplete exports when notes cannot be loaded.
+- Preserve the previous document when its replacement notes fail to load, and retain the material selection when returning to the tool.
+
 ## 1.9.5 — 2026-11-20
 
 - PATCH from 1.9.4: show localized Grades loading feedback immediately instead of a blank workspace while waiting for account data.

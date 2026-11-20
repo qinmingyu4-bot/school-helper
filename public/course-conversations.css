@@ -35,3 +35,6 @@
 }
 
 .course-archive-action svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+
+.course-chat-status{margin:4px 0;color:var(--muted);font-size:11px;line-height:1.6}
+.course-chat-status button{border:0;background:transparent;color:var(--green);font-size:11px;padding:4px 6px}

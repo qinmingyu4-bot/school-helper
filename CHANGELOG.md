@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix Office dropdowns so clicking the same font, font-size or other selector again closes its menu. Handle each pointer gesture once, preserving selection and switching between menus.
+
 - Round Office fields and their expanded dropdown menus consistently. Keep menus within the viewport and outside toolbar clipping, follow account palette/mode, and support keyboard navigation, type-to-find, Escape and outside-click dismissal.
 
 - Inset Office dropdown chevrons consistently from the right border, reserve space between text and arrow, and inherit the current theme color across Docs, Sheets and Slides. Preserve existing selection values and compact mobile project selection.

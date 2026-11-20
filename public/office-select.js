@@ -86,7 +86,8 @@
   }
   document.addEventListener('pointerdown', event => {
     const select = targetSelect(event.target);
-    if (select && event.button === 0) { event.preventDefault(); open(select); }
+    // Suppress the native popup here; toggle once on click for mouse and touch.
+    if (select && event.button === 0) event.preventDefault();
     else if (active && !active.menu.contains(event.target)) close();
   }, true);
   document.addEventListener('mousedown', event => {
@@ -94,7 +95,10 @@
   }, true);
   document.addEventListener('click', event => {
     const select = targetSelect(event.target);
-    if (select) { event.preventDefault(); open(select); }
+    if (select) {
+      event.preventDefault();
+      if (active?.select === select) close(true); else open(select);
+    }
   }, true);
   document.addEventListener('keydown', event => {
     if (!active) {

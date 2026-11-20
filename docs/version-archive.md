@@ -1,5 +1,11 @@
 # StudyBridge Version Archive
 
+## 1.11.1 — 2026-11-20
+
+- PATCH from production 1.11.0 (`54500e85fe67fe187cee7be80adf4d7047e51a98`): repair false login redirects on transient session-check failures. No new features, dependencies or data migration.
+- Validate source/assets, release policy and authentication/navigation regressions; verify deployment health and exact public assets.
+- Rollback code target: `54500e85fe67fe187cee7be80adf4d7047e51a98`; retain account data.
+
 ## 1.11.0 — 2026-11-20
 
 - MINOR from production 1.10.0: add platform-funded product help in Study using fixed `gpt-6-luna`.

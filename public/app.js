@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.11.0";
+  const VERSION = "1.11.1";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -3985,15 +3985,19 @@
 
   async function boot() {
     const entryUrl = new URL(location.href);
+    let unauthenticated = false;
     try {
       const [google, authConfig, data] = await Promise.all([
         api("/api/auth/google/config").catch(() => ({ enabled: false })),
         api("/api/auth/config").catch(() => null),
-        api("/api/me").catch(() => null)
+        api("/api/me").catch((error) => {
+          if (error.status === 401) { unauthenticated = true; return null; }
+          throw new Error(ui.text("暂时无法确认登录状态，请检查网络后刷新重试。"));
+        })
       ]);
       state.authConfig = authConfig;
       state.googleEnabled = Boolean(google.enabled);
-      if (!data?.user) {
+      if (unauthenticated) {
         history.replaceState(null, "", `/login${location.search}`);
         const authError = new URL(location.href).searchParams.get("authError");
         if (authError) state.toast = authError;
@@ -4002,6 +4006,7 @@
         render();
         return;
       }
+      if (!data?.user?.id) throw new Error(ui.text("暂时无法确认登录状态，请检查网络后刷新重试。"));
       document.title = ui.text("学习空间 · StudyBridge");
       state.user = data.user;
       const savedTool = localStorage.getItem("studybridge.tool");

@@ -113,7 +113,8 @@ test("boot requests start concurrently and retain authenticated navigation and l
     vm.createContext(context);
     const result = vm.runInContext(boot + "\nboot();", context);
     assert.deepEqual([...pending.keys()].sort(), ["/api/auth/config", "/api/auth/google/config", "/api/me"]);
-    pending.get("/api/me").resolve(signedIn ? { user: { id: "fixture" } } : null);
+    if (signedIn) pending.get("/api/me").resolve({ user: { id: "fixture" } });
+    else pending.get("/api/me").reject(Object.assign(new Error("Please log in"), { status: 401 }));
     pending.get("/api/auth/google/config").resolve({ enabled: true });
     pending.get("/api/auth/config")[signedIn ? "resolve" : "reject"](signedIn ? {} : new Error("offline"));
     await result;

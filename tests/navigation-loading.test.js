@@ -199,3 +199,18 @@ test("late course folder loads cannot update another page, account or deleted co
     assert.equal(h.renders.length,renders);
   }
 });
+
+test("feature loading failures preserve the signed-in user and current workspace", async () => {
+  for (const [page, path] of [["tools", "/api/courses"], ["study", "/api/courses"], ["schedule", "/api/schedule/items"]]) {
+    for (const status of [401, 429, 503]) {
+      const h = harness([path]);
+      const loading = h.context.loadPage(page);
+      h.requests.find((request) => request.path === path).reject(Object.assign(new Error("Request failed"), { status }));
+      await loading;
+      assert.equal(h.state.user.id, "alice");
+      assert.equal(h.state.page, page);
+      assert.equal(h.state.busy, false);
+      assert.ok(h.notices.includes("Request failed"));
+    }
+  }
+});

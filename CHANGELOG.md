@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.11.1 — 2026-11-20
+
+- PATCH from 1.11.0: fix false login redirects when session verification encounters network failures, rate limits, server errors or malformed responses. Only a confirmed 401 opens login; other failures preserve the URL and show a bilingual refresh prompt.
+- Add startup and feature-navigation regression coverage. No new features or data migration.
+
 ## 1.11.0 — 2026-11-20
 
 - MINOR from production 1.10.0: add platform-funded product help in Study using fixed `gpt-6-luna`.

@@ -1,10 +1,8 @@
 {
-  "previousCommit": "da34646b9daa5146b5ff9f734d9198bb634609a0",
-  "previousVersion": "1.10.0",
-  "version": "1.11.0",
-  "level": "minor",
-  "reason": "Add a platform-funded Luna product-help conversation panel without consuming personal AI allowance; no data migration.",
-  "features": [
-    "Platform-funded product help panel in Study"
-  ]
+  "previousCommit": "54500e85fe67fe187cee7be80adf4d7047e51a98",
+  "previousVersion": "1.11.0",
+  "version": "1.11.1",
+  "level": "patch",
+  "reason": "Repair false login redirects when existing session verification encounters transient failures or malformed responses. No new features or data migration.",
+  "features": []
 }

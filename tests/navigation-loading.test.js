@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const { test } = require("node:test");
 const source = fs.readFileSync(require.resolve("../public/app.js"), "utf8");
-const loaders = source.slice(source.indexOf("  async function refreshCourseConversations("), source.indexOf("  function stopClassmatesLive()"));
+const loaders = source.slice(source.indexOf("  const studyHistoryCache ="), source.indexOf("  function stopClassmatesLive()"));
 
 function harness(defer = []) {
   const requests = [], notices = [], renders = [];
@@ -14,8 +14,8 @@ function harness(defer = []) {
     communityChannel: "all", communityChoices: {}, activeClassmateId: "", classmateChatOpen: false };
   let formDraft = "";
   const context = vm.createContext({ ui: require("../public/i18n"), scheduleImport: require("../public/schedule-import"),
-    state, URLSearchParams, studyTasks: null,
-    studyDrafts: drafts, studyReplyKey: () => JSON.stringify([state.user.id, state.activeCourseId, state.activeConversationId]),
+    state, URLSearchParams, studyTasks: null, esc: (value) => String(value ?? ""),
+    studyDrafts: drafts, studyReplyKey: (user = state.user.id, course = state.activeCourseId, conversation = state.activeConversationId) => JSON.stringify([user, course, conversation]),
     $: () => ({ value: formDraft }), mobileNavigation: { closeStudyPanel() {} },
     setPage(page) {
       if (page === "tools" && state.tool === "email") { page = "email"; state.tool = "docs"; }
@@ -38,6 +38,7 @@ function harness(defer = []) {
     }
   });
   vm.runInContext(`let pageLoadGeneration = 0, classmatesGeneration = 0;\n${loaders}`, context);
+  vm.runInContext(source.slice(source.indexOf("  function courseFolderHtml("), source.indexOf("  // Patch only the folder:")), context);
   return { state, context, requests, notices, renders, storage, drafts, type: (text) => { formDraft = text; }, draft: () => formDraft };
 }
 
@@ -149,8 +150,8 @@ test("late conversation and document loads cannot repopulate abandoned study sta
   docs.requests.find((request) => request.path.endsWith("/documents")).resolve({ documents: [{ id: "stale-doc" }] });
   docs.requests.find((request) => request.path.includes("/messages?")).resolve({ messages: [{ id: "stale-message" }] });
   await loading;
-  assert.equal(docs.state.docs, undefined);
-  assert.equal(docs.state.messages, undefined);
+  assert.equal(docs.state.docs.length, 0);
+  assert.equal(docs.state.messages.length, 0);
   assert.equal(docs.draft(), "Keep profile input");
 });
 
@@ -277,4 +278,79 @@ test("an empty chat after a failed load can still be retried by selecting it", a
   h.requests[0].resolve({ courses: [] });
   await retry;
   assert.equal(h.state.busy, false);
+});
+
+
+test("an unvisited course immediately shows default chat, without reviving a known deleted default", () => {
+  const h = harness(); h.state.expandedCourses.kept = true;
+  assert.match(h.context.courseFolderHtml({ id: "kept", name: "New course" }), /data-conversation="default"/);
+  h.state.courseConversations.kept = [];
+  assert.doesNotMatch(h.context.courseFolderHtml({ id: "kept", name: "New course" }), /data-conversation="default"/);
+});
+
+test("course switch restores its cached history immediately and failed refresh remains retryable", async () => {
+  const h = harness();
+  Object.assign(h.state, { uploadFiles: [], docs: [], messages: [] });
+  h.context.api = async (path) => {
+    if (path === "/api/courses") return { courses: [{ id: "ap" }, { id: "rsm" }] };
+    if (path.endsWith("/conversations")) return { conversations: [{ id: "default" }] };
+    if (path.includes("/messages?")) return { messages: [{ id: path.includes("/ap/") ? "ap-history" : "rsm-history" }] };
+    return { documents: [], items: [] };
+  };
+  await h.context.selectCourse("ap");
+  await h.context.selectCourse("rsm");
+  const normal = h.context.api;
+  let reject;
+  h.context.api = (path) => path.includes("/ap/messages?") ? new Promise((_, fail) => { reject = fail; }) : normal(path);
+  const returning = h.context.selectCourse("ap");
+  assert.equal(h.state.messages[0].id, "ap-history", "restore before any network response");
+  assert.equal(h.state.studyHistoryLoading, true);
+  await new Promise(resolve => setImmediate(resolve));
+  reject(new Error("Offline")); await returning;
+  assert.equal(h.state.messages[0].id, "ap-history");
+  assert.equal(h.state.studyHistoryError, "Offline");
+  h.context.api = normal;
+  await h.context.selectCourse("ap");
+  assert.equal(h.state.studyHistoryError, "");
+  assert.equal(h.state.messages[0].id, "ap-history");
+});
+
+test("default list is updated before slow history and schedule finish, and repeated clicks do not restart loading", async () => {
+  const h = harness(); Object.assign(h.state, { uploadFiles: [], docs: [], messages: [] });
+  let resolveHistory;
+  h.context.api = async (path) => {
+    h.requests.push({ path });
+    if (path === "/api/courses") return { courses: [{ id: "kept" }] };
+    if (path.endsWith("/conversations")) return { conversations: [{ id: "default" }] };
+    if (path.includes("/messages?")) return new Promise(resolve => { resolveHistory = resolve; });
+    return { documents: [], items: [] };
+  };
+  const loading = h.context.selectCourse("kept");
+  await new Promise(resolve => setImmediate(resolve));
+  assert.ok(h.renders.includes("folder:kept:true"));
+  assert.equal(h.state.studyHistoryLoading, true);
+  await h.context.selectConversation("kept", "default");
+  assert.equal(h.requests.filter(r => r.path === "/api/courses").length, 1);
+  resolveHistory({ messages: [] }); await loading;
+  assert.equal(h.state.studyHistoryLoading, false);
+  assert.equal(h.state.studyHistoryError, "");
+});
+
+test("overlapping empty-course selections share creation and use the default title", async () => {
+  const h = harness(); let finish; const writes = [];
+  h.context.api = (path, options) => { writes.push(options); return new Promise(resolve => { finish = resolve; }); };
+  const a = h.context.createEmptyCourseChat("kept"), b = h.context.createEmptyCourseChat("kept");
+  assert.equal(a, b); assert.equal(writes.length, 1); assert.equal(writes[0].body.title, "默认对话");
+  finish({ conversation: { id: "replacement" } }); await a;
+});
+
+test("malformed conversation responses do not create a replacement chat", async () => {
+  const h = harness(); Object.assign(h.state, { uploadFiles: [], docs: [], messages: [] });
+  h.context.api = async (path, options) => {
+    assert.notEqual(options?.method, "POST");
+    return path === "/api/courses" ? { courses: [{ id: "kept" }] } : {};
+  };
+  await h.context.selectCourse("kept");
+  assert.ok(h.state.studyHistoryError);
+  assert.equal(h.state.courseConversations.kept, undefined);
 });

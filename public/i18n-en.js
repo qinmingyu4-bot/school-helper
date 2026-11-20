@@ -5,6 +5,30 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+已记录 AI 成本|Recorded AI cost
+按返回用量计价，非官方账单|Calculated from returned usage, not the provider invoice
+用户请求|User requests
+共享校历|Shared calendars
+连通检测|Health checks
+用户请求成本|User request cost
+平台后台成本|Platform background cost
+OpenAI 官方消费|OpenAI reported spend
+尚未连接官方账单|Official billing not connected
+官方账单暂不可用|Official billing temporarily unavailable
+待核对请求|Requests requiring reconciliation
+进行中请求|Pending requests
+次请求|requests
+官方账单范围|Official billing scope
+已限定 API 密钥|Filtered to the configured API key
+项目全部密钥|All project keys
+读取时间|Retrieved at
+AI 费用明细与对账|AI cost details and reconciliation
+完整费用记录开始于|Complete cost recording started at
+历史漏记不补算；当前日官方数据可能延迟。|Historical omissions are not reconstructed; current-day provider data may be delayed.
+待核对预留估算|Reserved estimates requiring reconciliation
+不计入已记录成本；平台未知费用可能没有估算。|Excluded from recorded cost; unknown platform costs may have no estimate.
+费用结算写入失败，部分请求需要核对。|Cost settlement storage failed; some requests require reconciliation.
+个人额度与平台费用分开统计。官方消费与本地计价不可相加；充值、税费及其他程序调用须另行核对。|Personal allowances and platform costs are separate. Do not add official spend to calculated costs; reconcile credit purchases, taxes and other applications separately.
 退出登录未完成，请检查网络后重试。当前页面和草稿已保留。|Sign-out did not complete. Check your connection and try again. Your current page and drafts have been kept.
 暂时无法确认登录状态，请检查网络后刷新重试。|Unable to verify your sign-in status. Check your connection and refresh to try again.
 对话列表暂时无法加载。|Conversations could not be loaded.

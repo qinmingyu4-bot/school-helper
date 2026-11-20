@@ -23,12 +23,34 @@
     return `<h3>${label("功能使用")}</h3>${list ? `<ul class="admin-usage-list">${list}</ul>` : `<p class="muted">${label("此时段暂无操作记录。")}</p>`}`;
   }
 
+  const money = (value) => Number(value).toLocaleString(ui.locale(), { style: "currency", currency: "USD", currencyDisplay: "code", minimumFractionDigits: 2, maximumFractionDigits: 6 });
   function costRow(data) {
-    const value = data.aiRequests
-      ? data.costUsd.toLocaleString(ui.locale(), { style: "currency", currency: "USD", currencyDisplay: "code", minimumFractionDigits: 2, maximumFractionDigits: 6 })
-      : "—";
-    return ["AI 估算成本", value, data.estimatedRequests
-      ? ui.message`其中 ${number(data.estimatedRequests)} 次按预留用量估算` : ""];
+    if (data.aiCosts) return ["已记录 AI 成本", money(data.aiCosts.calculatedUsd), ui.text("按返回用量计价，非官方账单")];
+    return ["AI 估算成本", data.aiRequests ? money(data.costUsd) : "—", ""];
+  }
+
+  function costs(data) {
+    const c = data.aiCosts;
+    if (!c) return "";
+    const sourceNames = { ...features, user: "用户请求", "academic-calendar": "共享校历", "product-help": "使用帮助", "health-check": "连通检测" };
+    const official = c.official;
+    const status = official?.status === "available" ? money(official.amountUsd)
+      : ui.text(official?.status === "not_configured" ? "尚未连接官方账单" : "官方账单暂不可用");
+    const rows = [
+      ["用户请求成本", money(c.userUsd)],
+      ...(!data.user ? [["平台后台成本", money(c.platformUsd)], ["OpenAI 官方消费", status]] : []),
+      ["待核对请求", number(c.unknownRequests)], ["进行中请求", number(c.pendingRequests)]
+    ];
+    const list = c.sources.map((r) => `<li><span>${label(sourceNames[r.source] || "用户请求")} · ${esc(r.model)}</span><small>${esc(money(r.calculatedUsd))} · ${esc(number(r.requests))} ${label("次请求")}${r.unknownRequests ? ` · ${label("待核对请求")} ${esc(number(r.unknownRequests))}` : ""}</small></li>`).join("");
+    const officialItems = official?.status === "available" ? `<p class="admin-usage-note">${label("官方账单范围")}: ${esc(official.projectId)} · ${label(official.keyFiltered ? "已限定 API 密钥" : "项目全部密钥")} · ${label("读取时间")}: ${esc(date(official.fetchedAt))}</p>
+      <ul class="admin-usage-list">${official.items.map((r) => `<li><span>${esc(r.label)}</span><small>${esc(money(r.amountUsd))}</small></li>`).join("")}</ul>` : "";
+    return `<details class="admin-usage-days"><summary>${label("AI 费用明细与对账")}</summary>
+      <p class="admin-usage-note">${label("完整费用记录开始于")}: ${esc(date(c.since))} · ${label("历史漏记不补算；当前日官方数据可能延迟。")}</p>
+      ${metricRows(rows)}<p class="admin-usage-note">${label("待核对预留估算")}: ${esc(money(c.estimatedUsd))} · ${label("不计入已记录成本；平台未知费用可能没有估算。")}</p>
+      ${c.storageFailures ? `<p role="status">${label("费用结算写入失败，部分请求需要核对。")}</p>` : ""}
+      <ul class="admin-usage-list">${list}</ul>${officialItems}
+      <p class="admin-usage-note">${label("个人额度与平台费用分开统计。官方消费与本地计价不可相加；充值、税费及其他程序调用须另行核对。")}</p>
+    </details>`;
   }
 
   function coverage(data) {
@@ -56,7 +78,7 @@
       ["第七日回访率", ...rate(data.retention.day7)],
       ["操作失败率", percent(data.failed, data.failed + data.completed), `${number(data.failed)} / ${number(data.failed + data.completed)}`],
       costRow(data)
-    ]) + `<div class="admin-usage-columns"><div>${chart(data)}</div><div>${featureList(data)}</div></div>
+    ]) + costs(data) + `<div class="admin-usage-columns"><div>${chart(data)}</div><div>${featureList(data)}</div></div>
       <p class="admin-usage-note">${label("活跃按前台交互或功能操作去重。回访仅统计目标日期已经结束的新用户。首次学习指收到课程回答或提交练习。AI 成本为估算。")}</p>`;
   }
 
@@ -77,7 +99,7 @@
       ["输入 Token", number(data.inputTokens)],
       ["输出 Token", number(data.outputTokens)],
       costRow(data)
-    ]) + `<div class="admin-usage-columns"><div>${featureList(data)}
+    ]) + costs(data) + `<div class="admin-usage-columns"><div>${featureList(data)}
       ${modeList.length ? `<p class="admin-usage-note"><b>${label("学习模式")}</b> · ${esc(modeList.join(" · "))}</p>` : ""}</div><div>
       <h3>${label("首次学习进度")}</h3><ul class="admin-usage-list">${data.steps.map(({ key, at }) =>
         `<li><span>${label(steps[key] || key)}</span><small>${esc(at ? date(at) : ui.text("尚无完成记录"))}</small></li>`).join("")}</ul></div></div>

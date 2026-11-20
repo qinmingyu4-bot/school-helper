@@ -1,5 +1,4 @@
 const http = require("http");
-const https = require("https");
 const crypto = require("crypto");
 const fsSync = require("fs");
 const fs = require("fs/promises");
@@ -30,6 +29,7 @@ const { createMailboxService } = require("./lib/mailbox-service");
 const { membershipTier } = require("./lib/membership");
 const { createAiUsage } = require("./lib/ai-usage");
 const { createFeedback } = require("./lib/feedback");
+const { createAiCosts } = require("./lib/ai-costs");
 const { createUsageAnalytics, STEPS, reportWindow, summarize, overview: usageOverview } = require("./lib/usage-analytics");
 const { createGradePlanner } = require("./lib/grade-planner-service");
 const { createBillingService } = require("./lib/billing-service");
@@ -113,22 +113,24 @@ function loadEnvFile(filePath = path.join(__dirname, ".env")) {
 loadEnvFile();
 
 const db = new StudyBridgeDatabase();
+const aiCosts = createAiCosts({ db });
 const loginAttempts = createLoginAttempts();
 const resetEmailRequests = createLoginAttempts();
 const academicCalendars = createCalendarService({
   archive: { get: (key) => db.getAcademicCalendar(key), put: (key, calendar) => db.putAcademicCalendar(key, calendar) },
   onError: (message) => console.warn(message),
   request: async (body) => {
-    const response = await fetch("https://api.openai.com/v1/responses", {
+    const response = await aiCosts.fetch("https://api.openai.com/v1/responses", {
       method: "POST", signal: AbortSignal.timeout(60000), headers: { authorization: `Bearer ${process.env.OPENAI_API_KEY}`, "content-type": "application/json" }, body: JSON.stringify(body)
-    });
+    }, { payer: "platform", source: "academic-calendar" });
     if (!response.ok) throw new Error("大学校历检索失败。");
     return response.json();
   }
 });
 const feedback = createFeedback({ db, sendEmail, version: packageVersion, recipient: feedbackRecipient, origin: feedbackOrigin });
 const usage = createUsageAnalytics(db, { onFailure: feedback.observe });
-const aiUsage = createAiUsage({ db, entitlement: (userId) => alipay.entitlement(userId), onRequest: usage.recordAi });
+const aiUsage = createAiUsage({ db, entitlement: (userId) => alipay.entitlement(userId), onRequest: usage.recordAi,
+  request: (url, options, estimate) => aiCosts.fetch(url, options, { ...estimate, userId: aiUsage.context.getStore()?.userId, payer: "user", source: usage.currentFeature() }) });
 const office = createOfficeService(db);
 const schedulePush = createPushService({ db, listSchedule: (userId) => listUserScheduleItems(userId, { includeCompleted: true }) });
 const publicDir = path.join(__dirname, "public");
@@ -1398,7 +1400,7 @@ async function callAiWithResponses(messages, model, toolType = "web_search", str
 }
 
 async function callAiWithChatCompletions(messages, model, stream = null, { signal, store, maxCompletionTokens, platformFunded = false } = {}) {
-  const response = await (platformFunded ? fetch : aiUsage.fetch)("https://api.openai.com/v1/chat/completions", {
+  const response = await (platformFunded ? (url, options) => aiCosts.fetch(url, options, { payer: "platform", source: "product-help" }) : aiUsage.fetch)("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -1825,70 +1827,19 @@ async function databaseStatusClean() {
   }
 }
 
-function requestOpenAiChatHealth(model) {
-  return new Promise((resolve) => {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      resolve({ configured: false, ok: false, detail: "\u672a\u914d\u7f6e OPENAI_API_KEY\u3002" });
-      return;
-    }
-
-    const body = JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: "Reply with OK only." },
-        { role: "user", content: "health check" }
-      ],
-      max_completion_tokens: 64,
-      ...(/^gpt-6(?:[.-]|$)/i.test(model) ? { reasoning_effort: /^gpt-6-(?:luna|sol)(?:-|$)/i.test(model) ? "none" : "low" } : {})
-    });
-
-    const req = https.request(
-      {
-        hostname: "api.openai.com",
-        path: "/v1/chat/completions",
-        method: "POST",
-        timeout: 4500,
-        headers: {
-          authorization: `Bearer ${apiKey}`,
-          "content-type": "application/json",
-          "content-length": Buffer.byteLength(body)
-        }
-      },
-      (response) => {
-        let raw = "";
-        response.setEncoding("utf8");
-        response.on("data", (chunk) => {
-          raw += chunk;
-        });
-        response.on("end", () => {
-          const ok = response.statusCode >= 200 && response.statusCode < 300;
-          let message = "";
-          try {
-            const payload = raw ? JSON.parse(raw) : {};
-            message = payload?.error?.message || payload?.choices?.[0]?.message?.content || "";
-          } catch {
-            message = raw.slice(0, 240);
-          }
-          resolve({
-            configured: true,
-            ok,
-            statusCode: response.statusCode,
-            detail: ok
-              ? `\u5f53\u524d\u6a21\u578b ${model} \u53ef\u4ee5\u6b63\u5e38\u56de\u590d\u3002`
-              : `\u5f53\u524d\u6a21\u578b ${model} \u68c0\u6d4b\u5931\u8d25\uff1a${message || "OpenAI API \u8fd4\u56de\u5f02\u5e38\u72b6\u6001\u3002"}`
-          });
-        });
-      }
-    );
-    req.on("timeout", () => {
-      req.destroy();
-      resolve({ configured: true, ok: false, detail: `\u5f53\u524d\u6a21\u578b ${model} \u68c0\u6d4b\u8d85\u65f6\u3002` });
-    });
-    req.on("error", (error) => resolve({ configured: true, ok: false, detail: error.message || "OpenAI API \u8fde\u63a5\u5931\u8d25\u3002" }));
-    req.write(body);
-    req.end();
-  });
+async function requestOpenAiChatHealth(model) {
+  if (!process.env.OPENAI_API_KEY) return { configured: false, ok: false, detail: "未配置 OPENAI_API_KEY。" };
+  try {
+    const response = await aiCosts.fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST", signal: AbortSignal.timeout(4500),
+      headers: { authorization: `Bearer ${process.env.OPENAI_API_KEY}`, "content-type": "application/json" },
+      body: JSON.stringify({ model, service_tier: "default", messages: [{ role: "user", content: "Reply with OK only." }],
+        max_completion_tokens: 64,
+        ...(/^gpt-6(?:[.-]|$)/i.test(model) ? { reasoning_effort: /^gpt-6-(?:luna|sol)(?:-|$)/i.test(model) ? "none" : "low" } : {}) })
+    }, { payer: "platform", source: "health-check" });
+    return { configured: true, ok: response.ok, statusCode: response.status,
+      detail: response.ok ? `当前模型 ${model} 可以正常回复。` : `当前模型 ${model} 检测失败。` };
+  } catch { return { configured: true, ok: false, detail: "AI 连接失败或检测超时。" }; }
 }
 
 async function aiHealthStatus() {
@@ -2845,7 +2796,7 @@ async function routeApi(req, res) {
     const window = reportWindow(Number(period), await usage.started());
     if (!userUsage) {
       const [rows, users] = await Promise.all([db.listUsageDays(window.calendar), db.listUsers()]);
-      return sendJson(res, 200, usageOverview(rows, users, window));
+      return sendJson(res, 200, { ...usageOverview(rows, users, window), aiCosts: await aiCosts.report(window.from, window.through) });
     }
     const id = userUsage[1], target = await db.getUser(id);
     if (!target) return sendError(res, 404, "Account not found.");
@@ -2856,7 +2807,7 @@ async function routeApi(req, res) {
     const lastSeenAt = [activity?.lastSeenAt, totals.lastActiveAt].filter(Boolean).sort().at(-1) || null;
     console.info(JSON.stringify({ event: "admin-user-usage-read", actorId: auth.user.id, userId: id, days: window.days }));
     return sendJson(res, 200, {
-      ...window, ...totals,
+      ...window, ...totals, aiCosts: await aiCosts.report(window.from, window.through, id),
       user: { name: target.name, createdAt: target.createdAt, membershipTier: membershipTier({ ...target, paidMembershipExpiresAt }), lastSeenAt },
       steps: STEPS.map((key) => ({ key, at: steps[key] || null })),
       errors: rows.flatMap((row) => row.errors).sort((a, b) => b.at.localeCompare(a.at)).slice(0, 12)

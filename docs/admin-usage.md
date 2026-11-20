@@ -40,3 +40,11 @@ attribute using the table template (or enable it on an existing table). DynamoDB
 deletes expired records asynchronously, and reports only query their date
 window. First-observed onboarding timestamps are stored separately from daily
 buckets. No new DynamoDB indexes or permissions are required.
+
+## Complete cost accounting
+
+The independent cost ledger supersedes the activity-derived AI cost metric for new
+requests. It includes platform calendars, product help and health checks, shows
+unknown/pending records and supports optional official Costs API reconciliation.
+See [AI cost accounting](ai-cost-accounting.md) for configuration, UTC coverage,
+retention and the distinction between calculated usage and provider spend.

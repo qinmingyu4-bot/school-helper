@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — complete AI cost accounting
+
+- Record user and platform AI calls independently of activity metrics, including shared calendars, product help and health checks. Add source/model cost details and explicit unknown/pending records to the existing bilingual developer console.
+- Correct cache-write pricing and reservations for 30-minute/12-hour cache lifetimes; keep personal allowance limits unchanged. Preserve durable pending records on interruption or settlement failure.
+- Add optional project/key-scoped OpenAI Costs reconciliation with pagination, UTC windows and explicit missing-configuration/error states. Historical gaps are not fabricated; official spend and calculated usage remain separate.
+- Document rollout, billing credentials, retention and function-preserving cost/model-routing options in `docs/ai-cost-accounting.md`. No model downgrade or production configuration change is included.
+
 ## 1.12.6 — 2026-11-20
 
 - PATCH from production 1.12.5 (`3dc6e8b697f9278dbef97960f46d17633188e764`): repair existing controls across pages. Prevent repeated clicks selecting button/disclosure labels, remove pointer-only focus rings after Office dropdown dismissal, and align single-select arrows with consistent inset and text spacing.

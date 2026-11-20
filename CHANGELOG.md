@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.12.2 — 2026-11-20
+
+- PATCH from verified production 1.12.1 (`974bd6585763fc9684c55beff98369889183be77`): preserve active chat history and drafts when reselecting its course or conversation; resolve stale saved conversation IDs consistently.
+- Validate navigation, history isolation and retry regressions, source/assets and release policy. No new features, dependencies or data migration.
+- Rollback code target: `974bd6585763fc9684c55beff98369889183be77`; retain all user data.
+
 ## 1.12.1 — 2026-11-20
 
 - PATCH from verified production 1.12.0 (`acbdf7cd0db4b7fbcfb030f8c73bdae3e2ff3391`): fix existing document dropdowns so a second click on the same trigger closes the options. No new features, dependencies or data migration.

@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.12.1";
+  const VERSION = "1.12.2";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -2511,7 +2511,27 @@
     await selectConversation(data.course.id, "default");
   }
 
+  async function selectCourse(courseId) {
+    let conversationId = state.activeCourseId === courseId ? state.activeConversationId : "default";
+    if (state.activeCourseId !== courseId) {
+      try { conversationId = localStorage.getItem(`studybridge.conversation.${state.user.id}.${courseId}`) || "default"; } catch { /* Storage may be disabled. */ }
+    }
+    await selectConversation(courseId, conversationId);
+  }
+
   async function selectConversation(courseId, conversationId) {
+    conversationId ||= "default";
+    // Selecting the visible chat is navigation within the same workspace, not a reload.
+    // Keep its history, draft and any in-flight load/reply intact.
+    if (state.page === "study" && state.activeCourseId === courseId && state.activeConversationId === conversationId
+      && (state.messages.length || state.busy)) {
+      if (courseId !== chatSpaces.general.id && !state.expandedCourses[courseId]) {
+        state.expandedCourses[courseId] = true;
+        render();
+      }
+      mobileNavigation.closeStudyPanel();
+      return;
+    }
     studyDrafts.set(studyReplyKey(), { text: $("chatInput")?.value ?? studyDrafts.get(studyReplyKey())?.text ?? "", files: [...state.uploadFiles] });
     state.activeCourseId = courseId;
     state.activeConversationId = conversationId || "default";
@@ -2559,6 +2579,11 @@
       if (!chats.some((chat) => chat.id === state.activeConversationId)) state.activeConversationId = chats[0].id;
       if (state.expandedCourses[courseId] === undefined) state.expandedCourses[courseId] = true;
     }
+    // Persist the resolved chat, including fallback from a deleted/stale saved ID.
+    try {
+      localStorage.setItem(`studybridge.chatSpace.${state.user.id}`, state.activeCourseId);
+      localStorage.setItem(`studybridge.conversation.${state.user.id}.${state.activeCourseId}`, state.activeConversationId);
+    } catch { /* Storage may be disabled. */ }
     loadStudyMode();
     if (state.activeCourseId) {
       const courseId = state.activeCourseId;
@@ -3129,9 +3154,7 @@
         return;
       }
       if (action === "select-course") {
-        let conversationId = "default";
-        try { conversationId = localStorage.getItem(`studybridge.conversation.${state.user.id}.${button.dataset.id}`) || "default"; } catch { /* Storage may be disabled. */ }
-        await selectConversation(button.dataset.id, conversationId);
+        await selectCourse(button.dataset.id);
         return;
       }
       if (action === "toggle-course" || action === "retry-course") {

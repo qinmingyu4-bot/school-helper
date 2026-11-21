@@ -17,7 +17,7 @@ test("study PDFs retain original private bytes across restart, API transports, s
     child = spawn(process.execPath, ["--require", "./tests/fixtures/echo-ai.js", "server.js"], { cwd: root, env: {
       ...process.env, PORT: "0", NODE_ENV: "test", STUDYBRIDGE_DB: "local", LOCAL_DB_FILE: database, LOCAL_DB_BACKUP_DISABLED: "true",
       OWNER_INVITE_CODE: "pdf-test-owner", ADMIN_EMAILS: "pdf-owner@example.test", REQUIRE_INVITE_CODE: "true", REQUIRE_EMAIL_VERIFICATION: "false",
-      OPENAI_API_KEY: "fixture", OPENAI_WEB_SEARCH: String(webSearch), OPENAI_SIMPLE_MODEL: "gpt-6-luna", OPENAI_COMPLEX_MODEL: "gpt-6.1-sol", GOOGLE_CLIENT_ID: "", GOOGLE_CLIENT_SECRET: "", SMTP_HOST: "", SMTP_USER: "", SMTP_PASS: ""
+      OPENAI_API_KEY: "fixture", OPENAI_WEB_SEARCH: String(webSearch), OPENAI_SIMPLE_MODEL: "gpt-6-luna", OPENAI_COMPLEX_MODEL: webSearch ? "gpt-6.1-sol" : "", STUDYBRIDGE_COMPLEX_MODEL: "", GOOGLE_CLIENT_ID: "", GOOGLE_CLIENT_SECRET: "", SMTP_HOST: "", SMTP_USER: "", SMTP_PASS: ""
     }, stdio: ["ignore", "pipe", "pipe"] });
     base = await new Promise((resolve, reject) => { let output = ""; const timer = setTimeout(() => reject(Error("Startup timed out")), 10000); child.stdout.on("data", (chunk) => { output += chunk; const match = output.match(/http:\/\/localhost:(\d+)/); if (match) { clearTimeout(timer); resolve("http://127.0.0.1:" + match[1]); } }); child.on("error", reject); });
   }
@@ -33,7 +33,7 @@ test("study PDFs retain original private bytes across restart, API transports, s
   const dataUrl = "data:application/pdf;base64," + pdf.toString("base64");
   const parts = Array.from({ length: 6 }, (_, n) => `${n + 1}. Exercise\n(a) First part\n(b) Second part\n(c) Third part\n(d) Fourth part`).join("\n");
   const reply = await request(route + "/chat", "POST", { mode: "guided", message: "请带着我学习这部分内容，按概念、例子、检查理解的顺序来。", attachments: [{ name: "paper.pdf", mime: "application/pdf", dataUrl }, { name: "questions.txt", kind: "text", text: parts }] }, cookie);
-  assert.equal(reply.status, 201); assert.equal(reply.data.model, "gpt-6.1-sol");
+  assert.equal(reply.status, 201); assert.equal(reply.data.model, "gpt-6.2-sol");
   const outbound = JSON.parse(reply.data.messages[1].content), content = outbound.messages[1].content;
   assert.equal(content.find((part) => part.type === "file").file.file_data, dataUrl);
   assert.equal(content.find((part) => part.type === "file").file.filename, "paper.pdf");
@@ -48,6 +48,7 @@ test("study PDFs retain original private bytes across restart, API transports, s
   const again = await request(route + "/chat", "POST", { mode: "guided", message: "继续讲解 paper.pdf，只解释第一题，不要给其余题答案" }, cookie);
   assert.equal(again.status, 201);
   const responses = JSON.parse(again.data.messages[1].content);
+  assert.equal(responses.model, "gpt-6.2-sol");
   assert(responses.input[1].content[0].text.includes("Verified PDF page 1"), "page positions survive retained-attachment reload after restart");
   assert.equal(responses.input[1].content.find((part) => part.type === "input_file").file_data, dataUrl);
   assert(responses.input[1].content[0].text.includes("只解释第一题，不要给其余题答案"));
@@ -56,6 +57,7 @@ test("study PDFs retain original private bytes across restart, API transports, s
   await readEvents(streamed, ({ event, data }) => { if (event === "done") done = JSON.parse(data); });
   assert(done);
   const fallback = JSON.parse(done.messages[1].content.split("\n\n")[1]);
+  assert.equal(fallback.model, "gpt-6.2-sol");
   assert.equal(fallback.messages[1].content.find((part) => part.type === "file").file.file_data, dataUrl);
   const doc = await request(route + "/documents", "POST", { title: "Source PDF", fileName: "source.pdf", fileType: "application/pdf", fileData: pdf.toString("base64") }, cookie);
   assert.equal(doc.status, 201); assert.equal(doc.data.document.hasSourcePdf, true); assert.equal(doc.data.document.dataUrl, undefined);

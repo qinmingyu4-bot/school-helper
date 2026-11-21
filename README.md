@@ -1002,12 +1002,13 @@ ADMIN_EMAILS=your-real-email@example.com
 OWNER_INVITE_CODE=your-private-creator-code
 OPENAI_API_KEY=your-openai-api-key
 OPENAI_SIMPLE_MODEL=gpt-6-luna
-OPENAI_COMPLEX_MODEL=gpt-6.1-sol
+OPENAI_COMPLEX_MODEL=gpt-6.2-sol
 ```
 
 AI routing is deterministic: ordinary questions use Luna; complex academic modes,
 reasoning/coding tasks, long questions, and newly uploaded long attachments use
-Sol. Brief follow-ups inherit the earlier task. The amount of saved course text or
+GPT-6.2 Sol. Existing configurations that explicitly specify `gpt-6.1-sol`
+resolve to `gpt-6.2-sol` at runtime. Brief follow-ups inherit the earlier task. The amount of saved course text or
 old assistant output does not independently escalate a new ordinary question.
 Responses web search, its preview compatibility retry, and Chat Completions
 fallback all use the selected task model. Legacy `OPENAI_SOL_ROUTE_PERCENT`,

@@ -113,7 +113,7 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     const status = await request("/api/admin/system-status", { cookie: admin.cookie });
     assert.equal(status.status, 200);
     assert.equal(status.data.ai.simpleModel, "gpt-6-luna");
-    assert.equal(status.data.ai.complexModel, "gpt-6.1-sol");
+    assert.equal(status.data.ai.complexModel, "gpt-6.2-sol");
     assert.equal(status.data.ai.complexRoutePercent, 100);
     assert.equal(status.data.ai.routing, "task-complexity");
     assert.equal(status.data.ai.webModelRouting, "selected-task-model");
@@ -944,7 +944,7 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
       const reply = await request(`${route}/chat`, { method: "POST", cookie, body: { mode, message: mode === "exam" ? "请出一份新的练习卷" : "teach me using the previous attachment and the end of the course lecture" } });
       assert.equal(reply.status, 201);
       const providerRequest = JSON.parse(reply.data.messages[1].content);
-      assert.equal(providerRequest.model, "gpt-6.1-sol", mode);
+      assert.equal(providerRequest.model, "gpt-6.2-sol", mode);
       assert.ok(providerRequest.messages[0].content.includes("intermediate steps a beginner needs"), mode);
       assert.ok(providerRequest.messages[0].content.includes("Teach the method and reasons before"), mode);
       const content = providerRequest.messages[1].content;
@@ -1119,7 +1119,7 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
   await t.test("web, JSON, streaming and fallback preserve the selected task model", async () => {
     await stop();
     await start({ fakeAi: true, webSearch: true });
-    for (const [message, expected] of [["你好", "gpt-6-luna"], ["请推导这个公式", "gpt-6.1-sol"]]) {
+    for (const [message, expected] of [["你好", "gpt-6-luna"], ["请推导这个公式", "gpt-6.2-sol"]]) {
       const id = await streamCourse(`Routing ${expected}`);
       await request(`/api/courses/${id}/documents`, { method: "POST", cookie: streamingCookie, body: { title: "Long material", text: "background ".repeat(1000) } });
       const reply = await request(`/api/courses/${id}/chat`, { method: "POST", cookie: streamingCookie, body: { message, mode: "guided" } });

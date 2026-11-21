@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — GPT-6.2 Sol for complex AI tasks
+
+- Upgrade the Sol route for advanced study help, PDF problem sets, learning
+  tools, long schedule imports, grades, and Office AI. Existing 6.1 Sol
+  configuration values select 6.2 Sol at runtime.
+- Account for 6.2 Sol using its published Standard rates, including cached and
+  long-context inputs. Ordinary requests continue to use Luna by default.
+
 ## 1.15.1 — 2026-11-21 — Mailbox consent and cost correction
 
 PATCH from verified AWS 1.15.0 (`f1a56e6`): correct implicit background

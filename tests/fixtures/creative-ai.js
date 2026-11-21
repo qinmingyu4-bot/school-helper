@@ -11,6 +11,7 @@ globalThis.fetch = async (url, options) => {
   if (String(url).endsWith("/files")) return Response.json({ id: "file_fixture" });
   if (String(url).endsWith("/responses")) {
     const body = JSON.parse(options.body);
+    assert.equal(body.model, "gpt-6.2-sol");
     printable = body.input?.[0]?.content.includes("Mandatory cheatsheet print contract");
     const content = body.input?.[1]?.content;
     const text = Array.isArray(content) ? content.filter((item) => item.type === "input_text").map((item) => item.text).join("\n") : content || "";

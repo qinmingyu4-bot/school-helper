@@ -55,6 +55,7 @@ const { createStudyJobs } = require("./lib/study-jobs");
 const { createLearningLoop } = require("./lib/learning-loop");
 const { buildExerciseCoverage, coverageInstruction } = require("./lib/study-coverage");
 const { selectAiModel } = require("./lib/ai-routing");
+const { SOL_MODEL, upgradeSolModel } = require("./lib/ai-models");
 const scheduleImport = require("./public/schedule-import");
 const scheduleBatch = require("./lib/schedule-batch");
 const courseConversations = require("./public/course-conversations");
@@ -151,13 +152,15 @@ const localBackupDisabled = process.env.LOCAL_DB_BACKUP_DISABLED === "true";
 const localBackupIntervalHours = Math.max(1, Number(process.env.LOCAL_DB_BACKUP_INTERVAL_HOURS || 6));
 const localBackupRetention = Math.max(3, Number(process.env.LOCAL_DB_BACKUP_RETENTION || 72));
 const legacyOpenAiModel = String(process.env.OPENAI_MODEL || "").trim();
-const simpleAiModel =
+const simpleAiModel = upgradeSolModel(
   String(process.env.OPENAI_SIMPLE_MODEL || process.env.STUDYBRIDGE_SIMPLE_MODEL || "").trim() ||
   legacyOpenAiModel ||
-  "gpt-6-luna";
-const complexAiModel =
+  "gpt-6-luna"
+);
+const complexAiModel = upgradeSolModel(
   String(process.env.OPENAI_COMPLEX_MODEL || process.env.STUDYBRIDGE_COMPLEX_MODEL || "").trim() ||
-  "gpt-6.1-sol";
+  SOL_MODEL
+);
 const grades = createGradePlanner({ db, apiKey: process.env.OPENAI_API_KEY, model: complexAiModel, request: (...args) => aiUsage.fetch(...args) });
 const webSearchEnabled = process.env.OPENAI_WEB_SEARCH !== "false";
 const googleClientId = String(process.env.GOOGLE_CLIENT_ID || "").trim();
@@ -178,7 +181,7 @@ const creative = createCreativeService({
     return result;
   },
   reportOutcome: usage.outcome,
-  documentModel: () => process.env.OPENAI_DOCUMENT_MODEL || complexAiModel,
+  documentModel: () => upgradeSolModel(process.env.OPENAI_DOCUMENT_MODEL?.trim() || complexAiModel),
   contextFor: (userId, courseId, message, cheatsheet) => courseContext(db, userId, courseId, message, cheatsheet)
 });
 const studyIndex = createStudyIndex({ db });

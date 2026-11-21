@@ -4,6 +4,7 @@ const http = require("node:http");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const recognition = require("../lib/grade-preview-recognition");
+const { SOL_MODEL, upgradeSolModel } = require("../lib/ai-models");
 const localOcr = require("../lib/grade-preview-local-ocr");
 const root = path.resolve(__dirname, "..");
 const publicDir = path.join(root, "public");
@@ -58,7 +59,7 @@ function createPreviewServer({ config = {}, recognize, request = fetch, useLocal
           if (recognize) output = await recognize(file);
           else if (!config.OPENAI_API_KEY) output = await localOcr.recognizeLocal(file, { signal: controller.signal });
           else {
-            const model = config.GRADE_PREVIEW_MODEL || config.OPENAI_COMPLEX_MODEL || config.OPENAI_MODEL || "gpt-6.1-sol";
+            const model = upgradeSolModel(config.GRADE_PREVIEW_MODEL || config.OPENAI_COMPLEX_MODEL || config.OPENAI_MODEL || SOL_MODEL);
             const response = await request("https://api.openai.com/v1/responses", { method: "POST", signal: controller.signal, headers: { authorization: `Bearer ${config.OPENAI_API_KEY}`, "content-type": "application/json" }, body: JSON.stringify(recognition.requestBody(file, model)) });
             if (!response.ok) throw new Error("AI 识别暂时不可用，请稍后重试；尚未保存任何成绩。");
             output = recognition.responseText(await response.json());

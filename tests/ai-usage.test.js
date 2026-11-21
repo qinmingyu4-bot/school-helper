@@ -48,6 +48,8 @@ for (const dynamo of [false, true]) test(`${dynamo ? "DynamoDB" : "local"} atomi
 });
 test("pricing includes cached input, reasoning totals, long context, searches, containers, images and audio", () => {
   assert.equal(cost("gpt-6.1-sol", { usage: { input_tokens: 1000, output_tokens: 200, input_tokens_details: { cached_tokens: 500 }, output_tokens_details: { reasoning_tokens: 100 } } }), 3050);
+  assert.equal(cost("gpt-6.2-sol", { usage: { input_tokens: 1000, output_tokens: 200, input_tokens_details: { cached_tokens: 500 }, output_tokens_details: { reasoning_tokens: 100 } } }), 3050);
+  assert.equal(cost("gpt-6.2-sol", { usage: { prompt_tokens: 300000, completion_tokens: 1000 } }), 1215000);
   assert.equal(cost("gpt-6-luna", { usage: { prompt_tokens: 300000, completion_tokens: 1000 } }), 60750);
   assert.equal(cost("gpt-6.1-sol", { usage: { input_tokens: 0, output_tokens: 0 }, output: [{ type: "web_search_call" }, { type: "code_interpreter_call", container_id: "a" }, { type: "code_interpreter_call", container_id: "a" }] }), 40000);
   assert.equal(cost("gpt-image-2", { usage: { input_tokens_details: { text_tokens: 100, image_tokens: 50 }, output_tokens: 1000 } }), 15450);
@@ -76,7 +78,11 @@ test("provider admission, actual JSON and trailing stream usage, failed requests
   await readEvents(await send("gpt-6-luna", true), ({ data }) => data === "[DONE]" ? false : undefined);
   assert.equal(body.stream_options.include_usage, true);
   assert.equal((await s.status("alice")).usedUsd, 0.00007);
-  kind = "error"; await send(); assert.equal((await s.status("alice")).usedUsd, 0.00007);
+  kind = "json";
+  await (await send("gpt-6.2-sol")).json();
+  assert.equal(body.model, "gpt-6.2-sol");
+  assert.equal((await s.status("alice")).usedUsd, 0.00077);
+  kind = "error"; await send(); assert.equal((await s.status("alice")).usedUsd, 0.00077);
   kind = "missing"; await send(); assert.ok((await s.status("alice")).estimatedUsd > 0);
   await assert.rejects(send("unknown-model"), { statusCode: 503 });
   await assert.rejects(s.fetch("https://api.openai.com/v1/responses", { method: "POST", body: '{}' }), { statusCode: 503 });

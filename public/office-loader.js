@@ -1,7 +1,7 @@
 (function () {
   "use strict";
   const ui = window.StudyBridgeI18n;
-  const editorURL = "/vendor/office-editor.min.js?asset=fec8d9fc74168cd119a8e441";
+  const editorURL = "/vendor/office-editor.min.js?asset=3cc80a60965b43b9adda2e78";
   let preload = null, account = null, listing = null;
   function warm() {
     const connection = navigator.connection;
@@ -32,6 +32,15 @@
     void entry.promise.catch(() => {});
     return entry.promise;
   }
+  let sharedLink = null;
+  try {
+    const hash = new URLSearchParams(location.hash.slice(1));
+    const pending = hash.has('office') ? { id: hash.get('office'), ownerId: hash.get('owner'), kind: hash.get('kind'), token: hash.get('token') } : JSON.parse(sessionStorage.getItem('office.pending-share') || 'null');
+    if (pending && /^office_[\w-]{1,80}$/.test(pending.id) && /^[\w-]{1,120}$/.test(pending.ownerId) && ['docs','sheets','slides'].includes(pending.kind) && /^[a-f0-9]{64}$/.test(pending.token)) {
+      sharedLink = pending;
+      sessionStorage.setItem('office.pending-share', JSON.stringify(pending));
+    }
+  } catch { /* Private browsing can block session storage. */ }
 
   let promise = null,
     module = null,
@@ -67,7 +76,7 @@
       return;
     }
     try {
-      if (ctx.userId && !module?.hasWorkspace(ctx)) void projects(ctx);
+      if (ctx.userId && !ctx.officeEntry?.share && !module?.hasWorkspace(ctx)) void projects(ctx);
       const editor = await load();
       if (token === generation && host.isConnected) await editor.attach(host, {
         ...ctx,
@@ -83,6 +92,14 @@
     }
   }
   window.StudyBridgeOffice = {
+    get sharedLink() { return sharedLink; },
+    takeSharedLink() {
+      const link = sharedLink;
+      sharedLink = null;
+      try { sessionStorage.removeItem("office.pending-share"); } catch { /* Storage can be disabled. */ }
+      return link;
+    },
+    shareFragment: ({ id, ownerId, kind, token }) => "#" + new URLSearchParams({ office: id, owner: ownerId, kind, token }),
     supports,
     html,
     mount,

@@ -133,6 +133,57 @@ AI 费用明细与对账|AI cost details and reconciliation
 该历史任务的扣额需要核对，尚未自动退还。|This older task needs a charge review; no automatic refund has been applied.
 部分请求缺少实际用量，余额包含预估扣额；历史中断扣额可联系管理员核对。|Some requests have no reported usage, so your balance includes estimates. Contact the administrator to review older interrupted requests.
 退出登录未完成，请检查网络后重试。当前页面和草稿已保留。|Sign-out did not complete. Check your connection and try again. Your current page and drafts have been kept.
+已恢复共同编辑草稿，请另存副本以保留未同步的修改。|Recovered a collaborative draft. Save a copy to retain unsynced changes.
+分享与共同编辑|Share and collaborate
+持有链接的人登录后可以编辑这份作品。关闭分享会立即阻止其他人继续同步。|Anyone with this link can edit after signing in. Turning sharing off blocks further synchronization by collaborators.
+生成新链接（旧链接失效）|Generate new link (replaces old link)
+开启链接分享|Enable link sharing
+关闭分享|Turn off sharing
+分享链接|Share link
+分享已关闭|Sharing is off
+已同步 · 共同编辑|Synced · Collaborating
+正在同步修改…|Syncing changes…
+连接中断，修改已保留，将自动重试。|Disconnected. Changes are retained; reconnecting automatically.
+离线修改超出可合并范围，请另存副本。|Offline changes are too old to merge safely. Save a copy to keep your work.
+查找替换|Find and replace
+查找|Find
+替换为|Replace with
+下一处|Next match
+替换当前|Replace current
+全部替换|Replace all
+表格|Table
+插入 3 × 3 表格|Insert 3 × 3 table
+下方插入行|Insert row below
+右侧插入列|Insert column after
+删除行|Delete row
+删除列|Delete column
+合并单元格|Merge cells
+拆分单元格|Split cell
+删除表格|Delete table
+首行缩进（字符）|First-line indent (em)
+段前（磅）|Space before (pt)
+段后（磅）|Space after (pt)
+清空内容|Clear contents
+行列|Rows and columns
+上方插入行|Insert row above
+删除选中行|Delete selected rows
+左侧插入列|Insert column before
+删除选中列|Delete selected columns
+列宽（像素）|Column width (px)
+行高（像素）|Row height (px)
+选中区域|Selected range
+请输入有效的单元格区域。|Enter a valid cell range.
+复制元素|Copy elements
+粘贴元素|Paste elements
+排列|Arrange
+水平居中|Align horizontal centers
+顶端对齐|Align tops
+垂直居中|Align vertical centers
+底端对齐|Align bottoms
+置于底层|Send to back
+表格需要 1–100 行。|Tables support 1–100 rows.
+表格最多 20 列。|Tables support up to 20 columns.
+工作表结构已被另一位编辑者更改，草稿已保留，请另存副本。|A collaborator changed the worksheet structure. Your draft is retained; save a copy.
 暂时无法确认登录状态，请检查网络后刷新重试。|Unable to verify your sign-in status. Check your connection and refresh to try again.
 对话列表暂时无法加载。|Conversations could not be loaded.
 正在加载对话…|Loading conversations…

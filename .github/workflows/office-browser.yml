@@ -1,0 +1,44 @@
+name: Test Office collaboration in Chromium
+
+on:
+  push:
+    branches-ignore: [main]
+    paths:
+      - '.github/workflows/office-browser.yml'
+      - 'client/office-*.mjs'
+      - 'lib/office-*.js'
+      - 'public/app.js'
+      - 'public/office-*.js'
+      - 'public/office-*.css'
+      - 'public/vendor/office-editor.min.js'
+      - 'server.js'
+      - 'tests/browser/office-collaboration.cjs'
+  pull_request:
+    paths:
+      - '.github/workflows/office-browser.yml'
+      - 'client/office-*.mjs'
+      - 'lib/office-*.js'
+      - 'public/app.js'
+      - 'public/office-*.js'
+      - 'public/office-*.css'
+      - 'public/vendor/office-editor.min.js'
+      - 'server.js'
+      - 'tests/browser/office-collaboration.cjs'
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm install --prefix "$RUNNER_TEMP/office-test" --no-save --ignore-scripts playwright@1.62.1
+      - run: node "$RUNNER_TEMP/office-test/node_modules/playwright/cli.js" install --with-deps chromium
+      - run: OFFICE_PLAYWRIGHT_MODULE="$RUNNER_TEMP/office-test/node_modules/playwright" node tests/browser/office-collaboration.cjs

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-21 — Office editing basics and link collaboration (test branch)
+
+- Add editable Docs tables with row/column operations, merge/split, column resizing, literal find/replace, first-line indentation and paragraph spacing. Preserve tables and spacing through DOCX export/import and print styling.
+- Add Sheets rectangular, row and column selection, bulk formatting/clearing, TSV copy/paste with relative-reference adjustment, row/column insertion/deletion with reference rewriting, and persisted row heights/column widths. Window the grid to at most 60 rendered rows and reuse formula calculations between selection changes.
+- Add Slides multi-selection, collective drag/nudge, alignment, front/back ordering and copied elements with fresh identities; selected objects retain their real stacking order.
+- Add authenticated, revocable link sharing for all three editors. Docs rebases concurrent text steps; Sheets/Slides synchronize stable-id field changes. Durable version checks and batch receipts protect concurrent saves and lost-response retries; local-only undo is rebased over collaborators' changes. Show active collaborators and retain disconnected drafts.
+- Use a thin neutral focus outline for text fields across the three editors, with visible keyboard focus.
+- Use the latest accepted value for edits to the same cell or element field. Preserve a local copy when an offline draft falls outside the replay window or conflicts with a worksheet structure change.
+
 ## 1.15.3 — 2026-11-21 — GPT-6.2 Sol
 
 PATCH from 1.15.2 (`8703228`) for an upgrade to the existing Sol route.

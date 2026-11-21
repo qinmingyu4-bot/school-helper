@@ -382,7 +382,8 @@
     if (page !== "classmates") stopClassmatesLive();
     if (page !== "tools") creativeTools.stop();
     localStorage.setItem("studybridge.page", page);
-    history.replaceState(mobileNavigation.historyState(), "", `/app?page=${encodeURIComponent(page)}&v=${VERSION}`);
+    const sharedFragment = page === "tools" && state.officeEntry?.share ? officeTools.shareFragment(state.officeEntry.share) : "";
+    history.replaceState(mobileNavigation.historyState(), "", `/app?page=${encodeURIComponent(page)}&v=${VERSION}${sharedFragment}`);
   }
 
   function formatDate(value) {
@@ -2729,12 +2730,21 @@
     return course;
   }
 
-  async function loadPage(page, { scheduleView = "calendar", reuseStudyCourses = false } = {}) {
+  async function loadPage(page, { scheduleView = "calendar", reuseStudyCourses = false, officeShare } = {}) {
     if (state.page === "grades" && page !== "grades") {
       const planner = root.querySelector("#grade-module")?.gradePlanner;
       if (planner && !await planner.flush()) return;
     }
-    if (page === "tools" && state.page !== "tools") { state.toolView = "library"; state.officeEntry = null; }
+    if (officeShare) {
+      page = "tools";
+      state.mode = "student";
+      state.tool = officeShare.kind;
+      state.toolView = "edit";
+      state.officeEntry = { key: crypto.randomUUID(), share: officeShare };
+    } else if (page === "tools" && state.page !== "tools") {
+      state.toolView = "library";
+      state.officeEntry = null;
+    }
     const pageGeneration = ++pageLoadGeneration;
     const generation = ++classmatesGeneration;
     if (page === "schedule") state.dailyView = scheduleView;
@@ -3107,7 +3117,7 @@
         const data = await api("/api/auth/login", { method: "POST", body: { email: $("authEmail")?.value || "", password: $("authPassword")?.value || "" } });
         state.user = data.user;
         state.mode = isAdmin() && feedbackView.hasLink() ? "admin" : "student";
-        await loadPage(entryUrl.searchParams.get("page") || "study");
+        await loadPage(entryUrl.searchParams.get("page") || "study", { officeShare: officeTools.takeSharedLink() });
         if (entryUrl.searchParams.has("scheduleItem") || entryUrl.searchParams.has("classmateChat")) await openPushLink(entryUrl);
         return;
       }
@@ -3130,7 +3140,7 @@
         });
         state.user = data.user;
         state.mode = "student";
-        await loadPage("profile");
+        await loadPage("profile", { officeShare: officeTools.takeSharedLink() });
         return;
       }
       if (action === "send-email-code") {
@@ -3845,6 +3855,7 @@
         if (!["notes", "docs", "sheets", "slides", "images", "cheatsheet"].includes(button.dataset.tool)) return;
         creativeTools.capture();
         officeTools.capture();
+        if (state.officeEntry?.share) history.replaceState(history.state, "", location.pathname + location.search);
         state.tool = button.dataset.tool || "docs";
         state.toolView = "library";
         state.officeEntry = null;
@@ -3860,6 +3871,7 @@
         const userId = state.user?.id, tool = state.tool;
         if (action === "office-view-library") await officeTools.flush();
         if (state.user?.id !== userId || state.tool !== tool || state.page !== "tools") return;
+        if (state.officeEntry?.share) history.replaceState(history.state, "", location.pathname + location.search);
         state.toolView = action === "office-view-library" ? "library" : ["office-view-generate", "office-library-generated"].includes(action) ? "generate" : "edit";
         state.officeEntry = state.toolView === "edit" ? { key: crypto.randomUUID(), ...(action === "office-library-new" ? { create: true } : action === "office-library-resume" ? { resume: true } : { id: button.dataset.id }) } : null;
         if (state.toolView === "library") window.StudyBridgeOfficeLibrary.invalidate(userId);
@@ -4183,7 +4195,7 @@
       state.authConfig = authConfig;
       state.googleEnabled = Boolean(google.enabled);
       if (unauthenticated) {
-        history.replaceState(null, "", `/login${location.search}`);
+        history.replaceState(null, "", `/login${location.search}${officeTools.sharedLink ? officeTools.shareFragment(officeTools.sharedLink) : ""}`);
         const authError = new URL(location.href).searchParams.get("authError");
         if (authError) state.toast = authError;
         else if (!authConfig) state.toast = ui.text("注册配置暂时无法读取，请刷新后重试。");
@@ -4203,8 +4215,7 @@
       const mailboxResult = new URL(location.href).searchParams.get("mailbox");
       if (mailboxResult) mailboxView.setBanner(({ connected: ui.text("邮箱已绑定。可在设置中单独开启自动 AI 分析。"), denied: ui.text("此次邮箱授权未完成，你仍可以粘贴邮件生成回复。"), failed: ui.text("邮箱绑定未成功，请在设置中重试。") })[mailboxResult] || ui.text("请在设置中查看邮箱连接状态。"), { showInbox: mailboxResult === "connected" });
       const savedPage = localStorage.getItem("studybridge.page");
-      const page = urlPage || savedPage || "study";
-      await loadPage(page);
+      await loadPage(urlPage || savedPage || "study", { officeShare: officeTools.takeSharedLink() });
       if (entryUrl.searchParams.has("scheduleItem") || entryUrl.searchParams.has("classmateChat")) await openPushLink(entryUrl);
       if (["return", "cancelled"].includes(billingResult)) {
         appearanceController.open();

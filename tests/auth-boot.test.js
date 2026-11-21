@@ -10,7 +10,7 @@ function harness(result, error) {
   const context = vm.createContext({
     state, root, URL, location: { href: "https://example.test/app?page=tools", search: "?page=tools" },
     history: { replaceState: (_state, _title, path) => paths.push(path) }, document: {},
-    ui: require("../public/i18n"), esc: String,
+    ui: require("../public/i18n"), esc: String, officeTools: { sharedLink: null, takeSharedLink() { return this.sharedLink; } },
     api: async (path) => {
       if (path !== "/api/me") return {};
       if (error) throw error;
@@ -18,7 +18,7 @@ function harness(result, error) {
     },
     render: () => { root.innerHTML = state.user ? "workspace" : "login-form"; },
     reportUserActivity: async () => {}, localStorage: { getItem: () => null }, isAdmin: () => false,
-    loadPage: async (page) => pages.push(page)
+    loadPage: async (page, { officeShare } = {}) => pages.push(officeShare ? { page, officeShare } : page)
   });
   vm.runInContext(boot, context);
   return { context, paths, pages, state, root };
@@ -60,4 +60,12 @@ test("valid session opens the requested tools workspace", async () => {
   assert.equal(h.state.user.id, "alice");
   assert.deepEqual(h.paths, []);
   assert.deepEqual(h.pages, ["tools"]);
+});
+
+test('shared Office links open the corresponding editor after authentication', async () => {
+  const h = harness({ user: { id: 'bob' } });
+  h.context.location.href = 'https://example.test/app';
+  h.context.officeTools.sharedLink = { kind: 'sheets' };
+  await h.context.boot();
+  assert.deepEqual(h.pages, [{ page: 'study', officeShare: { kind: 'sheets' } }]);
 });

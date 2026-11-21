@@ -2091,6 +2091,15 @@ async function routeApi(req, res) {
     const user = await requireUser(req, res);
     if (!user) return;
     if (url.pathname === "/api/office" && method === "GET") return sendJson(res, 200, { projects: await office.list(user.id) });
+    const collaboration = url.pathname.match(/^\/api\/office\/(office_[\w-]{1,80})\/(sharing|sync)$/);
+    if (collaboration && method === 'POST') {
+      if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '') || req.headers['sec-fetch-site'] === 'cross-site') return sendError(res, 403, '请在 StudyBridge 中操作。');
+      const body = await readJson(req);
+      if (body.actorId !== user.id) return sendError(res, 403, '登录账号已更改，请重新打开作品。');
+      if (collaboration[2] === 'sharing' && typeof body.enabled !== 'boolean') return sendError(res, 400, '分享设置无效。');
+      const result = collaboration[2] === 'sharing' ? await office.sharing(user.id, collaboration[1], body.enabled) : await office.sync(user, collaboration[1], body);
+      return sendJson(res, 200, result, { 'cache-control': 'private, no-store' });
+    }
     if (url.pathname === "/api/office/import" && method === "POST") {
       const body = await readJson(req);
       if (body.ownerId && body.ownerId !== user.id) return sendError(res, 403, "登录账号已更改，请重新打开作品。");

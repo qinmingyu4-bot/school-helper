@@ -16,6 +16,9 @@ import Model from "../public/office-model.js";
 import { calculator, renameFormulaSheet } from "../lib/office-formulas.js";
 import { revisionBlocks, revisionEdits } from "../lib/office-revision.js";
 import { contentRevisionSource, contentRevisionChanges, applyContentRevision, rangeBounds, inRange } from "../lib/office-content-revision.js";
+import { ParagraphLayout, Table, TableRow, TableCell, TableHeader } from './office-basics.mjs';
+import { DocSync } from './office-doc-sync.mjs';
+import { installBasics } from './office-workspace-basics.mjs';
 const names = { docs: "SB Docs", slides: "SB Slides", sheets: "SB Sheets" };
 const formats = { docs: "docx", slides: "pptx", sheets: "xlsx" };
 const sessions = new Map();
@@ -103,10 +106,12 @@ async function backup(action, key, value) {
   });
 }
 function meta(item) {
-  const { model, saving, dirty, edits, conflict, ...rest } = item;
+  const { model, saving, dirty, edits, conflict, access, ...rest } = item;
   return rest;
 }
-class Workspace {
+export class Workspace {
+  t(value) { return ui.text(value); }
+  clearBackup() { return backup('delete', this.recoveryKey()).catch(() => {}); }
   constructor(ctx, kind) {
     this.ctx = ctx;
     this.kind = kind;
@@ -125,14 +130,33 @@ class Workspace {
     this.elementId = "";
     this.sheetIndex = 0;
     this.cell = "A1";
+    this.selectionEnd = 'A1';
+    this.selectedElements = new Set();
+    this.gridStart = 1;
   }
   async init() {
     const entry = this.ctx.officeEntry;
-    const recoveryPromise = backup("get", this.recoveryKey()).then(value => {
-      if (!value || value.kind !== this.kind) return null;
-      try { value.model = Model.normalize(this.kind, value.model); return value; }
-      catch { return null; }
-    }).catch(() => null);
+    if (entry?.share) {
+      const link = entry.share;
+      const recovered = await this.readBackup(this.recoveryKey({ ...link, collaborative: true }));
+      if (recovered?.dirty) {
+        this.current = { ...recovered, access: link, dirty: true, conflict: true };
+      } else {
+        const result = await this.ctx.api(`/api/office/${link.id}/sync`, {
+          method: "POST",
+          body: { actorId: this.ctx.userId, ownerId: link.ownerId, token: link.token, peer: uid(), since: 0, initial: true },
+        });
+        if (result.project.kind !== this.kind) throw Error(ui.text("分享链接无效。"));
+        this.current = { ...result.project, model: result.model, access: link, dirty: false };
+      }
+      if (this.current.conflict) this.status = ui.text("已恢复共同编辑草稿，请另存副本以保留未同步的修改。");
+      this.entryKey = entry.key;
+      this.ready = true;
+      this.draw();
+      this.connectCollaboration();
+      return;
+    }
+    const recoveryPromise = this.readBackup(this.recoveryKey());
     try {
       const result = await (this.ctx.officeProjects?.() || this.ctx.api("/api/office"));
       this.projects = (result.projects || []).filter(
@@ -141,15 +165,15 @@ class Workspace {
       const last = localStorage.getItem(
         `office.last.${this.ctx.userId}.${this.kind}`,
       );
-      const selected = entry?.id ? { id: entry.id } : entry?.create ? null :
+      const selected = entry?.id ? this.projects.find(p => p.id === entry.id) || { id: entry.id } : entry?.create ? null :
         this.projects.find((p) => p.id === last) || this.projects[0];
-      const recovery = await recoveryPromise;
-      if (recovery && recovery.kind === this.kind) {
+      const recovery = selected?.collaborative ? await this.readBackup(this.recoveryKey(selected)) : await recoveryPromise;
+      if (recovery && !entry?.create && (!entry?.id || recovery.id === entry.id)) {
         recovery.model = Model.normalize(this.kind, recovery.model);
         this.current = recovery;
         this.current.dirty = true;
         const latest = this.projects.find((p) => p.id === recovery.id);
-        if (latest && latest.version !== recovery.version) {
+        if (recovery.collaborative || latest && latest.version !== recovery.version) {
           this.current.conflict = true;
           this.status = ui.text("恢复了此浏览器的草稿；云端有更新，请另存副本。");
         } else this.status = ui.text("已恢复此浏览器的未保存草稿");
@@ -164,7 +188,7 @@ class Workspace {
       }
     } catch (error) {
       const recovery = await recoveryPromise;
-      if (entry?.id && !recovery) throw error;
+      if (entry?.id && recovery?.id !== entry.id) throw error;
       this.newProject();
       this.status = "暂时无法读取云端作品：" + error.message;
       if (recovery) {
@@ -180,13 +204,22 @@ class Workspace {
     }
     this.ready = true;
     this.draw();
+    this.connectCollaboration();
     if (this.current?.dirty && !this.current.conflict) this.schedule();
   }
-  recoveryKey() {
-    return `${this.ctx.userId}:${this.kind}`;
+  async readBackup(key) {
+    try {
+      const draft = await backup("get", key);
+      if (draft?.kind === this.kind) return { ...draft, model: Model.normalize(this.kind, draft.model) };
+    } catch { /* Cloud content can still open when browser storage is unavailable. */ }
+    return null;
+  }
+  recoveryKey(project = this.current) {
+    return `${this.ctx.userId}:${this.kind}${project?.collaborative ? ':' + project.ownerId + ':' + project.id : ''}`;
   }
   newProject(copy = false) {
     this.capture();
+    this.collaboration?.stop(); this.collaboration = null;
     this.editor?.destroy();
     this.editor = null;
     this.current = {
@@ -205,6 +238,7 @@ class Workspace {
     this.sheetIndex = 0;
     this.elementId = "";
     this.cell = "A1";
+    this.selectionEnd = 'A1'; this.gridStart = 1; this.selectedElements.clear();
     this.docSelection = null;
     this.aiResult = null;
     this.aiSource = null;
@@ -222,22 +256,26 @@ class Workspace {
       if (this.current?.dirty)
         throw Error(ui.text("当前修改尚未保存，请先保存或另存副本。"));
       const { project } = await this.ctx.api("/api/office/" + id);
+      this.collaboration?.stop(); this.collaboration = null;
       this.editor?.destroy();
       this.editor = null;
-      this.current = { ...project, dirty: false };
+      const draft = project.collaborative ? await this.readBackup(this.recoveryKey(project)) : null;
+      this.current = draft?.dirty ? { ...draft, dirty: true, conflict: true } : { ...project, dirty: false };
       this.undo = [];
       this.redo = [];
       this.slideIndex = 0;
       this.sheetIndex = 0;
       this.cell = "A1";
+      this.selectionEnd = 'A1'; this.gridStart = 1; this.selectedElements.clear();
       this.elementId = "";
       this.docSelection = null;
-      this.status = ui.text("已保存到云端");
+      this.status = ui.text(this.current.conflict ? "已恢复共同编辑草稿，请另存副本以保留未同步的修改。" : "已保存到云端");
       this.aiResult = null;
       this.aiSource = null;
       this.aiError = "";
       this.aiNotice = "";
       this.draw();
+      this.connectCollaboration();
       localStorage.setItem(`office.last.${this.ctx.userId}.${this.kind}`, id);
     } finally {
       this.switching = false;
@@ -254,7 +292,11 @@ class Workspace {
     } else if (ctx.officeEntry && ctx.officeEntry.key !== this.entryKey &&
       (ctx.officeEntry.create || ctx.officeEntry.id && (ctx.officeEntry.id !== this.current?.id || !this.current?.dirty))) {
       host.innerHTML = ui.markup('<div class="office-loading" role="status">正在打开编辑器…</div>');
-    } else this.draw();
+    } else {
+      this.draw();
+      if (this.collaboration && !this.collaboration.stopped) this.collaboration.schedule(0);
+      else this.connectCollaboration();
+    }
   }
   capture() {
     if (this.editor && !this.editor.isDestroyed && this.current) {
@@ -272,6 +314,8 @@ class Workspace {
   }
   detach() {
     this.capture();
+    this.bindController?.abort();
+    clearTimeout(this.collaboration?.timer);
     this.editor?.unmount();
     this.presentation?.remove();
     this.presentation = null;
@@ -289,6 +333,8 @@ class Workspace {
     this.redo = [];
   }
   changed() {
+    if (this.receiving) return;
+    this._calc = null;
     this.current.dirty = true;
     this.current.edits = (this.current.edits || 0) + 1;
     this.status = ui.text("未保存的修改");
@@ -297,16 +343,23 @@ class Workspace {
     if (this.kind !== "docs" && this.aiResult) this.refreshAI();
   }
   schedule() {
+    if (this.collaboration) {
+      this.collaboration.schedule();
+      clearTimeout(this.backupTimer);
+      this.backupTimer = setTimeout(() => void this.storeBackup(this.current), 700);
+      return;
+    }
     clearTimeout(this.saveTimer);
     const current = this.current;
     this.saveTimer = setTimeout(() => {
       if (this.current === current) void this.save();
     }, 1000);
-    void this.storeBackup(current);
+    clearTimeout(this.backupTimer);
+    this.backupTimer = setTimeout(() => void this.storeBackup(current), 700);
   }
   async storeBackup(current) {
     try {
-      await backup("put", this.recoveryKey(), {
+      await backup("put", this.recoveryKey(current), {
         ...meta(current),
         dirty: current.dirty,
         model: clone(current.model),
@@ -318,6 +371,12 @@ class Workspace {
     }
   }
   async save() {
+    if (this.collaboration) {
+      const session = this.collaboration;
+      await session.inProgress;
+      if (this.collaboration === session && this.current.dirty) await session.exchange();
+      return;
+    }
     this.capture();
     clearTimeout(this.saveTimer);
     const current = this.current;
@@ -399,6 +458,8 @@ class Workspace {
     const count = this.host.querySelector("[data-doc-count]");
     if (count && this.editor)
       count.textContent = ui.message`${this.editor.getText().length} 字符`;
+    const peers = this.host.querySelector('[data-collaborators]');
+    if (peers) peers.textContent = this.collaboration?.peers.map(p => p.name).join(' · ') || '';
   }
   updateProjectPicker() {
     const el = this.host?.querySelector("[data-project-picker]");
@@ -417,6 +478,9 @@ class Workspace {
   }
   draw() {
     if (!this.host?.isConnected || !this.ready || !this.current) return;
+    const active = this.host.contains(document.activeElement) ? document.activeElement : null;
+    const focusKey = active?.dataset.cell ? `[data-cell="${active.dataset.cell}"]` : active?.matches("[data-formula]") ? "[data-formula]" : null;
+    const focusValue = active?.value, focusStart = active?.selectionStart, focusEnd = active?.selectionEnd;
     const scrollState = Array.from(
       this.host.querySelectorAll(".office-doc-scroll,.office-grid-scroll"),
       (el) => [el.className, el.scrollTop, el.scrollLeft],
@@ -430,18 +494,25 @@ class Workspace {
    <div class="office-statusbar"><span data-save-status role="status"></span><span>${doc ? "<span data-doc-count></span>" : slide ? ui.text("16:9 · 可编辑文字和图片") : ui.text("支持公式与跨工作表引用")}</span></div>
    ${this.current.importWarnings?.length ? `<div class="office-import-notice" role="status">${this.current.importWarnings.map(esc).join(" ")}</div>` : ""}
    <div class="office-layout"><div class="office-main">${doc ? this.docsHTML() : slide ? this.slidesHTML() : this.sheetsHTML()}</div></div><input data-office-image type="file" accept="image/png,image/jpeg,image/webp" hidden><input data-office-import type="file" accept=".${formats[this.kind]}" hidden>`;
+    this.enrichBasics();
     this.bind();
+    this.bindBasics();
+    const actions = this.host.querySelector('.office-top-actions');
+    actions.insertAdjacentHTML('beforeend', button('share', ui.text('分享与共同编辑')));
+    this.host.querySelector('.office-statusbar').insertAdjacentHTML('beforeend', '<span data-collaborators aria-live="polite"></span>');
     if (doc) this.mountDocs();
     if (slide) this.paintSlides();
-    if (this.kind === "sheets") this.refreshCells();
+    if (this.kind === "sheets") { this.refreshCells(); this.paintRange(); }
     this.updateStatus();
     for (const [className, top, left] of scrollState) {
-      const el = this.host.querySelector("." + className);
+      const el = this.host.querySelector("." + className.split(" ").join("."));
       if (el) {
         el.scrollTop = top;
         el.scrollLeft = left;
       }
     }
+    if (this.kind === "sheets") { this.gridSignature = ""; this.renderGrid(); }
+    if (focusKey) { const next = this.host.querySelector(focusKey); if (next) { this.rangeFocusing = true; next.focus({preventScroll:true}); this.rangeFocusing = false; next.value = this.remoteRedraw ? this.sheet().cells[next.dataset.cell || this.cell]?.value || "" : focusValue; next.setSelectionRange(Math.min(focusStart || 0, next.value.length), Math.min(focusEnd || 0, next.value.length)); } }
   }
   docsHTML() {
     const s = this.current.model.settings;
@@ -508,6 +579,8 @@ class Workspace {
         TextAlign.configure({ types: ["heading", "paragraph"] }),
         paragraphStyle,
         localImage,
+        ParagraphLayout, Table, TableRow, TableCell, TableHeader,
+        ...(this.current.collaborative ? [DocSync] : []),
       ],
       content: this.current.model.content,
       editorProps: {
@@ -556,6 +629,9 @@ class Workspace {
         ?.setAttribute("aria-pressed", String(e.isActive(mark)));
     const attrs = e.getAttributes("textStyle");
     const values = {
+      firstLine: e.getAttributes(e.isActive('heading') ? 'heading' : 'paragraph').firstLine || 0,
+      spaceBefore: e.getAttributes(e.isActive('heading') ? 'heading' : 'paragraph').spaceBefore || 0,
+      spaceAfter: e.getAttributes(e.isActive('heading') ? 'heading' : 'paragraph').spaceAfter || 0,
       font: (attrs.fontFamily || this.current.model.settings.font).replaceAll(
         '"',
         "",
@@ -591,6 +667,8 @@ class Workspace {
   }
   paintSlides() {
     if (!this.host) return;
+    if (!this.elementId) this.selectedElements.clear();
+    else if (!this.selectedElements.has(this.elementId)) this.selectedElements = new Set([this.elementId]);
     this.thumbnails();
     const slide = this.slide(),
       stage = this.host.querySelector("[data-stage]");
@@ -598,7 +676,7 @@ class Workspace {
     stage.innerHTML = slide.elements
       .map(
         (el) =>
-          ui.html`<div class="office-slide-element ${el.id === this.elementId ? "is-selected" : ""}" data-element="${esc(el.id)}" tabindex="0" aria-label="${el.type === "image" ? ui.text("图片") : ui.text("文字框")}" style="left:${el.x}%;top:${el.y}%;width:${el.w}%;height:${el.h}%;">${el.type === "image" ? ui.html`<img src="${esc(el.src)}" alt="幻灯片图片" draggable="false">` : `<div class="office-slide-text" data-element-text="${esc(el.id)}" style="font-family:${esc(el.font)};font-size:${el.size / 9.6}cqw;color:${el.color};font-weight:${el.bold ? 700 : 400};text-align:${el.align};">${esc(el.text)}</div>`}<span class="office-resize" data-resize aria-label="拖动调整大小"></span></div>`,
+          ui.html`<div class="office-slide-element ${this.selectedElements.has(el.id) || el.id === this.elementId ? "is-selected" : ""}" data-element="${esc(el.id)}" tabindex="0" aria-label="${el.type === "image" ? ui.text("图片") : ui.text("文字框")}" style="left:${el.x}%;top:${el.y}%;width:${el.w}%;height:${el.h}%;">${el.type === "image" ? ui.html`<img src="${esc(el.src)}" alt="幻灯片图片" draggable="false">` : `<div class="office-slide-text" data-element-text="${esc(el.id)}" style="font-family:${esc(el.font)};font-size:${el.size / 9.6}cqw;color:${el.color};font-weight:${el.bold ? 700 : 400};text-align:${el.align};">${esc(el.text)}</div>`}<span class="office-resize" data-resize aria-label="拖动调整大小"></span></div>`,
       )
       .join("");
     this.host.querySelector("[data-notes]").value = slide.notes;
@@ -658,12 +736,16 @@ class Workspace {
           : ui.markup("<p>单击选择元素，拖动移动，右下角调整大小；双击文字框编辑。</p>")
       }`;
   }
-  selectElement(id) {
-    this.elementId = id;
+  selectElement(id, extend = false) {
+    if (extend) {
+      if (this.elementId) this.selectedElements.add(this.elementId);
+      if (this.selectedElements.has(id)) this.selectedElements.delete(id); else this.selectedElements.add(id);
+      this.elementId = this.selectedElements.has(id) ? id : [...this.selectedElements].at(-1) || "";
+    } else { this.selectedElements = new Set([id]); this.elementId = id; }
     this.host
       .querySelectorAll("[data-element]")
       .forEach((el) =>
-        el.classList.toggle("is-selected", el.dataset.element === id),
+        el.classList.toggle("is-selected", this.selectedElements.has(el.dataset.element)),
       );
     this.inspector();
   }
@@ -694,7 +776,7 @@ class Workspace {
         ["=VLOOKUP(A1,A2:C10,2,FALSE)", ui.text("VLOOKUP · 查找")],
       ],
       "",
-    )}</div></div><div class="office-formula-bar"><span data-cell-name>${this.cell}</span><b>fx</b><input data-formula maxlength="4000" aria-label="公式栏" placeholder="输入数值、文字或以 = 开头的公式"></div><div class="office-grid-scroll"><table class="office-grid" role="grid" aria-label="电子表格"><thead><tr><th></th>${Array.from({ length: sheet.cols }, (_, c) => `<th scope="col">${Model.col(c + 1)}</th>`).join("")}</tr></thead><tbody>${Array.from({ length: sheet.rows }, (_, r) => `<tr><th scope="row">${r + 1}</th>${Array.from({ length: sheet.cols }, (_, c) => `<td><input aria-label="${Model.col(c + 1)}${r + 1}" data-cell="${Model.col(c + 1)}${r + 1}" autocomplete="off" spellcheck="false" maxlength="4000"></td>`).join("")}</tr>`).join("")}</tbody></table></div><nav class="office-sheet-tabs" aria-label="工作表">${this.current.model.sheets.map((s, i) => `<button data-sheet="${i}" aria-pressed="${i === this.sheetIndex}">${esc(s.name)}</button>`).join("")}</nav><p class="office-formula-help">Enter / Tab 移动 · 可粘贴多行多列 · 支持 SUM、AVERAGE、IF、COUNT、ROUND、VLOOKUP 等函数，以及 Sheet2!A1 引用。</p>`;
+    )}</div></div><div class="office-formula-bar"><span data-cell-name>${this.cell}</span><b>fx</b><input data-formula maxlength="4000" aria-label="公式栏" placeholder="输入数值、文字或以 = 开头的公式"></div><div class="office-grid-scroll">${this.gridHTML()}</div><nav class="office-sheet-tabs" aria-label="工作表">${this.current.model.sheets.map((s, i) => `<button data-sheet="${i}" aria-pressed="${i === this.sheetIndex}">${esc(s.name)}</button>`).join("")}</nav><p class="office-formula-help">Enter / Tab 移动 · 可粘贴多行多列 · 支持 SUM、AVERAGE、IF、COUNT、ROUND、VLOOKUP 等函数，以及 Sheet2!A1 引用。</p>`;
   }
   sheet() {
     return (
@@ -714,9 +796,9 @@ class Workspace {
     });
   }
   refreshCells() {
-    if (!this.host) return;
+    if (!this.host?.querySelector("[data-formula]")) return;
     const sheet = this.sheet(),
-      calc = calculator(this.current.model);
+      calc = this._calc ||= calculator(this.current.model);
     this.host.querySelectorAll("[data-cell]").forEach((input) => {
       const key = input.dataset.cell,
         data = sheet.cells[key],
@@ -1105,7 +1187,7 @@ class Workspace {
       frame.contentWindow.print();
       setTimeout(() => frame.remove(), 60000);
     };
-    frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(this.current.name)}</title><style>@page{size:${s.paper};margin:${s.margin}mm}body{font-family:"${s.font}";font-size:${s.size}pt;line-height:${s.line}}p{margin:0}img{max-width:100%;height:auto}</style></head><body>${this.editor.getHTML()}</body></html>`;
+    frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(this.current.name)}</title><style>@page{size:${s.paper};margin:${s.margin}mm}body{font-family:"${s.font}";font-size:${s.size}pt;line-height:${s.line}}p{margin:0}img{max-width:100%;height:auto}table{border-collapse:collapse;width:100%}td,th{border:1px solid #aaa;padding:6px;vertical-align:top}</style></head><body>${this.editor.getHTML()}</body></html>`;
   }
   present() {
     if (this.presentation) return;
@@ -1164,6 +1246,8 @@ class Workspace {
       const target = e.target.closest("[data-office]");
       if (target) {
         e.preventDefault();
+        const menu = target.closest('details');
+        if (menu) menu.open = false;
         void this.action(target.dataset.office).catch((error) => {
           this.status = error.message;
           this.updateStatus();
@@ -1173,13 +1257,13 @@ class Workspace {
       const slide = e.target.closest("[data-slide]");
       if (slide) {
         this.slideIndex = Number(slide.dataset.slide);
-        this.elementId = "";
+        this.elementId = ""; this.selectedElements.clear();
         this.paintSlides();
       }
       const sheet = e.target.closest("[data-sheet]");
       if (sheet) {
         this.sheetIndex = Number(sheet.dataset.sheet);
-        this.cell = "A1";
+        this.cell = "A1"; this.selectionEnd = "A1"; this.gridSignature = "";
         this.draw();
       }
     };
@@ -1208,6 +1292,10 @@ class Workspace {
         }
       }
       if (e.target.matches("[data-cell]")) {
+        const key = e.target.dataset.cell;
+        const cell = this.sheet().cells[key] ||= { value: "", style: {} };
+        cell.value = e.target.value;
+        this.changed();
         this.host.querySelector("[data-formula]").value = e.target.value;
       }
     };
@@ -1250,13 +1338,13 @@ class Workspace {
       "focusin",
       (e) => {
         if (e.target.matches("[data-cell]")) {
-          this.checkpoint();
-          this.cell = e.target.dataset.cell;
-          e.target.value = this.sheet().cells[this.cell]?.value || "";
+          if (!this.rangeFocusing) this.checkpoint();
+          if (!this.rangeFocusing) { this.cell = e.target.dataset.cell; this.selectionEnd = this.cell; }
+          e.target.value = this.sheet().cells[e.target.dataset.cell]?.value || "";
           this.refreshCells();
           e.target.select();
         }
-        if (e.target.matches("[data-element-text]")) this.checkpoint();
+        if (e.target.matches("[data-element-text],[data-notes]")) this.checkpoint();
       },
       { signal: this.bindController.signal },
     );
@@ -1286,6 +1374,7 @@ class Workspace {
     };
     host.onpointerdown = (e) => this.startDrag(e);
     host.onkeydown = (e) => {
+      if (this.basicsKey(e)) return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
         void this.save();
@@ -1367,9 +1456,7 @@ class Workspace {
             1,
             this.sheet().cols,
           );
-        this.host
-          .querySelector(`[data-cell="${Model.col(col)}${row}"]`)
-          ?.focus();
+        this.focusCell(Model.col(col) + row);
       }
       if (
         this.kind === "slides" &&
@@ -1440,9 +1527,14 @@ class Workspace {
     const target = event.target.closest("[data-element]");
     if (!target || event.target.isContentEditable) return;
     event.preventDefault();
-    this.selectElement(target.dataset.element);
+    if (event.shiftKey || event.metaKey || event.ctrlKey) { this.selectElement(target.dataset.element, true); return; }
+    if (!this.selectedElements.has(target.dataset.element)) this.selectElement(target.dataset.element);
+    target.focus({ preventScroll: true });
     this.checkpoint();
-    const el = this.element(),
+    this.dragging = true;
+    const group = this.slide().elements.filter(el => this.selectedElements.has(el.id));
+    const originals = new Map(group.map(el => [el.id, clone(el)]));
+    const el = this.slide().elements.find(el => el.id === target.dataset.element),
       initial = clone(el),
       box = this.host.querySelector("[data-stage]").getBoundingClientRect(),
       x = event.clientX,
@@ -1456,14 +1548,17 @@ class Workspace {
         el.w = clamp(initial.w + dx, 3, 100 - el.x);
         el.h = clamp(initial.h + dy, 3, 100 - el.y);
       } else {
-        el.x = clamp(initial.x + dx, 0, 100 - el.w);
-        el.y = clamp(initial.y + dy, 0, 100 - el.h);
+        const mx = clamp(dx, -Math.min(...group.map(e => originals.get(e.id).x)), 100 - Math.max(...group.map(e => originals.get(e.id).x + e.w)));
+        const my = clamp(dy, -Math.min(...group.map(e => originals.get(e.id).y)), 100 - Math.max(...group.map(e => originals.get(e.id).y + e.h)));
+        for (const item of group) { item.x = originals.get(item.id).x + mx; item.y = originals.get(item.id).y + my;
+          const node = this.host.querySelector(`[data-element="${CSS.escape(item.id)}"]`); node.style.left = item.x + "%"; node.style.top = item.y + "%"; }
       }
       for (const key of ["x", "y", "w", "h"])
         target.style[{ x: "left", y: "top", w: "width", h: "height" }[key]] =
           el[key] + "%";
     };
     const finish = () => {
+      this.dragging = false;
       target.removeEventListener("pointermove", move);
       target.removeEventListener("pointerup", finish);
       target.removeEventListener("pointercancel", finish);
@@ -1476,6 +1571,7 @@ class Workspace {
     target.addEventListener("pointercancel", finish);
   }
   setting(key, value) {
+    if (this.basicsSetting(key, value)) return;
     if (this.kind === "docs") {
       const chain = this.editor.chain().focus();
       if (key === "font") chain.setFontFamily(value).run();
@@ -1542,6 +1638,7 @@ class Workspace {
     this.refreshCells();
   }
   async action(action) {
+    if (await this.basicsAction(action)) return;
     if (action === "save") {
       await this.save();
       return;
@@ -1747,13 +1844,19 @@ class Workspace {
     this.draw();
   }
 }
+installBasics(Workspace);
+
+function workspaceKey(ctx) {
+  const share = ctx.officeEntry?.share;
+  return `${ctx.userId}:${ctx.tool}${share ? ':' + share.ownerId + ':' + share.id + ':' + share.token : ''}`;
+}
 export function hasWorkspace(ctx) {
-  return sessions.has(ctx.userId + ":" + ctx.tool);
+  return sessions.has(workspaceKey(ctx));
 }
 export async function attach(host, ctx) {
   if (mounted?.host === host) return;
   mounted?.detach();
-  const key = ctx.userId + ":" + ctx.tool;
+  const key = workspaceKey(ctx);
   let workspace = sessions.get(key);
   if (!workspace) {
     workspace = new Workspace(ctx, ctx.tool);

@@ -111,6 +111,7 @@
       "horizontalRule",
       "codeBlock",
       "image",
+      "table", "tableRow", "tableCell", "tableHeader",
     ];
     if (!node || !allowed.includes(node.type)) fail("不支持的文档内容。");
     const out = { type: node.type };
@@ -134,6 +135,16 @@
         out.attrs.start = num(node.attrs.start, 1, 1, 9999);
       if (node.attrs.lineHeight)
         out.attrs.lineHeight = String(num(node.attrs.lineHeight, 2, 1, 3));
+      if (["paragraph", "heading"].includes(node.type)) {
+        for (const key of ["firstLine", "spaceBefore", "spaceAfter"])
+          if (node.attrs[key] != null) out.attrs[key] = num(node.attrs[key], 0, 0, key === "firstLine" ? 8 : 72);
+      }
+      if (["tableCell", "tableHeader"].includes(node.type)) {
+        out.attrs.colspan = Math.floor(num(node.attrs.colspan, 1, 1, 20));
+        out.attrs.rowspan = Math.floor(num(node.attrs.rowspan, 1, 1, 100));
+        out.attrs.colwidth = Array.isArray(node.attrs.colwidth) && node.attrs.colwidth.length === out.attrs.colspan
+          ? node.attrs.colwidth.map(n => Math.round(num(n, 100, 40, 1200))) : null;
+      }
     }
     if (node.marks)
       out.marks = node.marks
@@ -168,6 +179,9 @@
         richNode(child, depth + 1, budget),
       );
     }
+    if (node.type === "table" && (!out.content?.length || out.content.length > 100 || out.content.some(n => n.type !== "tableRow"))) fail("表格需要 1–100 行。");
+    if (node.type === "tableRow" && out.content && (out.content.reduce((n,c) => n + (c.attrs?.colspan || 1), 0) > 20 || out.content.some(n => !["tableCell", "tableHeader"].includes(n.type)))) fail("表格最多 20 列。");
+    if (["tableCell", "tableHeader"].includes(node.type) && !out.content?.length) fail("表格单元格需要段落。");
     return out;
   }
   function normalize(kind, value) {
@@ -287,7 +301,10 @@
             },
           };
         }
-        return { id: str(sheet.id || id(), 100), name, rows, cols, cells };
+        const dimensions = (source, limit, min, max) => Object.fromEntries(Object.entries(source || {}).filter(([k]) => /^[1-9]\d*$/.test(k) && Number(k) <= limit).map(([k,v]) => [k, Math.round(num(v, min, min, max))]));
+        return { id: str(sheet.id || id(), 100), name, rows, cols, cells,
+          ...(sheet.columnWidths ? { columnWidths: dimensions(sheet.columnWidths, cols, 48, 500) } : {}),
+          ...(sheet.rowHeights ? { rowHeights: dimensions(sheet.rowHeights, rows, 24, 300) } : {}) };
       }),
     };
   }

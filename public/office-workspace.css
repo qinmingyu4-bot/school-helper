@@ -219,6 +219,14 @@
   outline: 2px solid var(--green);
   outline-offset: 2px;
 }
+/* Text fields borrow their focus color from the current palette's text. */
+:root .app-shell .workspace .office-shell :is(input:not([type="color"]), textarea):focus-visible {
+  outline: 1px solid var(--muted);
+  outline-offset: 0;
+}
+:root .app-shell .workspace .office-shell .office-grid input:focus-visible {
+  outline-offset: -1px;
+}
 @media (max-width: 700px) {
   :root .app-shell .workspace:has(> .tools-tabs) > .page-header { display: none; }
   :root .app-shell .workspace > .office-shell { margin: 12px 28px 24px; }

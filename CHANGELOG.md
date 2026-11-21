@@ -8,8 +8,13 @@
 - Generated files retain their preview, download and revision workspace. Local
   recovery drafts remain visible; returning from the editor saves first and
   keeps unsaved work visible when a save fails.
-- Library entry loads metadata only and keeps editor execution/document reads on
-  demand. Preserve bilingual UI, account palettes, dark mode and mobile layouts.
+- Display a thumbnail card grid with a fixed first blank-document creation card
+  (and corresponding blank spreadsheet/presentation cards), filenames, update
+  dates and source labels. Generated files reuse their available PNG previews.
+- Paint the directory before loading visible native first-page thumbnails, with
+  at most two preview reads at a time and account/version-scoped caching. Keep
+  editor execution on explicit open/new actions; preview failure never blocks
+  opening a file. Preserve bilingual UI, account palettes, dark mode and mobile layouts.
 
 ## 1.14.1 — 2026-11-20 — Office first-open performance
 

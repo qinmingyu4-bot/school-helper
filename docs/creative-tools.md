@@ -10,11 +10,12 @@ PPTX jobs, identifying each source. Images and course-specific Cheatsheets remai
 in their own tools. Files sort by last update, with recoverable local drafts first;
 name search and source filters operate on the current account's directory.
 
-Choose **New blank file** to create a document, or click an existing filename to
-open it. Entering the library never creates a blank file or automatically opens
-the last document. **Create with AI** opens the existing generator, and generated
+The first card is always **Blank document**, **Blank spreadsheet** or **Blank
+presentation**, including while searching or filtering. Click it to create a file,
+or click any existing preview card to open that file. Entering the library never
+creates a blank file or automatically opens the last document. **Create with AI** opens the existing generator, and generated
 filenames open the corresponding preview/download/revision workspace. Ready files
-also have a direct private download link in their library row.
+also have a direct private download link on their library card.
 
 **Back to files** saves current edits before returning. If saving fails or a
 version conflict needs attention, the editor stays visible. Recovery drafts are
@@ -24,7 +25,13 @@ the existing save/conflict checks instead of discarding recovered work.
 The library reuses the existing account-scoped metadata cache and loads native
 and generated directories independently, with partial-failure feedback and a
 refresh control. The editor bundle may preload but is executed only after an
-explicit open/new action. No schema or file migration is needed.
+explicit open/new action. Native first-page thumbnails load only as cards approach
+the viewport, with two concurrent reads at most, and are cached by account and file
+version/update time. They render read-only content without loading the editor,
+executing formulas or fetching embedded remote images. Generated files reuse their
+first PNG preview when available, otherwise showing the file type and summary.
+A failed preview leaves the file usable; Refresh retries failed native previews.
+No schema or file migration is needed.
 
 ## Available Features
 

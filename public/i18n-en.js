@@ -8,6 +8,10 @@
 文件库|File library
 文件导航|File navigation
 ← 返回文件库|← Back to files
+空白文档|Blank document
+空白表格|Blank spreadsheet
+空白演示|Blank presentation
+预览暂不可用|Preview unavailable
 新建空白文件|New blank file
 用 AI 创建|Create with AI
 搜索文件|Search files

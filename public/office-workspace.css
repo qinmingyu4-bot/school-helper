@@ -8,38 +8,58 @@
 :root .app-shell .workspace .office-library button, :root .app-shell .workspace .office-library a { border: 0; box-shadow: none; background: transparent; color: var(--ink); font: inherit; font-size: 12px; font-weight: 450; text-decoration: none; }
 :root .app-shell .workspace .office-library button { min-height: 34px; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
 :root .app-shell .workspace .office-library button:hover { background: var(--soft); }
-:root .app-shell .workspace .office-library .office-library-new { display: inline-flex; gap: 7px; align-items: center; padding: 7px 13px; color: var(--panel); background: var(--ink); }
-:root .app-shell .workspace .office-library .office-library-new:hover { opacity: .88; }
 .office-library-controls { display: flex; gap: 10px; align-items: center; margin-bottom: 18px; }
 :root .app-shell .workspace .office-library-controls :is(input,select) { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 7px; box-shadow: none; font: inherit; font-size: 12px; min-height: 36px; padding: 7px 11px; }
 .office-library-controls input { flex: 1; max-width: 360px; min-width: 0; }
 :root .app-shell .workspace .office-library-controls select { width: auto; min-width: 125px; padding-right: 30px; }
 .office-library-controls button { margin-left: auto; }
-.office-library-columns, .office-library-row { display: grid; grid-template-columns: minmax(160px,1fr) 100px 130px 62px; gap: 16px; align-items: center; }
-.office-library-columns { padding: 10px 0; color: var(--muted); font-size: 11px; border-bottom: 1px solid var(--line); }
-.office-library-row { min-height: 70px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
-.office-library-row:hover { background: color-mix(in srgb,var(--soft) 60%,transparent); }
-.office-library-filename { display: flex; gap: 14px; align-items: center; min-width: 0; }
-.office-file-icon { display: flex; flex: 0 0 36px; height: 43px; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 3px; color: var(--green); font-size: 8px; letter-spacing: .2px; }
-:root .app-shell .workspace .office-library-filename button { display: grid; gap: 4px; padding: 3px 0; min-width: 0; text-align: left; width: 100%; border-radius: 2px; }
-.office-library-filename button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
-.office-library-filename small, .office-library-source, .office-library-row time { color: var(--muted); font-size: 11px; }
-.office-library-row-actions { text-align: right; }
-:root .app-shell .workspace .office-library-row-actions :is(a,button) { color: var(--green); }
-.office-library-empty { padding: 52px 12px; border-top: 1px solid var(--line); color: var(--muted); text-align: center; font-size: 13px; }
+.office-library-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(200px,1fr)); gap: 24px; list-style: none; padding: 0; margin: 0; }
+.office-library-card { position: relative; min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+.office-library-card:hover, .office-library-card:focus-within { border-color: var(--green); }
+:root .app-shell .workspace .office-library .office-card-open { display: block; width: 100%; height: 100%; padding: 0; border-radius: 0; text-align: left; background: transparent; }
+:root .app-shell .workspace .office-library .office-card-open:hover { background: transparent; }
+.office-card-preview { position: relative; display: flex; align-items: flex-start; justify-content: center; width: 100%; aspect-ratio: 600 / 760; overflow: hidden; background: var(--soft); border-bottom: 1px solid var(--line); }
+.office-card-preview > svg { display: block; width: 100%; height: 100%; background: #fff; }
+.office-card-preview > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: top center; background: #fff; }
+.office-preview-slides { align-items: center; }
+.office-preview-slides > svg { height: auto; }
+.office-preview-blank { align-items: center; background: var(--panel); }
+.office-preview-blank > span { display: flex; justify-content: center; align-items: center; width: 54px; height: 54px; font-size: 44px; font-weight: 300; line-height: 1; color: var(--green); }
+.office-card-details { display: grid; gap: 9px; padding: 16px; }
+.office-card-details > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 500; line-height: 1.45; }
+.office-card-meta { display: flex; align-items: center; gap: 8px; min-height: 22px; color: var(--muted); font-size: 11px; }
+.office-file-icon { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 29px; height: 22px; border: 1px solid var(--line); border-radius: 3px; color: var(--green); font-size: 7px; font-weight: 600; }
+.office-card-meta time { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.office-card-source { min-height: 15px; font-size: 10px; line-height: 1.5; color: var(--muted); }
+.office-card-downloadable .office-card-meta, .office-card-downloadable .office-card-source { padding-right: 25px; }
+:root .app-shell .workspace .office-library .office-card-download { position: absolute; bottom: 15px; right: 9px; display: grid; place-items: center; width: 34px; height: 34px; color: var(--muted); border-radius: 5px; }
+:root .app-shell .workspace .office-library .office-card-download:hover { color: var(--green); background: var(--soft); }
+.office-card-download svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.office-library-blank .office-card-details::after { content: ""; min-height: 15px; }
+.office-preview-fallback { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; width: 100%; height: 100%; padding: 28px; color: var(--muted); }
+.office-preview-format { font-size: 20px; font-weight: 450; letter-spacing: 1px; opacity: .65; }
+.office-preview-summary { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 7; overflow: hidden; font-size: 11px; line-height: 1.8; overflow-wrap: anywhere; }
+.office-preview-fallback small { font-size: 10px; }
+.office-library-empty { padding: 24px 0; color: var(--muted); font-size: 12px; }
 .office-library-error { color: var(--danger, #b54141); font-size: 12px; margin: 12px 0; }
 .office-library :is(button,a,input,select):focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+:root .app-shell .workspace .office-library .office-card-open:focus-visible { outline-offset: -3px; }
 @media(max-width: 760px) {
   .office-library { margin: 20px 16px; }
-  .office-library-header { align-items: flex-start; flex-direction: column; gap: 15px; }
+  .office-library-header { align-items: center; gap: 15px; }
   .office-library-controls { flex-wrap: wrap; gap: 8px; }
   .office-library-controls input { max-width: none; flex-basis: 100%; }
-  .office-library-columns { display: none; }
-  .office-library-row { grid-template-columns: minmax(0,1fr) auto; gap: 5px 12px; padding: 14px 0; }
-  .office-library-filename { grid-column: 1; grid-row: 1; gap: 10px; }
-  .office-library-source { grid-column: 1; grid-row: 2; padding-left: 46px; }
-  .office-library-row time { grid-column: 1; grid-row: 3; padding-left: 46px; }
-  .office-library-row-actions { grid-column: 2; grid-row: 1 / 4; }
+  .office-library-grid { grid-template-columns: repeat(auto-fill,minmax(160px,1fr)); gap: 16px; }
+  .office-card-details { padding: 12px; }
+  .office-card-details > strong { font-size: 13px; }
+}
+@media(max-width: 400px) {
+  .office-library-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+  .office-card-details { padding: 10px; gap: 7px; }
+  .office-card-meta { gap: 5px; font-size: 10px; }
+  .office-file-icon { flex-basis: 23px; font-size: 6px; }
+  .office-preview-fallback { padding: 14px; }
+  .office-preview-summary { -webkit-line-clamp: 4; font-size: 10px; }
 }
 :root .app-shell .workspace > .office-shell {
   border: 0;

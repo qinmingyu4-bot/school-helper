@@ -16,8 +16,8 @@ Notification refresh and synchronization controls belong to the learning view.
 
 Settings → 邮箱授权 manages one Gmail and one Outlook / Microsoft 365 mailbox per
 StudyBridge account. The mailbox can differ from the login email. Each connection
-requires an explicit checkbox acknowledging inbox access and AI processing, then
-the provider's own OAuth consent. Google login retains `openid email profile` and
+requires an explicit checkbox acknowledging connection/read access, then
+the provider's own OAuth consent. Binding does not start polling or AI analysis. A separate per-provider **开启自动 AI 分析** control explicitly opts in; old connections without `analysisEnabled === true` remain off. Background classification/extraction and manual email interpretation/reply tasks use `gpt-6-luna`, without upgrading mail to Sol. Google login retains `openid email profile` and
 does not read mail. The mailbox callback returns to Email Assistant with success,
 declined or failure feedback. No access/refresh token is returned to the browser.
 
@@ -113,7 +113,7 @@ contact real accounts and cannot verify provider registration or public approval
 
 ## Synchronization and review
 
-The server worker runs independently of open browser pages. The initial sync
+The server worker runs independently of open browser pages, only for explicitly opted-in connections. Turning analysis off preserves tokens, cursors, queued messages, deduplication markers, notices and confirmed schedules. A paid request already sent can finish and persist its result once; the lease is retained until completion so toggling off/on cannot duplicate that call. Sync and worker entry points both enforce consent; enabling does not clear retry backoff. Rebinding requires a new opt-in. The initial sync
 reads the last seven days of the Inbox. Gmail uses paginated message backfill and
 then history checkpoints; Outlook uses per-Inbox paginated delta queries with
 immutable IDs. Read/unread status, mailbox contents and provider calendars are

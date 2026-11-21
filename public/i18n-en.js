@@ -5,6 +5,19 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+绑定邮箱后，可单独开启自动 AI 分析。|After linking a mailbox, you can separately enable automatic AI analysis.
+绑定只建立连接，不会自动分析邮件。开启自动 AI 分析后，StudyBridge 才会定期读取收件箱，将邮件主题、发件人、时间和正文交给 AI 识别学习通知、作业和活动，包括最终判定为无关的邮件。首次检查最近 7 天，不读取附件；结果需你确认后才加入日程。|Linking only connects your mailbox. Once you enable automatic AI analysis, StudyBridge periodically reads your Inbox and sends subjects, senders, times and message text to AI to identify study notices, assignments and events, including messages found to be unrelated. The first check covers seven days, excluding attachments. You confirm results before adding them to your schedule.
+我同意连接邮箱并授予收件箱读取权限。自动 AI 分析由我另行开启。|I agree to connect my mailbox and grant Inbox read access. I will enable automatic AI analysis separately.
+绑定不会自动分析邮件，可在上方单独开启。|Linking does not start AI analysis. You can enable it separately above.
+自动 AI 分析已开启|Automatic AI analysis is on
+自动 AI 分析已关闭|Automatic AI analysis is off
+开启自动 AI 分析|Enable automatic AI analysis
+关闭自动 AI 分析|Turn off automatic AI analysis
+自动分析已开启|Auto analysis on
+自动分析已关闭|Auto analysis off
+请先勾选下方的邮箱连接授权说明。|Please acknowledge the mailbox connection permission below.
+在设置中绑定邮箱并开启自动 AI 分析后，学习通知会显示在这里。|Link your mailbox and enable automatic AI analysis in Settings to see study notices here.
+邮箱已绑定。可在设置中单独开启自动 AI 分析。|Mailbox linked. You can separately enable automatic AI analysis in Settings.
 文件库|File library
 文件导航|File navigation
 ← 返回文件库|← Back to files

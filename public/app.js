@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.15.0";
+  const VERSION = "1.15.1";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -4198,7 +4198,7 @@
       const urlPage = new URL(location.href).searchParams.get("page");
       const billingResult = new URL(location.href).searchParams.get("billing");
       const mailboxResult = new URL(location.href).searchParams.get("mailbox");
-      if (mailboxResult) mailboxView.setBanner(({ connected: ui.text("邮箱已绑定，正在整理学习通知。"), denied: ui.text("此次邮箱授权未完成，你仍可以粘贴邮件生成回复。"), failed: ui.text("邮箱绑定未成功，请在设置中重试。") })[mailboxResult] || ui.text("请在设置中查看邮箱连接状态。"), { showInbox: mailboxResult === "connected" });
+      if (mailboxResult) mailboxView.setBanner(({ connected: ui.text("邮箱已绑定。可在设置中单独开启自动 AI 分析。"), denied: ui.text("此次邮箱授权未完成，你仍可以粘贴邮件生成回复。"), failed: ui.text("邮箱绑定未成功，请在设置中重试。") })[mailboxResult] || ui.text("请在设置中查看邮箱连接状态。"), { showInbox: mailboxResult === "connected" });
       const savedPage = localStorage.getItem("studybridge.page");
       const page = urlPage || savedPage || "study";
       await loadPage(page);

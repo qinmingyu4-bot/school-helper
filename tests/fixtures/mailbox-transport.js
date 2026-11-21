@@ -25,8 +25,13 @@ global.fetch = async (input, options = {}) => {
     return Response.json({ id: "officehours", subject: "Professor office hours", from: { emailAddress: { name: "Professor", address: "prof@university.test" } }, receivedDateTime: new Date().toISOString(),
       body: { contentType: "text", content: "Office hours November 17, 2026 at 14:00 Toronto time." }, webLink: "https://outlook.office.com/mail/inbox/id/officehours" });
   }
+  if (url.hostname === "api.openai.com" && url.pathname === "/v1/responses") {
+    if (JSON.parse(options.body).model !== "gpt-6-luna") throw new Error("Manual email tasks must use Luna");
+    return Response.json({ output_text: "Dear Professor, thank you for the assignment reminder." });
+  }
   if (url.hostname === "api.openai.com" && url.pathname === "/v1/chat/completions") {
     const body = JSON.parse(options.body), source = JSON.parse(body.messages[1].content);
+    if (body.model !== "gpt-6-luna") throw new Error("Mailbox must use Luna without escalation");
     const relevant = !source.body.includes("Buy now"), dateOnly = source.body.includes("Time to follow");
     const content = JSON.stringify({ relevant, summary: relevant ? "教授发来学习安排，请核对时间。" : "促销", items: !relevant ? [] : [{ kind: source.subject.includes("STA437") ? "DDL" : "EVENT", title: source.subject, course: source.subject.includes("STA437") ? "STA437" : "MAT135", startsAt: dateOnly ? "" : source.subject.includes("STA437") ? "2026-11-16T18:00" : "2026-11-17T14:00", date: dateOnly ? "2026-11-15" : "", evidence: source.body, warning: dateOnly ? "请补充具体时间。" : "" }] });
     return Response.json({ choices: [{ message: { content } }] });

@@ -164,7 +164,7 @@ const googleClientId = String(process.env.GOOGLE_CLIENT_ID || "").trim();
 const googleClientSecret = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();
 const mailbox = createMailboxService({ db, analyze: (messages, userId, messageId) => usage.background(userId, "mailbox", () => aiUsage.runOperation(userId, `mailbox:${messageId}`, () => {
   if (!process.env.OPENAI_API_KEY) throw new Error("邮件识别尚未配置。");
-  return callAiWithChatCompletions(messages, complexAiModel, null, { signal: AbortSignal.timeout(60000), store: false });
+  return callAiWithChatCompletions(messages, "gpt-6-luna", null, { signal: AbortSignal.timeout(60000), store: false });
 })) });
 let cachedAiHealth = null;
 let lastAiRequest = null;
@@ -1272,6 +1272,7 @@ function buildPreferenceInstruction(preferences = {}) {
 }
 
 function chooseAiModel(context) {
+  if (context.email) return "gpt-6-luna";
   return selectAiModel(context, { simpleModel: simpleAiModel, complexModel: complexAiModel });
 }
 
@@ -1462,7 +1463,7 @@ async function callAi(messages, model = simpleAiModel, stream = null) {
   return callAiWithChatCompletions(messages, model, stream);
 }
 
-async function studyAnswerContext({ user, course, conversationId = courseConversations.DEFAULT_ID, message, mode, attachments, signal }) {
+async function studyAnswerContext({ user, course, conversationId = courseConversations.DEFAULT_ID, message, mode, attachments, signal, email = false }) {
   const [documents, history, scheduleItems, weatherContext, savedAttachments] = await Promise.all([
     course.chatType === "general" ? [] : db.listDocuments(user.id, course.id),
     db.listMessages(user.id, course.id, 80, conversationId),
@@ -1477,7 +1478,7 @@ async function studyAnswerContext({ user, course, conversationId = courseConvers
     }
     catch { return null; }
   }))).filter(Boolean);
-  const model = chooseAiModel({ history, mode, message, attachments, documents, savedAttachments: course.chatType === "general" ? [] : [...documentPdfs, ...savedAttachments] });
+  const model = chooseAiModel({ email, history, mode, message, attachments, documents, savedAttachments: course.chatType === "general" ? [] : [...documentPdfs, ...savedAttachments] });
   const missingVisuals = missingStudyVisuals({ message, currentAttachments: attachments, attachments: savedAttachments, documents,
     visuals: selectStudyVisuals([...documentPdfs, ...savedAttachments], message, attachments) });
   if (missingVisuals.length) return { model, blockedReply: missingVisualReply(missingVisuals, !/[\u3400-\u9fff]/.test(message)) };
@@ -2433,7 +2434,7 @@ async function routeApi(req, res) {
       if (before.length > 200) return sendError(res, 400, "邮件分页位置无效。");
       return respond({ ...await mailbox.status(auth.user.id, before), csrfToken });
     }
-    const connection = url.pathname.match(/^\/api\/mailbox\/(gmail|outlook)\/(start|callback|disconnect|sync)$/);
+    const connection = url.pathname.match(/^\/api\/mailbox\/(gmail|outlook)\/(start|callback|disconnect|sync|analysis)$/);
     if (connection?.[2] === "callback" && method === "GET") {
       const provider = connection[1];
       let result = "failed";
@@ -2461,12 +2462,13 @@ async function routeApi(req, res) {
       if (connection) {
         const [, provider, action] = connection;
         if (action === "start") {
-          if (body.consent !== true) return sendError(res, 400, "请先同意读取收件箱并使用 AI 识别学习事项。");
+          if (body.consent !== true) return sendError(res, 400, "请先同意连接邮箱并授予读取权限。");
           const current = await db.getMailbox(auth.user.id, provider);
           const oauth = mailboxProviders.startOAuth(provider, { ...auth, mailboxGeneration: current?.generation || null }, body.timeZone || "UTC");
           res.setHeader("set-cookie", oauth.cookie);
           return respond({ url: oauth.url });
         }
+        if (action === "analysis") return respond({ connection: await mailbox.setAnalysisEnabled(auth.user.id, provider, body.enabled) });
         if (action === "disconnect") { await mailbox.disconnect(auth.user.id, provider); return respond({ ok: true }); }
         if (action === "sync") { return respond({ connection: await mailbox.requestSync(auth.user.id, provider) }, 202); }
       }
@@ -3677,7 +3679,7 @@ if (directMessageMatch && method === "POST") {
       if (!message) return sendError(res, 400, "Message is required.");
       const effectiveUser = body.learningStyle && typeof body.learningStyle === "object" && !Array.isArray(body.learningStyle)
         ? { ...user, preferences: learningStyle.normalize(body.learningStyle) } : user;
-      const context = { user: effectiveUser, course, conversationId, message, mode, attachments };
+      const context = { user: effectiveUser, course, conversationId, message, mode, attachments, email };
       if (body.background === true && course.chatType !== "general" && process.env.OPENAI_API_KEY) {
         let sources = attachments.map((item, index) => ({ ...item, id: `upload:${index}` }));
         if (!sources.length && require("./lib/problem-set").wantsWholeSet(message, mode)) {

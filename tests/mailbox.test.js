@@ -91,7 +91,7 @@ for (const dynamo of [false, true]) test(`mailbox ${dynamo ? "DynamoDB" : "local
     const source = JSON.parse(messages[1].content); seen.push(source.body);
     return JSON.stringify({ relevant: source.body !== "advert", summary: "学习通知", items: source.body === "study" ? [{ kind: "DDL", title: "Assignment", startsAt: "2026-11-16T18:00", evidence: "Due Nov 16" }] : [] });
   } });
-  await service.connect("alice", "gmail", tokens, "America/Toronto"); await service.sync("alice", "gmail");
+  await service.connect("alice", "gmail", tokens, "America/Toronto"); await service.setAnalysisEnabled("alice", "gmail", true); await service.sync("alice", "gmail");
   let status = await service.status("alice");
   assert.equal(status.drafts.length, 2); assert.equal((await db.listCourses("alice")).length, 0);
   assert.doesNotMatch(JSON.stringify(status), /access-private|refresh-private|tokens|lease/);
@@ -124,7 +124,7 @@ test("unlink during AI processing prevents late extracted drafts and stops futur
   const service = createMailboxService({ db, env, transport: { profile: async () => ({ email: "mail@example.test" }),
     page: async () => ({ ids: ["one"], sync: {}, more: false }), message: async () => ({ text: "academic", receivedAt: new Date().toISOString(), subject: "Study" }) },
     analyze: async () => { entered(); await wait; return '{"relevant":true,"summary":"Study","items":[]}'; } });
-  await service.connect("alice", "gmail", tokens, "UTC");
+  await service.connect("alice", "gmail", tokens, "UTC"); await service.setAnalysisEnabled("alice", "gmail", true);
   await started; await service.disconnect("alice", "gmail"); release(); await service.sync("alice", "gmail");
   assert.deepEqual((await service.status("alice")).drafts, []);
 });
@@ -132,7 +132,7 @@ test("unlink during AI processing prevents late extracted drafts and stops futur
 test("background workers resume durable queues after restart, refresh tokens and coordinate leases across processes", async (t) => {
   const db = await setup(t), clock = { value: Date.now() }, analyzed = [], refreshed = [];
   const tokens = { accessToken: "expired", refreshToken: "refresh", expiresAt: 0 };
-  await db.changeMailbox("alice", "outlook", () => ({ userId: "alice", provider: "outlook", active: true, generation: "restart-generation", email: "mail@example.test", timeZone: "UTC",
+  await db.changeMailbox("alice", "outlook", () => ({ userId: "alice", provider: "outlook", active: true, analysisEnabled: true, generation: "restart-generation", email: "mail@example.test", timeZone: "UTC",
     tokens: p.seal(tokens, env), since: new Date(clock.value - 86400000).toISOString(), sync: { link: "saved-delta" }, queue: ["one", "two", "three", "four"], more: false, nextSyncAt: 0 }));
   const transport = {
     refresh: async (_provider, token) => { refreshed.push(token); return { accessToken: "renewed", refreshToken: "rotated", expiresAt: clock.value + 3600000 }; },
@@ -154,7 +154,7 @@ test("background workers resume durable queues after restart, refresh tokens and
 test("temporary provider failures back off without consuming queued mail, while revoked consent pauses retries", async (t) => {
   const db = await setup(t), clock = { value: Date.now() };
   const tokens = { accessToken: "valid", refreshToken: "refresh", expiresAt: clock.value + 3600000 };
-  await db.changeMailbox("alice", "gmail", () => ({ userId: "alice", provider: "gmail", active: true, generation: "backoff-generation", tokens: p.seal(tokens, env), queue: ["keep"], nextSyncAt: 0 }));
+  await db.changeMailbox("alice", "gmail", () => ({ userId: "alice", provider: "gmail", active: true, analysisEnabled: true, generation: "backoff-generation", tokens: p.seal(tokens, env), queue: ["keep"], nextSyncAt: 0 }));
   let calls = 0, revoked = false;
   const service = createMailboxService({ db, env, now: () => clock.value, analyze: async () => { throw new Error("Should not be reached"); },
     transport: { message: async () => { calls++; throw Object.assign(new Error("private-provider-detail"), { providerStatus: revoked ? 403 : 429, retryAfter: 900 }); } } });
@@ -191,7 +191,7 @@ for (const dynamo of [false,true]) test(`mailbox ${dynamo?'DynamoDB':'local'}: i
   const db=await setup(t,dynamo);let time=Date.parse('2026-11-21T12:00:00Z'),calls=0;
   const tokens={accessToken:'fixture',refreshToken:'fixture',expiresAt:time+86400000};
   const config={db,env,now:()=>time,transport:{profile:async()=>({email:'fixture@example.test'}),page:async()=>({ids:['ad'],sync:{},more:false}),message:async()=>({text:'private ad',receivedAt:'2026-11-21T10:00:00Z',subject:'ad'})},analyze:async()=>{calls++;return '{"relevant":false,"items":[]}';}};
-  let service=createMailboxService(config);await service.connect('alice','gmail',tokens,'UTC');await service.sync('alice','gmail');
+  let service=createMailboxService(config);await service.connect('alice','gmail',tokens,'UTC'); await service.setAnalysisEnabled("alice", "gmail", true);await service.sync('alice','gmail');
   const generation=(await db.getMailbox('alice','gmail')).generation;
   const id=`2026-11-21T10:00:00.000Z#gmail#${require('node:crypto').createHash('sha256').update(`${generation}:ad`).digest('hex').slice(0,32)}`;
   assert.ok(await db.getMailboxAnalysis('alice',id));assert.doesNotMatch(JSON.stringify(await db.getMailboxAnalysis('alice',id)),/private ad/);
@@ -202,9 +202,82 @@ for (const dynamo of [false,true]) test(`mailbox ${dynamo?'DynamoDB':'local'}: i
 test('malformed paid mailbox responses back off durably instead of retrying at a fixed rate',async t=>{
   const db=await setup(t);let time=Date.parse('2026-11-21T12:00:00Z'),calls=0;
   const config={db,env,now:()=>time,transport:{profile:async()=>({email:'fixture@example.test'}),page:async()=>({ids:['bad'],sync:{},more:false}),message:async()=>({text:'mail',receivedAt:'2026-11-21T10:00:00Z'})},analyze:async()=>{calls++;return 'invalid';}};
-  let service=createMailboxService(config);await service.connect('alice','gmail',{accessToken:'a',refreshToken:'r',expiresAt:time+86400000},'UTC');await service.sync('alice','gmail');
+  let service=createMailboxService(config);await service.connect('alice','gmail',{accessToken:'a',refreshToken:'r',expiresAt:time+86400000},'UTC'); await service.setAnalysisEnabled("alice", "gmail", true);await service.sync('alice','gmail');
   assert.equal((await db.getMailbox('alice','gmail')).nextSyncAt-time,300000);
   time+=300001;service=createMailboxService(config);await service.sync('alice','gmail');
   assert.equal((await db.getMailbox('alice','gmail')).nextSyncAt-time,600000);
   time+=300001;await service.sync('alice','gmail');assert.equal(calls,2);assert.deepEqual((await db.getMailbox('alice','gmail')).queue,['bad']);
+});
+
+for (const dynamo of [false, true]) test(`mailbox ${dynamo ? 'DynamoDB' : 'local'}: binding and legacy connections never analyze without separate opt-in`, async t => {
+  const db = await setup(t, dynamo); let calls = 0, pages = 0; const receivedAt = new Date().toISOString();
+  const config = { db, env, transport: { profile: async () => ({ email: 'fixture@example.test' }),
+    page: async () => { pages++; return { ids: ['one'], sync: {}, more: false }; },
+    message: async () => ({ text: 'mail', receivedAt }) },
+    analyze: async () => { calls++; return '{"relevant":true,"summary":"Study","items":[]}'; } };
+  let service = createMailboxService(config);
+  await service.connect('alice', 'gmail', { accessToken: 'a', refreshToken: 'r', expiresAt: Date.now() + 86400000 }, 'UTC');
+  await service.tick(); await service.sync('alice', 'gmail');
+  assert.equal(pages, 0); assert.equal(calls, 0);
+  assert.equal((await service.status('alice')).connections[0].analysisEnabled, false);
+  // Simulate a pre-consent deployment row without migrating or deleting data.
+  await db.changeMailbox('alice', 'gmail', row => { const { analysisEnabled, ...legacy } = row; return legacy; });
+  service = createMailboxService(config); await service.tick();
+  await assert.rejects(service.requestSync('alice', 'gmail'), /开启自动/);
+  await assert.rejects(service.setAnalysisEnabled('alice', 'gmail', 'true'), /请选择/);
+  assert.equal(pages, 0);
+  await service.setAnalysisEnabled('alice', 'gmail', true); await service.sync('alice', 'gmail');
+  assert.equal(calls, 1);
+  const before = await db.getMailbox('alice', 'gmail');
+  await service.setAnalysisEnabled('alice', 'gmail', false);
+  service = createMailboxService(config); await service.tick();
+  const after = await db.getMailbox('alice', 'gmail');
+  assert.equal(after.tokens, before.tokens); assert.equal(after.generation, before.generation);
+  assert.equal((await service.status('alice')).drafts.length, 1); assert.equal(calls, 1);
+  await service.setAnalysisEnabled('alice', 'gmail', true); await service.sync('alice', 'gmail');
+  assert.equal(calls, 1, 're-enabling retains deduplication');
+});
+
+for (const phase of ['message', 'analyze']) test(`switching off during ${phase} stops subsequent paid calls and retains completed work`, async t => {
+  const db = await setup(t); let calls = 0, release, entered;
+  const wait = new Promise(resolve => { release = resolve; }), started = new Promise(resolve => { entered = resolve; });
+  const config = { db, env, transport: { profile: async () => ({ email: 'fixture@example.test' }),
+    page: async () => ({ ids: ['one', 'two'], sync: {}, more: false }),
+    message: async () => { if (phase === 'message') { entered(); await wait; } return { text: 'mail', receivedAt: new Date().toISOString() }; } },
+    analyze: async () => { calls++; if (phase === 'analyze') { entered(); await wait; } return '{"relevant":false,"items":[]}'; } };
+  const service = createMailboxService(config);
+  await service.connect('alice', 'gmail', { accessToken: 'a', refreshToken: 'r', expiresAt: Date.now() + 86400000 }, 'UTC');
+  await service.setAnalysisEnabled('alice', 'gmail', true); await started;
+  await service.setAnalysisEnabled('alice', 'gmail', false);
+  await createMailboxService(config).tick(); release(); await service.sync('alice', 'gmail');
+  assert.equal(calls, phase === 'analyze' ? 1 : 0);
+  const row = await db.getMailbox('alice', 'gmail');
+  assert.equal(row.leaseUntil, 0); assert.equal(row.analysisEnabled, false);
+  assert.deepEqual(row.queue, phase === 'analyze' ? ['two'] : ['one', 'two']);
+});
+
+test('analysis consent toggles preserve failure backoff', async t => {
+  const db = await setup(t); const nextSyncAt = Date.now() + 86400000;
+  await db.changeMailbox('alice', 'gmail', () => ({ userId: 'alice', provider: 'gmail', active: true, analysisEnabled: true, generation: 'g', error: 'retry later', nextSyncAt }));
+  const service = createMailboxService({ db, env, analyze: async () => assert.fail('must not call'), transport: {} });
+  await service.setAnalysisEnabled('alice', 'gmail', false); await service.setAnalysisEnabled('alice', 'gmail', true); await service.sync('alice', 'gmail');
+  assert.equal((await db.getMailbox('alice', 'gmail')).nextSyncAt, nextSyncAt);
+});
+
+test('rapid off/on while AI is in flight keeps the lease across workers and saves the paid result once', async t => {
+  const db = await setup(t, true); let calls = 0, release, entered;
+  const wait = new Promise(resolve => { release = resolve; }), started = new Promise(resolve => { entered = resolve; });
+  const receivedAt = new Date().toISOString();
+  const config = { db, env, transport: { profile: async () => ({ email: 'fixture@example.test' }),
+    page: async () => ({ ids: ['one'], sync: {}, more: false }), message: async () => ({ text: 'mail', receivedAt }) },
+    analyze: async () => { calls++; entered(); await wait; return '{"relevant":false,"items":[]}'; } };
+  const first = createMailboxService(config), second = createMailboxService(config);
+  await first.connect('alice', 'gmail', { accessToken: 'a', refreshToken: 'r', expiresAt: Date.now() + 86400000 }, 'UTC');
+  await first.setAnalysisEnabled('alice', 'gmail', true); await started;
+  const lease = (await db.getMailbox('alice', 'gmail')).lease;
+  await second.setAnalysisEnabled('alice', 'gmail', false); await second.setAnalysisEnabled('alice', 'gmail', true); await second.tick();
+  assert.equal((await db.getMailbox('alice', 'gmail')).lease, lease); assert.equal(calls, 1);
+  release(); await first.sync('alice', 'gmail');
+  await second.setAnalysisEnabled('alice', 'gmail', false); await second.setAnalysisEnabled('alice', 'gmail', true); await second.sync('alice', 'gmail');
+  assert.equal(calls, 1); assert.deepEqual((await db.getMailbox('alice', 'gmail')).queue, []);
 });

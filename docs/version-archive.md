@@ -1,5 +1,12 @@
 # StudyBridge Version Archive
 
+## 1.15.1 — 2026-11-21
+
+- PATCH from verified AWS 1.15.0 (`f1a56e615bd0de335b4581fe6b534555defe7788`): fix automatic mailbox analysis implicitly enabled by binding and unnecessarily expensive mail routing.
+- New and legacy connections require a separate explicit opt-in; retained data and reminders remain intact. Luna handles routine mail tasks. Consent changes retain leases, queue progress and failure backoff.
+- No dependency or destructive database migration. Validate local/DynamoDB lifecycle, HTTP/model routing, complete regression suite, release policy, browser settings and deployed version/health.
+- Rollback target: `f1a56e615bd0de335b4581fe6b534555defe7788`; retain all private data. Rolling back also restores the former implicit-analysis behavior, so pause the mailbox worker in private configuration first if rollback is necessary.
+
 ## 1.15.0 — 2026-11-21
 
 - MINOR from verified AWS 1.14.2 (`96f9d42e3eb36929049df1980d98f703a8473b00`): add default Office file libraries combining native and AI-generated work, first-card blank creation, search/source filters and lazy thumbnails.

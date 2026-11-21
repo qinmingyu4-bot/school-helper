@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.15.1 — 2026-11-21 — Mailbox consent and cost correction
+
+PATCH from verified AWS 1.15.0 (`f1a56e6`): correct implicit background
+analysis in the existing mailbox assistant, without adding a new workflow.
+
+- Linking/relinking Gmail or Outlook only establishes a connection. Automatic AI
+  analysis requires a separate per-mailbox opt-in in Settings; legacy connections
+  default off without deleting tokens, notices, schedules or processed markers.
+- Workers and manual sync enforce the persisted setting. Turning off stops new
+  analysis; already-dispatched work may finish once. Keep its lease and saved
+  result so rapid toggling/restarts cannot duplicate the paid request. Preserve
+  provider backoff and cursors when enabling again.
+- Use Luna for automatic mail classification/extraction and explicit email reply
+  tasks, even when a message mentions exams or assignments. Update status text,
+  Chinese/English consent explanations and privacy documentation.
+- Validate local/DynamoDB opt-in, legacy rows, stop races, deduplication, HTTP
+  CSRF/ownership and actual mocked model dispatch; no live AI calls in tests.
+
 ## 1.15.0 — 2026-11-21 — Office file libraries
 
 MINOR from verified AWS 1.14.2 (`96f9d42`): introduce unified file libraries

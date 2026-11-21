@@ -48,6 +48,14 @@ test("mailbox HTTP binds both providers in settings, waits for confirmation and 
     const response = await request(`/api/mailbox/${provider}/callback?code=good&state=${encodeURIComponent(url.searchParams.get("state"))}`, `${alice.cookie}; ${oauthCookie}`);
     assert.equal(response.status, 302); assert.equal(response.headers.get("location"), "/app?page=email&mailbox=connected");
   }
+  const bound = await (await request("/api/mailbox", alice.cookie)).json();
+  assert.equal(bound.connections.every(row => row.connected && row.analysisEnabled === false), true);
+  assert.equal(bound.drafts.length, 0);
+  assert.equal((await mutate("/api/mailbox/gmail/sync", {})).status, 409);
+  assert.equal((await mutate("/api/mailbox/gmail/analysis", { enabled: true }, "")).status, 403);
+  assert.equal((await mutate("/api/mailbox/gmail/analysis", { enabled: "true" })).status, 400);
+  assert.equal((await mutate("/api/mailbox/gmail/analysis", { enabled: true, userId: bob.user.id })).status, 409);
+  for (const provider of ["gmail", "outlook"]) assert.equal((await mutate(`/api/mailbox/${provider}/analysis`, { enabled: true })).status, 200);
   let inbox;
   for (let attempt = 0; attempt < 100; attempt++) {
     inbox = await (await request("/api/mailbox", alice.cookie)).json();
@@ -58,6 +66,10 @@ test("mailbox HTTP binds both providers in settings, waits for confirmation and 
   assert.equal(inbox.connections.every((row) => row.connected), true);
   assert.doesNotMatch(JSON.stringify(inbox), /fixture-private|refreshToken|accessToken/);
   assert.equal((await (await request("/api/schedule/items", alice.cookie)).json()).items.length, 0);
+  for (const provider of ["gmail", "outlook"]) assert.equal((await mutate(`/api/mailbox/${provider}/analysis`, { enabled: false })).status, 200);
+  const paused = await (await request("/api/mailbox", alice.cookie)).json();
+  assert.equal(paused.drafts.length, 3);
+  assert.ok(paused.connections.every(row => row.connected && !row.analysisEnabled));
   const draft = inbox.drafts.find((row) => row.subject === "STA437 assignment");
   assert.equal(draft.items[0].date, "2026-11-16"); assert.equal(draft.items[0].time, "18:00");
   const route = `/api/mailbox/drafts/${encodeURIComponent(draft.id)}/resolve`;
@@ -74,5 +86,8 @@ test("mailbox HTTP binds both providers in settings, waits for confirmation and 
   assert.equal((await mutate("/api/mailbox/gmail/disconnect", {})).status, 200);
   const after = await (await request("/api/mailbox", alice.cookie)).json(); assert.equal(after.drafts.length, 1); assert.equal(after.connections[0].connected, false);
   assert.equal((await (await request("/api/schedule/items", alice.cookie)).json()).items.length, 2);
+  const reply = await request("/api/courses/general/chat", alice.cookie, { method: "POST", body: JSON.stringify({ mode: "email", message: "Please explain this professor email about the exam assignment deadline and draft a reply. " + "The deadline is tomorrow. ".repeat(50) }) });
+  assert.equal(reply.status, 201);
+  assert.equal((await reply.json()).model, "gpt-6-luna", "email length and academic keywords must not upgrade mail to Sol");
   const privateDb = await fs.readFile(path.join(directory, "db.json"), "utf8"); assert.doesNotMatch(privateDb, /fixture-private-access|fixture-private-refresh/);
 });

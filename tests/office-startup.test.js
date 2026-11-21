@@ -135,7 +135,7 @@ test("draft recovery starts before the cloud list completes and retains conflict
 test("offline startup reuses the same draft read; missing drafts still open cloud content", async () => {
   let reads = 0;
   const w = workspace({ userId: "a", officeProjects: async () => { throw Error("offline"); } },
-    async () => { reads++; return { id: "d", model: { text: "unsaved" } }; });
+    async () => { reads++; return { id: "d", kind: "docs", model: { text: "unsaved" } }; });
   await w.init(); assert.equal(reads, 1); assert.equal(w.current.model.text, "unsaved");
   const cloud = workspace({ userId: "a", officeProjects: async () => ({ projects: [{ id: "d", kind: "docs" }] }),
     api: async url => { assert.equal(url, "/api/office/d"); return { project: { id: "d", model: { text: "saved" } } }; } }, async () => null);
@@ -158,4 +158,27 @@ test("successful saves invalidate shared metadata, while failed saves retain the
     assert.equal(w.current.dirty, fail);
     assert.equal(w.current.version, fail ? 1 : 2);
   }
+});
+
+test("an explicit library selection opens that file instead of the remembered file", async () => {
+  const w = workspace({ userId: "a", officeEntry: { id: "chosen", key: "open-1" },
+    officeProjects: async () => ({ projects: [{ id: "d", kind: "docs" }, { id: "chosen", kind: "docs" }] }),
+    api: async url => { assert.equal(url, "/api/office/chosen"); return { project: { id: "chosen", model: {} } }; },
+  }, async () => null);
+  await w.init(); assert.equal(w.current.id, "chosen");
+});
+
+test("explicit new creates one blank draft without opening an old cloud file", async () => {
+  const w = workspace({ userId: "a", officeEntry: { create: true, key: "new-1" },
+    officeProjects: async () => ({ projects: [{ id: "d", kind: "docs" }] }),
+    api: () => assert.fail("new must not fetch an old file"),
+  }, async () => null);
+  await w.init(); assert.equal(w.current.id, "new"); assert.equal(w.entryKey, "new-1");
+});
+
+test("a missing selected cloud file cannot silently turn into a new document", async () => {
+  const w = workspace({ userId: "a", officeEntry: { id: "deleted", key: "open-1" },
+    officeProjects: async () => ({ projects: [] }), api: async () => { throw Error("File not found"); },
+  }, async () => null);
+  await assert.rejects(w.init(), /File not found/); assert.equal(w.current, null);
 });

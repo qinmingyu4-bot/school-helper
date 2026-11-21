@@ -170,6 +170,8 @@
     mode: "student",
     page: "study",
     tool: "notes",
+    toolView: "library",
+    officeEntry: null,
     courses: [],
     activeCourseId: "",
     activeConversationId: "default",
@@ -2342,8 +2344,8 @@
 
   function toolsWorkspaceHtml() {
     return ui.html`
-      ${officeTools.supports(state.tool || "docs") ? ui.html`<nav class="office-view-switch" aria-label="工作方式"><button data-action="office-view-edit" aria-pressed="${state.toolView !== "generate"}">自主编辑</button><button data-action="office-view-generate" aria-pressed="${state.toolView === "generate"}">AI 文件生成</button></nav>` : ""}
-      ${state.tool === "notes" ? '<div id="courseNotesSlot"></div>' : officeTools.supports(state.tool || "docs") && state.toolView !== "generate" ? officeTools.html(state.tool || "docs") : creativeTools.html(creativeContext())}
+      ${officeTools.supports(state.tool || "docs") && state.toolView !== "library" ? ui.html`<nav class="office-view-switch" aria-label="文件导航"><button data-action="office-view-library">← 返回文件库</button></nav>` : ""}
+      ${state.tool === "notes" ? '<div id="courseNotesSlot"></div>' : officeTools.supports(state.tool || "docs") && state.toolView === "library" ? window.StudyBridgeOfficeLibrary.html() : officeTools.supports(state.tool || "docs") && state.toolView !== "generate" ? officeTools.html(state.tool || "docs") : creativeTools.html(creativeContext())}
     `;
   }
   function renderToolsWorkspace() {
@@ -2358,6 +2360,7 @@
       tab.setAttribute("aria-pressed", String(selected));
     }
     void officeTools.mount(creativeContext());
+    window.StudyBridgeOfficeLibrary.mount(creativeContext());
     void window.StudyBridgeCourseNotes.mount(creativeContext());
   }
 
@@ -2367,7 +2370,7 @@
     try { savedCourse = localStorage.getItem(`studybridge.cheatsheetCourse.${userId}`) || ""; } catch { /* Storage may be disabled. */ }
     const preferredCourse = cheatsheetCourses.get(userId) || savedCourse;
     const courseId = [preferredCourse, state.activeCourseId, state.courses[0]?.id].find((id) => state.courses.some((course) => course.id === id)) || "";
-    return { userId, tool, courseId, courses: state.courses, api, readFiles, esc, render,
+    return { userId, tool, officeEntry: state.officeEntry, courseId, courses: state.courses, api, readFiles, esc, render,
       openStudyCourse: (id) => selectConversation(id, "default"),
       addStudyCourse: () => addStudyCourse({ fromNotes: true }),
       selectCourse: (id) => {
@@ -2728,6 +2731,7 @@
       const planner = root.querySelector("#grade-module")?.gradePlanner;
       if (planner && !await planner.flush()) return;
     }
+    if (page === "tools" && state.page !== "tools") { state.toolView = "library"; state.officeEntry = null; }
     const pageGeneration = ++pageLoadGeneration;
     const generation = ++classmatesGeneration;
     if (page === "schedule") state.dailyView = scheduleView;
@@ -3839,18 +3843,30 @@
         creativeTools.capture();
         officeTools.capture();
         state.tool = button.dataset.tool || "docs";
-        state.toolView = "edit";
+        state.toolView = "library";
+        state.officeEntry = null;
         localStorage.setItem("studybridge.tool", state.tool);
         renderToolsWorkspace();
         if (state.tool !== "notes" && state.tool !== "email" && !officeTools.supports(state.tool)) { await creativeTools.load(creativeContext()); renderToolsWorkspace(); }
         return;
       }
-      if (action === "office-view-edit" || action === "office-view-generate") {
+      if (["office-view-library", "office-view-generate", "office-library-open", "office-library-new", "office-library-resume", "office-library-generated"].includes(action)) {
+        if (!officeTools.supports(state.tool)) return;
         officeTools.capture();
         creativeTools.capture();
-        state.toolView = action === "office-view-generate" ? "generate" : "edit";
+        const userId = state.user?.id, tool = state.tool;
+        if (action === "office-view-library") await officeTools.flush();
+        if (state.user?.id !== userId || state.tool !== tool || state.page !== "tools") return;
+        state.toolView = action === "office-view-library" ? "library" : ["office-view-generate", "office-library-generated"].includes(action) ? "generate" : "edit";
+        state.officeEntry = state.toolView === "edit" ? { key: crypto.randomUUID(), ...(action === "office-library-new" ? { create: true } : action === "office-library-resume" ? { resume: true } : { id: button.dataset.id }) } : null;
+        if (state.toolView === "library") window.StudyBridgeOfficeLibrary.invalidate(userId);
         renderToolsWorkspace();
-        if (state.toolView === "generate") { await creativeTools.load(creativeContext()); renderToolsWorkspace(); }
+        if (state.toolView === "generate") {
+          await creativeTools.load(creativeContext());
+          if (state.user?.id !== userId || state.tool !== tool || state.toolView !== "generate" || state.page !== "tools") return;
+          if (action === "office-library-generated") creativeTools.select(button.dataset.id);
+          renderToolsWorkspace();
+        }
         return;
       }
       if (action === "copy-output") {
@@ -4065,6 +4081,7 @@
     usageView.sync();
     creativeTools.restoreFocus();
     void officeTools.mount(creativeContext());
+    window.StudyBridgeOfficeLibrary.mount(creativeContext());
     void window.StudyBridgeCourseNotes.mount(creativeContext());
     if (state.toast && state.user) root.insertAdjacentHTML("beforeend", `<div class="toast">${esc(state.toast)}</div>`);
     mobileNavigation.sync(root, { userId: state.user?.id, mode: state.mode, page: state.page });

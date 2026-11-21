@@ -2,6 +2,30 @@
 
 Course notes is the first tool. See [Course notes](course-notes.md) for PDF annotation, saving and device support.
 
+## Office file libraries
+
+SB Docs, SB Sheets and SB Slides open to their own file library. The library
+combines saved editable projects with the matching AI-generated DOCX/PDF, XLSX or
+PPTX jobs, identifying each source. Images and course-specific Cheatsheets remain
+in their own tools. Files sort by last update, with recoverable local drafts first;
+name search and source filters operate on the current account's directory.
+
+Choose **New blank file** to create a document, or click an existing filename to
+open it. Entering the library never creates a blank file or automatically opens
+the last document. **Create with AI** opens the existing generator, and generated
+filenames open the corresponding preview/download/revision workspace. Ready files
+also have a direct private download link in their library row.
+
+**Back to files** saves current edits before returning. If saving fails or a
+version conflict needs attention, the editor stays visible. Recovery drafts are
+listed even when their cloud copy is absent. Starting a different file preserves
+the existing save/conflict checks instead of discarding recovered work.
+
+The library reuses the existing account-scoped metadata cache and loads native
+and generated directories independently, with partial-failure feedback and a
+refresh control. The editor bundle may preload but is executed only after an
+explicit open/new action. No schema or file migration is needed.
+
 ## Available Features
 
 Tools provides Word/PDF documents, editable Excel workbooks, editable PowerPoint

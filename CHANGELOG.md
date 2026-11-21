@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased — Office file libraries
+
+- SB Docs, SB Sheets and SB Slides now open to a file library with existing
+  editable projects and AI-generated files labeled by source, newest first.
+  Search names, filter sources, open saved work or start a blank file explicitly.
+- Generated files retain their preview, download and revision workspace. Local
+  recovery drafts remain visible; returning from the editor saves first and
+  keeps unsaved work visible when a save fails.
+- Library entry loads metadata only and keeps editor execution/document reads on
+  demand. Preserve bilingual UI, account palettes, dark mode and mobile layouts.
+
 ## 1.14.1 — 2026-11-20 — Office first-open performance
 
 PATCH from verified AWS 1.14.0 (`14a317a`): shorten existing editor startup and

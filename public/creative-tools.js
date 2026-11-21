@@ -153,5 +153,5 @@
       <label class="cheatsheet-monochrome"><input id="print-monochrome" type="checkbox" ${settings.monochrome ? "checked" : ""}>黑白版</label>
     </div>`;
   }
-  window.StudyBridgeCreativeTools = { html, load, handle, capture, restoreFocus, stop: () => clearTimeout(timer), videoEnabled: () => false };
+  window.StudyBridgeCreativeTools = { html, load, handle, capture, restoreFocus, select: id => { selectedId = id; }, stop: () => clearTimeout(timer), videoEnabled: () => false };
 })();

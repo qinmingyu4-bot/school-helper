@@ -127,7 +127,12 @@ class Workspace {
     this.cell = "A1";
   }
   async init() {
-    const recoveryPromise = backup("get", this.recoveryKey()).catch(() => null);
+    const entry = this.ctx.officeEntry;
+    const recoveryPromise = backup("get", this.recoveryKey()).then(value => {
+      if (!value || value.kind !== this.kind) return null;
+      try { value.model = Model.normalize(this.kind, value.model); return value; }
+      catch { return null; }
+    }).catch(() => null);
     try {
       const result = await (this.ctx.officeProjects?.() || this.ctx.api("/api/office"));
       this.projects = (result.projects || []).filter(
@@ -136,7 +141,7 @@ class Workspace {
       const last = localStorage.getItem(
         `office.last.${this.ctx.userId}.${this.kind}`,
       );
-      const selected =
+      const selected = entry?.id ? { id: entry.id } : entry?.create ? null :
         this.projects.find((p) => p.id === last) || this.projects[0];
       const recovery = await recoveryPromise;
       if (recovery && recovery.kind === this.kind) {
@@ -152,11 +157,15 @@ class Workspace {
         const { project } = await this.ctx.api("/api/office/" + selected.id);
         this.current = { ...project, dirty: false };
         this.status = ui.text("已保存到云端");
-      } else this.newProject();
+      } else {
+        this.newProject();
+        if (entry?.create) this.entryKey = entry.key;
+      }
     } catch (error) {
+      const recovery = await recoveryPromise;
+      if (entry?.id && !recovery) throw error;
       this.newProject();
       this.status = "暂时无法读取云端作品：" + error.message;
-      const recovery = await recoveryPromise;
       if (recovery) {
         try {
           recovery.model = Model.normalize(this.kind, recovery.model);
@@ -166,6 +175,7 @@ class Workspace {
           /* Keep invalid recovery data out of the editor. */
         }
       }
+      if (entry?.create && !recovery) this.entryKey = entry.key;
     }
     this.ready = true;
     this.draw();
@@ -240,6 +250,9 @@ class Workspace {
       host.innerHTML =
         ui.markup('<div class="office-loading" role="status">正在打开编辑器…</div>');
       if (!this.initializing) this.initializing = this.init();
+    } else if (ctx.officeEntry && ctx.officeEntry.key !== this.entryKey &&
+      (ctx.officeEntry.create || ctx.officeEntry.id && ctx.officeEntry.id !== this.current?.id)) {
+      host.innerHTML = ui.markup('<div class="office-loading" role="status">正在打开编辑器…</div>');
     } else this.draw();
   }
   capture() {
@@ -1736,7 +1749,7 @@ class Workspace {
 export function hasWorkspace(ctx) {
   return sessions.has(ctx.userId + ":" + ctx.tool);
 }
-export function attach(host, ctx) {
+export async function attach(host, ctx) {
   if (mounted?.host === host) return;
   mounted?.detach();
   const key = ctx.userId + ":" + ctx.tool;
@@ -1747,6 +1760,37 @@ export function attach(host, ctx) {
   }
   mounted = workspace;
   workspace.attach(host, ctx);
+  try {
+    await workspace.initializing;
+    if (workspace.host !== host || !host.isConnected) return;
+    const entry = ctx.officeEntry;
+    if (entry && entry.key !== workspace.entryKey) {
+      if (entry.create) await workspace.action("new");
+      else if (entry.id) await workspace.open(entry.id);
+      workspace.entryKey = entry.key;
+    }
+  } catch (error) {
+    if (!workspace.current) {
+      sessions.delete(key);
+      workspace.detach();
+      if (mounted === workspace) mounted = null;
+      throw error;
+    }
+    workspace.status = error.message;
+    workspace.draw();
+    workspace.updateStatus();
+  }
+}
+export function pendingDraft(ctx) {
+  const workspace = sessions.get(ctx.userId + ":" + ctx.tool), p = workspace?.current;
+  return p?.dirty ? { id: p.id, name: p.name, kind: ctx.tool, updatedAt: p.updatedAt } : null;
+}
+export async function flush() {
+  const workspace = mounted;
+  if (!workspace) return;
+  await workspace.initializing;
+  await workspace.save();
+  if (workspace.current?.dirty) throw Error(ui.text("当前修改尚未保存，请先保存或另存副本。"));
 }
 export function capture() {
   mounted?.capture();

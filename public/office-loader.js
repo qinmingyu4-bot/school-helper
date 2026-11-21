@@ -1,7 +1,7 @@
 (function () {
   "use strict";
   const ui = window.StudyBridgeI18n;
-  const editorURL = "/vendor/office-editor.min.js?asset=b79a260f19bd8f92bacf7d8b";
+  const editorURL = "/vendor/office-editor.min.js?asset=6f4360b81040502f3f37c32d";
   let preload = null, account = null, listing = null;
   function warm() {
     const connection = navigator.connection;
@@ -69,10 +69,13 @@
     try {
       if (ctx.userId && !module?.hasWorkspace(ctx)) void projects(ctx);
       const editor = await load();
-      if (token === generation && host.isConnected) editor.attach(host, {
+      if (token === generation && host.isConnected) await editor.attach(host, {
         ...ctx,
         officeProjects: () => projects(ctx),
-        invalidateOfficeProjects: () => { if (account === ctx.userId) listing = null; },
+        invalidateOfficeProjects: () => {
+          if (account === ctx.userId) listing = null;
+          window.StudyBridgeOfficeLibrary?.invalidate(ctx.userId);
+        },
       });
     } catch (error) {
       if (token === generation && host.isConnected)
@@ -83,6 +86,9 @@
     supports,
     html,
     mount,
+    list: (ctx, force = false) => { if (force && account === ctx.userId) listing = null; return projects(ctx); },
+    pendingDraft: ctx => module?.pendingDraft(ctx),
+    flush: () => module?.flush(),
     capture: () => module?.capture(),
   };
 })();

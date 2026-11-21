@@ -5,6 +5,25 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+文件库|File library
+文件导航|File navigation
+← 返回文件库|← Back to files
+新建空白文件|New blank file
+用 AI 创建|Create with AI
+搜索文件|Search files
+筛选来源|Filter by source
+所有来源|All sources
+AI 生成|AI generated
+本地草稿|Local draft
+刷新文件|Refresh files
+正在加载文件…|Loading files…
+没有匹配的文件|No matching files
+还没有文件，从新建空白文件开始。|No files yet. Start with a new blank file.
+暂时无法显示全部文件，请重试。|Some files could not be loaded. Please retry.
+可编辑文件暂时无法加载，请刷新重试。|Editable files could not be loaded. Refresh to retry.
+AI 生成文件暂时无法加载，请刷新重试。|AI-generated files could not be loaded. Refresh to retry.
+更新时间|Last updated
+继续编辑|Continue editing
 失败调用成本|Failed provider call costs
 尚未分配到功能的费用|Costs not yet attributed to features
 官方同步暂缓，正在显示上次成功读取的数据。|Official sync is paused; showing the last successful snapshot.

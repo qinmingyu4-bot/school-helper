@@ -129,7 +129,7 @@ test("video output is rejected and the fixed rule reaches AI creation instructio
 test("tool tabs return to Course notes from Docs and Sheets without loading a creative job", async () => {
   const source = fs.readFileSync(require.resolve("../public/app"), "utf8");
   const start = source.indexOf('      if (action === "tool-mode") {');
-  const end = source.indexOf('      if (action === "office-view-edit"', start);
+  const end = source.indexOf('      if (["office-view-library"', start);
   assert.ok(start >= 0 && end > start);
   const state = { tool: "notes", toolView: "edit" }, saved = new Map(), rendered = [];
   const context = vm.createContext({ state, action: "tool-mode", button: { dataset: {} },
@@ -143,6 +143,8 @@ test("tool tabs return to Course notes from Docs and Sheets without loading a cr
     context.button.dataset.tool = tool;
     await choose();
     assert.equal(state.tool, tool);
+    assert.equal(state.toolView, "library");
+    assert.equal(state.officeEntry, null);
     assert.equal(saved.get("studybridge.tool"), tool);
     assert.equal(rendered.at(-1), tool);
   }
@@ -171,11 +173,11 @@ test("switching the tools workspace preserves the shell and tab controls", () =>
     render() { assert.fail("switching tools must not render the full page"); },
     toolsWorkspaceHtml: () => "new editor", creativeContext: () => state,
     officeTools: { mount(ctx) { mounted.push(ctx.tool); } },
-    window: { StudyBridgeCourseNotes: { mount(ctx) { mounted.push(ctx.tool); } } }
+    window: { StudyBridgeCourseNotes: { mount(ctx) { mounted.push(ctx.tool); } }, StudyBridgeOfficeLibrary: { mount(ctx) { mounted.push(ctx.tool); } } }
   });
   vm.runInContext(`${source.slice(start, end)}; renderToolsWorkspace();`, context);
   assert.deepEqual(children, ["new editor"]);
   assert.deepEqual(buttons.map(button => button.active), [false, false, true]);
   assert.deepEqual(buttons.map(button => button.attributes["aria-pressed"]), ["false", "false", "true"]);
-  assert.deepEqual(mounted, ["sheets", "sheets"]);
+  assert.deepEqual(mounted, ["sheets", "sheets", "sheets"]);
 });

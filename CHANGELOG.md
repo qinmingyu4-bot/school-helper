@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.14.2 — 2026-11-21
+
+- Keep official consumption as the only total; remove legacy estimates and never substitute local amounts when official sync is unavailable. Show UTC coverage, historical/start-day/new differences and daily reconciliation without clamping signed gaps.
+- Attribute new calls to feature, trigger and operation; reject unmetered generation endpoints before dispatch.
+- Opening the developer console no longer runs a paid AI probe. Explicit detection retains shared caching. Persist mailbox analysis markers, including irrelevant mail, and extend retry backoff across restarts. Automatic reminders remain enabled.
+- PATCH from verified AWS 1.14.1 (`0c0bd96`): correct existing accounting and eliminate redundant calls; no new product module.
+
 ## 1.14.1 — 2026-11-20 — Office first-open performance
 
 PATCH from verified AWS 1.14.0 (`14a317a`): shorten existing editor startup and

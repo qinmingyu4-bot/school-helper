@@ -125,7 +125,7 @@ const academicCalendars = createCalendarService({
   request: async (body) => {
     const response = await aiCosts.fetch("https://api.openai.com/v1/responses", {
       method: "POST", signal: AbortSignal.timeout(60000), headers: { authorization: `Bearer ${process.env.OPENAI_API_KEY}`, "content-type": "application/json" }, body: JSON.stringify(body)
-    }, { payer: "platform", source: "academic-calendar" });
+    }, { payer: "platform", source: "academic-calendar", action: "calendar-match", userId: aiUsage.context.getStore()?.userId || null, operationId: usage.currentOperation() });
     if (!response.ok) throw Object.assign(new Error("大学校历检索失败。"), { statusCode: response.status });
     return response.json();
   }
@@ -133,7 +133,7 @@ const academicCalendars = createCalendarService({
 const feedback = createFeedback({ db, sendEmail, version: packageVersion, recipient: feedbackRecipient, origin: feedbackOrigin });
 const usage = createUsageAnalytics(db, { onFailure: feedback.observe });
 const aiUsage = createAiUsage({ db, entitlement: (userId) => alipay.entitlement(userId), onRequest: usage.recordAi,
-  request: (url, options, estimate) => aiCosts.fetch(url, options, { ...estimate, operationId: aiUsage.context.getStore()?.operationId, userId: aiUsage.context.getStore()?.userId, payer: "user", source: usage.currentFeature() }) });
+  request: (url, options, estimate) => aiCosts.fetch(url, options, { ...estimate, operationId: aiUsage.context.getStore()?.operationId || usage.currentOperation(), userId: aiUsage.context.getStore()?.userId, payer: "user", ...usage.currentAttribution() }) });
 const office = createOfficeService(db);
 const schedulePush = createPushService({ db, listSchedule: (userId) => listUserScheduleItems(userId, { includeCompleted: true }) });
 const publicDir = path.join(__dirname, "public");
@@ -162,7 +162,7 @@ const grades = createGradePlanner({ db, apiKey: process.env.OPENAI_API_KEY, mode
 const webSearchEnabled = process.env.OPENAI_WEB_SEARCH !== "false";
 const googleClientId = String(process.env.GOOGLE_CLIENT_ID || "").trim();
 const googleClientSecret = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();
-const mailbox = createMailboxService({ db, analyze: (messages, userId) => usage.background(userId, "mailbox", () => aiUsage.run(userId, () => {
+const mailbox = createMailboxService({ db, analyze: (messages, userId, messageId) => usage.background(userId, "mailbox", () => aiUsage.runOperation(userId, `mailbox:${messageId}`, () => {
   if (!process.env.OPENAI_API_KEY) throw new Error("邮件识别尚未配置。");
   return callAiWithChatCompletions(messages, complexAiModel, null, { signal: AbortSignal.timeout(60000), store: false });
 })) });
@@ -204,7 +204,7 @@ async function studyVisual(job, source) {
   return Array.isArray(value) ? value[source.attachmentIndex] : value;
 }
 function studyProvider(model) {
-  return (messages, visuals, signal, userId) => aiUsage.run(userId, () => {
+  return (messages, visuals, signal, userId) => aiUsage.runOperation(userId, aiUsage.context.getStore()?.operationId, () => {
     const parts = visuals.flatMap((file) => file.kind === "pdf" && file.dataUrl ? [{ type: "file", file: { filename: file.name, file_data: file.dataUrl } }]
       : file.kind === "image" && file.dataUrl ? [{ type: "image_url", image_url: { url: file.dataUrl, detail: "high" } }] : []);
     return callAiWithChatCompletions(messages.map((item) => item.role === "user" && parts.length ? { ...item, content: [{ type: "text", text: item.content }, ...parts] } : item), model, null, { signal, store: false });
@@ -212,7 +212,7 @@ function studyProvider(model) {
 }
 const studyJobs = createStudyJobs({ db, index: studyIndex, loadSources: studySources, loadVisual: studyVisual,
   plan: studyProvider(simpleAiModel), answer: studyProvider(complexAiModel), saveQuestion: saveChatQuestion,
-  observe: (job, work) => usage.background(job.userId, "study", work),
+  observe: (job, work) => aiUsage.runOperation(job.userId, job.id, () => usage.background(job.userId, "study", work)),
   reportOutcome: (status) => {
     usage.outcome(status);
     if (status === 200) usage.reached("firstStudy");
@@ -1412,7 +1412,7 @@ async function callAiWithResponses(messages, model, toolType = "web_search", str
 }
 
 async function callAiWithChatCompletions(messages, model, stream = null, { signal, store, maxCompletionTokens, platformFunded = false } = {}) {
-  const response = await (platformFunded ? (url, options) => aiCosts.fetch(url, options, { payer: "platform", source: "product-help" }) : aiUsage.fetch)("https://api.openai.com/v1/chat/completions", {
+  const response = await (platformFunded ? (url, options) => aiCosts.fetch(url, options, { payer: "platform", source: "product-help", action: "help" }) : aiUsage.fetch)("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -1839,14 +1839,15 @@ async function requestOpenAiChatHealth(model) {
       body: JSON.stringify({ model, service_tier: "default", messages: [{ role: "user", content: "Reply with OK only." }],
         max_completion_tokens: 64,
         ...(/^gpt-6(?:[.-]|$)/i.test(model) ? { reasoning_effort: /^gpt-6-(?:luna|sol)(?:-|$)/i.test(model) ? "none" : "low" } : {}) })
-    }, { payer: "platform", source: "health-check" });
+    }, { payer: "platform", source: "health-check", action: "manual-diagnostic" });
     return { configured: true, ok: response.ok, statusCode: response.status,
       detail: response.ok ? `当前模型 ${model} 可以正常回复。` : `当前模型 ${model} 检测失败。` };
   } catch { return { configured: true, ok: false, detail: "AI 连接失败或检测超时。" }; }
 }
 
 let pendingAiHealth;
-async function aiHealthStatus() {
+async function aiHealthStatus(probe = false) {
+  if (!probe) return cachedAiHealth?.payload || { configured: Boolean(process.env.OPENAI_API_KEY), ok: process.env.OPENAI_API_KEY ? null : false, detail: "尚未主动检测；查看页面不会调用模型。", simpleModel: simpleAiModel, complexModel: complexAiModel, complexRoutePercent: 100, routing: "task-complexity", webSearchEnabled, webModelRouting: "selected-task-model" };
   if (cachedAiHealth && Date.now() - cachedAiHealth.checkedAtMs < 60000) return cachedAiHealth.payload;
   if (pendingAiHealth) return pendingAiHealth;
   pendingAiHealth = (async () => {
@@ -2861,7 +2862,7 @@ async function routeApi(req, res) {
   if (url.pathname === "/api/admin/system-status" && method === "GET") {
     const admin = await requireAdmin(req, res);
     if (!admin) return;
-    const ai = await aiHealthStatus();
+    const ai = await aiHealthStatus(url.searchParams.get("probe") === "1");
     return sendJson(res, 200, {
       version: {
         app: packageVersion(),

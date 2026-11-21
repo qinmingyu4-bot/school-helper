@@ -5,6 +5,34 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+费用明细尚未接入，不使用旧估算|Cost details are not connected; legacy estimates are not shown
+官方账单暂不可用；不以本地估算代替|Official spend is unavailable; local estimates do not replace it
+官方总额包含下方各项，不再叠加|The official total includes the breakdown below; do not add it again
+已归属功能成本|Attributed feature costs
+按调用用量计价，限同一官方覆盖范围|Calculated from usage within the same official coverage
+历史未归属费用|Unattributed historical spend
+完整账本启用日之前的官方消费|Official spend before the ledger start day
+启用当天待核对差额|Ledger start-day difference
+启用后待核对差额|Post-start difference to reconcile
+同步延迟、计价差异或漏记，单独跟进|Track reporting delays, pricing differences or missing records separately
+调用来源未标记|Unclassified call costs
+已记账但缺少功能标签，不能归入历史|Recorded calls without feature labels; not historical spend
+官方总额 = 已归属功能成本 + 历史未归属费用 + 启用当天待核对差额 + 启用后待核对差额 + 调用来源未标记。差额保留正负，不强行分摊。|Official total = attributed costs + historical spend + start-day difference + post-start difference + unclassified calls. Differences remain signed and are not allocated artificially.
+官方覆盖范围外的本地记录|Local records outside official coverage
+功能成本去向|Costs by feature
+后台任务|Background task
+主动操作|User action
+早期未标记触发方式|Earlier trigger not recorded
+每日对账|Daily reconciliation
+官方消费|Official spend
+已归属|Attributed
+未标记|Unclassified
+差额|Difference
+等待官方每日明细；已记录调用保留在下方，不作为官方总额。|Waiting for official daily details. Recorded calls remain below and are not presented as the official total.
+官方覆盖范围|Official coverage
+上次成功同步，当前同步暂缓|Last successful sync; current sync paused
+活跃按前台交互或功能操作去重。回访仅统计目标日期已经结束的新用户。首次学习指收到课程回答或提交练习。费用统一查看上方总 AI 成本。|Activity is deduplicated by foreground interactions or feature actions. Retention includes new users with completed target days. First learning means a course reply or submitted exercise. See Total AI cost above for all costs.
+尚未主动检测；查看页面不会调用模型。|No explicit probe yet; viewing this page does not call a model.
 失败调用成本|Failed provider call costs
 尚未分配到功能的费用|Costs not yet attributed to features
 官方同步暂缓，正在显示上次成功读取的数据。|Official sync is paused; showing the last successful snapshot.

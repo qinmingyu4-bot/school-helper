@@ -186,3 +186,25 @@ for (const dynamo of [false,true]) test(`mailbox ${dynamo?'DynamoDB':'local'}: r
   assert.equal((await db.listDocuments('alice',course.id)).length,0);
   assert.equal((await db.getMailboxDraft('alice','cancel')).changes[0].before.title,'Final');
 });
+
+for (const dynamo of [false,true]) test(`mailbox ${dynamo?'DynamoDB':'local'}: irrelevant messages stay deduplicated after replay/restart and unlink purges markers`,async t=>{
+  const db=await setup(t,dynamo);let time=Date.parse('2026-11-21T12:00:00Z'),calls=0;
+  const tokens={accessToken:'fixture',refreshToken:'fixture',expiresAt:time+86400000};
+  const config={db,env,now:()=>time,transport:{profile:async()=>({email:'fixture@example.test'}),page:async()=>({ids:['ad'],sync:{},more:false}),message:async()=>({text:'private ad',receivedAt:'2026-11-21T10:00:00Z',subject:'ad'})},analyze:async()=>{calls++;return '{"relevant":false,"items":[]}';}};
+  let service=createMailboxService(config);await service.connect('alice','gmail',tokens,'UTC');await service.sync('alice','gmail');
+  const generation=(await db.getMailbox('alice','gmail')).generation;
+  const id=`2026-11-21T10:00:00.000Z#gmail#${require('node:crypto').createHash('sha256').update(`${generation}:ad`).digest('hex').slice(0,32)}`;
+  assert.ok(await db.getMailboxAnalysis('alice',id));assert.doesNotMatch(JSON.stringify(await db.getMailboxAnalysis('alice',id)),/private ad/);
+  time+=300001;service=createMailboxService(config);await service.sync('alice','gmail');assert.equal(calls,1);
+  assert.deepEqual((await service.status('alice')).drafts,[]);
+  await service.disconnect('alice','gmail');assert.equal(await db.getMailboxAnalysis('alice',id),null);
+});
+test('malformed paid mailbox responses back off durably instead of retrying at a fixed rate',async t=>{
+  const db=await setup(t);let time=Date.parse('2026-11-21T12:00:00Z'),calls=0;
+  const config={db,env,now:()=>time,transport:{profile:async()=>({email:'fixture@example.test'}),page:async()=>({ids:['bad'],sync:{},more:false}),message:async()=>({text:'mail',receivedAt:'2026-11-21T10:00:00Z'})},analyze:async()=>{calls++;return 'invalid';}};
+  let service=createMailboxService(config);await service.connect('alice','gmail',{accessToken:'a',refreshToken:'r',expiresAt:time+86400000},'UTC');await service.sync('alice','gmail');
+  assert.equal((await db.getMailbox('alice','gmail')).nextSyncAt-time,300000);
+  time+=300001;service=createMailboxService(config);await service.sync('alice','gmail');
+  assert.equal((await db.getMailbox('alice','gmail')).nextSyncAt-time,600000);
+  time+=300001;await service.sync('alice','gmail');assert.equal(calls,2);assert.deepEqual((await db.getMailbox('alice','gmail')).queue,['bad']);
+});

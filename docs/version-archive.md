@@ -1,5 +1,12 @@
 # StudyBridge Version Archive
 
+## 1.14.2 — 2026-11-21
+
+- PATCH from AWS 1.14.1 (`0c0bd96beb901224278ab0d5e6bce90785c0792d`). Fix existing cost reporting, attribution and avoidable background calls.
+- Official totals remain separate from locally priced feature amounts. Historical days, the installation day and subsequent differences are independent and preserve signed values; provider daily buckets cannot split the installation day by hour.
+- Existing paid API routes keep durable tracking; unknown generation routes fail before dispatch. Mailbox results now retain content-free deduplication markers for irrelevant mail too. Opening admin does not call a model; explicit diagnostic checks still work.
+- Preserve all ledger/history/private configuration and automatic reminders. Validate accounting, UI, mailbox local/Dynamo restart behavior, source assets, full regressions and release policy.
+
 ## 1.14.1 — 2026-11-20
 
 - PATCH from verified AWS production 1.14.0 (`14a317a55b30560527947baf478f9f070e9ae4b7`): reduce startup waits in existing Docs, Sheets and Slides with low-priority public preloading, overlapping requests, short-lived account-scoped metadata reuse and immutable editor caching.

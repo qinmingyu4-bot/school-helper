@@ -66,6 +66,9 @@ test("developer usage queries enforce roles and retain only action metadata", { 
     return { cookie: response.headers.get("set-cookie").split(";")[0], id: (await response.json()).user.id };
   }
   const owner = await register("owner"), student = await register("student");
+  for (let i=0;i<2;i++) assert.equal((await request('/api/admin/system-status',owner.cookie)).status,200);
+  const passive=JSON.parse(await fs.readFile(database,'utf8'));
+  assert.equal(Object.values(passive.aiCosts || {}).flatMap(Object.values).filter(r=>r.source==='health-check').length,0, 'Passive admin reads must not generate paid model calls');
   const userPath = `/api/admin/users/${student.id}/usage`;
   assert.equal((await request("/api/admin/usage")).status, 401);
   assert.equal((await request("/api/admin/usage", student.cookie)).status, 403);

@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.14.1";
+  const VERSION = "1.14.2";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -2444,7 +2444,7 @@
       [ui.text("复杂任务模型"), s.ai?.complexModel || ui.text("待检测"), s.ai?.routing === "task-complexity" ? ui.text("复杂任务固定使用此模型。") : ui.message`复杂任务分流比例：${s.ai?.complexRoutePercent ?? 0}%。`],
       [ui.text("联网模型分流"), s.ai?.webSearchEnabled ? ui.text("沿用任务模型") : ui.text("联网已关闭"), ui.text("联网、兼容重试和回退均保留普通／复杂任务的模型选择。")],
       [ui.text("最近完成的 AI 请求"), s.ai?.lastRequest?.model || ui.text("暂无记录"), s.ai?.lastRequest ? `${s.ai.lastRequest.api} · ${formatDate(s.ai.lastRequest.completedAt)}` : ui.text("仅记录本次服务启动后的模型和接口，不记录问题内容。")],
-      [ui.text("AI 连通检测"), s.ai?.configured === false ? ui.text("未配置") : s.ai?.ok ? ui.text("正常") : ui.text("异常"), ui.message`仅检测普通任务模型。${s.ai?.detail || ui.text("等待检测。")}`],
+      [ui.text("AI 连通检测"), s.ai?.configured === false ? ui.text("未配置") : s.ai?.ok == null ? ui.text("待检测") : s.ai.ok ? ui.text("正常") : ui.text("异常"), ui.message`仅检测普通任务模型。${s.ai?.detail || ui.text("等待检测。")}`],
       [ui.text("Google 登录"), s.google?.enabled ? ui.text("已配置") : ui.text("未配置"), ui.text("普通邮箱注册仍可用。")],
       [ui.text("邮箱验证码"), s.email?.verificationRequired ? ui.text("已启用") : ui.text("非必需"), s.email?.sendingConfigured ? ui.text("可发送邮件。") : ui.text("当前不强制邮箱发信。")],
       [ui.text("服务器自动同步"), s.autoSync?.configured ? ui.text("已检测到") : ui.text("未确认"), ui.text("用于从 GitHub 自动拉取更新。")],
@@ -3860,7 +3860,7 @@
         return;
       }
       if (action === "admin-refresh") {
-        state.status = await api("/api/admin/system-status");
+        state.status = await api("/api/admin/system-status?probe=1");
         await loadPage("admin");
         return;
       }

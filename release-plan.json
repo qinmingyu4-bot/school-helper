@@ -1,8 +1,8 @@
 {
-  "previousCommit": "14a317a55b30560527947baf478f9f070e9ae4b7",
-  "previousVersion": "1.14.0",
-  "version": "1.14.1",
+  "previousCommit": "0c0bd96beb901224278ab0d5e6bce90785c0792d",
+  "previousVersion": "1.14.1",
+  "version": "1.14.2",
   "level": "patch",
-  "reason": "Reduce startup latency of existing Office editors through public-resource preloading, concurrent reads, account-scoped metadata caching and content-addressed static assets; preserve editing and recovery behavior.",
+  "reason": "Fix misleading cost totals and legacy estimates, split historical versus new reconciliation gaps, and stop implicit diagnostic calls and repeated mailbox analysis while preserving existing features.",
   "features": []
 }

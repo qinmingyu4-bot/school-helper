@@ -109,10 +109,12 @@ test('image reservations account for model, quality, geometry and reference inpu
 test('server coalesces health checks and only falls back on explicit unsupported tools',async()=>{
   const vm=require('node:vm'),source=await fs.readFile(path.join(__dirname,'../server.js'),'utf8');
   const functionText=(start,end)=>source.slice(source.indexOf(start),source.indexOf(end,source.indexOf(start)+start.length));
-  let calls=0;const context={Date, pendingAiHealth:null,cachedAiHealth:null,simpleAiModel:'mock',complexAiModel:'mock',webSearchEnabled:true,
+  let calls=0;const context={Date, process:{env:{OPENAI_API_KEY:"fixture"}}, pendingAiHealth:null,cachedAiHealth:null,simpleAiModel:'mock',complexAiModel:'mock',webSearchEnabled:true,
     requestOpenAiChatHealth:async()=>{calls++;await new Promise(r=>setImmediate(r));return {ok:true};}};
-  vm.createContext(context);vm.runInContext(functionText('async function aiHealthStatus()','\nfunction authRedirect'),context);
-  await Promise.all(Array.from({length:10},()=>context.aiHealthStatus()));assert.equal(calls,1);
+  vm.createContext(context);vm.runInContext(functionText('async function aiHealthStatus(','\nfunction authRedirect'),context);
+  await context.aiHealthStatus(); assert.equal(calls,0,"opening admin must not issue paid probes");
+  await Promise.all(Array.from({length:10},()=>context.aiHealthStatus(true)));assert.equal(calls,1);
+  await context.aiHealthStatus(); assert.equal(calls,1);
   let routes=[],failure=Error('timeout');
   const routing={process:{env:{OPENAI_API_KEY:'fixture'}},simpleAiModel:'mock',webSearchEnabled:true,
     callAiWithResponses:async()=>{routes.push('responses');throw failure;},callAiWithChatCompletions:async()=>{routes.push('chat');return 'ok';}};

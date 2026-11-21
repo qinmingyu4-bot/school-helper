@@ -1,6 +1,8 @@
 # Changelog
 
-## 2026-11-21 — Office editing basics and link collaboration (test branch)
+## 1.16.0 — 2026-11-21 — Office editing and collaboration
+
+MINOR from AWS 1.15.3 (`1f8968f`): add shared editing by link and new native editing controls across Docs, Sheets and Slides.
 
 - Add editable Docs tables with row/column operations, merge/split, column resizing, literal find/replace, first-line indentation and paragraph spacing. Preserve tables and spacing through DOCX export/import and print styling.
 - Add Sheets rectangular, row and column selection, bulk formatting/clearing, TSV copy/paste with relative-reference adjustment, row/column insertion/deletion with reference rewriting, and persisted row heights/column widths. Window the grid to at most 60 rendered rows and reuse formula calculations between selection changes.

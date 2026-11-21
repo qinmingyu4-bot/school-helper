@@ -1,8 +1,13 @@
 {
-  "previousCommit": "8703228ab39001f8b5c4a860dcb8680e7cd571db",
-  "previousVersion": "1.15.2",
-  "version": "1.15.3",
-  "level": "patch",
-  "reason": "Upgrade the provider model behind existing Sol tasks and retain equivalent routing and Standard-rate accounting.",
-  "features": []
+  "previousCommit": "1f8968f871a8935a5c8fcb30fee23214701aaa6d",
+  "previousVersion": "1.15.3",
+  "version": "1.16.0",
+  "level": "minor",
+  "reason": "Add authenticated link collaboration and substantial native editing capabilities to SB Docs, SB Sheets and SB Slides.",
+  "features": [
+    "Revocable links and simultaneous authenticated editing in all three Office editors",
+    "Editable Docs tables, find and replace, and paragraph layout",
+    "Sheets range editing, reference-aware row and column operations, and windowed rendering",
+    "Slides multiselection, alignment, group movement and stacking controls"
+  ]
 }

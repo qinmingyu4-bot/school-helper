@@ -1,5 +1,12 @@
 # StudyBridge Version Archive
 
+## 1.16.0 — 2026-11-21
+
+- MINOR from AWS 1.15.3 (`1f8968f871a8935a5c8fcb30fee23214701aaa6d`): add authenticated Office link collaboration with owner-controlled revocation and new editing tools for Docs, Sheets and Slides.
+- Preserve private files and the existing library. The release uses the existing persistence layer and requires no bulk migration or new credentials.
+- The owner authorized AWS deployment. Verify release classification, regression and two-account browser tests, exact deployed assets and service health.
+- Rollback code target: `1f8968f871a8935a5c8fcb30fee23214701aaa6d`. Retain private configuration and user data.
+
 ## 1.15.3 — 2026-11-21
 
 - PATCH from production main 1.15.2 (`8703228ab39001f8b5c4a860dcb8680e7cd571db`) to replace GPT-6.1 Sol on existing Sol routes with GPT-6.2 Sol.

@@ -1,5 +1,12 @@
 # StudyBridge Version Archive
 
+## 1.15.0 — 2026-11-21
+
+- MINOR from verified AWS 1.14.1 (`0c0bd96beb901224278ab0d5e6bce90785c0792d`): add default Office file libraries combining native and AI-generated work, first-card blank creation, search/source filters and lazy thumbnails.
+- Preserve editing, explicit saves, recovery drafts and account isolation. Fix stale cloud content on reopen and serialize pending library transitions to protect new edits from late responses.
+- The owner authorized AWS deployment after regression checks on 2026-11-21. Verify full tests, real browser workflows, release policy, exact deployed assets and service health. No new dependencies or database migration.
+- Rollback code target: `0c0bd96beb901224278ab0d5e6bce90785c0792d`; retain all private configuration and user files.
+
 ## 1.14.1 — 2026-11-20
 
 - PATCH from verified AWS production 1.14.0 (`14a317a55b30560527947baf478f9f070e9ae4b7`): reduce startup waits in existing Docs, Sheets and Slides with low-priority public preloading, overlapping requests, short-lived account-scoped metadata reuse and immutable editor caching.

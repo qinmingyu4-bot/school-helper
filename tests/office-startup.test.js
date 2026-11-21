@@ -182,3 +182,54 @@ test("a missing selected cloud file cannot silently turn into a new document", a
   }, async () => null);
   await assert.rejects(w.init(), /File not found/); assert.equal(w.current, null);
 });
+
+test("reopening a clean library file reads current cloud content while preserving unsaved drafts", async () => {
+  let reads = 0;
+  const w = workspace({ userId: "a", api: async url => {
+    assert.equal(url, "/api/office/d"); reads++;
+    return { project: { id: "d", kind: "docs", version: 2, model: { text: "Updated elsewhere" } } };
+  } }, async () => null);
+  w.current = { id: "d", version: 1, dirty: false, model: { text: "Old content" } };
+  await w.open("d", { refresh: true });
+  assert.equal(reads, 1); assert.equal(w.current.version, 2);
+  assert.equal(w.current.model.text, "Updated elsewhere");
+  w.current.dirty = true; w.current.model.text = "Local unsaved work";
+  await w.open("d", { refresh: true });
+  assert.equal(reads, 1); assert.equal(w.current.model.text, "Local unsaved work");
+});
+
+function libraryTransitions(w) {
+  const source = editorSource.slice(editorSource.indexOf("export function hasWorkspace"), editorSource.indexOf('window.addEventListener("beforeunload"')).replace(/export /g, "");
+  return vm.runInNewContext('let mounted = null;\n' + source + '\n({attach, flush})', {
+    sessions: new Map([["a:docs", w]]), ui: { text: x => x },
+  });
+}
+
+test("returning to the library waits for a pending open before saving", async () => {
+  const read = deferred(); let saves = 0;
+  const w = { current: { dirty: false }, attach(host) { this.host = host; }, detach() { this.host = null; },
+    async open() { await read.promise; this.current = { id: "opened", dirty: false }; },
+    async save() { saves++; }, draw() {}, updateStatus() {},
+  };
+  const api = libraryTransitions(w);
+  const opening = api.attach({ isConnected: true }, { userId: "a", tool: "docs", officeEntry: { id: "opened", key: "1" } });
+  await tick(); const leaving = api.flush(); await tick();
+  assert.equal(saves, 0, "must not save an old workspace and leave while the new file is still loading");
+  read.resolve(); await Promise.all([opening, leaving]);
+  assert.equal(w.current.id, "opened"); assert.equal(saves, 1);
+});
+
+test("a second library entry waits for an old detached open, then becomes the current file", async () => {
+  const read = deferred(); let creates = 0;
+  const w = { current: { id: "previous", dirty: false }, attach(host) { this.host = host; }, detach() { this.host = null; },
+    async open() { await read.promise; this.current = { id: "slow-file", dirty: false }; },
+    async action() { creates++; this.current = { id: "new-file", dirty: true }; }, draw() {}, updateStatus() {},
+  };
+  const api = libraryTransitions(w);
+  const first = api.attach({ isConnected: true }, { userId: "a", tool: "docs", officeEntry: { id: "slow-file", key: "1" } });
+  await tick();
+  const second = api.attach({ isConnected: true }, { userId: "a", tool: "docs", officeEntry: { create: true, key: "2" } });
+  await tick(); assert.equal(creates, 0);
+  read.resolve(); await Promise.all([first, second]);
+  assert.equal(creates, 1); assert.equal(w.current.id, "new-file"); assert.equal(w.entryKey, "2");
+});

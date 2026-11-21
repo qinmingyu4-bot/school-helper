@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased — Office file libraries
+## 1.15.0 — 2026-11-21 — Office file libraries
+
+MINOR from verified AWS 1.14.1 (`0c0bd96`): introduce unified file libraries
+for Docs, Sheets and Slides, with explicit blank-file creation and previews.
 
 - SB Docs, SB Sheets and SB Slides now open to a file library with existing
   editable projects and AI-generated files labeled by source, newest first.
@@ -15,6 +18,11 @@
   at most two preview reads at a time and account/version-scoped caching. Keep
   editor execution on explicit open/new actions; preview failure never blocks
   opening a file. Preserve bilingual UI, account palettes, dark mode and mobile layouts.
+
+- Fix reopening a clean library file showing an old editor copy after another
+  device updated it. Preserve local unsaved work when reopening.
+- Finish a pending file open before returning to the library or creating another
+  file, so delayed responses cannot replace newly entered content.
 
 ## 1.14.1 — 2026-11-20 — Office first-open performance
 

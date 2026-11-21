@@ -1,8 +1,11 @@
 {
-  "previousCommit": "14a317a55b30560527947baf478f9f070e9ae4b7",
-  "previousVersion": "1.14.0",
-  "version": "1.14.1",
-  "level": "patch",
-  "reason": "Reduce startup latency of existing Office editors through public-resource preloading, concurrent reads, account-scoped metadata caching and content-addressed static assets; preserve editing and recovery behavior.",
-  "features": []
+  "previousCommit": "0c0bd96beb901224278ab0d5e6bce90785c0792d",
+  "previousVersion": "1.14.1",
+  "version": "1.15.0",
+  "level": "minor",
+  "reason": "Introduce unified native and AI-generated Office file libraries with explicit blank-file creation and lazy preview cards; protect reopen and slow-navigation editing workflows.",
+  "features": [
+    "Default Docs, Sheets and Slides libraries combining native and AI-generated files",
+    "First-card blank-file creation, source filters, search and lazy first-page previews"
+  ]
 }

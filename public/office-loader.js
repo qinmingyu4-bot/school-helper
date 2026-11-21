@@ -1,7 +1,7 @@
 (function () {
   "use strict";
   const ui = window.StudyBridgeI18n;
-  const editorURL = "/vendor/office-editor.min.js?asset=6f4360b81040502f3f37c32d";
+  const editorURL = "/vendor/office-editor.min.js?asset=fec8d9fc74168cd119a8e441";
   let preload = null, account = null, listing = null;
   function warm() {
     const connection = navigator.connection;

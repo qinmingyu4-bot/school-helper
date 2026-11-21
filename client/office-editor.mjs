@@ -157,6 +157,7 @@ class Workspace {
         const { project } = await this.ctx.api("/api/office/" + selected.id);
         this.current = { ...project, dirty: false };
         this.status = ui.text("已保存到云端");
+        if (entry?.id === selected.id) this.entryKey = entry.key;
       } else {
         this.newProject();
         if (entry?.create) this.entryKey = entry.key;
@@ -211,8 +212,8 @@ class Workspace {
     this.aiNotice = "";
     this.status = ui.text("尚未保存");
   }
-  async open(id) {
-    if (id === this.current?.id || this.switching) return;
+  async open(id, { refresh = false } = {}) {
+    if (id === this.current?.id && (!refresh || this.current.dirty) || this.switching) return;
     this.switching = true;
     if (this.host) this.host.inert = true;
     try {
@@ -251,7 +252,7 @@ class Workspace {
         ui.markup('<div class="office-loading" role="status">正在打开编辑器…</div>');
       if (!this.initializing) this.initializing = this.init();
     } else if (ctx.officeEntry && ctx.officeEntry.key !== this.entryKey &&
-      (ctx.officeEntry.create || ctx.officeEntry.id && ctx.officeEntry.id !== this.current?.id)) {
+      (ctx.officeEntry.create || ctx.officeEntry.id && (ctx.officeEntry.id !== this.current?.id || !this.current?.dirty))) {
       host.innerHTML = ui.markup('<div class="office-loading" role="status">正在打开编辑器…</div>');
     } else this.draw();
   }
@@ -1762,12 +1763,20 @@ export async function attach(host, ctx) {
   workspace.attach(host, ctx);
   try {
     await workspace.initializing;
+    // Finish an earlier library transition before another entry can mutate the
+    // same workspace. A detached request must never replace a newer document.
+    await workspace.entryOpening?.catch(() => {});
     if (workspace.host !== host || !host.isConnected) return;
     const entry = ctx.officeEntry;
     if (entry && entry.key !== workspace.entryKey) {
-      if (entry.create) await workspace.action("new");
-      else if (entry.id) await workspace.open(entry.id);
-      workspace.entryKey = entry.key;
+      const opening = (async () => {
+        if (entry.create) await workspace.action("new");
+        else if (entry.id) await workspace.open(entry.id, { refresh: true });
+        workspace.entryKey = entry.key;
+      })();
+      workspace.entryOpening = opening;
+      try { await opening; }
+      finally { if (workspace.entryOpening === opening) workspace.entryOpening = null; }
     }
   } catch (error) {
     if (!workspace.current) {
@@ -1789,6 +1798,7 @@ export async function flush() {
   const workspace = mounted;
   if (!workspace) return;
   await workspace.initializing;
+  await workspace.entryOpening;
   await workspace.save();
   if (workspace.current?.dirty) throw Error(ui.text("当前修改尚未保存，请先保存或另存副本。"));
 }

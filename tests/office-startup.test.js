@@ -106,12 +106,13 @@ test("rapid tab changes attach only the latest workspace", async () => {
 });
 
 function workspace(ctx, backup) {
-  const source = editorSource.slice(editorSource.indexOf("class Workspace {"), editorSource.indexOf("export function hasWorkspace"));
+  const source = editorSource.slice(editorSource.indexOf("class Workspace {"), editorSource.indexOf("installBasics(Workspace);"));
   const Workspace = vm.runInNewContext(source + "\nWorkspace", {
     backup, ui: { text: x => x }, Model: { normalize: (_kind, model) => model },
     localStorage: { getItem: () => "d", setItem() {} }, clearTimeout,
   });
   const w = new Workspace(ctx, "docs");
+  w.connectCollaboration = () => {};
   w.draw = () => {}; w.schedule = () => { w.scheduled = true; };
   w.newProject = () => { w.current = { id: "new" }; };
   return w;
@@ -199,7 +200,7 @@ test("reopening a clean library file reads current cloud content while preservin
 });
 
 function libraryTransitions(w) {
-  const source = editorSource.slice(editorSource.indexOf("export function hasWorkspace"), editorSource.indexOf('window.addEventListener("beforeunload"')).replace(/export /g, "");
+  const source = editorSource.slice(editorSource.indexOf("function workspaceKey("), editorSource.indexOf('window.addEventListener("beforeunload"')).replace(/export /g, "");
   return vm.runInNewContext('let mounted = null;\n' + source + '\n({attach, flush})', {
     sessions: new Map([["a:docs", w]]), ui: { text: x => x },
   });

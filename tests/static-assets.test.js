@@ -116,6 +116,7 @@ test("boot requests start concurrently and retain authenticated navigation and l
     const context = { URL, location: { href: "https://example.test/app?page=schedule", search: "?page=schedule" },
       api: (url) => new Promise((resolve, reject) => pending.set(url, { resolve, reject })), state,
       document: {}, history: { replaceState() {} }, root: {}, ui: { text: (x) => x }, render: () => rendered.push(true),
+      officeTools: { sharedLink: null, takeSharedLink: () => null },
       reportUserActivity() {}, localStorage: { getItem: () => null }, isAdmin: () => false, loadPage: async (page) => pages.push(page) };
     vm.createContext(context);
     const result = vm.runInContext(boot + "\nboot();", context);

@@ -12,6 +12,7 @@ function harness(action, fail = false) {
   const context = vm.createContext({ action, state, URL, URLSearchParams, location, ui: { text: x => x }, esc: String,
     api: async () => { calls.push('request'); if (fail) throw Error('offline'); return { user: state.user }; },
     $: () => ({ value: '' }), isAdmin: () => false,
+    officeTools: { takeSharedLink: () => null },
     loadPage: async page => { calls.push(page); location.href = 'https://example.test/app?page=' + page; },
     openPushLink: async url => calls.push(url.searchParams.get('classmateChat') || url.searchParams.get('scheduleItem')),
     learningLoop: cleanup, classmateNotifications: cleanup, dmAttachments: cleanup, mailboxView: cleanup,

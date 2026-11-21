@@ -38,7 +38,8 @@ function harness(defer = []) {
       return Promise.resolve({ courses: [], documents: [], messages: [], items: [], conversations: [{ id: "default" }], classmates: [] });
     }
   });
-  vm.runInContext(`let pageLoadGeneration = 0, classmatesGeneration = 0;\n${loaders}`, context);
+  const roles = source.slice(source.indexOf("  const isAdmin ="), source.indexOf("  const profile ="));
+  vm.runInContext(`let pageLoadGeneration = 0, classmatesGeneration = 0;\n${roles}${loaders}`, context);
   vm.runInContext(source.slice(source.indexOf("  function courseFolderHtml("), source.indexOf("  // Patch only the folder:")), context);
   return { state, context, requests, notices, renders, storage, drafts, type: (text) => { formDraft = text; }, draft: () => formDraft };
 }
@@ -58,14 +59,19 @@ test("late study responses cannot overwrite courses or redraw a newly edited pro
 });
 
 test("late tools and admin results cannot change the current page or its loading state", async () => {
-  for (const page of ["tools", "admin"]) {
-    const path = page === "tools" ? "/api/courses" : "/api/admin/overview";
+  for (const [page, role, path] of [
+    ["tools", "student", "/api/courses"],
+    ["admin", "admin", "/api/admin/overview"],
+    ["admin", "co-admin", "/api/admin/invites"]
+  ]) {
     const h = harness([path, "/api/schedule/items"]);
+    h.state.user.role = role;
     if (page === "admin") h.state.mode = "admin";
     const old = h.context.loadPage(page);
     h.state.mode = "student";
     const current = h.context.loadPage("schedule");
     const renders = h.renders.length;
+    assert.equal(h.requests[0].path, path);
     h.requests[0].resolve({ courses: [{ id: "stale" }], users: [{ id: "stale" }] });
     await old;
     assert.equal(h.state.busy, true, "old completion must not dismiss the new page's loading indicator");

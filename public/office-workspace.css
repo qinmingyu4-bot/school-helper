@@ -207,10 +207,11 @@
 :root .app-shell .workspace .office-toolbar [data-setting="function"] { width: 150px; }
 :root .app-shell .workspace .office-toolbar input[type="color"] { width: 32px; height: 32px; }
 :root .app-shell .workspace .office-formula-bar {
-  grid-template-columns: 44px 20px minmax(0, 1fr);
+  grid-template-columns: minmax(64px, 106px) 20px minmax(0, 1fr);
   padding: 6px 0;
   font-size: 12px;
 }
+:root .app-shell .workspace .office-formula-bar .office-range-address { width: 100%; }
 :root .app-shell .workspace .office-formula-bar b { color: var(--muted); }
 :root .app-shell .workspace .office-page-settings { padding: 8px 0; gap: 8px 16px; background: var(--panel); }
 :root .app-shell .workspace .office-doc-scroll { background: var(--soft); padding: 20px; }
@@ -243,6 +244,12 @@
   :root .app-shell .workspace .office-toolbar > * { flex-shrink: 0; }
   :root .app-shell .workspace .office-toolbar-group { flex-wrap: nowrap; overflow-x: auto; padding: 4px; scroll-padding-inline: 4px; }
   :root .app-shell .workspace .office-toolbar-group > * { flex-shrink: 0; }
+  :root .app-shell .workspace .office-toolbar:has(.office-menu[open]),
+  :root .app-shell .workspace .office-toolbar-group:has(.office-menu[open]) {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+  .office-menu > div { position: static; margin-top: 4px; box-shadow: none; }
   :root .app-shell .workspace .office-ai-compose > label:first-child { flex-basis: 100%; }
   :root .app-shell .workspace .office-top-actions button:first-child { margin-left: 0; }
   :root .app-shell .workspace .office-statusbar { gap: 4px 12px; }

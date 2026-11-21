@@ -133,8 +133,10 @@ async function main() {
             return text.includes("Owner text") && text.includes("Guest text");
           }, body);
         }
+        await first.setViewportSize({ width: 390, height: 844 });
         await first.locator(".office-toolbar .office-menu summary").click();
         await first.locator('[data-office="table-insert"]').click();
+        await first.setViewportSize({ width: 1360, height: 1000 });
         await second.locator(".tiptap table td").first().waitFor();
         assert.equal(await second.locator(".tiptap table td").count(), 9);
         await second.reload();
@@ -142,6 +144,9 @@ async function main() {
         assert.match(await second.locator(body).innerText(), /Guest text/);
       } else if (kind === "sheets") {
         assert(await first.locator("[data-cell]").count() <= 6000);
+        const address = await first.locator("[data-range-address]").boundingBox();
+        const formula = await first.locator("[data-formula]").boundingBox();
+        assert.ok(address.x + address.width < formula.x, "Range and formula inputs must not overlap");
         await Promise.all([
           first.locator('[data-cell="A1"]').fill("31"),
           second.locator('[data-cell="B1"]').fill("42"),

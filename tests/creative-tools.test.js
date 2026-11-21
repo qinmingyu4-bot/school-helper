@@ -181,3 +181,49 @@ test("switching the tools workspace preserves the shell and tab controls", () =>
   assert.deepEqual(buttons.map(button => button.attributes["aria-pressed"]), ["false", "false", "true"]);
   assert.deepEqual(mounted, ["sheets", "sheets", "sheets"]);
 });
+
+function imageHistoryHarness(t, options = {}) {
+  const records = [{id:'one',kind:'image',format:'png',status:'ready',prompt:'First image',files:[]},{id:'two',kind:'image',format:'png',status:'failed',prompt:'Second image',files:[]}];
+  const calls = []; let output = '', current = true, confirm = options.confirm || ((_job, submit) => submit());
+  const window = {StudyBridgeCheatsheetPrint:require('../public/cheatsheet-print'),StudyBridgeMarkdown:{render:s=>s}};
+  const document = {hidden:false,getElementById:()=>null,addEventListener(){},querySelector:()=>null};
+  vm.runInNewContext(fs.readFileSync(require.resolve('../public/creative-tools'),'utf8'),{StudyBridgeI18n:require('../public/i18n'),window,document,setTimeout,clearTimeout});
+  const tools=window.StudyBridgeCreativeTools;
+  const ctx={userId:'alice',tool:'images',courses:[],esc:s=>String(s).replaceAll('<','&lt;').replaceAll('"','&quot;'),visible:()=>current,isCurrent:()=>current,
+    render:()=>{output=tools.html(ctx);},confirmDelete:(job,submit)=>confirm(job,submit),
+    api:async(route,init)=>{calls.push({route,method:init?.method||'GET'});if(init)return options.remove?.(route)||{};return route.endsWith('capabilities')?{configured:true}: {jobs:records.map(j=>({...j}))};}};
+  t.after(()=>tools.stop());
+  return {tools,ctx,records,calls,html:()=>output,render:ctx.render,load:async()=>{await tools.load(ctx);ctx.render();},
+    action:id=>tools.handle({dataset:{action:'creative-delete',id}},ctx),setConfirm:fn=>{confirm=fn;},switchAccount:()=>{current=false;tools.html({...ctx,userId:'bob'});}};
+}
+
+test('image history exposes separate delete controls, preserves other records and clears the deleted preview', async t=>{
+  const h=imageHistoryHarness(t); await h.load();
+  assert.match(h.html(),/creative-history-row/); assert.match(h.html(),/aria-label="删除作品：First image"/);
+  assert.doesNotMatch(h.html(),/<button[^>]*creative-history-item[^>]*>(?:(?!<\/button>)[\s\S])*<button/);
+  h.tools.select('one'); await h.action('one');
+  assert.doesNotMatch(h.html(),/First image/); assert.match(h.html(),/Second image/);
+  assert.equal(h.calls.filter(c=>c.method==='DELETE').length,1);
+  await h.load(); assert.doesNotMatch(h.html(),/First image/,'stale list responses must not restore deleted output');
+});
+
+test('canceling deletion sends no request; failed deletion retains work for retry',async t=>{
+  let fail=true; const h=imageHistoryHarness(t,{confirm:async()=>null,remove:()=>{if(fail)throw Error('Deletion unavailable');}}); await h.load();
+  await h.action('one'); assert.equal(h.calls.filter(c=>c.method==='DELETE').length,0); assert.match(h.html(),/First image/);
+  h.setConfirm((_job,submit)=>submit()); await h.action('one'); assert.match(h.html(),/First image/); assert.match(h.html(),/Deletion unavailable/);
+  fail=false; await h.action('one'); assert.doesNotMatch(h.html(),/First image/);
+});
+
+test('repeated deletion clicks share one confirmation and account changes prevent late mutations',async t=>{
+  let submit, resolve; const dialog=new Promise(done=>{resolve=done;});
+  const h=imageHistoryHarness(t,{confirm:(_job,work)=>{submit=work;return dialog;}}); await h.load();
+  const pending=h.action('one'); await h.action('one'); assert.equal(h.calls.filter(c=>c.method==='DELETE').length,0);
+  h.switchAccount(); await assert.rejects(submit(),/登录账号已改变/); resolve(null); await pending;
+  assert.equal(h.calls.filter(c=>c.method==='DELETE').length,0);
+});
+
+test('running image jobs cannot be deleted from the history handler',async t=>{
+  const h=imageHistoryHarness(t); h.records[0].status='generating'; await h.load(); await h.action('one');
+  assert.doesNotMatch(h.html(),/data-action="creative-delete" data-id="one"/);
+  assert.equal(h.calls.filter(c=>c.method==='DELETE').length,0);
+});

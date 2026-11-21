@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.15.2 — 2026-11-21 — Image history deletion
+
+PATCH from verified AWS 1.15.1 (`5979781`): make the existing image deletion
+action discoverable in work history and reuse the established confirmation UI.
+
+- Expose the existing work/file deletion action beside each finished or failed image history entry with a quiet rounded icon button. Use the shared StudyBridge confirmation dialog, retain failed deletions for retry, and guard duplicate clicks, account changes and late history refreshes.
+- Preserve image generation, existing AI cost records, theme/language choices and keyboard/touch access.
+
 ## 1.15.1 — 2026-11-21 — Mailbox consent and cost correction
 
 PATCH from verified AWS 1.15.0 (`f1a56e6`): correct implicit background

@@ -157,3 +157,6 @@
 :root .classmates-workspace > .schedule-push-entry { margin: 16px 32px 0; }
 :root .classmates-workspace > .schedule-push-entry button { padding: 7px 11px; font-size: 12px; font-weight: 450; }
 @media (max-width: 600px) { :root .classmates-workspace > .schedule-push-entry { margin-inline: 16px; } }
+
+:root .workspace .creative-workspace .creative-history-delete { border-color: transparent; background: transparent; color: var(--muted); border-radius: 8px; }
+:root .workspace .creative-workspace .creative-history-delete:hover { border-color: var(--line); background: var(--soft); color: var(--danger); }

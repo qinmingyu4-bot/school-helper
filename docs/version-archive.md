@@ -1,5 +1,11 @@
 # StudyBridge Version Archive
 
+## 1.15.2 — 2026-11-21
+
+- PATCH from verified AWS 1.15.1 (`597978125a075c569fc2899e65fd1a348c289a25`): expose the existing image deletion action within each history entry, using restrained rounded buttons and the shared application dialog.
+- Preserve generation, owner authorization, file cleanup and cost records. Guard duplicate clicks, stale refreshes and account changes. No dependency or database change.
+- Owner authorized direct AWS deployment. Validate deletion/cancel/error flows, browser appearance, regressions, release policy, deployed assets and health. Rollback code target is the previous commit; preserve private user data.
+
 ## 1.15.1 — 2026-11-21
 
 - PATCH from verified AWS 1.15.0 (`f1a56e615bd0de335b4581fe6b534555defe7788`): fix automatic mailbox analysis implicitly enabled by binding and unnecessarily expensive mail routing.

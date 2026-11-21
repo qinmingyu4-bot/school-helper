@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.15.1";
+  const VERSION = "1.15.2";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -2371,6 +2371,9 @@
     const preferredCourse = cheatsheetCourses.get(userId) || savedCourse;
     const courseId = [preferredCourse, state.activeCourseId, state.courses[0]?.id].find((id) => state.courses.some((course) => course.id === id)) || "";
     return { userId, tool, officeEntry: state.officeEntry, courseId, courses: state.courses, api, readFiles, esc, render,
+      isCurrent: () => state.user?.id === userId,
+      confirmDelete: (_job, submit) => studyCourseDialog({ title: ui.text("删除这份作品？"),
+        description: ui.text("这份作品及其生成文件将被删除，无法恢复。"), submitLabel: ui.text("删除作品"), submit }),
       openStudyCourse: (id) => selectConversation(id, "default"),
       addStudyCourse: () => addStudyCourse({ fromNotes: true }),
       selectCourse: (id) => {

@@ -6,12 +6,13 @@
   const active = (job) => ["preparing", "generating", "checking"].includes(job.status);
   const printSettings = window.StudyBridgeCheatsheetPrint;
   let userId = "", jobs = [], capabilities = { video: false, configured: true }, selectedId = "", timer = 0, focus = null;
+  let accountVersion = 0, deletedIds = new Set(), deletingIds = new Set();
   let context, loading = false, submitting = false, error = "", drafts = {}, skipCapture = false;
   const icon = (id) => `<svg aria-hidden="true"><use href="/classmates-icons.svg#${id}"></use></svg>`;
   function use(ctx) {
     context = ctx;
     if (userId !== ctx.userId) {
-      clearTimeout(timer); userId = ctx.userId; jobs = []; selectedId = ""; drafts = {}; error = ""; loading = false;
+      clearTimeout(timer); accountVersion++; deletedIds = new Set(); deletingIds = new Set(); userId = ctx.userId; jobs = []; selectedId = ""; drafts = {}; error = ""; loading = false;
     }
     const key = ctx.tool === "cheatsheet" ? `cheatsheet:${ctx.courseId}` : ctx.tool;
     return drafts[key] ||= { prompt: "", courseId: ctx.tool === "cheatsheet" ? ctx.courseId : "", format: ctx.tool === "cheatsheet" ? "pdf" : ctx.tool === "sheets" ? "xlsx" : ctx.tool === "slides" ? "pptx" : "docx", size: "1024x1024", quality: "medium", parentId: "", files: [], print: { ...printSettings.defaults } };
@@ -47,15 +48,15 @@
     use(ctx);
     if (loading) return;
     loading = true;
-    const owner = ctx.userId;
+    const owner = ctx.userId, version = accountVersion;
     try {
       const [result, config] = await Promise.all([ctx.api("/api/creative"), ctx.api("/api/creative/capabilities")]);
-      if (owner !== userId) return;
+      if (owner !== userId || version !== accountVersion) return;
       const changed = JSON.stringify(jobs) !== JSON.stringify(result.jobs || []) || JSON.stringify(capabilities) !== JSON.stringify(config);
-      jobs = result.jobs || []; capabilities = config;
+      jobs = (result.jobs || []).filter(job => !deletedIds.has(job.id)); capabilities = config;
       if (changed && quiet && ctx.visible()) ctx.render();
-    } catch (failure) { if (!quiet) error = failure.message; }
-    finally { loading = false; if (owner === userId) schedule(); }
+    } catch (failure) { if (!quiet && owner === userId && version === accountVersion) error = failure.message; }
+    finally { if (owner === userId && version === accountVersion) { loading = false; schedule(); } }
   }
   function html(ctx) {
     if (ctx.tool === "video") return ui.html`<p class="notice">StudyBridge 不支持任何形式的视频制作。</p>`;
@@ -83,7 +84,7 @@
         <div class="creative-submit"><button class="primary" data-action="creative-generate" ${missingCourse || pending || submitting ? "disabled" : ""}>${icon("send")}${submitting ? ui.text("提交中") : parent ? ui.text("生成修改版") : ui.text("生成")}</button>${pending ? ui.html`<button class="creative-icon" data-action="creative-cancel" data-id="${pending.id}" title="取消生成" aria-label="取消生成">${icon("stop")}</button><span role="status"><span class="reply-spinner" aria-hidden="true"></span>${ui.text(labels[pending.status] || "准备中")}</span>` : ""}</div>
         ${error ? `<p class="creative-error" role="alert">${esc(error)}</p>` : ""}
         <div class="creative-history-heading"><h3>作品记录</h3><button class="creative-icon" data-action="creative-refresh" title="刷新记录" aria-label="刷新记录">${icon("refresh")}</button></div>
-        <div class="creative-history">${matching.length ? matching.map((job) => `<button class="creative-history-item ${selected?.id === job.id ? "selected" : ""}" data-action="creative-select" data-id="${job.id}"><span>${esc(job.request || job.prompt)}</span><small>${job.format.toUpperCase()} · ${ui.text(labels[job.status] || "准备中")}</small></button>`).join("") : ui.html`<p class="muted">暂无作品</p>`}</div>
+        <div class="creative-history">${matching.length ? matching.map((job) => { const select = `<button type="button" class="creative-history-item ${selected?.id === job.id ? "selected" : ""}" data-action="creative-select" data-id="${esc(job.id)}"><span>${esc(job.request || job.prompt)}</span><small>${job.format.toUpperCase()} · ${ui.text(labels[job.status] || "准备中")}</small></button>`; return image ? `<div class="creative-history-row">${select}${!active(job) ? `<button type="button" class="creative-icon creative-history-delete" data-action="creative-delete" data-id="${esc(job.id)}" title="${ui.text("删除作品")}" aria-label="${esc(ui.message`删除作品：${job.request || job.prompt}`)}" ${deletingIds.has(job.id) ? "disabled" : ""}>${icon("trash")}</button>` : ""}</div>` : select; }).join("") : ui.html`<p class="muted">暂无作品</p>`}</div>
       </div>
       <div class="creative-result">
         <div class="creative-result-heading"><h2>${selected ? selected.format.toUpperCase() : ui.text("预览")}</h2>${selected ? `<div class="creative-result-actions">${selected.status === "ready" ? ui.html`${cheat ? ui.html`<a class="creative-icon" href="${fileUrl(selected, selected.files.find((file) => file.extension === "pdf"))}?inline=1#toolbar=1" target="_blank" rel="noopener noreferrer" title="打开 PDF 查看器预览和打印" aria-label="预览和打印 PDF">${icon("print")}</a>` : ""}<button class="creative-icon" data-action="creative-revise" data-id="${selected.id}" title="继续修改" aria-label="继续修改">${icon("refresh")}</button>` : ""}${!active(selected) ? ui.html`<button class="creative-icon" data-action="creative-delete" data-id="${selected.id}" title="删除作品" aria-label="删除作品">${icon("trash")}</button>` : ""}</div>` : ""}</div>
@@ -111,9 +112,22 @@
       } else if (action === "creative-select") selectedId = id;
       else if (action === "creative-cancel") await ctx.api(`/api/creative/${id}/cancel`, { method: "POST" });
       else if (action === "creative-delete") {
-        if (!confirm(ui.text("确定删除这份作品及其文件吗？"))) return;
-        await ctx.api(`/api/creative/${id}`, { method: "DELETE" }); jobs = jobs.filter((job) => job.id !== id);
-        if (draft.parentId === id) draft.parentId = "";
+        const job = jobs.find(job => job.id === id), owner = userId, version = accountVersion;
+        if (!job || active(job) || deletingIds.has(id)) return;
+        deletingIds.add(id);
+        try {
+          const removed = await ctx.confirmDelete(job, async () => {
+            if (owner !== userId || version !== accountVersion || ctx.isCurrent?.() === false) throw new Error(ui.text("登录账号已改变，请重新打开作品记录。"));
+            await ctx.api(`/api/creative/${encodeURIComponent(id)}`, { method: "DELETE" });
+            if (owner !== userId || version !== accountVersion || ctx.isCurrent?.() === false) return null;
+            deletedIds.add(id);
+            jobs = jobs.filter(job => job.id !== id);
+            if (selectedId === id) selectedId = "";
+            for (const saved of Object.values(drafts)) if (saved.parentId === id) saved.parentId = "";
+            return true;
+          });
+          if (!removed || owner !== userId || version !== accountVersion) return;
+        } finally { if (owner === userId && version === accountVersion) deletingIds.delete(id); }
       } else if (action === "creative-revise") {
         const parent = jobs.find((job) => job.id === id);
         draft.parentId = id; draft.prompt = ""; draft.files = [];
@@ -125,7 +139,7 @@
       else if (action === "creative-clear-files") draft.files = [];
       else if (action === "creative-refresh") await load(ctx);
     } catch (failure) { error = failure.message; }
-    if (ctx.visible()) refresh(ctx);
+    if (ctx.visible()) { refresh(ctx); if (action === "creative-delete") document.querySelector?.(".creative-history-item.selected, .creative-history-heading button")?.focus({ preventScroll: true }); }
     schedule();
   }
   document.addEventListener("change", (event) => {

@@ -47,3 +47,13 @@
 .tools-tabs { flex-wrap: wrap; }
 @media (max-width: 1100px) { .creative-workspace { grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: 20px; padding: 20px; } .creative-result { padding-left: 20px; } }
 @media (max-width: 850px) { .creative-workspace { grid-template-columns: minmax(0, 1fr); padding: 16px; } .creative-result { border-left: 0; border-top: 1px solid #dce4e9; padding: 20px 0 0; } .creative-history { max-height: 160px; } }
+
+/* Image history uses sibling controls, so deleting never selects the work. */
+.creative-history-row { display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--line); padding: 3px 0; min-width: 0; }
+.creative-history-row .creative-history-item { flex: 1; width: auto; border-bottom: 0; border-radius: 8px; }
+.creative-workspace .creative-history-delete { flex: 0 0 36px; width: 36px; height: 36px; margin-right: 2px; padding: 8px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--muted); box-shadow: none; }
+.creative-workspace .creative-history-delete svg { width: 16px; height: 16px; stroke-width: 1.5; }
+.creative-workspace .creative-history-delete:hover { background: var(--soft); border-color: var(--line); color: var(--danger); }
+.creative-workspace .creative-history-delete:focus-visible { outline: 2px solid var(--sb-accent, var(--green)); outline-offset: 2px; }
+.creative-workspace .creative-history-delete:disabled { opacity: .4; cursor: default; }
+@media (pointer: coarse) { .creative-workspace .creative-history-delete { flex-basis: 44px; width: 44px; height: 44px; padding: 12px; } }

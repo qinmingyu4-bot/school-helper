@@ -195,3 +195,13 @@ credentials and backup files out of Git and deployment source archives.
 The client preserves per-tool request drafts/settings/uploads through rerenders,
 polls only while an active job is visible, and offers revision, cancellation,
 refresh and deletion without changing the existing email or Study Area workflows.
+
+### Image history deletion
+
+Each non-running image record offers a compact, rounded delete icon. The shared
+StudyBridge confirmation dialog explains that the record and generated files are
+permanently removed. Cancellation makes no request; errors stay in the dialog for
+retry. Running works retain cancellation instead. Successful deletion clears a
+matching preview/revision reference and excludes the deleted ID from late history
+responses. Owner authorization and file deletion use the existing creative API;
+AI usage/cost history is not erased or refunded by deleting an output.

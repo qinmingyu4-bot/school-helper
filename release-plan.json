@@ -1,8 +1,8 @@
 {
-  "previousCommit": "f1a56e615bd0de335b4581fe6b534555defe7788",
-  "previousVersion": "1.15.0",
-  "version": "1.15.1",
+  "previousCommit": "597978125a075c569fc2899e65fd1a348c289a25",
+  "previousVersion": "1.15.1",
+  "version": "1.15.2",
   "level": "patch",
-  "reason": "Correct existing mailbox authorization behavior so connecting does not implicitly start paid AI analysis; pin routine mail tasks to Luna and preserve durable consent, deduplication and retry controls.",
+  "reason": "Improve discoverability and consistency of the existing creative work deletion action, with rounded image-history controls and the shared confirmation dialog.",
   "features": []
 }

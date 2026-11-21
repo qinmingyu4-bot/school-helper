@@ -17,7 +17,7 @@ test("HTTP allowance is private, meters both chat transports, blocks exhausted a
   async function start() {
     child = spawn(process.execPath, ["--require", "./tests/fixtures/echo-ai.js", "server.js"], { cwd: path.resolve(__dirname, ".."), env: {
       ...process.env, PORT: "0", NODE_ENV: "test", STUDYBRIDGE_DB: "local", LOCAL_DB_FILE: file, LOCAL_DB_BACKUP_DISABLED: "true",
-      REQUIRE_EMAIL_VERIFICATION: "false", OPENAI_API_KEY: "test-fixture", OPENAI_WEB_SEARCH: "false", SESSION_SECRET: "usage-test-session"
+      REQUIRE_EMAIL_VERIFICATION: "false", ADMIN_EMAILS: "owner@example.test", OPENAI_API_KEY: "test-fixture", OPENAI_WEB_SEARCH: "false", SESSION_SECRET: "usage-test-session"
     }, stdio: ["ignore", "pipe", "pipe"] });
     base = await new Promise((resolve, reject) => {
       let output = "", errors = "";
@@ -29,8 +29,8 @@ test("HTTP allowance is private, meters both chat transports, blocks exhausted a
   }
   await start();
   const req = (route, cookie, body, headers = {}) => fetch(base + route, { method: body ? "POST" : "GET", headers: { cookie: cookie || "", "content-type": "application/json", ...headers }, ...(body ? { body: JSON.stringify(body) } : {}) });
-  const register = async (name) => {
-    const response = await req("/api/auth/register", "", { name, email: `${name}@example.test`, password: "UsageTest2026!", passwordConfirm: "UsageTest2026!" });
+  const register = async (name, inviteCode = "") => {
+    const response = await req("/api/auth/register", "", { name, email: `${name}@example.test`, password: "UsageTest2026!", passwordConfirm: "UsageTest2026!", inviteCode });
     assert.equal(response.status, 201);
     return { cookie: response.headers.get("set-cookie").split(";")[0], user: (await response.json()).user };
   };
@@ -78,4 +78,31 @@ test("HTTP allowance is private, meters both chat transports, blocks exhausted a
   assert.equal(upgraded.limitUsd, 2); assert.equal(upgraded.usedUsd, 0.5); assert.equal(upgraded.remainingUsd, 1.5);
   assert.equal(upgraded.resetsAt, usage.resetsAt);
   assert.equal((await req(chat, alice.cookie, { message: "Explain limits", mode: "guided" })).status, 201);
+
+  const owner = await register("owner");
+  const issued = await req("/api/admin/invites", owner.cookie, { role: "co-admin" });
+  const coAdmin = await register("coadmin", (await issued.json()).invite.code);
+  const delegatedCourse = (await (await req("/api/courses", coAdmin.cookie, { name: "Delegated" })).json()).course;
+  await stop();
+  db.local.state = null;
+  const beyondPlus = await service.reserve(coAdmin.user.id, 2000000);
+  await service.settle(beyondPlus, beyondPlus.amount);
+  await start();
+
+  const cap = async () => (await (await req("/api/me/ai-usage", coAdmin.cookie)).json()).usage;
+  const before = await cap();
+  assert.equal(before.unlimited, true);
+  assert.equal(before.limitUsd, null);
+  assert.equal(before.remainingUsd, null);
+  assert.equal(before.canUpgrade, false);
+  const delegatedChat = `/api/courses/${delegatedCourse.id}/chat`;
+  assert.equal((await req(delegatedChat, coAdmin.cookie, { message: "Explain derivatives", mode: "guided" })).status, 201);
+  const delegatedStream = await req(delegatedChat, coAdmin.cookie, { message: "Explain derivatives again", mode: "guided", stream: true }, { accept: "text/event-stream" });
+  assert.match(await delegatedStream.text(), /event: done/);
+  const after = await cap();
+  assert.ok(after.usedUsd > before.usedUsd);
+  assert.equal(after.pendingUsd, 0);
+  const report = await (await req(`/api/admin/users/${coAdmin.user.id}/usage`, owner.cookie)).json();
+  assert.ok(report.aiCosts.calculatedUsd > 0);
+  assert.equal((await (await req("/api/me/ai-usage", bob.cookie)).json()).usage.unlimited, false);
 });

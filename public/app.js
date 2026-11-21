@@ -262,7 +262,8 @@
       .replace(/'/g, "&#39;");
   const readProfileImageFile = window.StudyBridgeProfileImages.readInput;
   const initials = (name) => String(name || "SB").trim().slice(0, 1).toUpperCase() || "S";
-  const isAdmin = () => ["admin", "co-admin"].includes(String(state.user?.role || "").toLowerCase());
+  const isAdmin = () => state.user?.role === "admin";
+  const canManageInvites = () => isAdmin() || state.user?.role === "co-admin";
   const profile = () => state.user?.profile || {};
   const profileSbId = (user = state.user) => String(user?.profile?.sbId || "").trim();
   const hasProfileSchool = () => Boolean(String(profile().school || "").trim());
@@ -578,10 +579,10 @@
     const p = profile();
     const navOrder = ["community", "classmates", "schedule", "study", "grades", "tools", "email"];
     const userNav = navOrder.map((page) => navButton(page)).join("");
-    const devSwitch = isAdmin()
+    const devSwitch = canManageInvites()
       ? ui.html`<div class="mode-switch">
           <button class="${state.mode === "student" ? "active" : ""}" data-action="mode-student">用户端</button>
-          <button class="${state.mode === "admin" ? "active" : ""}" data-action="mode-admin">开发者端</button>
+          <button class="${state.mode === "admin" ? "active" : ""}" data-action="mode-admin">${ui.text(isAdmin() ? "开发者端" : "Plus 邀请码")}</button>
         </div>`
       : "";
     return ui.html`
@@ -611,7 +612,7 @@
         ${ui.selector()}
         ${state.mode === "student" ? ui.html`<button type="button" class="feedback-link" data-action="open-feedback">反馈问题</button>` : ""}
         ${devSwitch}
-        ${state.mode === "admin" ? adminSideHint() : state.page === "study" ? studySidebarHtml() : ""}
+        ${state.mode === "admin" && isAdmin() ? adminSideHint() : state.page === "study" ? studySidebarHtml() : ""}
       </aside>
     `;
   }
@@ -876,7 +877,7 @@
       <div class="app-shell${fullChat ? " classmate-chat-shell" : ""}${admin ? " admin-shell" : ""}">
         ${sidebarHtml(fullChat)}
         <main class="workspace${state.mode !== "admin" && state.page === "study" ? " study-workspace" : state.page === "grades" ? " grades-workspace" : ""}${state.mode !== "admin" && state.page === "classmates" ? " classmates-workspace" : ""}${fullChat ? " classmate-chat-workspace" : ""}${admin ? " admin-workspace" : ""}" id="workspace" data-course-id="${esc(state.activeCourseId)}" data-conversation-id="${esc(state.activeConversationId)}">
-          <header class="mobile-page-bar"><button type="button" data-mobile-action="menu" aria-label="${esc(ui.text(classmateNotifications.hasUnread() ? "返回主菜单，有同学未读消息" : "返回主菜单"))}">${esc(ui.text("‹ 主菜单"))}${classmateUnreadDot()}</button><strong>${esc(ui.text(pageLabels[state.page]?.[1] || "StudyBridge"))}</strong>${state.page === "study" ? ui.markup('<button type="button" data-mobile-action="study-panel" aria-expanded="false">课程与资料</button>') : "<span></span>"}</header>
+          <header class="mobile-page-bar"><button type="button" data-mobile-action="menu" aria-label="${esc(ui.text(classmateNotifications.hasUnread() ? "返回主菜单，有同学未读消息" : "返回主菜单"))}">${esc(ui.text("‹ 主菜单"))}${classmateUnreadDot()}</button><strong>${esc(ui.text(admin && !isAdmin() ? "Plus 邀请码" : pageLabels[state.page]?.[1] || "StudyBridge"))}</strong>${state.page === "study" ? ui.markup('<button type="button" data-mobile-action="study-panel" aria-expanded="false">课程与资料</button>') : "<span></span>"}</header>
           ${content}
         </main>
       </div>
@@ -894,7 +895,7 @@
 
   function routeHtml() {
     if (!state.user) return authHtml(state.authMode);
-    if (state.mode === "admin") return shellHtml(adminPage());
+    if (state.mode === "admin" && canManageInvites()) return shellHtml(adminPage());
     const pages = {
       study: studyPage,
       grades: () => `<div id="grade-module" data-user-id="${esc(state.user.id)}" aria-label="${esc(ui.text("成绩规划"))}"></div>`,
@@ -2387,33 +2388,46 @@
       visible: () => state.user?.id === userId && state.mode !== "admin" && state.page === "tools" && state.tool !== "email" && (!officeTools.supports(state.tool || "docs") || state.toolView === "generate") };
   }
 
+  const adminRoleLabel = (role) => ui.text(role === "admin" ? "管理员" : role === "co-admin" ? "Co-admin" : "用户");
+
+  function adminInvitesHtml(overview, creator) {
+    const invites = overview?.invites || [];
+    return ui.html`
+        <article class="admin-section" aria-labelledby="adminInvitesTitle">
+          <div class="section-title"><h2 id="adminInvitesTitle">${ui.text(creator ? "Plus 邀请码" : "我生成的邀请码")}</h2><small>共 ${invites.length} 个</small></div>
+          <div class="admin-invite-form${creator ? "" : " is-plus-only"}">
+            <label class="admin-invite-label" for="inviteLabel">备注<input id="inviteLabel" maxlength="80" placeholder="例如 Kevin / ECO101 小组"></label>
+            ${creator ? ui.html`<label for="inviteRole">权限角色<select id="inviteRole"><option value="student">Plus 用户</option><option value="co-admin">Co-admin（同时为 Plus）</option></select></label>` : ""}
+            <button type="button" class="primary" data-action="generate-invite" ${!creator && !overview ? "disabled" : ""}>生成邀请码</button>
+          </div>
+          <div class="admin-list">${invites.length ? invites.map((invite) => ui.html`<div class="invite-row">
+            <div class="admin-record-details"><b class="admin-invite-code">${esc(invite.code)}</b><div class="admin-record-meta">${creator ? `<span>${adminRoleLabel(invite.role)}</span>` : ""}<span>注册为 Plus</span><span>仅限一次</span><span class="admin-invite-status ${invite.uses > 0 || !invite.active ? "is-disabled" : "is-active"}">${invite.uses > 0 ? ui.text("已使用") : invite.active ? ui.text("未使用") : ui.text("已停用")}</span></div>${invite.label ? `<p class="admin-record-note">${esc(invite.label)}</p>` : ""}</div>
+            <div class="admin-row-actions"><button data-copy="${esc(invite.code)}" aria-label="复制邀请码 ${esc(invite.code)}">复制</button>${creator ? ui.html`<button data-action="toggle-invite" data-id="${esc(invite.id)}" data-active="${invite.active ? "false" : "true"}" ${invite.uses > 0 ? "disabled" : ""}>${invite.uses > 0 ? ui.text("已使用") : invite.active ? ui.text("停用") : ui.text("启用")}</button><button class="admin-delete-invite" data-action="delete-invite" data-id="${esc(invite.id)}" data-code="${esc(invite.code)}" aria-label="删除邀请码 ${esc(invite.code)}">删除</button>` : ""}</div>
+          </div>`).join("") : ui.html`<p class="muted admin-empty">暂无邀请码。</p>`}</div>
+        </article>
+    `;
+  }
+
   function adminPage() {
     const overview = state.admin;
-    const invites = overview?.invites || [];
+    if (!isAdmin()) {
+      return ui.html`
+        ${pageHeader("", ui.text("Plus 邀请码"), ui.text("生成并分享你的一次性 Plus 邀请码。"), false)}
+        <section class="admin-management">${adminInvitesHtml(overview, false)}</section>
+      `;
+    }
     const users = overview?.users || [];
-    const roleLabel = (role) => ["admin", "co-admin"].includes(String(role).toLowerCase()) ? ui.text("管理员") : ui.text("用户");
     return ui.html`
       ${pageHeader("CREATOR CONSOLE", ui.text("开发者端"), ui.text("查看使用情况，管理用户和邀请码。"), false)}
       ${adminUsage.html()}
       ${feedbackView.html()}
       ${adminStatusHtml()}
       <section class="admin-management">
-        <article class="admin-section" aria-labelledby="adminInvitesTitle">
-          <div class="section-title"><h2 id="adminInvitesTitle">Plus 邀请码</h2><small>共 ${invites.length} 个</small></div>
-          <div class="admin-invite-form">
-            <label class="admin-invite-label" for="inviteLabel">备注<input id="inviteLabel" placeholder="例如 Kevin / ECO101 小组"></label>
-            <label for="inviteRole">权限角色<select id="inviteRole"><option value="student">Plus 用户</option><option value="admin">Co-admin（同时为 Plus）</option></select></label>
-            <button class="primary" data-action="generate-invite">生成邀请码</button>
-          </div>
-          <div class="admin-list">${invites.length ? invites.map((invite) => ui.html`<div class="invite-row">
-            <div class="admin-record-details"><b class="admin-invite-code">${esc(invite.code)}</b><div class="admin-record-meta"><span>${roleLabel(invite.role)}</span><span>注册为 Plus</span><span>仅限一次</span><span class="admin-invite-status ${invite.uses > 0 || !invite.active ? "is-disabled" : "is-active"}">${invite.uses > 0 ? ui.text("已使用") : invite.active ? ui.text("未使用") : ui.text("已停用")}</span></div>${invite.label ? `<p class="admin-record-note">${esc(invite.label)}</p>` : ""}</div>
-            <div class="admin-row-actions"><button data-copy="${esc(invite.code)}" aria-label="复制邀请码 ${esc(invite.code)}">复制</button><button data-action="toggle-invite" data-id="${esc(invite.id)}" data-active="${invite.active ? "false" : "true"}" ${invite.uses > 0 ? "disabled" : ""}>${invite.uses > 0 ? ui.text("已使用") : invite.active ? ui.text("停用") : ui.text("启用")}</button><button class="admin-delete-invite" data-action="delete-invite" data-id="${esc(invite.id)}" data-code="${esc(invite.code)}" aria-label="删除邀请码 ${esc(invite.code)}">删除</button></div>
-          </div>`).join("") : ui.html`<p class="muted admin-empty">暂无邀请码。</p>`}</div>
-        </article>
+        ${adminInvitesHtml(overview, true)}
         <article class="admin-section" aria-labelledby="adminUsersTitle">
           <div class="section-title"><h2 id="adminUsersTitle">用户</h2><small data-membership-count>共 ${users.length} 人 · 普通 ${users.filter(user => user.membershipTier !== "plus").length} · Plus ${users.filter(user => user.membershipTier === "plus").length}</small></div>
           <div class="admin-list">${users.length ? users.map((user) => ui.html`<div class="user-row" data-membership-user-row="${esc(user.id)}">
-            <div class="admin-record-details"><b>${esc(user.name || user.email)}</b><p class="admin-record-note">${esc(user.email)}</p><div class="admin-record-meta"><span>${roleLabel(user.role)}</span><span class="membership-badge" data-membership="${user.membershipTier === "plus" ? "plus" : "standard"}">${user.membershipTier === "plus" ? ui.text("Plus 用户") : ui.text("普通用户")}</span>${user.inviteCode ? ui.html`<span>邀请码 <span class="admin-invite-code">${esc(user.inviteCode)}</span></span>` : ""}</div><p class="admin-record-note">最近在线：<time data-last-seen-user="${esc(user.id)}" ${user.lastSeenAt ? `datetime="${esc(user.lastSeenAt)}" title="${esc(new Date(user.lastSeenAt).toLocaleString())}"` : ""}>${userActivity.relativeTime(user.lastSeenAt)}</time></p></div>
+            <div class="admin-record-details"><b>${esc(user.name || user.email)}</b><p class="admin-record-note">${esc(user.email)}</p><div class="admin-record-meta"><span>${adminRoleLabel(user.role)}</span><span class="membership-badge" data-membership="${user.membershipTier === "plus" ? "plus" : "standard"}">${user.membershipTier === "plus" ? ui.text("Plus 用户") : ui.text("普通用户")}</span>${user.inviteCode ? ui.html`<span>邀请码 <span class="admin-invite-code">${esc(user.inviteCode)}</span></span>` : ""}</div><p class="admin-record-note">最近在线：<time data-last-seen-user="${esc(user.id)}" ${user.lastSeenAt ? `datetime="${esc(user.lastSeenAt)}" title="${esc(new Date(user.lastSeenAt).toLocaleString())}"` : ""}>${userActivity.relativeTime(user.lastSeenAt)}</time></p></div>
             <div class="admin-user-controls"><dl class="admin-user-stats"><div><dt>课程</dt><dd>${user.stats?.courses || 0}</dd></div><div><dt>文档</dt><dd>${user.stats?.documents || 0}</dd></div><div><dt>聊天</dt><dd>${user.stats?.messages || 0}</dd></div></dl><div class="admin-user-actions"><button type="button" data-action="set-user-membership" data-id="${esc(user.id)}" data-tier="${user.membershipTier === "plus" ? "standard" : "plus"}" data-expected="${user.membershipTier === "plus" ? "plus" : "standard"}" ${adminMembershipPending.has(user.id) ? "disabled" : ""}>${user.membershipTier === "plus" ? ui.text("设为普通用户") : ui.text("设为 Plus")}</button>${adminUsage.buttonHtml(user.id)}</div><span class="admin-membership-status" role="status" aria-live="polite"></span></div>
             ${adminUsage.summaryHtml(user.id)}
           </div>`).join("") : ui.html`<p class="muted admin-empty">暂无用户。</p>`}</div>
@@ -2805,13 +2819,20 @@
         state.courses = data.courses || [];
         if (state.tool !== "notes" && (!officeTools.supports(state.tool || "docs") || state.toolView === "generate")) await creativeTools.load(creativeContext());
       }
-      if (page === "admin") {
-        const overview = await api("/api/admin/overview");
-        if (!isCurrent()) return;
-        const status = await api("/api/admin/system-status").catch(() => state.status);
-        if (!isCurrent()) return;
-        state.admin = overview;
-        state.status = status;
+      if (page === "admin" && canManageInvites()) {
+        if (!isAdmin()) {
+          const invitations = await api("/api/admin/invites");
+          if (!isCurrent()) return;
+          if (invitations.actorId !== state.user.id) throw new Error(ui.text("登录账号已变更，请刷新后再试。"));
+          state.admin = invitations;
+        } else {
+          const overview = await api("/api/admin/overview");
+          if (!isCurrent()) return;
+          const status = await api("/api/admin/system-status").catch(() => state.status);
+          if (!isCurrent()) return;
+          state.admin = overview;
+          state.status = status;
+        }
       }
     } catch (error) {
       if (!isCurrent()) return;
@@ -3269,6 +3290,7 @@
         return;
       }
       if (action === "mode-admin") {
+        if (!canManageInvites()) return;
         state.mode = "admin";
         localStorage.setItem("studybridge.mode", "admin");
         await loadPage("admin");
@@ -3924,8 +3946,24 @@
         return;
       }
       if (action === "generate-invite") {
-        await api("/api/admin/invites", { method: "POST", body: { label: $("inviteLabel")?.value || "", role: $("inviteRole")?.value || "student" } });
-        await loadPage("admin");
+        if (!canManageInvites() || button.disabled) return;
+        const label = $("inviteLabel")?.value || "";
+        const overview = state.admin;
+        const actorId = state.user.id;
+        const creator = isAdmin();
+        button.disabled = true;
+        try {
+          const result = await api("/api/admin/invites", { method: "POST", body: { label, role: creator ? $("inviteRole")?.value || "student" : "student", actorId },
+            ...(creator ? {} : { headers: { "x-csrf-token": overview.csrfToken } }) });
+          if (state.user?.id !== actorId || state.mode !== "admin") return;
+          if (creator || state.admin !== overview) await loadPage("admin");
+          else {
+            overview.invites.unshift(result.invite);
+            render();
+          }
+        } finally {
+          button.disabled = false;
+        }
         return;
       }
       if (action === "toggle-invite") {
@@ -4208,7 +4246,7 @@
       state.user = data.user;
       const savedTool = localStorage.getItem("studybridge.tool");
       state.tool = ["notes", "docs", "sheets", "slides", "images", "cheatsheet", "email"].includes(savedTool) ? savedTool : "notes";
-      state.mode = isAdmin() && (feedbackView.hasLink() || localStorage.getItem("studybridge.mode") === "admin") ? "admin" : "student";
+      state.mode = canManageInvites() && (localStorage.getItem("studybridge.mode") === "admin" || isAdmin() && feedbackView.hasLink()) ? "admin" : "student";
       void reportUserActivity();
       const urlPage = new URL(location.href).searchParams.get("page");
       const billingResult = new URL(location.href).searchParams.get("billing");
@@ -4491,7 +4529,7 @@
   setInterval(() => void reportUserActivity(), 15000);
   let adminActivityRefreshing = false;
   setInterval(async () => {
-    if (document.hidden || !state.user || state.page !== "admin" || adminActivityRefreshing) return;
+    if (document.hidden || !isAdmin() || state.page !== "admin" || adminActivityRefreshing) return;
     const userId = state.user.id;
     adminActivityRefreshing = true;
     try {

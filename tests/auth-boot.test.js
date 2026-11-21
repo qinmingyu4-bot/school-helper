@@ -5,7 +5,7 @@ const { test } = require("node:test");
 const source = fs.readFileSync(require.resolve("../public/app.js"), "utf8");
 const boot = source.slice(source.indexOf("  async function boot()"), source.indexOf('  document.addEventListener("click", async (event) => {'));
 
-function harness(result, error) {
+function harness(result, error, savedMode) {
   const paths = [], pages = [], state = {}, root = { innerHTML: "" };
   const context = vm.createContext({
     state, root, URL, location: { href: "https://example.test/app?page=tools", search: "?page=tools" },
@@ -17,10 +17,11 @@ function harness(result, error) {
       return result;
     },
     render: () => { root.innerHTML = state.user ? "workspace" : "login-form"; },
-    reportUserActivity: async () => {}, localStorage: { getItem: () => null }, isAdmin: () => false,
+    reportUserActivity: async () => {}, localStorage: { getItem: (key) => key === "studybridge.mode" ? savedMode : null },
     loadPage: async (page, { officeShare } = {}) => pages.push(officeShare ? { page, officeShare } : page)
   });
-  vm.runInContext(boot, context);
+  const roles = source.slice(source.indexOf("  const isAdmin ="), source.indexOf("  const profile ="));
+  vm.runInContext(roles + boot, context);
   return { context, paths, pages, state, root };
 }
 
@@ -68,4 +69,12 @@ test('shared Office links open the corresponding editor after authentication', a
   h.context.officeTools.sharedLink = { kind: 'sheets' };
   await h.context.boot();
   assert.deepEqual(h.pages, [{ page: 'study', officeShare: { kind: 'sheets' } }]);
+});
+
+test("only creators and Co-admins can restore the saved invitation or developer workspace", async () => {
+  for (const role of ["student", "co-admin", "admin"]) {
+    const h = harness({ user: { id: "alice", role } }, null, "admin");
+    await h.context.boot();
+    assert.equal(h.state.mode, role === "student" ? "student" : "admin");
+  }
 });

@@ -15,6 +15,9 @@
   }
   function markup(data, error = "") {
     if (!data) return `<p role="status">${esc(error || ui.text("正在读取 AI 额度…"))}</p>${refreshButton()}`;
+    if (data.unlimited) return `<div class="ai-usage-title"><strong>${ui.text("AI 额度")}</strong><span>${ui.text("不限额")}</span></div>
+      <p>${ui.text("Co-admin 账号不受每周 AI 额度限制。")}</p>${refreshButton()}
+      ${error ? `<p role="status">${esc(error)}</p>` : ""}`;
     const percent = Math.floor(data.remainingUsd / data.limitUsd * 100);
     const reset = data.resetsAt ? `${ui.text("恢复时间")} · ${new Date(data.resetsAt).toLocaleString(ui.locale())}` : ui.text("首次使用 AI 后，每 7 天恢复额度。");
     return `<div class="ai-usage-title"><strong>${ui.text("本周 AI 额度")} · ${ui.text(data.tier === "plus" ? "Plus 用户" : "普通用户")}</strong><span>${ui.text("剩余")} ${percent}%</span></div>
@@ -53,8 +56,9 @@
     function render() {
       for (const disclosure of doc.querySelectorAll("[data-usage-disclosure]")) {
         disclosure.open = expanded;
-        disclosure.querySelector("[data-usage-summary]").textContent = data
-          ? `${ui.text("剩余")} ${Math.floor(data.remainingUsd / data.limitUsd * 100)}%` : "—";
+        const summary = disclosure.querySelector("[data-usage-summary]");
+        if (data?.unlimited) summary.textContent = ui.text("不限额");
+        else summary.textContent = data ? `${ui.text("剩余")} ${Math.floor(data.remainingUsd / data.limitUsd * 100)}%` : "—";
       }
       for (const element of doc.querySelectorAll("[data-ai-usage]")) {
         const html = markup(data, error);

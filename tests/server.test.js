@@ -218,7 +218,7 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     const attempts = await Promise.all(Array.from({ length: 4 }, (_, i) => request("/api/auth/register", { method: "POST", body: registration(`Concurrent ${i}`, `concurrent-${i}@example.test`, raceCode) })));
     assert.equal(attempts.filter((item) => item.status === 201).length, 1);
     assert.equal(attempts.filter((item) => item.status === 403).length, 3);
-    assert.equal(attempts.find((item) => item.status === 201).data.user.role, "admin");
+    assert.equal(attempts.find((item) => item.status === 201).data.user.role, "co-admin");
     const overview = await request("/api/admin/overview", { cookie: admin.cookie });
     assert.equal(overview.data.users.filter((user) => user.inviteCode === raceCode).length, 1);
     assert.equal(overview.data.invites.find((item) => item.code === raceCode).uses, 1);

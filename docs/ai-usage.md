@@ -10,7 +10,11 @@ Each reset replaces the previous allowance without rollover. Upgrade, manual
 membership changes, paid expiry and refunds retain the anchor and spending.
 A valid paid entitlement uses the existing membership overlay. Test payments
 continue to leave real membership unchanged. Invitation/manual Plus also receives
-the Plus allowance. Administrator permissions do not bypass metering.
+the Plus allowance. Co-admin accounts have no weekly cap. They still reserve and
+settle requests for cost tracking, including concurrent jobs and refunds. Their
+usage responses set `unlimited` to true and return null for `limitUsd` and
+`remainingUsd`. Provider limits, request timeouts and output/tool limits still
+apply.
 
 ## Accounting
 

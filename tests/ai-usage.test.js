@@ -98,7 +98,11 @@ test("usage UI displays reset, balance, estimates and gated upgrade in both lang
   assert.match(markup({ ...data, canUpgrade: true }), /data-usage-upgrade/);
   assert.match(markup({ ...data, estimatedUsd: 0.01 }), /预估/);
   assert.match(markup(data), /2026/);
+  const unlimited = { ...data, unlimited: true, limitUsd: null, remainingUsd: null, pendingUsd: 0.1 };
+  assert.match(markup(unlimited), /不限额/);
+  assert.doesNotMatch(markup(unlimited), /progress|NaN|data-usage-upgrade|已用完/);
   ui.setLanguage("en");
+  assert.match(markup(unlimited), /Unlimited/);
   assert.match(markup(data), /Weekly AI allowance/);
   assert.match(markup({ ...data, canUpgrade: true }), /Upgrade to Plus/);
   ui.setLanguage("zh-CN");

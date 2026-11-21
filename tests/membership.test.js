@@ -62,6 +62,14 @@ test("email and Google registrations assign standard/Plus, preserve old users, a
   const file = path.join(directory, "database.json");
   const legacy = { id: oldId, email: "legacy@example.test", name: "Legacy invited", passwordHash: "unchanged-private-hash", googleSub: "unchanged-sub", inviteCode: "DELETED-OLD-CODE", profile: { sbId: "Legacy01" }, preferences: { customInstruction: "Keep" } };
   await fs.writeFile(file, JSON.stringify({ users: { [oldId]: legacy }, emailIndex: { [legacy.email]: oldId }, sessions: { [tokenHash]: { tokenHash, userId: oldId, expiresAt: Date.now()+3600000 } }, courses: { kept: { id:"kept",userId:oldId,name:"Kept course" } }, documents: {}, messages: {}, invites: {} }));
+  const legacyAdmin = { id: "legacy-co-admin", email: "legacy-co-admin@example.test", role: "admin", membershipTier: "plus" };
+  const legacyAdminToken = crypto.createHmac("sha256", secret).update("legacy-admin-session").digest("hex");
+  const seed = JSON.parse(await fs.readFile(file, "utf8"));
+  seed.users[legacyAdmin.id] = legacyAdmin;
+  seed.emailIndex[legacyAdmin.email] = legacyAdmin.id;
+  seed.sessions[legacyAdminToken] = { tokenHash: legacyAdminToken, userId: legacyAdmin.id, expiresAt: Date.now() + 3600000 };
+  seed.invites.delegatedLegacy = { id: "delegatedLegacy", code: "LEGACY-DELEGATED", label: "Old invite", role: "admin", createdBy: legacyAdmin.id };
+  await fs.writeFile(file, JSON.stringify(seed));
   const child = spawn(process.execPath, ["--require", "./tests/fixtures/membership-google.js", "server.js"], {
     cwd: path.resolve(__dirname,".."), env: { ...process.env, NODE_ENV:"test",PORT:"0",STUDYBRIDGE_DB:"local",LOCAL_DB_FILE:file,LOCAL_DB_BACKUP_DISABLED:"true",
       REQUIRE_INVITE_CODE:"true", REQUIRE_EMAIL_VERIFICATION:"false",ADMIN_EMAILS:"admin@example.test",OWNER_INVITE_CODE:"bootstrap-plus-owner", SESSION_SECRET:secret,
@@ -106,6 +114,62 @@ test("email and Google registrations assign standard/Plus, preserve old users, a
     assert.equal((await request("/api/courses",{name:"Same available features"},plain.cookie)).status,201);
     const login=await request("/api/auth/login",credentials("plain@example.test"));assert.equal(login.data.user.id,plain.data.user.id);assert.equal(login.data.user.membershipTier,"standard");
     const raw=JSON.parse(await fs.readFile(file,"utf8"));assert.equal(raw.users[plain.data.user.id].membershipTier,"standard");
+  });
+  await t.test("Co-admin sessions only see their own Plus invitations and cannot use creator APIs", async () => {
+    const route = "/api/admin/invites";
+    const ownerInvite = await makeInvite();
+    const cookie = "sb_session=legacy-admin-session";
+    const account = await request("/api/me", undefined, cookie);
+    assert.equal(account.data.user.role, "co-admin");
+    assert.equal((await request(route, undefined, plain.cookie)).status, 403);
+    const ownList = await request(route, undefined, cookie);
+    assert.equal(ownList.status, 200);
+    assert.equal(ownList.response.headers.get("cache-control"), "private, no-store");
+    assert.deepEqual(ownList.data.invites, []);
+    assert.equal(ownList.data.actorId, legacyAdmin.id);
+    assert.deepEqual(Object.keys(ownList.data).sort(), ["actorId", "csrfToken", "invites"]);
+
+    const headers = { "x-csrf-token": ownList.data.csrfToken };
+    const create = (body, auth = headers) => request(route, { actorId: legacyAdmin.id, ...body }, cookie, "POST", auth);
+    assert.equal((await create({}, {})).status, 403);
+    assert.equal((await create({}, { ...headers, origin: "https://other.example.test" })).status, 403);
+    assert.equal((await create({ actorId: admin.data.user.id })).status, 409);
+    for (const role of ["admin", "co-admin", "coadmin"]) assert.equal((await create({ role })).status, 403);
+    const created = await create({ label: "[co-admin] Partner code", maxUses: 100, createdBy: admin.data.user.id });
+    assert.equal(created.status, 201);
+    assert.equal(created.data.invite.role, "student");
+    assert.equal(created.data.invite.maxUses, 1);
+    const plus = await request("/api/auth/register", credentials("delegated-plus@example.test", created.data.invite.code));
+    assert.equal(plus.status, 201);
+    assert.equal(plus.data.user.role, "student");
+    assert.equal(plus.data.user.membershipTier, "plus");
+    const list = (await request(route, undefined, cookie)).data.invites;
+    assert.deepEqual(list.map(invite => [invite.id, invite.uses]), [[created.data.invite.id, 1]]);
+    assert.equal(list[0].usedBy, undefined);
+
+    for (const path of ["overview", "usage", "ai-costs", "system-status?probe=1", "feedback", "feedback/fixture", `users/${admin.data.user.id}/usage`]) {
+      assert.equal((await request(`/api/admin/${path}`, undefined, cookie)).status, 403, path);
+    }
+    for (const path of ["feedback/fixture", `users/${admin.data.user.id}/membership`, `invites/${ownerInvite.id}`]) {
+      assert.equal((await request(`/api/admin/${path}`, {}, cookie, "PATCH", headers)).status, 403, path);
+    }
+    assert.equal((await request(`${route}/${created.data.invite.id}`, undefined, cookie, "DELETE")).status, 403);
+    assert.equal((await request("/api/admin/password-resets/fixture", {}, cookie)).status, 403);
+
+    const legacySignup = await request("/api/auth/register", credentials("legacy-delegated-plus@example.test", "LEGACY-DELEGATED"));
+    assert.equal(legacySignup.data.user.role, "student");
+    assert.equal(legacySignup.data.user.membershipTier, "plus");
+    const coInvite = await request(route, { role: "co-admin" }, admin.cookie);
+    assert.equal(coInvite.data.invite.role, "co-admin");
+    const googleCoAdmin = await google("google-co-admin", { inviteCode: coInvite.data.invite.code });
+    const googleUser = (await request("/api/me", undefined, googleCoAdmin.cookie)).data.user;
+    assert.equal(googleUser.role, "co-admin");
+    assert.equal(googleUser.membershipTier, "plus");
+    assert.deepEqual((await request(route, undefined, googleCoAdmin.cookie)).data.invites, []);
+    const ownerList = (await request("/api/admin/overview", undefined, admin.cookie)).data;
+    assert.equal(ownerList.creator.role, "admin");
+    assert.ok(ownerList.invites.some(invite => invite.id === created.data.invite.id));
+    assert.deepEqual(JSON.parse(await fs.readFile(file, "utf8")).users[legacyAdmin.id], legacyAdmin);
   });
   await t.test("valid email invitation creates Plus once; invalid, inactive and spent codes cannot create users",async()=>{
     const invite=await makeInvite();const plus=await request("/api/auth/register",credentials("invited@example.test",invite.code));assert.equal(plus.status,201);assert.equal(plus.data.user.membershipTier,"plus");assert.equal(plus.data.user.role,"student");

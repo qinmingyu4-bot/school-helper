@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Co-admin access
+
+- Restrict the full developer console and its APIs to configured creator emails. Existing invitation-based administrators resolve to Co-admin.
+- Give Co-admins a dedicated workspace to create and copy their own single-use Plus invitations.
+- Remove the Co-admin weekly AI allowance cap while continuing to record usage and provider costs.
+
 ## 1.16.0 — 2026-11-21 — Office editing and collaboration
 
 MINOR from AWS 1.15.3 (`1f8968f`): add shared editing by link and new native editing controls across Docs, Sheets and Slides.

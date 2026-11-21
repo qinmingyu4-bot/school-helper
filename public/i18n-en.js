@@ -384,6 +384,9 @@ AI 额度|AI allowance
 恢复时间|Resets
 首次使用 AI 后，每 7 天恢复额度。|Allowance resets every 7 days after your first AI use.
 本周 AI 额度|Weekly AI allowance
+不限额|Unlimited
+不限每周 AI 额度|No weekly AI cap
+Co-admin 账号不受每周 AI 额度限制。|Co-admin accounts have no weekly AI allowance limit.
 剩余|Remaining
 剩余 AI 额度|Remaining AI allowance
 正在生成的任务已暂留部分额度，完成后按实际用量结算。|Running tasks temporarily reserve allowance and settle against actual usage when complete.
@@ -1282,6 +1285,10 @@ AI 文件生成|Generate with AI
 管理员|Administrator
 用户|Users
 Plus 邀请码|Plus invitations
+我生成的邀请码|My invitations
+生成并分享你的一次性 Plus 邀请码。|Create and share your single-use Plus invitations.
+请刷新邀请码页面后再试。|Refresh the invitations page and try again.
+只能生成 Plus 用户邀请码。|You can only create Plus invitations.
 共 {0} 个|{0} total
 例如 Kevin / ECO101 小组|For example: Kevin / ECO101 group
 权限角色|Role

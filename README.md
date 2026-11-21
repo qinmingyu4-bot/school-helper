@@ -933,8 +933,8 @@ An explicitly stored ordinary/Plus tier takes precedence, so administrator
 downgrades are not undone by historical invitation evidence.
 This compatibility rule does not rewrite credentials or other historical data.
 New account tiers are persisted by the server; client-supplied tiers are ignored.
-Settings, the sidebar and the admin user list show the tier. Membership is separate
-from student/admin roles, and no feature or entitlement difference is enforced yet.
+Settings, the sidebar and the admin user list show the tier. Membership and
+permission roles are separate. Standard and Plus accounts have different weekly AI allowances.
 The obsolete `REQUIRE_INVITE_CODE` environment value is ignored, including existing
 production `true` values. Email verification remains required when configured;
 Google registration still verifies the Google identity. Existing-account Google sign-in reuses the same account. Both Google login and
@@ -955,6 +955,23 @@ learning data stay with the same account. This does not grant administrator righ
 including when redeeming an invitation whose signup role is Co-admin. The form
 shows immediate success or retryable validation errors, clears on success/close,
 and never stores invitations in browser storage or preference exports.
+
+Full developer-console access is granted only to the creator emails in
+`ADMIN_EMAILS` (or the legacy `ADMIN_EMAIL`). Keep this list limited to creators.
+Existing non-allowlisted accounts stored as `admin` resolve to Co-admin on the
+next authenticated request, including requests with existing sessions. No
+account or learning records need to be migrated. Creators issue Co-admin
+signup codes from **开发者端 → Plus 邀请码 → 权限角色**. At signup, legacy privileged
+codes without a verified creator issuer grant only Plus membership.
+
+Co-admin accounts have a **Plus 邀请码** workspace for creating and copying
+their own single-use Plus codes. The invite list exposes code status and label
+without recipient identity. Creator-only controls include the account list,
+user activity, AI costs, feedback, system status, password resets, membership
+changes, and invite deactivation/deletion. The Plus codes a Co-admin issues grant
+Plus membership with standard user permissions. Co-admins themselves have no
+weekly AI allowance cap, and their provider usage still appears in creator cost
+reports. Permission roles remain independent of membership tier.
 
 In **开发者端 → 用户**, show ordinary/Plus badges and counts, with a per-user
 **设为 Plus / 设为普通用户** button. `PATCH /api/admin/users/:id/membership`

@@ -28,6 +28,7 @@ const mailboxProviders = require("./lib/mailbox-providers");
 const { createMailboxService } = require("./lib/mailbox-service");
 const { membershipTier } = require("./lib/membership");
 const { createAiUsage } = require("./lib/ai-usage");
+const { effectiveRole, inviteRole } = require("./lib/account-roles");
 const { createFeedback } = require("./lib/feedback");
 const { createAiCosts } = require("./lib/ai-costs");
 const { createUsageAnalytics, STEPS, reportWindow, summarize, overview: usageOverview } = require("./lib/usage-analytics");
@@ -134,6 +135,7 @@ const academicCalendars = createCalendarService({
 const feedback = createFeedback({ db, sendEmail, version: packageVersion, recipient: feedbackRecipient, origin: feedbackOrigin });
 const usage = createUsageAnalytics(db, { onFailure: feedback.observe });
 const aiUsage = createAiUsage({ db, entitlement: (userId) => alipay.entitlement(userId), onRequest: usage.recordAi,
+  isUnlimited: (user) => effectiveRole(user, adminEmails()) === "co-admin",
   request: (url, options, estimate) => aiCosts.fetch(url, options, { ...estimate, operationId: aiUsage.context.getStore()?.operationId || usage.currentOperation(), userId: aiUsage.context.getStore()?.userId, payer: "user", ...usage.currentAttribution() }) });
 const office = createOfficeService(db);
 const schedulePush = createPushService({ db, listSchedule: (userId) => listUserScheduleItems(userId, { includeCompleted: true }) });
@@ -339,17 +341,19 @@ function feedbackOrigin() {
 
 function withEffectiveRole(user) {
   if (!user) return null;
-  const role = user.role === "admin" || adminEmails().includes(normalizeEmail(user.email)) ? "admin" : "student";
-  return { ...user, role };
+  return { ...user, role: effectiveRole(user, adminEmails()) };
 }
 
-function normalizeInviteRole(role) {
-  const normalized = String(role || "").trim().toLowerCase();
-  return normalized === "admin" || normalized === "co-admin" || normalized === "coadmin" ? "admin" : "student";
+async function signupRole(email, invite) {
+  const creators = adminEmails();
+  if (creators.includes(email)) return "admin";
+  if (inviteRole(invite) !== "co-admin" || !invite.createdBy) return "student";
+  const issuer = await db.getUser(invite.createdBy, { consistent: true });
+  return issuer && creators.includes(normalizeEmail(issuer.email)) ? "co-admin" : "student";
 }
 
-function createInviteCode(role = "student") {
-  const prefix = normalizeInviteRole(role) === "admin" ? "SB-A" : "SB-U";
+function createInviteCode(role) {
+  const prefix = role === "co-admin" ? "SB-A" : "SB-U";
   return `${prefix}-${crypto.randomBytes(3).toString("hex").toUpperCase()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
 }
 
@@ -369,7 +373,7 @@ function publicInvite(invite) {
     maxUses: 1,
     uses: Math.max(Number(invite.uses || 0), invite.usedBy?.length || 0),
     active: invite.active !== false,
-    role: normalizeInviteRole(invite.role),
+    role: inviteRole(invite),
     createdAt: invite.createdAt,
     updatedAt: invite.updatedAt
   };
@@ -568,10 +572,10 @@ async function requireUser(req, res) {
   return auth.user;
 }
 
-async function requireAdminSession(req, res) {
+async function requireAdminSession(req, res, { allowCoAdmin = false } = {}) {
   const auth = await currentUser(req);
   if (!auth) { sendError(res, 401, "Please log in first."); return null; }
-  if (auth.user.role !== "admin") {
+  if (auth.user.role !== "admin" && !(allowCoAdmin && auth.user.role === "co-admin")) {
     sendError(res, 403, "Only the StudyBridge creator can open this area.");
     return null;
   }
@@ -1942,7 +1946,7 @@ async function signInWithGoogle(req, res, url) {
           name: String(googleProfile.name || email.split("@")[0] || "StudyBridge Student").trim().slice(0, 80),
           email,
           passwordHash: "",
-          role: adminEmails().includes(email) || normalizeInviteRole(inviteGrant.invite?.role) === "admin" ? "admin" : "student",
+          role: await signupRole(email, inviteGrant.invite),
           inviteCode: inviteGrant.code || inviteGrant.invite?.code || "",
           inviteId: inviteGrant.invite?.id || "",
           googleSub: googleProfile.sub || "",
@@ -2022,7 +2026,7 @@ async function routeApi(req, res) {
     if (!user) return;
     await creative.reconcile(user.id);
     const usage = await aiUsage.status(user.id);
-    const payment = await alipay.status(user.id).catch(() => null);
+    const payment = usage.unlimited ? null : await alipay.status(user.id).catch(() => null);
     return sendJson(res, 200, { usage: { ...usage, canUpgrade: usage.tier === "standard" && Boolean(payment?.canCheckout && payment.realCharges),
       upgradePrice: { currency: "CAD", amount: payment?.passes?.plans?.find((plan) => plan.id === "month")?.amount || 1999, days: 30 } } }, { "cache-control": "private, no-store" });
   }
@@ -2348,7 +2352,7 @@ async function routeApi(req, res) {
       name,
       email,
       passwordHash,
-      role: adminEmails().includes(email) || normalizeInviteRole(inviteGrant.invite?.role) === "admin" ? "admin" : "student",
+      role: await signupRole(email, inviteGrant.invite),
       inviteCode: inviteGrant.code || inviteGrant.invite?.code || "",
       inviteId: inviteGrant.invite?.id || "",
       profile: {
@@ -2676,7 +2680,7 @@ async function routeApi(req, res) {
       if (!post) return sendError(res, 404, "帖子不存在或已删除。");
       return sendJson(res, 200, { post: publicCommunityPost(post, user) });
     }
-    const post = method === "DELETE" ? await db.deleteCommunityPost(communityPostMatch[1], user.id, ["admin", "owner"].includes(user.role)) : await db.getCommunityPost(communityPostMatch[1]);
+    const post = method === "DELETE" ? await db.deleteCommunityPost(communityPostMatch[1], user.id, user.role === "admin") : await db.getCommunityPost(communityPostMatch[1]);
     if (!post) return sendError(res, 404, "帖子不存在或已删除。");
     return sendJson(res, 200, method === "DELETE" ? { deleted: true } : { post: publicCommunityPost(post, user) });
   }
@@ -2686,7 +2690,7 @@ async function routeApi(req, res) {
     const user = await requireUser(req, res);
     if (!user) return;
     if (!await db.getCommunityPost(communityReplyDelete[1])) return sendError(res, 404, "帖子不存在。");
-    await db.deleteCommunityReply(communityReplyDelete[1], decodeURIComponent(communityReplyDelete[2]), user.id, ["admin", "owner"].includes(user.role), url.searchParams.get("createdAt") || "");
+    await db.deleteCommunityReply(communityReplyDelete[1], decodeURIComponent(communityReplyDelete[2]), user.id, user.role === "admin", url.searchParams.get("createdAt") || "");
     return sendJson(res, 200, { deleted: true });
   }
 
@@ -2920,20 +2924,40 @@ async function routeApi(req, res) {
     return sendJson(res, 200, { user: publicUser(withEffectiveRole(result.user)), changed: result.changed }, { "cache-control": "private, no-store" });
   }
 
-  if (url.pathname === "/api/admin/invites" && method === "POST") {
-    const admin = await requireAdmin(req, res);
-    if (!admin) return;
-    const body = await readJson(req);
-    const role = normalizeInviteRole(body.role);
+  if (url.pathname === "/api/admin/invites" && ["GET", "POST"].includes(method)) {
+    const auth = await requireAdminSession(req, res, { allowCoAdmin: true });
+    if (!auth) return;
+    const { user } = auth;
+    const coAdmin = user.role === "co-admin";
+    const csrfToken = hashToken(`admin-invites:${auth.tokenHash}`);
+    const headers = { "cache-control": "private, no-store" };
+    if (method === "GET") {
+      const invites = (await db.listInvites())
+        .filter((invite) => !isResetRequest(invite) && (!coAdmin || invite.createdBy === user.id && inviteRole(invite) === "student"))
+        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+        .map(publicInvite);
+      return sendJson(res, 200, { invites, csrfToken, actorId: user.id }, headers);
+    }
+    if (coAdmin) {
+      const supplied = String(req.headers["x-csrf-token"] || "");
+      if (!feedbackJson(req) || !/^[a-f0-9]{64}$/.test(supplied) ||
+          !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(csrfToken))) {
+        return sendError(res, 403, "请刷新邀请码页面后再试。");
+      }
+    }
+    const body = await readJson(req, 16 * 1024);
+    if (coAdmin && body.actorId !== user.id) return sendError(res, 409, "登录账号已变更，请刷新后再试。");
+    const role = inviteRole({ role: body.role });
+    if (coAdmin && role !== "student") return sendError(res, 403, "只能生成 Plus 用户邀请码。");
     const invite = await db.createInvite({
       id: createId("invite"),
       code: createInviteCode(role),
       label: String(body.label || "Friend invite").trim().slice(0, 80),
       role,
       maxUses: 1,
-      createdBy: admin.id
+      createdBy: user.id
     });
-    return sendJson(res, 201, { invite: publicInvite(invite) });
+    return sendJson(res, 201, { invite: publicInvite(invite) }, headers);
   }
 
   const resetMatch = url.pathname.match(/^\/api\/admin\/password-resets\/([^/]+)$/);

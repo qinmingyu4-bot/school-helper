@@ -1,6 +1,6 @@
 {
-  "previousCommit": "0c0bd96beb901224278ab0d5e6bce90785c0792d",
-  "previousVersion": "1.14.1",
+  "previousCommit": "96f9d42e3eb36929049df1980d98f703a8473b00",
+  "previousVersion": "1.14.2",
   "version": "1.15.0",
   "level": "minor",
   "reason": "Introduce unified native and AI-generated Office file libraries with explicit blank-file creation and lazy preview cards; protect reopen and slow-navigation editing workflows.",

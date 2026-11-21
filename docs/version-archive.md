@@ -2,10 +2,17 @@
 
 ## 1.15.0 — 2026-11-21
 
-- MINOR from verified AWS 1.14.1 (`0c0bd96beb901224278ab0d5e6bce90785c0792d`): add default Office file libraries combining native and AI-generated work, first-card blank creation, search/source filters and lazy thumbnails.
+- MINOR from verified AWS 1.14.2 (`96f9d42e3eb36929049df1980d98f703a8473b00`): add default Office file libraries combining native and AI-generated work, first-card blank creation, search/source filters and lazy thumbnails.
 - Preserve editing, explicit saves, recovery drafts and account isolation. Fix stale cloud content on reopen and serialize pending library transitions to protect new edits from late responses.
 - The owner authorized AWS deployment after regression checks on 2026-11-21. Verify full tests, real browser workflows, release policy, exact deployed assets and service health. No new dependencies or database migration.
-- Rollback code target: `0c0bd96beb901224278ab0d5e6bce90785c0792d`; retain all private configuration and user files.
+- Rollback code target: `96f9d42e3eb36929049df1980d98f703a8473b00`; retain all private configuration and user files.
+
+## 1.14.2 — 2026-11-21
+
+- PATCH from AWS 1.14.1 (`0c0bd96beb901224278ab0d5e6bce90785c0792d`). Fix existing cost reporting, attribution and avoidable background calls.
+- Official totals remain separate from locally priced feature amounts. Historical days, the installation day and subsequent differences are independent and preserve signed values; provider daily buckets cannot split the installation day by hour.
+- Existing paid API routes keep durable tracking; unknown generation routes fail before dispatch. Mailbox results now retain content-free deduplication markers for irrelevant mail too. Opening admin does not call a model; explicit diagnostic checks still work.
+- Preserve all ledger/history/private configuration and automatic reminders. Validate accounting, UI, mailbox local/Dynamo restart behavior, source assets, full regressions and release policy.
 
 ## 1.14.1 — 2026-11-20
 

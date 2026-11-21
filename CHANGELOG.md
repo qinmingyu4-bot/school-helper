@@ -2,7 +2,7 @@
 
 ## 1.15.0 — 2026-11-21 — Office file libraries
 
-MINOR from verified AWS 1.14.1 (`0c0bd96`): introduce unified file libraries
+MINOR from verified AWS 1.14.2 (`96f9d42`): introduce unified file libraries
 for Docs, Sheets and Slides, with explicit blank-file creation and previews.
 
 - SB Docs, SB Sheets and SB Slides now open to a file library with existing
@@ -23,6 +23,13 @@ for Docs, Sheets and Slides, with explicit blank-file creation and previews.
   device updated it. Preserve local unsaved work when reopening.
 - Finish a pending file open before returning to the library or creating another
   file, so delayed responses cannot replace newly entered content.
+
+## 1.14.2 — 2026-11-21
+
+- Keep official consumption as the only total; remove legacy estimates and never substitute local amounts when official sync is unavailable. Show UTC coverage, historical/start-day/new differences and daily reconciliation without clamping signed gaps.
+- Attribute new calls to feature, trigger and operation; reject unmetered generation endpoints before dispatch.
+- Opening the developer console no longer runs a paid AI probe. Explicit detection retains shared caching. Persist mailbox analysis markers, including irrelevant mail, and extend retry backoff across restarts. Automatic reminders remain enabled.
+- PATCH from verified AWS 1.14.1 (`0c0bd96`): correct existing accounting and eliminate redundant calls; no new product module.
 
 ## 1.14.1 — 2026-11-20 — Office first-open performance
 

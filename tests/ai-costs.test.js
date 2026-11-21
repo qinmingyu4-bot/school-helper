@@ -160,3 +160,11 @@ test("refunding incomplete user work preserves independently reported provider c
   assert.equal((await usage.status("alice")).usedUsd, 0, "Incomplete work is refunded to the user");
   assert.equal((await costs.report(date, date)).calculatedUsd, 0.0409, "A user refund cannot erase a provider expense");
 });
+
+test('new provider calls retain feature, trigger and operation identity; unmetered generation routes fail before dispatch',async t=>{
+  const db=await fixture(t);let calls=0;const service=createAiCosts({db,env:{},request:async()=>{calls++;return Response.json(payload);}});
+  await service.fetch(url,options,{source:'mailbox',trigger:'background',action:'background',operationId:'opaque-message-id',userId:'alice'});
+  const rows=await db.listAiCosts([new Date().toISOString().slice(0,10)]);
+  assert.equal(rows[0].source,'mailbox');assert.equal(rows[0].trigger,'background');assert.equal(rows[0].operationId,'opaque-message-id');
+  await assert.rejects(service.fetch('https://api.openai.com/v1/new-generation',options),{statusCode:503});assert.equal(calls,1);
+});

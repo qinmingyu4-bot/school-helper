@@ -131,3 +131,13 @@ References checked 2026-11-20:
 - https://developers.openai.com/api/docs/guides/prompt-caching
 - https://developers.openai.com/api/docs/pricing
 - https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/usage/methods/costs
+
+## 2026-11-21 reconciliation/display correction
+
+Only provider consumption is labeled total. Missing official data displays unavailable, not the old analytics estimate or the incomplete ledger subtotal. Feature amounts are locally priced and remain estimates; daily signed residuals keep the sum equal to the official total for the same UTC coverage. Pre-ledger dates, the first ledger day (mixed coverage) and later dates are separate. Unknown feature tags cannot be assigned to history. Outside-coverage local rows are shown separately. Cached reports without daily detail wait for the next successful provider sync before splitting historical amounts.
+
+New ledger entries retain source, action, trigger and operation identity without prompts or mail content. Recognized feature/model/trigger costs and unknown usage counts are visible. API generation routes not recognized by the ledger fail closed; input-token counting and existing temporary file uploads remain separate preflight operations (document uploads are deleted by the existing workflow).
+
+Read-only production audit on 2026-11-21, since the 1.14.0 formal deployment: no new calendar calls; 19 mailbox calls (USD 0.087272), one grade-planning call (USD 0.016781), one rejected image request (USD 0), and five tiny diagnostic probes (USD 0.000020) at inspection. These records do not prove that every historical call was necessary. Found and fixed: passive admin views invoked paid probes; irrelevant mail had no durable analysis marker and could be charged again on provider replay. Manual diagnostic requests retain a one-minute cache/coalescing; mailbox markers and queue updates commit atomically and are purged on unlink. Failure retry intervals persist and increase to six hours, without discarding queued mail.
+
+Active calendar/reminder timers remain free of model calls. Browser entry HTML is no-store and scripts are bundled by content hash; already-open pre-fix pages require one reload to execute the new code. The UI does not forcibly reload unrelated in-progress work.

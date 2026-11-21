@@ -63,6 +63,9 @@ test("HTTP problem sets persist through restart, restore progress and isolate ac
   const messages = (await request(route + "/messages", "GET", null, alice.cookie)).data.messages;
   assert.equal(messages.length, 2); assert.match(messages[1].content, /已完成 20\/20/);
   const state = JSON.parse(await fs.readFile(database, "utf8")); assert.ok(!JSON.stringify(state.materials).includes("MATH_TASK_FIXTURE"), "Task result payloads are persisted outside the resident material manifest");
+  const jobCosts=Object.values(state.aiCosts || {}).flatMap(Object.values).filter(row=>row.operationId===accepted.data.job.id);
+  assert.ok(jobCosts.length>0, "Background study calls retain their job identity across restart");
+  assert.ok(jobCosts.every(row=>row.source==='study' && row.trigger==='background' && row.userId===alice.data.user.id));
   const metered = await request(route + "/conversations", "POST", { title: "Review allowance" }, alice.cookie);
   const allowanceBefore = (await request("/api/me/ai-usage", "GET", null, alice.cookie)).data.usage;
   const usageBefore = allowanceBefore.usedUsd;

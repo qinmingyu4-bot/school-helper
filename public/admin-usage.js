@@ -26,7 +26,7 @@
   const money = (value) => Number(value).toLocaleString(ui.locale(), { style: "currency", currency: "USD", currencyDisplay: "code", minimumFractionDigits: 2, maximumFractionDigits: 6 });
   function costRow(data) {
     if (data.aiCosts) return ["已记录 AI 成本", money(data.aiCosts.calculatedUsd), ui.text("按返回用量计价，非官方账单")];
-    return ["AI 估算成本", data.aiRequests ? money(data.costUsd) : "—", ""];
+    return ["已记录 AI 成本", "—", ui.text("费用明细尚未接入，不使用旧估算")];
   }
 
   function costs(data) {
@@ -42,9 +42,8 @@
       ...(!data.user ? [["平台后台成本", money(c.platformUsd)], ["OpenAI 官方消费", status]] : []),
       ["待核对请求", number(c.unknownRequests)], ["进行中请求", number(c.pendingRequests)],
       ["失败调用成本", money(c.failedUsd || 0)],
-      ...(!data.user && c.unallocatedUsd !== null && c.unallocatedUsd !== undefined ? [["尚未分配到功能的费用", money(c.unallocatedUsd)], ["官方与已记录差额", money(c.differenceUsd)]] : [])
     ];
-    const list = c.sources.map((r) => `<li><span>${label(sourceNames[r.source] || "用户请求")} · ${esc(r.model)}</span><small>${esc(money(r.calculatedUsd))} · ${esc(number(r.requests))} ${label("次请求")}${r.failedUsd ? ` · ${label("失败调用成本")} ${esc(money(r.failedUsd))}` : ""}${r.unknownRequests ? ` · ${label("待核对请求")} ${esc(number(r.unknownRequests))}` : ""}</small></li>`).join("");
+    const list = c.sources.map((r) => `<li><span>${label(sourceNames[r.source] || "调用来源未标记")} · ${esc(r.model)}</span><small>${esc(money(r.calculatedUsd))} · ${esc(number(r.requests))} ${label("次请求")}${r.failedUsd ? ` · ${label("失败调用成本")} ${esc(money(r.failedUsd))}` : ""}${r.unknownRequests ? ` · ${label("待核对请求")} ${esc(number(r.unknownRequests))}` : ""}</small></li>`).join("");
     const officialItems = official?.status === "available" ? `<p class="admin-usage-note">${label("官方账单范围")}: ${esc(official.projectId)} · ${label(official.keyFiltered ? "已限定 API 密钥" : "项目全部密钥")} · ${label("读取时间")}: ${esc(date(official.fetchedAt))}</p>
       <ul class="admin-usage-list">${official.items.map((r) => `<li><span>${esc(r.label)}</span><small>${esc(money(r.amountUsd))}</small></li>`).join("")}</ul>` : "";
     return `<details class="admin-usage-days"><summary>${label("AI 费用明细与对账")}</summary>
@@ -65,11 +64,23 @@
   }
 
   function costOverview(data) {
-    const c = data.aiCosts;
-    return coverage(data) + metricRows([
-      [c.official?.status === "available" ? "总 AI 成本（官方消费）" : "总 AI 成本（已记录）", money(c.official?.status === "available" ? c.official.amountUsd : c.calculatedUsd), c.official?.stale ? ui.message`上次官方同步：${date(c.official.fetchedAt)}` : c.official?.coverageLimited ? ui.text("官方总额仅含可获取或已存档历史，展开查看覆盖范围") : ui.text(c.official?.status === "available" ? "以官方消费为总额；功能分布按本地记录估算" : "用户请求与平台后台合计，不含待核对费用")],
-      ["用户请求成本", money(c.userUsd)], ["平台后台成本", money(c.platformUsd)]
-    ]) + costs(data);
+    const c = data.aiCosts, official = c.official, r = c.reconciliation;
+    const available = official?.status === "available";
+    const headline = metricRows([
+      ["总 AI 成本（官方消费）", available ? money(official.amountUsd) : "—", ui.text(available ? "官方总额包含下方各项，不再叠加" : "官方账单暂不可用；不以本地估算代替")],
+      ["已归属功能成本", r?.status === "available" ? money(r.attributedUsd) : "—", ui.text("按调用用量计价，限同一官方覆盖范围")],
+      ["历史未归属费用", r?.status === "available" ? money(r.historicalUsd) : "—", ui.text("完整账本启用日之前的官方消费")]
+    ]);
+    const details = r?.status === "available" ? metricRows([
+      ["启用当天待核对差额", money(r.transitionDifferenceUsd), r.transitionDay],
+      ["启用后待核对差额", money(r.currentDifferenceUsd), ui.text("同步延迟、计价差异或漏记，单独跟进")],
+      ["调用来源未标记", money(r.unclassifiedUsd), ui.text("已记账但缺少功能标签，不能归入历史")]
+    ]) + `<p class="admin-usage-note">${label("官方总额 = 已归属功能成本 + 历史未归属费用 + 启用当天待核对差额 + 启用后待核对差额 + 调用来源未标记。差额保留正负，不强行分摊。")}</p>
+      ${r.outsideCoverageUsd ? `<p class="admin-usage-note">${label("官方覆盖范围外的本地记录")}: ${esc(money(r.outsideCoverageUsd))}</p>` : ""}
+      <h3>${label("功能成本去向")}</h3><ul class="admin-usage-list">${r.features.map(f => `<li><span>${label(({...features,"academic-calendar":"共享校历","product-help":"使用帮助","health-check":"连通检测"})[f.source] || "调用来源未标记")} · ${esc(f.model)} · ${label(f.trigger === "background" ? "后台任务" : f.trigger === "interactive" ? "主动操作" : "早期未标记触发方式")}</span><small>${esc(money(f.amountUsd))} · ${number(f.requests)} ${label("次请求")}${f.unknownRequests ? ` · ${label("待核对请求")} ${number(f.unknownRequests)}` : ""}</small></li>`).join("")}</ul>
+      <details class="admin-usage-days"><summary>${label("每日对账")}</summary><ul class="admin-usage-list">${r.daily.map(d => `<li><span>${esc(d.day)}</span><small>${label("官方消费")} ${esc(money(d.officialUsd))} · ${label("已归属")} ${esc(money(d.attributedUsd))} · ${label("未标记")} ${esc(money(d.unclassifiedUsd))} · ${label("差额")} ${esc(money(d.differenceUsd))}</small></li>`).join("")}</ul></details>`
+      : `<p class="admin-usage-note">${label("等待官方每日明细；已记录调用保留在下方，不作为官方总额。")}</p>`;
+    return coverage(data) + (available ? `<p class="admin-usage-note">${label("官方覆盖范围")}: ${esc(official.from)} — ${esc(official.through)} UTC · ${label("读取时间")}: ${esc(date(official.fetchedAt))}${official.stale ? ` · ${label("上次成功同步，当前同步暂缓")}` : ""}</p>` : "") + headline + details + costs(data);
   }
 
   function coverage(data) {
@@ -97,7 +108,7 @@
       ["第七日回访率", ...rate(data.retention.day7)],
       ["操作失败率", percent(data.failed, data.failed + data.completed), `${number(data.failed)} / ${number(data.failed + data.completed)}`]
     ]) + `<div class="admin-usage-columns"><div>${chart(data)}</div><div>${featureList(data)}</div></div>
-      <p class="admin-usage-note">${label("活跃按前台交互或功能操作去重。回访仅统计目标日期已经结束的新用户。首次学习指收到课程回答或提交练习。AI 成本为估算。")}</p>`;
+      <p class="admin-usage-note">${label("活跃按前台交互或功能操作去重。回访仅统计目标日期已经结束的新用户。首次学习指收到课程回答或提交练习。费用统一查看上方总 AI 成本。")}</p>`;
   }
 
   function summary(data) {

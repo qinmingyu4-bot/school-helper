@@ -2,6 +2,8 @@
 
 if (process.env.NODE_ENV !== "test") throw new Error("AI echo transport is test-only.");
 
+const { SOL_MODEL, upgradeSolModel } = require("../../lib/ai-models");
+
 // Echo the real server request to verify its prompt without external AI calls.
 globalThis.fetch = async (url, options) => {
   if (!String(url).startsWith("https://api.openai.com/v1/")) {
@@ -100,7 +102,7 @@ globalThis.fetch = async (url, options) => {
     const prompt = body.messages[0].content;
     const text = body.messages[1].content;
     const expectedModel = text.length > 900
-      ? process.env.OPENAI_COMPLEX_MODEL || process.env.STUDYBRIDGE_COMPLEX_MODEL || "gpt-6.1-sol"
+      ? upgradeSolModel(process.env.OPENAI_COMPLEX_MODEL || process.env.STUDYBRIDGE_COMPLEX_MODEL || SOL_MODEL)
       : process.env.OPENAI_SIMPLE_MODEL || process.env.STUDYBRIDGE_SIMPLE_MODEL || process.env.OPENAI_MODEL || "gpt-6-luna";
     if (body.model !== expectedModel || body.store !== false) throw new Error("Schedule text must use the configured size-appropriate model without provider storage.");
     const today = prompt.match(/today (\d{4}-\d{2}-\d{2})/)[1];

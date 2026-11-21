@@ -84,13 +84,16 @@ Storage, hosting and payment processing are outside this AI allowance.
 Rates verified on 2026-11-06 from the
 [OpenAI pricing page](https://developers.openai.com/api/docs/pricing),
 [Luna](https://developers.openai.com/api/docs/models/gpt-6-luna), and
-[Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol).
+[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol).
+[GPT-6.2 Sol](https://developers.openai.com/api/docs/models/gpt-6.2-sol) was verified
+on 2026-11-21.
 Text rates below are USD per million tokens under Standard processing.
 
 | Model | Input | Output | Cached input |
 | --- | ---: | ---: | ---: |
 | gpt-6-luna | 0.10 | 0.50 | 0.01 |
-| gpt-6.1-sol | 2.00 | 10.00 | 0.10 |
+| gpt-6.2-sol | 2.00 | 10.00 | 0.10 |
+| gpt-6.1-sol (legacy) | 2.00 | 10.00 | 0.10 |
 
 Inputs over 272K tokens use 2× input/cache rates and 1.5× output rates.
 Text requests explicitly select Standard processing. GPT Image 2.6 Sunburst
@@ -100,6 +103,20 @@ image output tokens, verified on 2026-11-11 from the OpenAI pricing page.
 1 GB interpreter containers US$0.03 each. Unknown models fail closed until their
 price and accounting are added and verified. Account-specific regional surcharges
 and tax need separate reconciliation before commercial rollout.
+
+## Sol migration comparison
+
+Run `node scripts/evaluate-sol.js` in a test environment with an existing
+`OPENAI_API_KEY`, or use `node --env-file=.env scripts/evaluate-sol.js` with an
+authorized test configuration. The script issues six Standard Responses API
+requests. Both models receive the same synthetic Chinese math problem, graph
+PDF, and scoped Slides edit. It uses the platform's price calculation and Slides
+validation, never opens the StudyBridge database, and emits one JSON record per
+run with correctness, time to first text, completion time, reported token
+usage, and calculated API cost. Review the emitted workings as well as the
+automatic checks. Repeat before interpreting latency differences. This
+provider-level sample does not measure app-side tool calls, retries, or live
+user traffic.
 
 ## Interface and payment gates
 

@@ -1,8 +1,8 @@
 {
-  "previousCommit": "597978125a075c569fc2899e65fd1a348c289a25",
-  "previousVersion": "1.15.1",
-  "version": "1.15.2",
+  "previousCommit": "8703228ab39001f8b5c4a860dcb8680e7cd571db",
+  "previousVersion": "1.15.2",
+  "version": "1.15.3",
   "level": "patch",
-  "reason": "Improve discoverability and consistency of the existing creative work deletion action, with rounded image-history controls and the shared confirmation dialog.",
+  "reason": "Upgrade the provider model behind existing Sol tasks and retain equivalent routing and Standard-rate accounting.",
   "features": []
 }

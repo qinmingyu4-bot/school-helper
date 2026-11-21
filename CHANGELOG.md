@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.15.3 — 2026-11-21 — GPT-6.2 Sol
+
+PATCH from 1.15.2 (`8703228`) for an upgrade to the existing Sol route.
+
+- Use GPT-6.2 Sol for advanced study help, PDF problem sets, learning tools, long schedule imports, grades, and Office AI previously handled by GPT-6.1 Sol. Resolve the old model setting at runtime.
+- Use the published Standard rates in the account and provider cost ledgers, including cached and long-context tokens. Ordinary requests use Luna by default.
+- Add an opt-in paired API evaluation for Chinese math, a graph PDF, and a scoped Slides edit. Report correctness, time to first text, completion time, and token-based cost.
+
 ## 1.15.2 — 2026-11-21 — Image history deletion
 
 PATCH from verified AWS 1.15.1 (`5979781`): make the existing image deletion

@@ -1,5 +1,12 @@
 # StudyBridge Version Archive
 
+## 1.15.3 — 2026-11-21
+
+- PATCH from production main 1.15.2 (`8703228ab39001f8b5c4a860dcb8680e7cd571db`) to replace GPT-6.1 Sol on existing Sol routes with GPT-6.2 Sol.
+- Preserve the existing task split, Standard-rate allowance accounting, and user data. No dependency or database migration.
+- Owner authorized AWS deployment. Verify release policy, model routing, accounting, full regressions, and deployed service health. The optional live A/B evaluator uses synthetic samples and requires a test API key.
+- Rollback code target: `8703228ab39001f8b5c4a860dcb8680e7cd571db`; retain private configuration and user data.
+
 ## 1.15.2 — 2026-11-21
 
 - PATCH from verified AWS 1.15.1 (`597978125a075c569fc2899e65fd1a348c289a25`): expose the existing image deletion action within each history entry, using restrained rounded buttons and the shared application dialog.

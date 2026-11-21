@@ -1,8 +1,11 @@
+const assert = require("node:assert/strict");
 const original = global.fetch;
 global.fetch = async (url, options) => {
   if (String(url).startsWith("https://api.openai.com/v1/chat/completions")) {
     const body = JSON.parse(options.body);
     const system = String(body.messages[0].content);
+    const isSlides = system.includes("manual slides editor") || system.includes("EXISTING presentation");
+    assert.equal(body.model, isSlides ? "gpt-6.2-sol" : "gpt-6-luna");
     const user = String(body.messages.at(-1).content);
     const source = system.includes('"changes"') ? JSON.parse(user.split("Current editing context:\n")[1]) : null;
     const content = source

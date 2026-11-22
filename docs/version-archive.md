@@ -1,5 +1,11 @@
 # StudyBridge Version Archive
 
+## 1.19.0 — 2026-11-22
+
+- MINOR from AWS 1.18.0 (`9063624ebe5f887e027d3acc4d4a0d29049f8368`): add today's official AI spend and recent daily amounts directly above the creator console's existing reconciliation controls.
+- Reuse the creator-only OpenAI cost report, with USD amounts and UTC reporting days. The release requires no dependency, schema or configuration changes. Source: `8fa8071`.
+- Validate available, zero and missing amounts, bilingual rendering and independent range controls. Verify release policy, CI and AWS service health. Rollback code target: `9063624ebe5f887e027d3acc4d4a0d29049f8368`.
+
 ## 1.18.0 — 2026-11-22
 
 - MINOR from AWS 1.17.0 (`f53240f596d27be2076a12aa2d71bb69ad7733a1`): add a blank A4 classroom-note source and an entry point in the Study course header.

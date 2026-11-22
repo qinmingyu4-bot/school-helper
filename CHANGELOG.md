@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased — Daily AI costs
+## 1.19.0 — 2026-11-22 — Daily AI costs
+
+MINOR from AWS 1.18.0 (`9063624`): add an always-visible daily AI spending summary to the creator console.
 
 - Show today's official USD spend and recent daily amounts at the top of the creator console, using UTC reporting days and the existing cost report. Keep the range totals, feature breakdown and reconciliation below.
 

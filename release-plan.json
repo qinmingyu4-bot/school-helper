@@ -1,11 +1,11 @@
 {
-  "previousCommit": "f53240f596d27be2076a12aa2d71bb69ad7733a1",
-  "previousVersion": "1.17.0",
-  "version": "1.18.0",
+  "previousCommit": "9063624ebe5f887e027d3acc4d4a0d29049f8368",
+  "previousVersion": "1.18.0",
+  "version": "1.19.0",
   "level": "minor",
-  "reason": "Add a new blank classroom-note source and a course-header entry point so students can write without uploading a PDF.",
+  "reason": "Add a directly visible summary of official daily AI spending to the creator console.",
   "features": [
-    "Create and reopen blank A4 classroom notes scoped to a Study course without a PDF upload",
-    "Open the existing handwriting and annotation workspace directly from a Study course"
+    "Show today’s official OpenAI spending in USD at the top of the creator console",
+    "Show available amounts for the preceding six UTC days without expanding reconciliation"
   ]
 }

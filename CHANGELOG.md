@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Show a cancellable progress indicator while reading a grade screenshot or extracting syllabus rules from an upload or saved material. If recognition takes longer, keep the dialog responsive and show that work is still underway.
+
 ## 1.20.2 — 2026-11-22 — Syllabus model routing
 
 PATCH from AWS 1.20.1 (`caab536`): use Luna for verifiable course-grading rules.

@@ -493,6 +493,39 @@
   const resize = () => dialog.querySelectorAll("[data-form-picker][open]").forEach(positionFormPicker);
   window.addEventListener("resize", resize);
 
+  function recognitionMessage(current) {
+    if (current.slowRecognition) return t("仍在处理，复杂资料可能需要多一点时间。", "Still working. Complex files may take a little longer.");
+    if (current.readingFile) return t("正在读取文件…", "Reading the file…");
+    return current.kind === "grades"
+      ? t("正在识别截图中的成绩…", "Reading grades from the screenshot…")
+      : t("正在提取并核对评分规则…", "Extracting and checking grading rules…");
+  }
+  function recognitionStatus(current) {
+    return `<p class="gp-recognition-progress" role="status" aria-atomic="true"><span class="gp-recognition-spinner" aria-hidden="true"></span><span data-recognition-message>${recognitionMessage(current)}</span></p>`;
+  }
+  function updateRecognitionStatus(current) {
+    if (modal !== current || !current.busy) return;
+    const message = dialog.querySelector("[data-recognition-message]");
+    if (message) message.textContent = recognitionMessage(current);
+  }
+  function startRecognition(current, readingFile = false) {
+    current.busy = true;
+    current.error = "";
+    current.readingFile = readingFile;
+    current.slowRecognition = false;
+    current.controller = new AbortController();
+    const timer = setTimeout(() => {
+      current.slowRecognition = true;
+      updateRecognitionStatus(current);
+    }, 10000);
+    current.recognitionTimer = timer;
+    current.controller.signal.addEventListener("abort", () => clearTimeout(timer), { once: true });
+    redrawDialog('.gp-dialog-footer [data-modal-action="close"]');
+  }
+  function finishRecognition(current) {
+    clearTimeout(current.recognitionTimer);
+    current.busy = false;
+  }
   function openDialog(value) { modal = value; renderDialog(); dialog.showModal(); }
   function closeDialog() { modal?.controller?.abort(); if (modal?.url) URL.revokeObjectURL(modal.url); modal = null; dialog.close(); dialog.innerHTML = ""; }
   dialog.addEventListener("cancel", (event) => { event.preventDefault(); if (!modalSaving) closeDialog(); });
@@ -518,20 +551,25 @@
     const reasons={syllabus:t("Syllabus / 课程大纲", "Syllabus / course outline"),grading:t("含评分信息", "Grading information"),lookup:t("含成绩查询说明", "Grade lookup directions"),material:t("课程资料", "Course material")};
     const rows=current.materials.map(item=>`<label class="gp-material-row ${item.canExtract ? "" : "is-unreadable"}"><input type="checkbox" data-material="${esc(item.id)}" ${current.selected.has(item.id)?"checked":""} ${current.busy || !item.canExtract ? "disabled":""}><span><strong>${esc(item.name)}</strong><small>${item.canExtract ? esc(reasons[item.reason] || reasons.material) : t("尚无可读取的内容", "No readable content available")}${item.canExtract && !item.readable ? t(" · 使用已保存的 PDF 原件", " · Retained original PDF") : ""}</small></span></label>`).join("");
     const body=`<p class="gp-dialog-intro">${t("选择已有的 syllabus 或相关资料，提取评分规则和查分入口。", "Select a saved syllabus or related materials to extract grading rules and grade locations.")}</p>${current.loading ? `<p class="gp-material-empty" role="status">${t("正在读取课程资料…", "Loading course materials…")}</p>` : rows ? `<div class="gp-material-list">${rows}</div>` : `<p class="gp-material-empty">${t("这门课还没有已上传的资料，可以先上传 syllabus 或手动设置。", "This course has no saved materials yet. Upload a syllabus or set up rules manually.")}</p>`}${!current.loading && current.materials.length ? `<p class="gp-dialog-caption">${t("已默认勾选可能包含评分规则或查询入口的资料，可自行调整。", "Materials likely to contain grading rules or lookup directions are selected. Adjust as needed.")}</p>` : ""}${!current.loading && !current.configured ? `<p class="gp-dialog-caption">${t("当前环境未配置 AI，仍可查看资料并手动设置评分规则。", "AI is not configured in this environment. You can still review materials and enter rules manually.")}</p>` : `<p class="gp-dialog-caption">${t("开始提取后，所选资料将交给 AI 读取。", "Starting extraction sends the selected materials to AI.") + " " + syllabusSaveHint()}</p>`}`;
-    dialogFrame(t("从课程资料提取", "Use course materials"),body,`<div><span class="gp-material-count" data-material-count>${t(`已选 ${count} 份 · 最多 ${current.maxDocuments} 份`, `${count} selected · up to ${current.maxDocuments}`)}</span><button class="gp-text" data-modal-action="reload-materials" ${current.busy?"disabled":""}>${t("刷新资料", "Refresh")}</button></div><div class="gp-actions"><button class="gp-text" data-modal-action="close">${t("取消", "Cancel")}</button><button class="gp-primary" data-modal-action="extract-materials" ${!count || count>current.maxDocuments || current.loading || current.busy || !current.configured || current.versionMismatch ? "disabled":""}>${current.busy?t("正在提取…", "Extracting…"):t("提取评分规则", "Extract grading rules")}</button></div>`);
+    dialogFrame(t("从课程资料提取", "Use course materials"),body,`${current.busy ? recognitionStatus(current) : `<div><span class="gp-material-count" data-material-count>${t(`已选 ${count} 份 · 最多 ${current.maxDocuments} 份`, `${count} selected · up to ${current.maxDocuments}`)}</span><button class="gp-text" data-modal-action="reload-materials">${t("刷新资料", "Refresh")}</button></div>`}<div class="gp-actions"><button class="gp-text" data-modal-action="close">${t("取消", "Cancel")}</button><button class="gp-primary" data-modal-action="extract-materials"${current.busy ? ' aria-busy="true"' : ""} ${!count || count>current.maxDocuments || current.loading || current.busy || !current.configured || current.versionMismatch ? "disabled":""}>${current.busy?t("正在提取…", "Extracting…"):t("提取评分规则", "Extract grading rules")}</button></div>`);
   }
   async function extractMaterials() {
     const current=modal;
     if(current.busy || !current.selected.size || current.selected.size>current.maxDocuments) return;
-    current.busy=true;current.error="";current.controller=new AbortController();renderDialog();
+    startRecognition(current);
     try {
       const response=await fetch(`/api/grade-planner/${encodeURIComponent(current.courseId)}/extract-materials`,{method:"POST",headers:{"content-type":"application/json","x-csrf-token":csrfToken},signal:current.controller.signal,body:JSON.stringify({documentIds:[...current.selected],version:course().version,autoSave:true})});
       const result=await response.json();if(modal!==current) return;
       if(!response.ok) throw new Error(result.error || t("提取未成功，请重试。", "Extraction failed. Please retry."));
-      current.busy=false;
+      finishRecognition(current);
       if (result.savedPlan) return showSavedRules(result.savedPlan);
       beginRuleReview(result.categories,result.sources.map(source=>source.name).join("、"),{sourceReview:result.sourceReview,materialSources:result.sources,reviewWarnings:result.warnings || [],reviewReason:result.reviewReason});
-    } catch(error) {if(modal!==current) return;current.busy=false;current.error=error.name==="AbortError"?t("提取已取消。", "Extraction cancelled."):error.message;renderDialog();}
+    } catch (error) {
+      finishRecognition(current);
+      if (modal !== current) return;
+      current.error = error.name === "AbortError" ? t("提取已取消。", "Extraction cancelled.") : error.message;
+      redrawDialog('[data-modal-action="extract-materials"]');
+    }
   }
   function openUpload(kind) { openDialog({ kind, courseId: course().id, phase: "upload", file: null, url: "", rows: [], error: "", busy: false }); }
   function openRules() { openDialog({ kind: "rules", courseId: course().id, categories: clone(course().categories), error: "", source: course().source }); }
@@ -576,7 +614,7 @@
   function dialogFrame(title, body, footer) {
     dialog.classList.toggle("gp-location-dialog", modal.kind === "locations");
     dialog.dataset.view = modal.kind === "grades" && modal.phase === "review" ? "review" : modal.kind;
-    dialog.innerHTML = `<header class="gp-dialog-header"><div><p class="gp-eyebrow">${esc(course().code)} · ${t("成绩规划", "Grade planner")}</p><h2 id="dialog-heading">${title}</h2></div><button class="gp-close" data-modal-action="close" aria-label="${t("关闭", "Close")}">${icon("close")}</button></header><div class="gp-dialog-body">${body}<p class="gp-error" data-modal-error role="alert" ${modal.error ? "" : "hidden"}>${esc(modal.error)}</p></div><footer class="gp-dialog-footer">${footer}</footer>`;
+    dialog.innerHTML = `<header class="gp-dialog-header"><div><p class="gp-eyebrow">${esc(course().code)} · ${t("成绩规划", "Grade planner")}</p><h2 id="dialog-heading">${title}</h2></div><button class="gp-close" data-modal-action="close" aria-label="${t("关闭", "Close")}">${icon("close")}</button></header><div class="gp-dialog-body"${modal.busy ? ' aria-busy="true"' : ""}>${body}<p class="gp-error" data-modal-error role="alert" ${modal.error ? "" : "hidden"}>${esc(modal.error)}</p></div><footer class="gp-dialog-footer">${footer}</footer>`;
     dialog.querySelector(".gp-dialog-body").addEventListener("scroll", () => {
       dialog.querySelectorAll("[data-form-picker][open]").forEach((picker) => { picker.open = false; });
     });
@@ -597,7 +635,7 @@
     const formats = isGrades ? "PNG / JPG / WebP · 8 MB" : "PDF / TXT / PNG / JPG / WebP · 8 MB";
     const local = isGrades && capabilities.provider === "local-ocr";
     const body = `<p class="gp-dialog-intro">${isGrades ? t("选择成绩截图，识别后逐项核对。", "Choose a screenshot, then review each grade.") : t("选择包含评分构成的 syllabus。", "Choose a syllabus with a grading breakdown.")}</p><label class="gp-file-drop" id="file-drop">${icon("upload")}<span class="gp-file-info"><strong>${modal.file ? esc(modal.file.name) : t("选择文件，或拖到这里", "Choose a file, or drop it here")}</strong><small>${formats}</small></span><span class="gp-browse-label">${modal.file ? t("更换", "Change") : t("浏览文件", "Browse")}${icon("chevron")}</span><input type="file" id="recognition-file" accept="${isGrades ? "image/png,image/jpeg,image/webp" : "application/pdf,text/plain,image/png,image/jpeg,image/webp"}" aria-label="${isGrades ? t("选择成绩截图", "Choose grade screenshot") : t("选择 syllabus 文件", "Choose syllabus file")}" ${modal.busy ? "disabled" : ""}></label>${modal.url ? `<figure class="gp-upload-preview"><img class="gp-source-preview" src="${esc(modal.url)}" alt="${t("所选截图预览", "Selected image preview")}"></figure>` : `<div class="gp-upload-empty">${icon("file")}<p>${isGrades ? t("项目名称、得分与满分清晰可见即可。", "Keep assessment names, earned points and maxima visible.") : t("保留包含评分构成与规则的页面。", "Include the pages describing assessment weights and rules.")}</p></div>`}<div class="gp-recognition-info"><p class="gp-service-status"><i></i>${local ? t("本机文字识别已就绪", "On-device recognition is ready") : canRecognize ? t("AI 识别已就绪", "AI recognition is ready") : t("AI 暂不可用，可手动填写", "AI is unavailable; enter grades manually")}</p><p>${local ? t("截图在本机读取，不发送到外部服务；确认后才记录成绩。", "The screenshot is read on this device. Grades are recorded only after confirmation.") : canRecognize ? t("点击识别后，所选文件将交给 AI 读取；原文件不保存在成绩记录中。", "Starting recognition sends the file to AI. The original is not retained in grade records.") : t("你仍可以手动设置规则和记录成绩。", "You can still set up rules and record grades manually.")}</p></div>`;
-    dialogFrame(isGrades ? t("从截图录入成绩", "Record grades from a screenshot") : t("从 syllabus 建立评分规则", "Set up rules from a syllabus"), body, `<p>${isGrades ? t("识别 → 核对 → 确认保存", "Read → Review → Confirm") : syllabusSaveHint()}</p><div class="gp-actions"><button class="gp-text" data-modal-action="close">${t("取消", "Cancel")}</button><button class="gp-primary" data-modal-action="recognize" ${!modal.file || modal.busy || !canRecognize ? "disabled" : ""}>${modal.busy ? t("正在识别…", "Reading…") : isGrades ? t("开始识别", "Start recognition") : t("提取评分规则", "Extract grading rules")}</button></div>`);
+    dialogFrame(isGrades ? t("从截图录入成绩", "Record grades from a screenshot") : t("从 syllabus 建立评分规则", "Set up rules from a syllabus"), body, `${modal.busy ? recognitionStatus(modal) : `<p>${isGrades ? t("识别 → 核对 → 确认保存", "Read → Review → Confirm") : syllabusSaveHint()}</p>`}<div class="gp-actions"><button class="gp-text" data-modal-action="close">${t("取消", "Cancel")}</button><button class="gp-primary" data-modal-action="recognize"${modal.busy ? ' aria-busy="true"' : ""} ${!modal.file || modal.busy || !canRecognize ? "disabled" : ""}>${modal.busy ? t("正在识别…", "Reading…") : isGrades ? t("开始识别", "Start recognition") : t("提取评分规则", "Extract grading rules")}</button></div>`);
     const drop = dialog.querySelector("#file-drop");
     drop.addEventListener("dragover", (event) => { event.preventDefault(); drop.classList.add("drag-over"); });
     drop.addEventListener("dragleave", () => drop.classList.remove("drag-over"));
@@ -622,22 +660,40 @@
   async function recognize() {
     if (!modal.file || modal.busy) return;
     const current = modal;
-    current.busy = true; current.error = ""; current.controller = new AbortController();
-    renderDialog();
+    startRecognition(current, true);
+    const { signal } = current.controller;
     try {
-      const dataUrl = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(new Error(t("读取文件失败。", "Could not read file."))); reader.readAsDataURL(current.file); });
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        const cancel = () => reader.abort();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error(t("读取文件失败。", "Could not read file.")));
+        reader.onabort = () => reject(signal.reason);
+        reader.onloadend = () => signal.removeEventListener("abort", cancel);
+        signal.throwIfAborted();
+        signal.addEventListener("abort", cancel, { once: true });
+        reader.readAsDataURL(current.file);
+      });
+      signal.throwIfAborted();
+      current.readingFile = false;
+      updateRecognitionStatus(current);
       const response = await fetch(`/api/grade-planner/${encodeURIComponent(course().id)}/recognize`, { method: "POST", headers: { "content-type": "application/json", "x-csrf-token":csrfToken }, signal: current.controller.signal, body: JSON.stringify({ kind: current.kind, name: current.file.name, mime: current.file.type, dataUrl, ...(current.kind === "syllabus" ? { autoSave: true, version: course().version } : {}) }) });
       const result = await response.json();
       if (modal !== current) return;
       if (!response.ok) throw new Error(result.error || t("识别失败，请重试。", "Recognition failed. Please retry."));
-      current.busy = false; current.phase = "review"; current.sample = false;
+      finishRecognition(current); current.phase = "review"; current.sample = false;
       if (current.kind === "syllabus") {
         if (result.savedPlan) return showSavedRules(result.savedPlan);
         return beginRuleReview(result.categories, current.file.name, { reviewWarnings: result.warnings, reviewReason: result.reviewReason });
       }
       current.rows = matchRows(result.rows);
       renderDialog();
-    } catch (error) { if (modal !== current) return; current.busy = false; current.error = error.name === "AbortError" ? t("识别已取消。", "Recognition cancelled.") : error instanceof TypeError ? t("暂时无法连接识别服务，请刷新页面后重试。", "Could not connect to recognition. Refresh the page and retry.") : error.message; renderDialog(); }
+    } catch (error) {
+      finishRecognition(current);
+      if (modal !== current) return;
+      current.error = error.name === "AbortError" ? t("识别已取消。", "Recognition cancelled.") : error instanceof TypeError ? t("暂时无法连接识别服务，请重试。", "Could not connect to recognition. Please retry.") : error.message;
+      redrawDialog('[data-modal-action="recognize"]');
+    }
   }
   function renderReviews() {
     const selected = modal.rows.filter((row) => row.selected).length;
@@ -864,7 +920,7 @@
       if (!host || host.dataset.mounted) return;
       host.dataset.mounted = "true";
       const scope = host.attachShadow({ mode:"open" });
-      scope.innerHTML = '<link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/grade-planner-preview.css?v=1.7.1"><style>:host{display:block;min-width:0;min-height:100%;font-family:var(--font-ui,system-ui,sans-serif)}.gp-embedded .gp-shell{min-height:100%}.gp-preview{min-height:100%}</style><div class="gp-preview gp-embedded"><div id="grade-app"></div><dialog id="grade-dialog" aria-labelledby="dialog-heading"></dialog><div id="grade-toast" role="status" aria-live="polite" hidden></div></div>';
+      scope.innerHTML = '<link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/grade-planner-preview.css?v=1.7.1-recognition-progress"><style>:host{display:block;min-width:0;min-height:100%;font-family:var(--font-ui,system-ui,sans-serif)}.gp-embedded .gp-shell{min-height:100%}.gp-preview{min-height:100%}</style><div class="gp-preview gp-embedded"><div id="grade-app"></div><dialog id="grade-dialog" aria-labelledby="dialog-heading"></dialog><div id="grade-toast" role="status" aria-live="polite" hidden></div></div>';
       return start(scope, host);
     }
   };

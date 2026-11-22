@@ -116,6 +116,34 @@
 #grade-dialog .gp-dialog-footer .gp-actions { width:auto; gap:19px; }
 #grade-dialog .gp-dialog-footer .gp-text { display:inline-flex; align-items:center; gap:8px; min-height:35px; }
 .gp-dialog-footer .gp-icon svg { width:13px; height:13px; }
+.gp-dialog-footer .gp-recognition-progress {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex:1 1 210px;
+  min-width:0;
+  color:var(--ink);
+  font-size:12px;
+}
+.gp-recognition-spinner {
+  flex:0 0 14px;
+  width:14px;
+  height:14px;
+  box-sizing:border-box;
+  border:2px solid var(--line);
+  border-top-color:var(--green);
+  border-radius:50%;
+  animation:gp-recognition-spin .8s linear infinite;
+}
+#grade-dialog .gp-primary[aria-busy="true"] {
+  opacity:1;
+  background:var(--soft);
+  color:var(--muted);
+  border-color:var(--line);
+}
+.gp-dialog-body[aria-busy="true"] :is(.gp-recognition-info,.gp-browse-label) { visibility:hidden; }
+@keyframes gp-recognition-spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce) { .gp-recognition-spinner { animation:none; } }
 .gp-dialog-intro { font-size:12px; line-height:1.8; color:var(--muted); margin-bottom:22px !important; }
 .gp-dialog-caption { font-size:11px; line-height:1.9; color:var(--muted); margin-top:20px !important; }
 #grade-dialog :where(input:not([type=checkbox]):not([type=file]):not([type=hidden]),textarea) { min-width:0; max-width:100%; background:transparent; color:var(--ink); border:0; border-bottom:1px solid var(--line); border-radius:0; padding:8px 1px; font-size:13px; line-height:1.6; font-weight:400; box-shadow:none; }

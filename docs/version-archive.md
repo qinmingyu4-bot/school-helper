@@ -1,5 +1,11 @@
 # StudyBridge Version Archive
 
+## 1.22.0 — 2026-11-22
+
+- MINOR from AWS 1.21.2 (`866bf7df34f34ddd4fe56726089af41d8122a37a`): add upload quotas, user warnings, and a creator report for usage, blocked uploads, and add-on requests. Source: `9d2d39b`.
+- Users can request an additional 1 GiB for the creator to grant. Requests do not charge the user. This release requires no dependency, data migration, or configuration change.
+- Verify existing course and chat flows, uploads and deletions, membership limits, concurrent uploads, creator access, the full CI suite and live health. Rollback code target: `866bf7df34f34ddd4fe56726089af41d8122a37a`.
+
 ## 1.21.2 — 2026-11-22
 
 - PATCH from AWS 1.21.1 (`8246f2c788805ce9e20c1501b2d6c0ede0dea990`): preserve sidebar scroll across desktop feature switches. Source: `c8a06a0`.

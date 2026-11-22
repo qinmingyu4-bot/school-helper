@@ -67,6 +67,9 @@ test("feature switches keep desktop sidebar scroll, scoped to the account and mo
       workspace = { scrollTop: 0 };
     }
   });
+  context.window.StudyBridgeI18n = context.ui;
+  vm.runInContext(fs.readFileSync(require.resolve("../public/storage-quota.js"), "utf8"), context);
+  context.storageView = context.window.StudyBridgeStorage.create({ getUser: () => state.user });
   vm.runInContext(`${sidebarHtml}
     function renderSidebar() {
       ${capture}
@@ -74,6 +77,7 @@ test("feature switches keep desktop sidebar scroll, scoped to the account and mo
       ${restore}
     }
   `, context);
+  assert.match(context.sidebarHtml(), /data-action="open-storage"/);
   context.mount(context.sidebarHtml());
   sidebar.scrollTop = 205;
   for (const page of ["schedule", "schedule", "tools"]) {
@@ -88,6 +92,7 @@ test("feature switches keep desktop sidebar scroll, scoped to the account and mo
   sidebar.scrollTop = 150;
   state.mode = "admin";
   state.page = "admin";
+  assert.doesNotMatch(context.sidebarHtml(), /data-action="open-storage"/);
   context.renderSidebar();
   assert.equal(sidebar.scrollTop, 0);
 

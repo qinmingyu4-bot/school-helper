@@ -98,6 +98,12 @@ AI 生成文件暂时无法加载，请刷新重试。|AI-generated files could 
 连续失败暂缓|Repeated failures cooling down
 平台安全预算|Platform safety budget
 账号实际成本预算|Account gross provider budget
+AI 成本|AI costs
+今日 AI 成本|Today's AI cost
+近 7 天每日成本|Daily costs for the last 7 days
+今日数据可能延迟|Today's data may be delayed
+今日账单尚无数据|Today's billing data is not yet available
+无法刷新每日成本|Could not refresh daily costs
 总 AI 成本|Total AI cost
 总 AI 成本（已记录）|Total AI cost (recorded)
 用户请求与平台后台合计，不含待核对费用|User and platform costs combined; excludes unresolved costs

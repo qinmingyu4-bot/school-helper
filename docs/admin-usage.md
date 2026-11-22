@@ -49,6 +49,11 @@ unknown/pending records and supports optional official Costs API reconciliation.
 See [AI cost accounting](ai-cost-accounting.md) for configuration, UTC coverage,
 retention and the distinction between calculated usage and provider spend.
 
+**Today's AI cost** appears at the top of the creator console with the official
+OpenAI amount in USD and the available daily amounts for the preceding six UTC
+days. It uses the existing official cost response. OpenAI may report today's
+amount with a delay, and missing official values display a dash.
+
 The dedicated **Total AI cost** section has independent 7/30/90/180/365-day and
 all-time filters. It sums user and platform recorded costs and retains cost history
 without automatic expiration. All-time coverage begins at collection start.

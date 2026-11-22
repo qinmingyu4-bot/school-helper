@@ -24,6 +24,33 @@
   }
 
   const money = (value) => Number(value).toLocaleString(ui.locale(), { style: "currency", currency: "USD", currencyDisplay: "code", minimumFractionDigits: 2, maximumFractionDigits: 6 });
+
+  function dailyCosts(target) {
+    const report = target.dailyReport, day = report?.through;
+    const official = report?.aiCosts?.official;
+    const available = official?.status === "available";
+    const daily = available && Array.isArray(official.days) ? official.days : [];
+    const today = daily.find((row) => row.day === day)?.amountUsd;
+    const notes = ["OpenAI 官方消费", "UTC"];
+    if (target.error) notes.push("无法刷新每日成本");
+    else if (!report) notes.push("正在读取使用数据…");
+    else if (official?.status === "not_configured") notes.push("尚未连接官方账单");
+    else if (!available) notes.push("官方账单暂不可用");
+    else if (!Number.isFinite(today)) notes.push("今日账单尚无数据");
+    else notes.push("今日数据可能延迟");
+    if (available && official.stale) notes.push("上次成功同步，当前同步暂缓");
+
+    const dayLabel = (value) => date(value, { month: "short", day: "numeric", timeZone: "UTC" });
+    const first = Date.parse(day) - 6 * 86400000;
+    const recent = daily.filter((row) => row.day < day && Date.parse(row.day) >= first && Number.isFinite(row.amountUsd))
+      .sort((a, b) => b.day.localeCompare(a.day));
+    return `<div class="admin-daily-cost-headline">
+      <strong>${Number.isFinite(today) ? esc(money(today)) : "—"}</strong>
+      <small>${[...(day ? [esc(dayLabel(day))] : []), ...notes.map(label)].join(" · ")}</small>
+    </div>${recent.length ? `<dl class="admin-daily-cost-days" aria-label="${label("近 7 天每日成本")}">${recent.map((row) =>
+      `<div><dt><time datetime="${esc(row.day)}">${esc(dayLabel(row.day))}</time></dt><dd>${esc(money(row.amountUsd))}</dd></div>`).join("")}</dl>` : ""}`;
+  }
+
   function costRow(data) {
     if (data.aiCosts) return ["已记录 AI 成本", money(data.aiCosts.calculatedUsd), ui.text("按返回用量计价，非官方账单")];
     return ["已记录 AI 成本", "—", ui.text("费用明细尚未接入，不使用旧估算")];
@@ -156,6 +183,7 @@
     function render(target) {
       const element = target.userId ? document.getElementById(summaryId(target.userId)) : root.querySelector(target.costsOnly ? "[data-admin-costs]" : "[data-admin-usage]");
       if (!element?.isConnected) return;
+      if (target.costsOnly) element.querySelector("[data-admin-daily-cost]").innerHTML = dailyCosts(target);
       const control = element.querySelector("[data-admin-usage-controls]");
       const focused = document.activeElement?.closest(".admin-usage-controls");
       const focusSelector = focused && focused === control.firstElementChild
@@ -180,7 +208,10 @@
       try {
         const path = target.costsOnly ? "/api/admin/ai-costs" : target.userId ? `/api/admin/users/${encodeURIComponent(target.userId)}/usage` : "/api/admin/usage";
         const data = await api(`${path}?${target.costsOnly ? "period" : "days"}=${target.days}`, { signal: controller.signal });
-        if (active() && request === target.request && (target === panel || target === costPanel || target === detail)) target.data = data;
+        if (active() && request === target.request && (target === panel || target === costPanel || target === detail)) {
+          target.data = data;
+          if (target.costsOnly) target.dailyReport = data;
+        }
       } catch {
         if (!controller.signal.aborted) target.error = true;
       } finally {
@@ -273,8 +304,12 @@
     }
 
     return {
-      html: () => `<section class="admin-usage" data-admin-costs aria-labelledby="adminCostsTitle">
-        <div class="admin-usage-heading"><h2 id="adminCostsTitle">${label("总 AI 成本")}</h2><div data-admin-usage-controls></div></div>
+      html: () => `<section class="admin-usage" data-admin-costs aria-label="${label("AI 成本")}">
+        <div class="admin-daily-cost">
+          <div class="admin-usage-heading"><h2>${label("今日 AI 成本")}</h2></div>
+          <div data-admin-daily-cost role="status"></div>
+        </div>
+        <div class="admin-usage-heading"><h2>${label("总 AI 成本")}</h2><div data-admin-usage-controls></div></div>
         <div data-admin-usage-content></div>
       </section><section class="admin-usage" data-admin-usage aria-labelledby="adminUsageTitle">
         <div class="admin-usage-heading"><h2 id="adminUsageTitle">${label("使用概况")}</h2><div data-admin-usage-controls></div></div>

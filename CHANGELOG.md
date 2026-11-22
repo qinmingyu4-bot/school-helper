@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — Daily AI costs
+
+- Show today's official USD spend and recent daily amounts at the top of the creator console, using UTC reporting days and the existing cost report. Keep the range totals, feature breakdown and reconciliation below.
+
 ## 1.18.0 — 2026-11-22 — Blank classroom notes
 
 MINOR from AWS 1.17.0 (`f53240f`): introduce course-scoped blank notes and a direct Study entry point.

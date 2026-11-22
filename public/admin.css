@@ -106,6 +106,12 @@
 }
 .admin-usage-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .admin-usage-heading h2 { margin: 0; font-size: 20px; }
+.admin-daily-cost { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.admin-daily-cost-headline { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-top: 5px; }
+.admin-daily-cost-headline strong { font-size: 22px; font-variant-numeric: tabular-nums; }
+.admin-daily-cost-headline small, .admin-daily-cost-days dt { color: var(--muted); font-size: 12px; }
+.admin-daily-cost-days { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px 16px; margin: 12px 0 0; }
+.admin-daily-cost-days dd { margin: 2px 0 0; font-size: 13px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .admin-usage h3, .admin-usage-inline h3 { margin: 0 0 10px; font-size: 14px; }
 .admin-usage-controls { display: flex; gap: 6px; flex-wrap: wrap; }
 .admin-usage-controls button { padding: 6px 10px; min-height: 36px; font-size: 12px; }

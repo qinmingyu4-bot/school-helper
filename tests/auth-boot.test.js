@@ -3,15 +3,17 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const { test } = require("node:test");
 const source = fs.readFileSync(require.resolve("../public/app.js"), "utf8");
-const boot = source.slice(source.indexOf("  async function boot()"), source.indexOf('  document.addEventListener("click", async (event) => {'));
+const boot = source.slice(source.indexOf("  async function startupApi("), source.indexOf('  document.addEventListener("click", async (event) => {'));
 
 function harness(result, error, savedMode) {
-  const paths = [], pages = [], state = {}, root = { innerHTML: "" };
+  const paths = [], pages = [], requests = [], marks = [], state = {}, root = { innerHTML: "" };
   const context = vm.createContext({
-    state, root, URL, location: { href: "https://example.test/app?page=tools", search: "?page=tools" },
+    state, root, URL, AbortController, window: { setTimeout, clearTimeout, performance: { mark: name => marks.push(name) } },
+    location: { href: "https://example.test/app?page=tools", search: "?page=tools" },
     history: { replaceState: (_state, _title, path) => paths.push(path) }, document: {},
     ui: require("../public/i18n"), esc: String, officeTools: { sharedLink: null, takeSharedLink() { return this.sharedLink; } },
     api: async (path) => {
+      requests.push(path);
       if (path !== "/api/me") return {};
       if (error) throw error;
       return result;
@@ -22,7 +24,7 @@ function harness(result, error, savedMode) {
   });
   const roles = source.slice(source.indexOf("  const isAdmin ="), source.indexOf("  const profile ="));
   vm.runInContext(roles + boot, context);
-  return { context, paths, pages, state, root };
+  return { context, paths, pages, requests, marks, state, root };
 }
 
 for (const [label, error] of [
@@ -43,6 +45,7 @@ test("only confirmed unauthenticated responses open login", async () => {
   const h = harness(null, Object.assign(new Error("Please log in"), { status: 401 }));
   await h.context.boot();
   assert.deepEqual(h.paths, ["/login?page=tools"]);
+  assert.deepEqual(h.requests, ["/api/me", "/api/auth/google/config", "/api/auth/config"]);
   assert.equal(h.root.innerHTML, "login-form");
 });
 
@@ -55,12 +58,50 @@ test("malformed successful responses are not treated as signed out", async () =>
   }
 });
 
-test("valid session opens the requested tools workspace", async () => {
+test("valid session opens the requested tools workspace without requesting login configuration", async () => {
   const h = harness({ user: { id: "alice" } });
   await h.context.boot();
   assert.equal(h.state.user.id, "alice");
   assert.deepEqual(h.paths, []);
   assert.deepEqual(h.pages, ["tools"]);
+  assert.deepEqual(h.requests, ["/api/me"]);
+  assert.deepEqual(h.marks, [
+    "studybridge:boot-start", "studybridge:session-settled",
+    "studybridge:workspace-mounted", "studybridge:initial-page-settled"
+  ]);
+});
+
+test("direct login starts session and configuration requests concurrently", async () => {
+  const h = harness();
+  h.context.location.href = "https://example.test/login?page=tools";
+  const pending = new Map();
+  h.context.api = path => new Promise((resolve, reject) => pending.set(path, { resolve, reject }));
+  const started = h.context.boot();
+  assert.deepEqual([...pending.keys()].sort(), ["/api/auth/config", "/api/auth/google/config", "/api/me"]);
+  pending.get("/api/auth/google/config").resolve({ enabled: true });
+  pending.get("/api/auth/config").reject(new Error("offline"));
+  pending.get("/api/me").reject(Object.assign(new Error("Please log in"), { status: 401 }));
+  await started;
+  assert.equal(h.root.innerHTML, "login-form");
+  assert.equal(h.state.googleEnabled, true);
+  assert.match(h.state.toast, /注册配置/);
+});
+
+test("a stalled session aborts and offers a retry at the original URL", async () => {
+  const h = harness();
+  let expire, cleared;
+  h.context.window.setTimeout = (callback, delay) => { expire = callback; assert.equal(delay, 10000); return 1; };
+  h.context.window.clearTimeout = timer => { cleared = timer; };
+  h.context.api = (path, { signal }) => new Promise((_resolve, reject) => {
+    assert.equal(path, "/api/me");
+    signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+  });
+  const started = h.context.boot();
+  expire();
+  await started;
+  assert.equal(cleared, 1);
+  assert.deepEqual(h.paths, []);
+  assert.match(h.root.innerHTML, /location.reload/);
 });
 
 test('shared Office links open the corresponding editor after authentication', async () => {

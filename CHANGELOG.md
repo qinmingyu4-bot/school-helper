@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Show a startup screen immediately on opening or refreshing the app. Signed-in workspaces load as soon as the session is confirmed, and a session check that times out shows a retry message.
+
 ## 1.21.2 — 2026-11-22 — Keep the sidebar in place
 
 PATCH from AWS 1.21.1 (`8246f2c`): keep the left navigation at its current scroll position when switching between desktop features.

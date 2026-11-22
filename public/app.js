@@ -4308,22 +4308,38 @@
     if (url.origin === location.origin && url.pathname === "/app") void openPushLink(url).catch((error) => setToast(error.message));
   });
 
+  async function startupApi(path) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 10000);
+    try {
+      return await api(path, { signal: controller.signal });
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  }
+
+  function loadLoginConfig() {
+    return Promise.all([
+      startupApi("/api/auth/google/config").catch(() => ({ enabled: false })),
+      startupApi("/api/auth/config").catch(() => null)
+    ]);
+  }
+
   async function boot() {
+    window.performance.mark("studybridge:boot-start");
     const entryUrl = new URL(location.href);
+    const loginConfig = entryUrl.pathname === "/login" ? loadLoginConfig() : null;
     let unauthenticated = false;
     try {
-      const [google, authConfig, data] = await Promise.all([
-        api("/api/auth/google/config").catch(() => ({ enabled: false })),
-        api("/api/auth/config").catch(() => null),
-        api("/api/me").catch((error) => {
-          if (error.status === 401) { unauthenticated = true; return null; }
-          throw new Error(ui.text("暂时无法确认登录状态，请检查网络后刷新重试。"));
-        })
-      ]);
-      state.authConfig = authConfig;
-      state.googleEnabled = Boolean(google.enabled);
+      const data = await startupApi("/api/me").catch((error) => {
+        if (error.status === 401) { unauthenticated = true; return null; }
+        throw new Error(ui.text("暂时无法确认登录状态，请检查网络后刷新重试。"));
+      }).finally(() => window.performance.mark("studybridge:session-settled"));
       if (unauthenticated) {
         history.replaceState(null, "", `/login${location.search}${officeTools.sharedLink ? officeTools.shareFragment(officeTools.sharedLink) : ""}`);
+        const [google, authConfig] = await (loginConfig || loadLoginConfig());
+        state.authConfig = authConfig;
+        state.googleEnabled = Boolean(google.enabled);
         const authError = new URL(location.href).searchParams.get("authError");
         if (authError) state.toast = authError;
         else if (!authConfig) state.toast = ui.text("注册配置暂时无法读取，请刷新后重试。");
@@ -4343,7 +4359,10 @@
       const mailboxResult = new URL(location.href).searchParams.get("mailbox");
       if (mailboxResult) mailboxView.setBanner(({ connected: ui.text("邮箱已绑定。可在设置中单独开启自动 AI 分析。"), denied: ui.text("此次邮箱授权未完成，你仍可以粘贴邮件生成回复。"), failed: ui.text("邮箱绑定未成功，请在设置中重试。") })[mailboxResult] || ui.text("请在设置中查看邮箱连接状态。"), { showInbox: mailboxResult === "connected" });
       const savedPage = localStorage.getItem("studybridge.page");
-      await loadPage(urlPage || savedPage || "study", { officeShare: officeTools.takeSharedLink() });
+      const initialPage = loadPage(urlPage || savedPage || "study", { officeShare: officeTools.takeSharedLink() });
+      window.performance.mark("studybridge:workspace-mounted");
+      await initialPage;
+      window.performance.mark("studybridge:initial-page-settled");
       if (entryUrl.searchParams.has("scheduleItem") || entryUrl.searchParams.has("classmateChat")) await openPushLink(entryUrl);
       if (["return", "cancelled"].includes(billingResult)) {
         appearanceController.open();
@@ -4779,6 +4798,7 @@
   });
 
   ui.subscribe(() => {
+    if (root.querySelector(".app-startup")) return;
     showClassmateMessageToast(classmateNotifications.currentToast());
     const fields = Array.from(root.querySelectorAll("input, textarea, select")).filter((field) => field.id && !field.matches("[data-interface-language]"))
       .map((field) => ({ id: field.id, value: field.value, checked: field.checked, files: field.files, start: field.selectionStart, end: field.selectionEnd }));

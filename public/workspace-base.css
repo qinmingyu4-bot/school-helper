@@ -58,6 +58,28 @@ a { color: var(--blue); }
   place-items: center;
   padding: 32px;
 }
+.app-startup {
+  min-height: 100vh;
+  min-height: 100svh;
+  display: grid;
+  align-content: center;
+  padding: 24px;
+  text-align: center;
+  background: var(--panel);
+  color: var(--ink);
+}
+.app-startup h1 { margin: 0; font-size: 1.5rem; }
+.app-startup p { margin: 6px 0 0; color: var(--muted); }
+:root:lang(en) .app-startup [lang="zh-CN"],
+:root:not(:lang(en)) .app-startup [lang="en"] { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-sb-mode]) .app-startup {
+    color-scheme: dark;
+    --panel: Canvas;
+    --ink: CanvasText;
+    --muted: CanvasText;
+  }
+}
 .auth-card {
   width: min(460px, 100%);
   display: grid;

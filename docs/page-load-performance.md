@@ -26,9 +26,23 @@ The original performance branch passed all 600 Linux/Nginx regressions before in
   File content and representations are an in-memory process snapshot, keyed by
   canonical paths rather than arbitrary query parameters. Restart after public-file
   edits. No build dependency, checked-in bundle, database migration or private cache.
-- The three boot requests start concurrently. Office execution stays on demand. Chinese
-  font loading is driven by text actually rendered rather than an eager preload;
+- Office execution stays on demand. Chinese font loading is driven by text
+  actually rendered rather than an eager preload;
   `font-display: swap` continues to allow fallback text during download.
+
+## Workspace startup
+
+- The entry HTML contains a public loading screen. The app opens the workspace as
+  soon as `/api/me` confirms the session. Google and registration settings load
+  for the login entry or a confirmed signed-out session. The API and HTML
+  authentication checks still run.
+- Each startup request has a 10-second deadline. Only a 401 triggers login
+  recovery. Network errors and timeouts offer a refresh without changing the URL.
+- Browser User Timing records `studybridge:boot-start`,
+  `studybridge:session-settled`, `studybridge:workspace-mounted`, and
+  `studybridge:initial-page-settled`. Compare them with the navigation and
+  resource timings. The final mark describes the initial route loader, while
+  self-loading modules such as Grades can finish rendering later.
 
 ## Office first-open optimization (1.14.1)
 

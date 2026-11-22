@@ -1,5 +1,11 @@
 # StudyBridge Version Archive
 
+## 1.20.0 — 2026-11-22
+
+- MINOR from main 1.19.0 (`765393483185b9a7add9798c3268a98ad96731a6`): save Study chat summaries as editable SB Docs files with DOCX export and print/PDF.
+- Reuse existing private Office storage, export, and AI allowance accounting. No schema migration or new credentials. Source: `c9fdf55`.
+- Verify conversation ownership, duplicate requests, reopening and exporting saved documents, GitHub Actions and live service health.
+
 ## 1.19.0 — 2026-11-22
 
 - MINOR from AWS 1.18.0 (`9063624ebe5f887e027d3acc4d4a0d29049f8368`): add today's official AI spend and recent daily amounts directly above the creator console's existing reconciliation controls.

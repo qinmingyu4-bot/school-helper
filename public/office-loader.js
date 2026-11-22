@@ -66,6 +66,10 @@
       });
     return promise;
   }
+  function invalidate(userId) {
+    if (account === userId) listing = null;
+    window.StudyBridgeOfficeLibrary?.invalidate(userId);
+  }
   async function mount(ctx) {
     if (account !== ctx.userId) { account = ctx.userId; listing = null; }
     const token = ++generation,
@@ -81,10 +85,7 @@
       if (token === generation && host.isConnected) await editor.attach(host, {
         ...ctx,
         officeProjects: () => projects(ctx),
-        invalidateOfficeProjects: () => {
-          if (account === ctx.userId) listing = null;
-          window.StudyBridgeOfficeLibrary?.invalidate(ctx.userId);
-        },
+        invalidateOfficeProjects: () => invalidate(ctx.userId),
       });
     } catch (error) {
       if (token === generation && host.isConnected)
@@ -104,6 +105,7 @@
     html,
     mount,
     list: (ctx, force = false) => { if (force && account === ctx.userId) listing = null; return projects(ctx); },
+    invalidate,
     pendingDraft: ctx => module?.pendingDraft(ctx),
     flush: () => module?.flush(),
     capture: () => module?.capture(),

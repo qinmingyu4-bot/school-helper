@@ -1,11 +1,11 @@
 {
-  "previousCommit": "9063624ebe5f887e027d3acc4d4a0d29049f8368",
-  "previousVersion": "1.18.0",
-  "version": "1.19.0",
+  "previousCommit": "765393483185b9a7add9798c3268a98ad96731a6",
+  "previousVersion": "1.19.0",
+  "version": "1.20.0",
   "level": "minor",
-  "reason": "Add a directly visible summary of official daily AI spending to the creator console.",
+  "reason": "Add an editable SB Docs summary file for a saved Study chat, with direct access to the existing export tools.",
   "features": [
-    "Show today’s official OpenAI spending in USD at the top of the creator console",
-    "Show available amounts for the preceding six UTC days without expanding reconciliation"
+    "Summarize the current Study conversation from its header and open the saved SB Docs file",
+    "Reopen summaries in the file library, edit them, export DOCX or print to PDF"
   ]
 }

@@ -22,6 +22,13 @@
 请先勾选下方的邮箱连接授权说明。|Please acknowledge the mailbox connection permission below.
 在设置中绑定邮箱并开启自动 AI 分析后，学习通知会显示在这里。|Link your mailbox and enable automatic AI analysis in Settings to see study notices here.
 邮箱已绑定。可在设置中单独开启自动 AI 分析。|Mailbox linked. You can separately enable automatic AI analysis in Settings.
+总结成文档|Summarize to Docs
+总结当前聊天并存入 SB Docs|Summarize this chat and save it to SB Docs
+正在总结…|Summarizing…
+这段聊天还没有可总结的内容。|This chat has no content to summarize yet.
+AI 未返回有效的聊天总结，请重试。|AI did not return a valid chat summary. Try again.
+聊天总结暂未完成，请重试。|The chat summary could not be completed. Try again.
+登录账号已变更，请重新打开学习区。|Your signed-in account changed. Reopen the Study area.
 文件库|File library
 文件导航|File navigation
 ← 返回文件库|← Back to files

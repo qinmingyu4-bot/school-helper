@@ -68,6 +68,7 @@ const { createCreativeService } = require("./lib/creative-service");
 const { VIDEO_POLICY } = require("./lib/product-policy");
 const { courseContext } = require("./lib/creative-context");
 const { createOfficeService } = require("./lib/office-service");
+const { createStudyChatSummary } = require("./lib/study-chat-summary");
 const { revisionBlocks, revisionEdits } = require("./lib/office-revision");
 const { contentRevisionSource, contentRevisionChanges, revisionGuidance } = require("./lib/office-content-revision");
 const { exportOffice } = require("./lib/office-export");
@@ -138,6 +139,18 @@ const aiUsage = createAiUsage({ db, entitlement: (userId) => alipay.entitlement(
   isUnlimited: (user) => effectiveRole(user, adminEmails()) === "co-admin",
   request: (url, options, estimate) => aiCosts.fetch(url, options, { ...estimate, operationId: aiUsage.context.getStore()?.operationId || usage.currentOperation(), userId: aiUsage.context.getStore()?.userId, payer: "user", ...usage.currentAttribution() }) });
 const office = createOfficeService(db);
+const summarizeStudyChat = createStudyChatSummary({
+  db, office,
+  generate: (messages) => {
+    if (!process.env.OPENAI_API_KEY) throw Object.assign(new Error("AI 服务暂不可用，请稍后重试。"), { statusCode: 503 });
+    return callAiWithChatCompletions(messages, simpleAiModel, null, {
+      signal: AbortSignal.timeout(55000), store: false, maxCompletionTokens: 5000
+    }).catch((error) => {
+      if (error.statusCode) throw error;
+      throw Object.assign(new Error("聊天总结暂未完成，请重试。"), { statusCode: 502 });
+    });
+  }
+});
 const schedulePush = createPushService({ db, listSchedule: (userId) => listUserScheduleItems(userId, { includeCompleted: true }) });
 const publicDir = path.join(__dirname, "public");
 const port = Number(process.env.PORT || 3000);
@@ -3672,6 +3685,19 @@ if (directMessageMatch && method === "POST") {
         const conversation = await db.renameConversation(user.id, courseId, childId, title);
         return conversation ? sendJson(res, 200, { conversation }) : sendError(res, 404, "Conversation not found.");
       }
+    }
+    if (child === "chat-summary" && !childId && method === "POST") {
+      res.setHeader("Cache-Control", "private, no-store");
+      const body = await readJson(req, 4096);
+      if (body?.ownerId !== user.id) return sendError(res, 403, "登录账号已变更，请重新打开学习区。");
+      const { conversationId } = body;
+      if (typeof conversationId !== "string" || !conversationId || conversationId.length > 100 ||
+          course.chatType === "general" && conversationId !== courseConversations.DEFAULT_ID)
+        return sendError(res, 400, "对话无效。");
+      const conversation = await db.getConversation(user.id, courseId, conversationId);
+      if (!conversation) return sendError(res, 404, "对话不存在。");
+      const project = await summarizeStudyChat({ userId: user.id, course, conversation, language: body.language === "en" ? "en" : "zh-CN" });
+      return sendJson(res, 200, { project });
     }
     if (child === "messages" && method === "GET") {
       const conversationId = url.searchParams.get("conversationId") || courseConversations.DEFAULT_ID;

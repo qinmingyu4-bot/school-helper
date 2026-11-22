@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — Study chat summaries in SB Docs
+
+- Summarize a course conversation or General chat from its Study header. Save the result as an editable SB Docs file with headings and bullet points, and open it for editing, DOCX export or printing to PDF.
+- Reuse the saved file when summarizing the same chat contents in the same language. Summaries stay in the account's Docs library when the user navigates away.
+
 ## 1.18.0 — 2026-11-22 — Blank classroom notes
 
 MINOR from AWS 1.17.0 (`f53240f`): introduce course-scoped blank notes and a direct Study entry point.

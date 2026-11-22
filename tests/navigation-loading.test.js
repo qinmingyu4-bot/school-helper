@@ -44,6 +44,38 @@ function harness(defer = []) {
   return { state, context, requests, notices, renders, storage, drafts, type: (text) => { formDraft = text; }, draft: () => formDraft };
 }
 
+test("a chat summary opens its saved Docs file once and leaves later navigation alone", async () => {
+  const summaryRoute = "/api/courses/general/chat-summary";
+  const logic = source.slice(source.indexOf("  function canSummarizeStudyChat()"), source.indexOf("  function studyPage()"));
+  for (const navigateAway of [false, true]) {
+    const h = harness([summaryRoute]);
+    const button = { setAttribute() {} }, invalidated = [];
+    Object.assign(h.context, {
+      activeStudyTask: () => null, studyHistoryPending: () => false, studySummaries: new Set(),
+      root: { querySelector: () => button }, crypto: require("node:crypto"),
+    });
+    h.context.officeTools.invalidate = (id) => invalidated.push(id);
+    h.state.page = "study";
+    h.state.messages = [{ id: "saved-turn", content: "A saved study message." }];
+    vm.runInContext(logic, h.context);
+    const pending = h.context.summarizeStudyChat();
+    await h.context.summarizeStudyChat();
+    assert.equal(h.requests.length, 1);
+    assert.equal(button.disabled, true);
+    if (navigateAway) await h.context.loadPage("profile");
+    h.requests[0].resolve({ project: { id: "office_summary", name: "Saved summary" } });
+    await pending;
+    assert.deepEqual(invalidated, ["alice"]);
+    assert.equal(h.state.page, navigateAway ? "profile" : "tools");
+    if (!navigateAway) {
+      assert.equal(h.state.tool, "docs");
+      assert.equal(h.state.toolView, "edit");
+      assert.equal(h.state.officeEntry.id, "office_summary");
+      assert.equal(h.requests.length, 1, "Opening the saved project does not reload Study courses");
+    }
+  }
+});
+
 test("late study responses cannot overwrite courses or redraw a newly edited profile", async () => {
   const h = harness(["/api/courses"]);
   const old = h.context.loadPage("study");

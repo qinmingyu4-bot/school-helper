@@ -127,6 +127,7 @@
   const mailboxView = window.StudyBridgeMailbox.create({ api, getUser: () => state.user,
     onChange: () => { if (state.user && state.page === "email") render(); }, notice: setToast });
   const studyReplies = new Map();
+  const studySummaries = new Set();
   const studyDrafts = new Map();
   const uploadPreviewUrls = new Map();
   const cheatsheetCourses = new Map();
@@ -991,17 +992,72 @@
     `;
   }
 
+  function canSummarizeStudyChat() {
+    return state.activeCourseId && !studyHistoryPending() && !activeStudyReply() && !activeStudyTask()
+      && state.messages.some((message) => message.id && typeof message.content === "string" && message.content.trim());
+  }
+
+  function studySummaryButtonState() {
+    const pending = studySummaries.has(studyReplyKey());
+    return { pending, disabled: pending || !canSummarizeStudyChat(), label: ui.text(pending ? "正在总结…" : "总结成文档") };
+  }
+
+  function updateStudySummaryButton() {
+    const button = root.querySelector('[data-action="summarize-study-chat"]');
+    if (!button) return;
+    const { pending, disabled, label } = studySummaryButtonState();
+    button.disabled = disabled;
+    button.textContent = label;
+    button.setAttribute("aria-busy", String(pending));
+  }
+
+  async function summarizeStudyChat() {
+    const key = studyReplyKey();
+    if (studySummaries.has(key) || !canSummarizeStudyChat()) return;
+    const userId = state.user.id, courseId = state.activeCourseId, conversationId = state.activeConversationId;
+    const generation = pageLoadGeneration;
+    const isCurrent = () => state.page === "study" && generation === pageLoadGeneration && studyReplyKey() === key;
+    studySummaries.add(key);
+    updateStudySummaryButton();
+    let project;
+    try {
+      ({ project } = await api(`/api/courses/${encodeURIComponent(courseId)}/chat-summary`, {
+        method: "POST", body: { ownerId: userId, conversationId, language: ui.getLanguage() }
+      }));
+      if (!/^office_[\w-]{1,80}$/.test(project?.id || "")) throw new Error(ui.text("聊天总结暂未完成，请重试。"));
+      officeTools.invalidate(userId);
+    } catch (error) {
+      if (isCurrent()) {
+        const message = ui.text(error.message);
+        setToast(message);
+        root.querySelector(".toast")?.remove();
+        root.insertAdjacentHTML("beforeend", `<div class="toast" role="status">${esc(message)}</div>`);
+      }
+      return;
+    } finally {
+      studySummaries.delete(key);
+      if (state.page === "study" && studyReplyKey() === key) updateStudySummaryButton();
+    }
+    if (isCurrent() && !activeStudyReply() && !activeStudyTask()) {
+      await loadPage("tools", { officeDocumentId: project.id });
+    }
+  }
+
   function studyPage() {
     const course = isGeneralChat() ? chatSpaces.general : state.courses.find((item) => item.id === state.activeCourseId);
     const conversation = state.courseConversations[state.activeCourseId]?.find((item) => item.id === state.activeConversationId);
     const courseName = isGeneralChat() ? ui.text(chatSpaces.general.name) : course?.name;
+    const summary = studySummaryButtonState();
     return `
       <header class="page-header">
         <div class="study-heading-row">
           <div class="course-chat-heading"><small>${esc(courseName || ui.text("请选择课程"))}${!isGeneralChat() ? ui.text(" · 课程资料共享") : ""}</small><h1 title="${esc(conversation?.title || courseName || ui.text("请选择课程"))}">${esc(conversation?.title || courseName || ui.text("请选择课程"))}</h1></div>
           ${dailyChecklist.entry(course?.id)}
         </div>
-        ${!isGeneralChat() && course ? ui.html`<div class="course-chat-actions"><button data-action="learning-open">学习清单 · 练习</button><button data-action="open-course-notes" data-id="${esc(course.id)}">课堂笔记</button><button data-action="new-conversation" data-id="${esc(course.id)}">＋ 新对话</button></div>` : ""}
+        ${course ? ui.html`<div class="course-chat-actions">
+          ${!isGeneralChat() ? ui.html`<button data-action="learning-open">学习清单 · 练习</button><button data-action="open-course-notes" data-id="${esc(course.id)}">课堂笔记</button><button data-action="new-conversation" data-id="${esc(course.id)}">＋ 新对话</button>` : ""}
+          <button type="button" data-action="summarize-study-chat" title="总结当前聊天并存入 SB Docs" aria-live="polite" aria-busy="${summary.pending}" ${summary.disabled ? "disabled" : ""}>${summary.label}</button>
+        </div>` : ""}
       </header>
       ${upcomingBanner()}
       <section class="chat-area">
@@ -1162,11 +1218,13 @@
     send.title = pending ? ui.message`${ui.text(replyPhases[activeStudyReply()?.assistant.phase] || "正在生成")}，点击停止` : ui.text("发送");
     send.setAttribute("aria-label", pending ? ui.text("停止生成") : ui.text("发送"));
     send.disabled = state.busy;
+    if (!pending) updateStudySummaryButton();
   }
 
   function updateStudyTasks() {
     if (!studyTasks || state.page !== "study" || state.mode !== "student") return;
     state.messages = studyTasks.mergeMessages(state.messages);
+    updateStudySummaryButton();
     const chat = root.querySelector(".study-workspace .chat-area"), follow = chat && chat.scrollHeight - chat.clientHeight - chat.scrollTop < 48;
     for (const message of state.messages.filter((item) => item.role === "assistant" && item.studyTask)) {
       const node = root.querySelector(`[data-study-job="${message.studyJobId}"] > div`);
@@ -2747,7 +2805,7 @@
     return course;
   }
 
-  async function loadPage(page, { scheduleView = "calendar", reuseStudyCourses = false, officeShare } = {}) {
+  async function loadPage(page, { scheduleView = "calendar", reuseStudyCourses = false, officeShare, officeDocumentId } = {}) {
     if (state.page === "grades" && page !== "grades") {
       const planner = root.querySelector("#grade-module")?.gradePlanner;
       if (planner && !await planner.flush()) return;
@@ -2758,6 +2816,11 @@
       state.tool = officeShare.kind;
       state.toolView = "edit";
       state.officeEntry = { key: crypto.randomUUID(), share: officeShare };
+    } else if (officeDocumentId) {
+      state.tool = "docs";
+      state.toolView = "edit";
+      state.officeEntry = { key: crypto.randomUUID(), id: officeDocumentId };
+      localStorage.setItem("studybridge.tool", "docs");
     } else if (page === "tools" && state.page !== "tools") {
       state.toolView = "library";
       state.officeEntry = null;
@@ -2772,9 +2835,8 @@
     // finally blocks must leave the newer page's data, drafts and busy state alone.
     const isCurrent = () => pageGeneration === pageLoadGeneration && state.user?.id === userId && state.page === page
       && (page !== "classmates" || generation === classmatesGeneration);
-    // Grades owns its asynchronous loading state. Avoid rebuilding its new
-    // shadow tree twice in the same turn before the browser can paint it.
-    if (page === "grades") { state.busy = false; render(); return; }
+    // Grades and direct Docs entry load their own content. Mount them once.
+    if (page === "grades" || officeDocumentId) { state.busy = false; render(); return; }
     state.busy = true;
     if (page === "study") { state.studyHistoryLoading = true; state.studyHistoryError = ""; }
     if (page === "community") { state.community = null; state.communityError = ""; state.communityFocusedPost = null; state.communityMoreLoading = false; }
@@ -3119,6 +3181,7 @@
         return;
       }
       if (action === "learning-open") { learningLoop.open(); return; }
+      if (action === "summarize-study-chat") { await summarizeStudyChat(); return; }
       if (action === "open-course-notes") {
         const userId = state.user?.id, courseId = button.dataset.id;
         state.tool = "notes";

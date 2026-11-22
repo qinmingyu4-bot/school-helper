@@ -210,6 +210,71 @@ test(
       const badSource = await request("/api/office/assist", { method: "POST", cookie, body: { ...body, source: {} } });
       assert.equal(badSource.status, 400);
     }
+    const course = (await (await request("/api/courses", {
+      method: "POST", cookie, body: { name: "Summary course" },
+    })).json()).course;
+    const route = `/api/courses/${course.id}`;
+    const conversation = (await (await request(route + "/conversations", {
+      method: "POST", cookie, body: { title: "Separate conversation" },
+    })).json()).conversation;
+    const sendChat = async (path, body) =>
+      assert.equal((await request(path + "/chat", { method: "POST", cookie, body })).status, 201);
+    const summarize = (path, conversationId = "default", activeCookie = cookie, ownerId = user.id) =>
+      request(path + "/chat-summary", { method: "POST", cookie: activeCookie, body: { ownerId, conversationId, language: "en" } });
+
+    assert.equal((await summarize(route, "default", "")).status, 401);
+    assert.equal((await summarize(route, "default", foreign)).status, 404);
+    assert.equal((await summarize(route, "missing")).status, 404);
+    assert.equal((await summarize(route)).status, 400);
+    await sendChat(route, { message: "Explain marginal cost." });
+    await sendChat(route, { conversationId: conversation.id, message: "Private sibling conversation." });
+    const historyRoute = route + "/messages?conversationId=default";
+    const history = await (await request(historyRoute, { cookie })).json();
+    const summaries = await Promise.all([summarize(route), summarize(route)]);
+    for (const response of summaries) {
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get("cache-control"), "private, no-store");
+    }
+    const [first, duplicate] = await Promise.all(summaries.map((response) => response.json()));
+    assert.deepEqual(first.project, duplicate.project);
+    assert.deepEqual(await (await request(historyRoute, { cookie })).json(), history);
+    const docRoute = "/api/office/" + first.project.id;
+    const { project: summary } = await (await request(docRoute, { cookie })).json();
+    assert.equal(summary.kind, "docs");
+    assert.equal((await request(docRoute, { cookie: foreign })).status, 404);
+    assert((await (await request("/api/office", { cookie })).json()).projects.some(({ id }) => id === summary.id));
+    assert.deepEqual(summary.model.content.content.map(({ type }) => type), ["heading", "heading", "paragraph", "bulletList"]);
+    assert.match(JSON.stringify(summary.model), /Explain marginal cost/);
+    assert.doesNotMatch(JSON.stringify(summary.model), /Private sibling conversation/);
+
+    const renamed = await request(docRoute, {
+      method: "PUT", cookie, body: { ...summary, ownerId: user.id, name: "My edited summary" },
+    });
+    assert.equal(renamed.status, 200);
+    assert.deepEqual((await (await summarize(route)).json()).project, { id: summary.id, name: "My edited summary" });
+    const docx = await request("/api/office/export", { method: "POST", cookie, body: summary });
+    assert.equal(docx.status, 200);
+    const zip = new (require("adm-zip"))(Buffer.from(await docx.arrayBuffer()));
+    assert.match(zip.readAsText("word/document.xml"), /Explain marginal cost/);
+    assert.match(zip.readAsText("word/numbering.xml"), /w:numFmt w:val="bullet"/);
+
+    await sendChat(route, { message: "Add the link to average cost." });
+    const newer = await (await summarize(route)).json();
+    assert.notEqual(newer.project.id, summary.id);
+
+    const general = "/api/courses/general";
+    assert.equal((await summarize(general, "default", cookie, "stale-account")).status, 403);
+    assert.equal((await summarize(general)).status, 400);
+    await sendChat(general, { message: "A general chat topic.", mode: "general" });
+    const generalSummary = await (await summarize(general)).json();
+    const generalDoc = await (await request("/api/office/" + generalSummary.project.id, { cookie })).json();
+    assert.match(JSON.stringify(generalDoc.project.model), /A general chat topic/);
+
+    const beforeInvalid = (await (await request("/api/office", { cookie })).json()).projects.length;
+    await sendChat(route, { conversationId: conversation.id, message: "Invalid summary fixture" });
+    assert.equal((await summarize(route, conversation.id)).status, 502);
+    assert.equal((await (await request("/api/office", { cookie })).json()).projects.length, beforeInvalid);
+
     const bad = M.fresh("docs");
     bad.content.content = [
       { type: "image", attrs: { src: "javascript:alert(1)" } },

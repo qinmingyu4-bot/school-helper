@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const original = global.fetch;
+const summarized = new Set();
 global.fetch = async (url, options) => {
   if (String(url).startsWith("https://api.openai.com/v1/chat/completions")) {
     const body = JSON.parse(options.body);
@@ -7,6 +8,17 @@ global.fetch = async (url, options) => {
     const isSlides = system.includes("manual slides editor") || system.includes("EXISTING presentation");
     assert.equal(body.model, isSlides ? "gpt-6.2-sol" : "gpt-6-luna");
     const user = String(body.messages.at(-1).content);
+    if (system.startsWith("Summarize a saved conversation")) {
+      if (body.store !== false || summarized.has(user)) throw new Error("Unexpected duplicate or stored summary request.");
+      summarized.add(user);
+      const { transcript } = JSON.parse(user);
+      const questions = transcript.filter((message) => message.role === "user").map((message) => message.text);
+      const content = questions.includes("Invalid summary fixture") ? "This is not valid JSON" : JSON.stringify({
+        title: "Study recap",
+        sections: [{ heading: "What we covered", paragraphs: ["An editable recap."], points: questions }],
+      });
+      return Response.json({ choices: [{ message: { content }, finish_reason: "stop" }] });
+    }
     const source = system.includes('"changes"') ? JSON.parse(user.split("Current editing context:\n")[1]) : null;
     const content = source
       ? JSON.stringify({ changes: source.slides ? source.slides.flatMap((slide) => slide.elements.filter((el) => el.type === "text").map((el) => ({ slideId: slide.id, elementId: el.id, set: { text: "Revised: " + el.text } }))) : source.sheets.flatMap((sheet) => Object.keys(sheet.cells).slice(0, 2).map((cell) => ({ sheetId: sheet.id, cell, set: { value: "42", style: { bold: true } } }))) })

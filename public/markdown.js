@@ -1,16 +1,38 @@
 (function (root, factory) {
-  if (typeof module === "object" && module.exports) module.exports = factory(require("markdown-it"), require("./math"));
-  else root.StudyBridgeMarkdown = factory(root.markdownit, root.StudyBridgeMath);
-})(typeof globalThis !== "undefined" ? globalThis : this, function (MarkdownIt, math) {
+  if (typeof module === "object" && module.exports) module.exports = factory(require("markdown-it"), require("./math"), require("./study-source-links"), (value) => value);
+  else root.StudyBridgeMarkdown = factory(root.markdownit, root.StudyBridgeMath, root.StudyBridgeStudySourceLinks, (value) => root.StudyBridgeI18n?.text(value) || value);
+})(typeof globalThis !== "undefined" ? globalThis : this, function (MarkdownIt, math, sourceLinks, text) {
   "use strict";
 
   const markdown = new MarkdownIt({ html: false, linkify: true, breaks: true });
   math.install(markdown);
-  markdown.validateLink = (href) => /^(https?:\/\/|mailto:)/i.test(href);
+  markdown.validateLink = (href) => /^(https?:\/\/|mailto:)/i.test(href) || sourceLinks?.accepts(href) === true;
   markdown.renderer.rules.link_open = (tokens, index, options, env, renderer) => {
-    tokens[index].attrSet("target", "_blank");
-    tokens[index].attrSet("rel", "noopener noreferrer");
+    const token = tokens[index];
+    if (sourceLinks?.accepts(token.attrGet("href"))) token.attrSet("data-study-source", "");
+    else { token.attrSet("target", "_blank"); token.attrSet("rel", "noopener noreferrer"); }
     return renderer.renderToken(tokens, index, options);
+  };
+  markdown.core.ruler.after("text_join", "study_source_disclosures", (state) => {
+    const result = [];
+    for (let i = 0; i < state.tokens.length; i++) {
+      const token = state.tokens[i], inline = state.tokens[i + 1];
+      const rows = token.type === "paragraph_open" && inline?.type === "inline" &&
+        state.tokens[i + 2]?.type === "paragraph_close" && sourceLinks?.rows(inline.content);
+      if (!rows) { result.push(token); continue; }
+      const disclosure = new state.Token("study_source_disclosure", "", 0);
+      disclosure.meta = rows;
+      disclosure.level = token.level;
+      result.push(disclosure);
+      i += 2;
+    }
+    state.tokens = result;
+  });
+  markdown.renderer.rules.study_source_disclosure = (tokens, index) => {
+    const escape = markdown.utils.escapeHtml;
+    const rows = tokens[index].meta.map(({ href, label }) =>
+      `<li><a href="${escape(href)}" data-study-source="">${escape(label)}</a></li>`).join("");
+    return `<details class="study-source-disclosure"><summary>${escape(text("来源"))}</summary><ul>${rows}</ul></details>\n`;
   };
   // Keep untrusted output from fetching tracking images or rendering raw HTML.
   markdown.renderer.rules.image = (tokens, index) => markdown.utils.escapeHtml(tokens[index].content);

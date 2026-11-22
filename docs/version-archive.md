@@ -1,5 +1,11 @@
 # StudyBridge Version Archive
 
+## 1.21.0 — 2026-11-22
+
+- MINOR from AWS 1.20.2 (`e677b20a6e46b7057064a63e02d2e1093027ad8a`): expand the compact source label to open the cited PDF page or text passage in a modal.
+- Highlight reliably matched formulas and preserve the answer position on close. Use saved evidence and local PDF text matching without adding AI requests. Source: `b5f4d81`.
+- Verify source access and version checks, formula matching, existing chat history, usage accounting, release policy, and live service health. No dependency or database migration. Rollback target: `e677b20a6e46b7057064a63e02d2e1093027ad8a`.
+
 ## 1.20.2 — 2026-11-22
 
 - PATCH from AWS 1.20.1 (`caab536ffbdc202be1f15d68ad9050824a9c3a8a`): optimize the existing syllabus extraction in Grades without changing grade arithmetic.

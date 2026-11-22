@@ -78,7 +78,7 @@ test("20 questions with seven course sources finish incrementally with all parts
   assert.equal(completed.view.completed, 20); assert.ok(partial); assert.ok(f.maximum() <= 2);
   assert.equal(completed.view.questions.length, 20);
   assert.ok(completed.view.questions.every((question) => question.parts.length === 2));
-  assert.ok(completed.view.content.includes("（来源：Lecture"));
+  assert.ok(completed.view.content.includes("（来源：[Lecture"));
   assert.ok((await f.db.listMessages("alice", "math", Infinity, "default")).filter((message) => message.role === "assistant").length === 1);
   assert.equal(await first.get("bob", "math", job.id), null);
   assert.equal(await first.get("alice", "stats", job.id), null);

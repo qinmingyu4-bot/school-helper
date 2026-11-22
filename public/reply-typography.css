@@ -99,3 +99,39 @@
   .study-workspace .message .reply-content > :last-child,
   .study-workspace .message > div > p:last-child { margin-bottom: 0; }
 }
+
+.reply-content .study-source-disclosure {
+  width: fit-content;
+  max-width: 100%;
+  margin: 2px 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.reply-content .study-source-disclosure summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  list-style: none;
+}
+.reply-content .study-source-disclosure summary::-webkit-details-marker { display: none; }
+.reply-content .study-source-disclosure summary::after {
+  content: "";
+  inline-size: 5px;
+  block-size: 5px;
+  border-inline-end: 1px solid currentColor;
+  border-block-end: 1px solid currentColor;
+  transform: rotate(45deg) translateY(-1px);
+}
+.reply-content .study-source-disclosure[open] summary::after { transform: rotate(225deg) translateY(-1px); }
+.reply-content .study-source-disclosure summary:is(:hover, :focus-visible) { color: var(--ink); background: var(--soft); }
+.reply-content .study-source-disclosure ul { padding: 2px 8px 2px 10px; margin: 3px 0 0 6px; list-style: none; border-inline-start: 1px solid var(--line); }
+.reply-content .study-source-disclosure li { margin: 0; }
+.reply-content .study-source-disclosure a { display: block; padding-block: 5px; color: var(--green); overflow-wrap: anywhere; text-underline-offset: 2px; }
+@media (pointer: coarse) {
+  .reply-content .study-source-disclosure summary, .reply-content .study-source-disclosure a { padding-block: 9px; }
+}

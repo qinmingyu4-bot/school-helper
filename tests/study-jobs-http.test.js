@@ -57,7 +57,7 @@ test("HTTP problem sets persist through restart, restore progress and isolate ac
   await until((job) => job.status === "completed");
   assert.equal(view.completed, 20); assert.equal(view.questions.length, 20);
   assert.ok(view.questions.every((question) => question.parts.length === 2 && question.status === "done"));
-  assert.match(view.content, /来源：Lecture/); assert.match(view.content, /提取文本第/);
+  assert.match(view.content, /来源：\[Lecture/); assert.match(view.content, /提取文本第/);
   assert.ok(view.timings.firstResultAt && view.timings.completedAt);
   const duplicate = await request(route + "/chat", "POST", body, alice.cookie); assert.equal(duplicate.data.job.id, view.id);
   const messages = (await request(route + "/messages", "GET", null, alice.cookie)).data.messages;

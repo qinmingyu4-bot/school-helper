@@ -6,10 +6,12 @@
 
   const markdown = new MarkdownIt({ html: false, linkify: true, breaks: true });
   math.install(markdown);
-  markdown.validateLink = (href) => /^(https?:\/\/|mailto:)/i.test(href);
+  const studySource = /^\/api\/courses\/[\w-]+\/study-source\/task_[a-f0-9]{40}\?/;
+  markdown.validateLink = (href) => /^(https?:\/\/|mailto:)/i.test(href) || studySource.test(href);
   markdown.renderer.rules.link_open = (tokens, index, options, env, renderer) => {
-    tokens[index].attrSet("target", "_blank");
-    tokens[index].attrSet("rel", "noopener noreferrer");
+    const token = tokens[index];
+    if (studySource.test(token.attrGet("href"))) token.attrSet("data-study-source", "");
+    else { token.attrSet("target", "_blank"); token.attrSet("rel", "noopener noreferrer"); }
     return renderer.renderToken(tokens, index, options);
   };
   // Keep untrusted output from fetching tracking images or rendering raw HTML.

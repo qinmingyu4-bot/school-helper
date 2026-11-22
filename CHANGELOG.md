@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Open problem-set source citations
+
+- Open a cited PDF page or extracted passage in a modal on desktop and mobile, then return to the same answer on close.
+- Put citations beside matching formulas and add a light highlight when the formula can be matched uniquely in the original text. Label derived answers, missing course evidence, and stale citations.
+- Reuse stored evidence and PDF text without adding model calls.
+
 ## 1.20.1 — 2026-11-22 — AI model routing
 
 PATCH from main 1.20.0 (`3ac69e1`): improve model selection in existing workflows.

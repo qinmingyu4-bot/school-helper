@@ -1225,7 +1225,8 @@
     if (!studyTasks || state.page !== "study" || state.mode !== "student") return;
     state.messages = studyTasks.mergeMessages(state.messages);
     updateStudySummaryButton();
-    const chat = root.querySelector(".study-workspace .chat-area"), follow = chat && chat.scrollHeight - chat.clientHeight - chat.scrollTop < 48;
+    const chat = root.querySelector(".study-workspace .chat-area"), follow = chat && !window.StudyBridgeStudySource?.isOpen()
+      && chat.scrollHeight - chat.clientHeight - chat.scrollTop < 48;
     for (const message of state.messages.filter((item) => item.role === "assistant" && item.studyTask)) {
       const node = root.querySelector(`[data-study-job="${message.studyJobId}"] > div`);
       if (node) {
@@ -4126,6 +4127,7 @@
   root.addEventListener("change", () => queueMicrotask(saveScheduleDraft));
 
   function render() {
+    window.StudyBridgeStudySource?.sync(state.user && state.page === "study" ? studyReplyKey() : null);
     syncScheduleDraft();
     void syncScheduleTimeZone();
     scheduleManagementUi.closeIfStale();
@@ -4340,6 +4342,17 @@
   }
 
   document.addEventListener("click", async (event) => {
+    const citation = event.target.closest("a[data-study-source]");
+    if (citation) {
+      event.preventDefault();
+      const job = citation.closest(".study-workspace .message.ai[data-study-job]")?.dataset.studyJob;
+      const href = citation.getAttribute("href");
+      const expected = `/api/courses/${encodeURIComponent(state.activeCourseId)}/study-source/${job}?`;
+      if (state.user && state.page === "study" && job && href?.startsWith(expected))
+        window.StudyBridgeStudySource?.open({ href, trigger: citation, api,
+          currentKey: () => state.user && state.page === "study" ? studyReplyKey() : null });
+      return;
+    }
     const pageTarget = event.target.closest("[data-page]");
     if (pageTarget) {
       event.preventDefault();

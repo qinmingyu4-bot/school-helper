@@ -30,6 +30,21 @@ components and design proposals without requiring the owner to repeat it.
 - Make focused, consistent improvements within the established style. Introduce
   a different visual direction only when the owner explicitly asks for it.
 
+## Local Preview Handoff
+
+For user-visible changes that can be tested in a browser, the owner prefers to
+review the actual StudyBridge app in the ChatGPT desktop app's built-in browser.
+
+- Start the local app from the checkout containing the changes. Verify that the
+  specific page and interaction are reachable on a loopback URL before sharing
+  it. Leave the server running for review when the environment allows.
+- Open that page in the chat's built-in browser side panel when available.
+  Put the clickable local preview link at the top of the final reply and give
+  the shortest path to try the change.
+- If the local server or browser is unavailable, state the specific blocker
+  and provide any verified fallback. Keep the local preview and production
+  deployment status clear in the handoff.
+
 ## GitHub Synchronization
 
 The project owner requests automatic GitHub synchronization after completed

@@ -1,11 +1,8 @@
 {
-  "previousCommit": "765393483185b9a7add9798c3268a98ad96731a6",
-  "previousVersion": "1.19.0",
-  "version": "1.20.0",
-  "level": "minor",
-  "reason": "Add an editable SB Docs summary file for a saved Study chat, with direct access to the existing export tools.",
-  "features": [
-    "Summarize the current Study conversation from its header and open the saved SB Docs file",
-    "Reopen summaries in the file library, edit them, export DOCX or print to PDF"
-  ]
+  "previousCommit": "3ac69e16fe16dd56455a2839a2bbdbe71006d245",
+  "previousVersion": "1.20.0",
+  "version": "1.20.1",
+  "level": "patch",
+  "reason": "Improve routing for existing Study, schedule, grades and Office tasks so routine operations use Luna without downgrading complex reasoning.",
+  "features": []
 }

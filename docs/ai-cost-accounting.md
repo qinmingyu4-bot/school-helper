@@ -132,6 +132,24 @@ References checked 2026-11-20:
 - https://developers.openai.com/api/docs/pricing
 - https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/usage/methods/costs
 
+### Task model selection
+
+The configured simple model (Luna by default) handles ordinary study lookups,
+definitions and edits. A subject name, words such as “assignment” and “exam,”
+or an explicitly supplied passage to translate do not by themselves require
+Sol. Worked solutions, proofs, mock exams and ambiguous complex-mode requests
+still use the configured complex model.
+
+Natural-language schedule drafts up to the existing input limit, grade
+screenshot extraction, grounded study-topic drafts and simple single-slide
+edits start on Luna. Validation can trigger at most one Sol retry when a
+draft is unusable. Provider transport errors do not trigger a second model
+call. A valid schedule clarification is returned for review without a retry.
+The same feature attribution records both attempts when a retry is needed.
+Syllabus rules, practice questions and their verification, multi-slide
+content work and official academic-calendar matching keep their established
+model choices.
+
 ## 2026-11-21 reconciliation/display correction
 
 Only provider consumption is labeled total. Missing official data displays unavailable, not the old analytics estimate or the incomplete ledger subtotal. Feature amounts are locally priced and remain estimates; daily signed residuals keep the sum equal to the official total for the same UTC coverage. Pre-ledger dates, the first ledger day (mixed coverage) and later dates are separate. Unknown feature tags cannot be assigned to history. Outside-coverage local rows are shown separately. Cached reports without daily detail wait for the next successful provider sync before splitting historical amounts.

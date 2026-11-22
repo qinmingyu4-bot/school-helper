@@ -205,6 +205,13 @@ test(
       const result = await response.json();
       assert.equal(result.changes.length, 2);
       assert.equal(result.changes[0][kind === "slides" ? "slideId" : "sheetId"], "s0");
+      if (kind === "slides") {
+        for (const prompt of ["Revise the existing content INVALID_FIRST_PATCH", "推导并核查本页给出的公式"]) {
+          const followUp = await request("/api/office/assist", { method: "POST", cookie, body: { ...body, prompt } });
+          assert.equal(followUp.status, 200);
+          assert.deepEqual((await followUp.json()).changes, result.changes);
+        }
+      }
       const saved = (await (await request("/api/office/office_http-" + kind, { cookie })).json()).project;
       assert.deepEqual(saved.model, previous.model, "Content revision preview cannot mutate a saved project");
       const badSource = await request("/api/office/assist", { method: "POST", cookie, body: { ...body, source: {} } });

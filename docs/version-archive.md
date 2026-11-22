@@ -1,5 +1,12 @@
 # StudyBridge Version Archive
 
+## 1.20.1 — 2026-11-22
+
+- PATCH from main 1.20.0 (`3ac69e16fe16dd56455a2839a2bbdbe71006d245`): route routine Study lookups, text transformations and validated extraction to Luna while retaining Sol for worked problems and more complex tasks.
+- Apply Luna-first selection to schedule drafts, grade screenshots, grounded topic drafts and simple single-slide edits. Allow a validated fallback without replaying provider transport failures. Keep reminders, grade review, cost attribution and the new conversation summary workflow.
+- Source: `46a5ffe` and `cde1f2d`. Real-provider checks used 17 synthetic cases and no production user records. No migration or dependency change.
+- Verify merged regressions, release policy and live service health. Rollback code target: `3ac69e16fe16dd56455a2839a2bbdbe71006d245`.
+
 ## 1.20.0 — 2026-11-22
 
 - MINOR from main 1.19.0 (`765393483185b9a7add9798c3268a98ad96731a6`): save Study chat summaries as editable SB Docs files with DOCX export and print/PDF.

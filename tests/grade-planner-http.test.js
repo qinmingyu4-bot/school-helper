@@ -68,9 +68,13 @@ test("account grades enforce ownership, CSRF, revision checks, private persisten
   assert.equal((await req(route,alice,withLink,"PUT",headers)).status,200);
   const image="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aH2sAAAAASUVORK5CYII=";
   const read=await req(route+"/recognize",alice,{kind:"grades",name:"grades.png",mime:"image/png",dataUrl:image},"POST",headers);
-  assert.equal(read.status,200); assert.equal((await read.json()).rows[0].score,18);
+  assert.equal(read.status,200);
+  const screenshotDraft=await read.json(); assert.equal(screenshotDraft.rows[0].score,18);
   let current=(await(await req("/api/grade-planner",alice)).json()).courses.find(c=>c.id===course.id); assert.equal(current.version,2); assert.equal(current.categories[0].items[0].score,0); assert.equal(current.categories[0].gradeLinks[0].url,"https://manual.example.edu/grades"); assert.equal(current.categories[0].dropLowest,1);
   const usage=(await(await req("/api/me/ai-usage",alice)).json()).usage; assert.ok(usage.usedUsd>0); assert.equal(usage.pendingUsd,0);
+  const unclear=await req(route+"/recognize",alice,{kind:"grades",name:"unclear.png",mime:"image/png",dataUrl:image},"POST",headers);
+  assert.equal(unclear.status,200);
+  assert.deepEqual(await unclear.json(), screenshotDraft);
   const syllabus=await req(route+"/recognize",alice,{kind:"syllabus",name:"syllabus.txt",mime:"text/plain",dataUrl:"data:text/plain;base64,SG9tZXdvcmsgNDAlLCBGaW5hbCA2MCU="},"POST",headers);
   assert.equal(syllabus.status,200); assert.equal((await syllabus.json()).categories.length,2);
   assert.equal((await req(route+"/recognize",alice,{kind:"grades",name:"bad.png",mime:"image/png",dataUrl:"data:image/png;base64,YmFk"},"POST",headers)).status,400);

@@ -50,3 +50,21 @@ test("new large attachments and long tasks choose Sol", () => {
   assert.equal(selectAiModel({ message: "Analyze this", attachments: [{ text: "x".repeat(10000) }] }, models), models.complexModel);
   assert.equal(selectAiModel({ message: "x".repeat(901) }, models), models.complexModel);
 });
+
+test("simple date lookups, definitions and text edits stay on Luna inside complex modes", () => {
+  for (const [mode, message] of [
+    ["exam", "MAT137 期末考试是哪天？"],
+    ["assignment", "When is the finance assignment due?"],
+    ["review", "机会成本是什么意思？"],
+    ["review", "机会成本是什么意思？用一句中文定义。"],
+    ["exam", "什么是置信区间？"],
+    ["review", "Define opportunity cost"],
+    ["exam", "Summarize the final exam instructions"],
+    ["assignment", "翻译成中文：Derive the optimal value and prove uniqueness."],
+    ["assignment", "请把这份作业要求翻译成中文"],
+    ["review", "Proofread this: " + "An essay on finance, forecasting and programming. ".repeat(30)],
+  ]) assert.equal(selectAiModel({ mode, message }, models), models.simpleModel, message);
+  assert.equal(selectAiModel({ mode: "exam", message: "翻译并推导这个公式" }, models), models.complexModel);
+  assert.equal(selectAiModel({ mode: "guided", message: "请证明并解释这个统计结论" }, models), models.complexModel);
+  assert.equal(selectAiModel({ mode: "guided", message: "继续", history: [{ role: "user", content: "Summarize the exam instructions", mode: "exam" }] }, models), models.simpleModel);
+});

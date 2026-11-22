@@ -202,6 +202,9 @@ test("timetable images/PDFs retain layout, use school calendars and return recur
   assert.ok(missing.data.items[0].warning);
   const repeat = await request("/api/schedule/parse-text", { ...natural, text: "每周一三点读书" }, cookie);
   assert.equal(repeat.data.items.length, 0); assert.match(repeat.data.clarification, /结束日期/);
+  const repaired = await request("/api/schedule/parse-text", { ...natural, text: natural.text + " FORMAT_BAD_RECOVER" }, cookie);
+  assert.equal(repaired.status, 200);
+  assert.equal(repaired.data.items.length, 2);
   assert.equal((await request("/api/schedule/parse-text", { ...natural, text: "FORMAT_BAD" }, cookie)).status, 502);
   assert.equal((await request("/api/schedule/parse-text", { ...natural, timeZone: "bad/zone" }, cookie)).status, 400);
   // A real 2-second PCM header/data body lets admission measure duration.

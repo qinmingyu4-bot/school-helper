@@ -30,11 +30,14 @@ test('all-page snapshots use the exact account/document prefix and numeric page 
  }}});
  assert.deepEqual((await service.readAll('u','c','d')).pages.map(p=>p.page),[2,10]);
 });
-test('Dynamo saves use conditional transactions and document guards',async()=>{
- let writes;
- const service=create({dynamo:{get:async(_pk,sk)=>sk.includes('#DOC#')?{hasSourcePdf:true}:null,transactPut:async w=>{writes=w;}}});
- await service.save('u','c','d',2,{version:0,items:[item]});
- assert.equal(writes[0].createOnly,true);assert.equal(writes[1].checkOnly,true);assert.equal(writes[0].data.kind,'courseNotes');
+test('Dynamo saves use conditional transactions for PDF and blank note sources',async()=>{
+ for (const document of [{hasSourcePdf:true},{blankNote:true}]) {
+   let writes;
+   const service=create({dynamo:{get:async(_pk,sk)=>sk.includes('#DOC#')?document:null,transactPut:async w=>{writes=w;}}});
+   await service.save('u','c','d',1,{version:0,items:[item]});
+   assert.equal(writes[0].createOnly,true);assert.equal(writes[1].checkOnly,true);assert.equal(writes[0].data.kind,'courseNotes');
+   assert.deepEqual(writes[1].expectedData,document);
+ }
  const conflicting=create({dynamo:{get:async(_pk,sk)=>sk.includes('#DOC#')?{hasSourcePdf:true}:null,transactPut:async()=>{throw Object.assign(new Error(),{code:'TransactionCanceledException'});}}});
  await assert.rejects(conflicting.save('u','c','d',2,{version:0,items:[]}),e=>e.statusCode===409);
 });

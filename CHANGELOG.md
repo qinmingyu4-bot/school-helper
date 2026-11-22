@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — Blank classroom notes
+
+- Open Classroom notes from Tools or from a Study course. Create a blank A4 note in the selected course and use the existing handwriting, text, autosave and export tools alongside uploaded PDFs.
+
 ## 1.16.0 — 2026-11-21 — Office editing and collaboration
 
 MINOR from AWS 1.15.3 (`1f8968f`): add shared editing by link and new native editing controls across Docs, Sheets and Slides.

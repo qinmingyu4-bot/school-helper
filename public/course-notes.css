@@ -18,6 +18,8 @@
 .note-picker-actions{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-left:auto}
 .course-notes .note-picker-actions button{padding:5px 0;font-size:11px}
 .course-notes .note-picker-actions button:hover{background:transparent;color:var(--ink)}
+.course-notes .note-picker-actions button[data-note=new-blank]{padding:7px 14px;border:1px solid var(--line);border-radius:8px;color:var(--ink);font-size:12px;font-weight:500;white-space:nowrap}
+.course-notes .note-picker-actions button[data-note=new-blank]:hover:not(:disabled){background:var(--soft);border-color:var(--green)}
 .note-upload{display:inline-flex;align-items:center;gap:6px;position:relative;overflow:hidden;cursor:pointer;padding:7px 14px;border-radius:8px;background:color-mix(in srgb,var(--green) 10%,var(--panel));color:var(--green);font-weight:500;white-space:nowrap}
 .note-upload:hover{background:color-mix(in srgb,var(--green) 16%,var(--panel))}
 .note-upload:active{background:color-mix(in srgb,var(--green) 22%,var(--panel))}

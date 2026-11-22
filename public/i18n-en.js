@@ -189,8 +189,8 @@ AI 费用明细与对账|AI cost details and reconciliation
 正在加载对话…|Loading conversations…
 暂无对话，点击＋新建。|No conversations yet. Use + to create one.
 课件笔记|Course notes
-课件笔记、文档和创作|Course notes, documents and more
-课件笔记、文档、表格、演示和图片|Course notes, documents, spreadsheets, slides and images
+课堂笔记、文档和创作|Class notes, documents and more
+课堂笔记、文档、表格、演示和图片|Class notes, documents, spreadsheets, slides and images
 你的课程、资料和灵感，在这里相连。|Your courses, materials and ideas. Connected.
 从一个问题，走向自己的理解。|From a question to understanding of your own.
 反馈问题|Report a problem

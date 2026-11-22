@@ -188,7 +188,7 @@ async function checkHeavyCourse(page, context, base) {
 
 async function checkProfileStartup(page, context, base) {
   const previous = (await (await context.request.get(base + "/api/me")).json()).user;
-  const image = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lYQAAAAASUVORK5CYII=", "base64");
+  const image = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=", "base64");
   const saved = await context.request.put(base + "/api/me/profile?view=workspace", { data: {
     ...previous.profile, name: previous.name, backgroundUrl: "", avatarUrl:
       "data:image/png;base64," + Buffer.concat([image, Buffer.alloc(264600)]).toString("base64")
@@ -219,7 +219,16 @@ async function checkProfileStartup(page, context, base) {
     assert.equal(await page.locator(".profile-card img[data-profile-avatar-loaded]").count(), 0);
     avatar.release();
     await page.locator(".profile-card img[data-profile-avatar-loaded]").waitFor();
-    console.log(`Startup: Grades visible while avatar blocked; session ${lightBytes} B vs ${fullBytes} B`);
+    await page.locator("button.profile-card").click();
+    await page.locator("#profileName").fill("Owner updated");
+    const profileResponse = page.waitForResponse(result => result.url() === base + "/api/me/profile?view=workspace" && result.request().method() === "PUT");
+    await page.locator('[data-action="save-profile"]').click();
+    const edited = await profileResponse;
+    assert.equal(edited.status(), 200);
+    assert.ok(!Object.hasOwn(edited.request().postDataJSON(), "avatarUrl"));
+    assert.equal(base + (await edited.json()).user.profile.avatarUrl, avatarURL);
+    await expectValue(page, "#profileName", "Owner updated");
+    console.log(`Startup: Grades visible while avatar blocked; session ${lightBytes} B vs ${fullBytes} B; profile text save retained avatar`);
   } finally {
     avatar.release();
     await page.unroute(avatarURL, intercept);

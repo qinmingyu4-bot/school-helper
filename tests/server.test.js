@@ -338,7 +338,7 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
 
   await t.test("workspace identity keeps profile image bytes off the login path", async () => {
     const previous = (await request("/api/me", { cookie: alice.cookie })).data.user;
-    const seed = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lYQAAAAASUVORK5CYII=", "base64");
+    const seed = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=", "base64");
     const avatar = Buffer.concat([seed, Buffer.alloc(264600)]);
     const avatarUrl = "data:image/png;base64," + avatar.toString("base64");
     const coverUrl = "data:image/png;base64," + seed.toString("base64");

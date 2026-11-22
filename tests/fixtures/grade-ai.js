@@ -1,13 +1,17 @@
 "use strict";
 const original = globalThis.fetch;
 let retryScreenshot = false;
+const pendingSyllabusRetry = new Set();
 globalThis.fetch = async (url, options) => {
   if (!String(url).startsWith("https://api.openai.com/")) return original(url, options);
   const body = JSON.parse(options.body);
   if (String(url).endsWith("/input_tokens")) return Response.json({ input_tokens:100 });
   const screenshot = body.instructions?.includes('"rows"');
   const unclear = screenshot && body.input[0].content[0].text.includes("unclear.png");
-  const model = screenshot && !(unclear && retryScreenshot) ? "gpt-6-luna" : "gpt-6.2-sol";
+  const source = body.input?.[0]?.content?.[1]?.text;
+  const needsSol = screenshot ? unclear && retryScreenshot : pendingSyllabusRetry.delete(source);
+  if (!screenshot && !needsSol && /Drop the lowest homework|Homework 50%/.test(source || "")) pendingSyllabusRetry.add(source);
+  const model = needsSol ? "gpt-6.2-sol" : "gpt-6-luna";
   if (body.model !== model) throw new Error("Unexpected model for grade extraction");
   if (unclear) {
     retryScreenshot = !retryScreenshot;
@@ -20,7 +24,6 @@ globalThis.fetch = async (url, options) => {
     : body.instructions?.includes('"rows"')
     ? { rows: [{ name: "Homework 1", categoryName: "Homework", score: 18, max: 20, evidence: "Homework 1 18 / 20" }] }
     : { categories: [{ name: "Homework", weight: 40, method: "equal", plannedCount: 2, items: [], evidence: "Homework 40%", specialRule: "" }, { name: "Final", weight: 60, method: "equal", plannedCount: 1, items: [{ name: "Final exam", max: 100 }], evidence: "Final 60%", specialRule: "" }] };
-  const source = body.input?.[0]?.content?.[1]?.text;
   if (output.categories && source?.includes("Drop the lowest homework")) {
     output.categories[0].specialRule = "Drop the lowest homework";
   }

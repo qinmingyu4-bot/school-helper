@@ -146,9 +146,17 @@ edits start on Luna. Validation can trigger at most one Sol retry when a
 draft is unusable. Provider transport errors do not trigger a second model
 call. A valid schedule clarification is returned for review without a retry.
 The same feature attribution records both attempts when a retry is needed.
-Syllabus rules, practice questions and their verification, multi-slide
-content work and official academic-calendar matching keep their established
-model choices.
+Practice questions and their verification, multi-slide content work and
+official academic-calendar matching keep their established model choices.
+
+Syllabus extraction inspects the original text before dispatch. When weights
+and unconditional drops can be verified, a successful Luna draft is applied
+without a Sol check. Clear exceptions such as grade transfers, conflicting
+schemes or conditional drops go directly to Sol and manual review. Original
+PDF pages are checked for conditions as well as the retained text. Scans with
+no verifiable text stay in review. Invalid or unsupported Luna output can
+trigger one Sol request, but a provider error or a conflict with existing
+saved grades does not trigger another model call.
 
 ## 2026-11-21 reconciliation/display correction
 

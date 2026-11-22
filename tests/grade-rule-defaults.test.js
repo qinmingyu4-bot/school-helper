@@ -75,13 +75,14 @@ test("saved clear rules auto-save for existing courses and long source passages"
   }
 });
 
-test("clear native PDF readings can save; ambiguity warnings keep them in review",async()=>{
+test("native PDF readings without verifiable text require review",async()=>{
   for (const warnings of [[],["The scan is blurry; Homework weight is uncertain"]]) {
     const f=fixture({native:true,warnings});
     const result=await f.service.extractMaterials("user","course",{version:1,autoSave:true,documentIds:["doc"]});
-    assert.equal(!!result.savedPlan,!warnings.length);
-    assert.equal(f.writes(),warnings.length?0:1);
-    if(result.savedPlan) assert.equal(result.savedPlan.categories[0].ruleEvidence[0].verified,false);
+    assert.equal(result.savedPlan,undefined);
+    assert.equal(f.writes(),0);
+    assert.equal(result.reviewReason.code,"unclear");
+    assert.equal(result.categories[0].ruleEvidence[0].verified,false);
   }
 });
 

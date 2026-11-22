@@ -176,7 +176,7 @@ const complexAiModel = upgradeSolModel(
   String(process.env.OPENAI_COMPLEX_MODEL || process.env.STUDYBRIDGE_COMPLEX_MODEL || "").trim() ||
   SOL_MODEL
 );
-const grades = createGradePlanner({ db, apiKey: process.env.OPENAI_API_KEY, model: complexAiModel, screenshotModel: simpleAiModel, request: (...args) => aiUsage.fetch(...args) });
+const grades = createGradePlanner({ db, apiKey: process.env.OPENAI_API_KEY, model: complexAiModel, screenshotModel: simpleAiModel, syllabusModel: simpleAiModel, request: (...args) => aiUsage.fetch(...args) });
 const webSearchEnabled = process.env.OPENAI_WEB_SEARCH !== "false";
 const googleClientId = String(process.env.GOOGLE_CLIENT_ID || "").trim();
 const googleClientSecret = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();

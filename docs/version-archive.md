@@ -1,5 +1,11 @@
 # StudyBridge Version Archive
 
+## 1.20.2 — 2026-11-22
+
+- PATCH from AWS 1.20.1 (`caab536ffbdc202be1f15d68ad9050824a9c3a8a`): optimize the existing syllabus extraction in Grades without changing grade arithmetic.
+- Check published weights, original citations and unconditional drop rules before applying a Luna draft. Recognizable exceptions and sources without verifiable text use Sol and the existing manual review; a failed Luna verification can make one Sol request.
+- Verify the upload and saved-material routes, source changes, existing grades, model call counts and live service health. No dependency or database migration. Rollback target: `caab536ffbdc202be1f15d68ad9050824a9c3a8a`.
+
 ## 1.20.1 — 2026-11-22
 
 - PATCH from main 1.20.0 (`3ac69e16fe16dd56455a2839a2bbdbe71006d245`): route routine Study lookups, text transformations and validated extraction to Luna while retaining Sol for worked problems and more complex tasks.

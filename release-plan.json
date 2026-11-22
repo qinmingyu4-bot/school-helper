@@ -1,8 +1,8 @@
 {
-  "previousCommit": "3ac69e16fe16dd56455a2839a2bbdbe71006d245",
-  "previousVersion": "1.20.0",
-  "version": "1.20.1",
+  "previousCommit": "caab536ffbdc202be1f15d68ad9050824a9c3a8a",
+  "previousVersion": "1.20.1",
+  "version": "1.20.2",
   "level": "patch",
-  "reason": "Improve routing for existing Study, schedule, grades and Office tasks so routine operations use Luna without downgrading complex reasoning.",
+  "reason": "Avoid an unnecessary Sol request for clear syllabus grading rules by requiring independent evidence before applying Luna output; preserve Sol and manual review for complex rules.",
   "features": []
 }

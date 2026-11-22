@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.20.2 — 2026-11-22 — Syllabus model routing
+
+PATCH from AWS 1.20.1 (`caab536`): use Luna for verifiable course-grading rules.
+
+- Inspect the original syllabus on upload or when using saved course material. Clear weights and unconditional drop-lowest rules that pass source checks can save after one Luna call.
+- Send detectable grading exceptions and unreadable scans to Sol for manual review. Attempt one Sol read if Luna's output is unusable or fails verification. An existing plan conflict goes straight to user review without an extra model call.
+
 ## 1.20.1 — 2026-11-22 — AI model routing
 
 PATCH from main 1.20.0 (`3ac69e1`): improve model selection in existing workflows.

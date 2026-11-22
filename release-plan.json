@@ -1,11 +1,8 @@
 {
-  "previousCommit": "6f21a35197c31191ed0f416857831b05096329ce",
-  "previousVersion": "1.21.3",
-  "version": "1.22.0",
-  "level": "minor",
-  "reason": "Add account-wide upload storage quotas and a creator workflow for capacity alerts and storage requests.",
-  "features": [
-    "Account-wide Standard and Plus upload quotas with 80% warnings",
-    "Creator storage reporting and manual 1 GiB add-on requests and grants"
-  ]
+  "previousCommit": "2a7169f38a1b2b3a666f6086b8e7aa2735d72f2b",
+  "previousVersion": "1.22.0",
+  "version": "1.22.1",
+  "level": "patch",
+  "reason": "Remove embedded avatar and cover transfers from the signed-in workspace startup path.",
+  "features": []
 }

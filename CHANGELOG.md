@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.22.1 — 2026-11-23 — Faster workspace loading
+
+PATCH from AWS 1.22.0 (`2a7169f`): load profile media separately from sign-in.
 
 - Open the signed-in workspace without downloading the avatar or cover in the session response. Load account images separately and reuse validated browser copies. Saving profile text retains the saved images.
 

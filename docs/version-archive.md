@@ -1,5 +1,10 @@
 # StudyBridge Version Archive
 
+## 1.22.1 — 2026-11-23
+
+- PATCH from AWS 1.22.0 (`2a7169f38a1b2b3a666f6086b8e7aa2735d72f2b`): return short image references in the workspace session response and load avatars and covers separately. Source: `e718138`.
+- Verify account-bound image access, cache revalidation, profile edits, loading Grades while the avatar is delayed, and live service health. No dependency or data migration. Rollback code target: `2a7169f38a1b2b3a666f6086b8e7aa2735d72f2b`.
+
 ## 1.22.0 — 2026-11-22
 
 - MINOR from AWS 1.21.3 (`6f21a35197c31191ed0f416857831b05096329ce`): add upload quotas, user warnings, and a creator report for usage, blocked uploads, and add-on requests. Source: `9d2d39b`.

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Keep the left sidebar at its current scroll position when switching between desktop features.
+
 ## 1.21.0 — 2026-11-22 — Open problem-set source citations
 
 MINOR from AWS 1.20.2 (`e677b20`): open a saved answer citation directly from the worked solution.

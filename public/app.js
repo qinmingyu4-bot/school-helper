@@ -587,7 +587,7 @@
         </div>`
       : "";
     return ui.html`
-      <aside class="sidebar${mobileOnly ? " mobile-chat-menu" : ""}" data-sidebar-context="${esc(`${state.user.id}:${state.mode}:${state.page}`)}">
+      <aside class="sidebar${mobileOnly ? " mobile-chat-menu" : ""}" data-sidebar-context="${esc(`${state.user.id}:${state.mode}`)}" data-sidebar-page="${esc(state.page)}">
         <header class="mobile-study-bar"><button type="button" data-mobile-action="close-panel">‹ 返回学习</button><strong>课程与资料</strong></header>
         <header class="side-head">
           <div class="brand-mark">${brandMarkHtml()}</div>
@@ -4153,7 +4153,6 @@
     const previousAdminScroll = previousAdminWorkspace?.scrollTop || 0;
     const previousMobilePageScroll = root.querySelector(".workspace")?.scrollTop || 0;
     const previousSidebar = root.querySelector(".sidebar");
-    const previousSidebarContext = previousSidebar?.dataset.sidebarContext;
     const previousSidebarScroll = previousSidebar?.scrollTop || 0;
     const sidebarUsesPageScroll = previousSidebar
       && previousSidebar.scrollHeight <= previousSidebar.clientHeight;
@@ -4225,14 +4224,18 @@
     mobileNavigation.sync(root, { userId: state.user?.id, mode: state.mode, page: state.page });
     window.StudyBridgeProductHelp.sync({ userId: state.user?.id, active: state.mode === "student" && state.page === "study", lang: ui.getLanguage() });
     const sidebar = root.querySelector(".sidebar");
-    if (sidebar && sidebar.dataset.sidebarContext === previousSidebarContext) {
-      // Mobile sidebars scroll with the page instead of their own container.
+    const sameSidebar = sidebar && sidebar.dataset.sidebarContext === previousSidebar?.dataset.sidebarContext;
+    const samePage = sameSidebar && sidebar.dataset.sidebarPage === previousSidebar.dataset.sidebarPage;
+    const mobile = mobileNavigation.snapshot().active;
+    if (sameSidebar && (!mobile || samePage)) {
       sidebar.scrollTop = previousSidebarScroll;
+    }
+    if (samePage) {
       if (sidebarUsesPageScroll) window.scrollTo(previousPageScroll.x, previousPageScroll.y);
-      if (mobileNavigation.snapshot().active) root.querySelector(".workspace").scrollTop = previousMobilePageScroll;
+      if (mobile) root.querySelector(".workspace").scrollTop = previousMobilePageScroll;
     }
     const adminWorkspace = root.querySelector(".admin-workspace");
-    if (previousAdminWorkspace && adminWorkspace && sidebar?.dataset.sidebarContext === previousSidebarContext) {
+    if (samePage && adminWorkspace && previousAdminWorkspace) {
       adminWorkspace.scrollTop = previousAdminScroll;
     }
     const chat = root.querySelector(".study-workspace .chat-area");

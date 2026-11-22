@@ -16,8 +16,9 @@ test("task restoration discards old-account/course responses and merges one orde
   assert.equal(controller.mergeMessages(messages).length, 3);
   controller.accept(scope, { ...job, status: "completed", completed: 20, revision: 3, content: "All twenty answers" });
   assert.equal(controller.mergeMessages(messages)[1].content, "All twenty answers");
-  const saved = controller.mergeMessages([{ id: "question" }, { id: "answer", content: "Saved answer with coverage summary" }]);
-  assert.equal(saved[1].content, "Saved answer with coverage summary");
+  const coverage = "\n\n---\n已完成 20/20 题。本次清单中的题目与小问已完成。";
+  const saved = controller.mergeMessages([{ id: "question" }, { id: "answer", content: "Saved answer" + coverage }]);
+  assert.equal(saved[1].content, "All twenty answers" + coverage);
   controller.clear();
 });
 test("task actions deduplicate clicks, retain scoped state, escape errors and restore failed polling", async () => {

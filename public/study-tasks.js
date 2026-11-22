@@ -60,8 +60,9 @@
         if (parent < 0) continue;
         const existing = result.findIndex((message) => message.id === job.assistantId || message.studyJobId === job.id && message.role === "assistant");
         const previous = existing >= 0 ? result[existing] : { role: "assistant", id: job.assistantId };
-        const next = { ...previous, studyJobId: job.id, studyTask: job, pending: false,
-          content: active(job) || previous.studyTask || !previous.content ? job.content : previous.content };
+        const summary = !active(job) && previous.content?.match(/\n\n---\n已完成 [^\n]*$/)?.[0];
+        const content = job.content ? job.content + (summary || "") : previous.content || "";
+        const next = { ...previous, studyJobId: job.id, studyTask: job, pending: false, content };
         if (existing >= 0) result[existing] = next; else result.splice(parent + 1, 0, next);
       }
       return result;

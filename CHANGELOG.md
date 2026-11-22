@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Open problem-set source citations
+
+- Expand a compact Sources label beside a worked step to see filenames and locations. Open a cited PDF page or passage in a modal and return to the same answer on close.
+- Put citations beside matching formulas and add a light highlight when the formula can be matched uniquely in the original text. Label derived answers, missing course evidence, and stale citations.
+- Reuse stored evidence and PDF text without adding model calls or passing preview links into model context.
+
 ## 1.20.2 — 2026-11-22 — Syllabus model routing
 
 PATCH from AWS 1.20.1 (`caab536`): use Luna for verifiable course-grading rules.

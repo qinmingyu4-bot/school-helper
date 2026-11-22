@@ -5,6 +5,22 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+来源|Sources
+查看出处原文|View source passage
+正在加载出处…|Loading the source…
+出处定位无效。|This source location is invalid.
+找不到这条出处。|This citation is unavailable.
+原始资料已删除或暂时不可用。|The original material was removed or is unavailable.
+资料已更新，旧出处无法定位。|The material was updated and this earlier citation can no longer be located.
+这条旧引用没有可核对的原文位置。|This older citation has no verifiable passage location.
+原始 PDF 暂不可用。|The original PDF is unavailable.
+显示资料中的原文片段。|Showing the cited passage from the material.
+原文页码|Source page
+PDF 第 {0} 页|PDF page {0}
+引用页在原始 PDF 中不可用。|The cited page is unavailable in the original PDF.
+正在打开原文页…|Opening the source page…
+已打开引用页，未能精确定位公式。|The cited page is open. The formula could not be located precisely.
+原文页暂时无法打开。|The original page is unavailable right now.
 删除作品：{0}|Delete work: {0}
 删除这份作品？|Delete this work?
 这份作品及其生成文件将被删除，无法恢复。|This work and its generated files will be permanently deleted.

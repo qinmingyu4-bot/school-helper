@@ -212,8 +212,11 @@ const learningLoop = createLearningLoop({ db,
 });
 const billing = createBillingService({ db });
 const alipay = createAlipayService({ db });
-async function studySources({ userId, courseId, conversationId }) {
-  const [documents, groups] = await Promise.all([db.listDocuments(userId, courseId), db.listChatAttachmentSources(userId, courseId, conversationId)]);
+async function studySources({ userId, courseId, conversationId }, sourceId) {
+  const [documents, groups] = await Promise.all([
+    !sourceId || sourceId.startsWith("doc:") ? db.listDocuments(userId, courseId) : [],
+    !sourceId || sourceId.startsWith("attachment:") ? db.listChatAttachmentSources(userId, courseId, conversationId) : []
+  ]);
   return [...documents.filter((doc) => doc.type !== "Schedule" && !doc.blankNote).map((doc) => ({ id: `doc:${doc.id}`, name: doc.title, text: doc.text || "", sourcePages: doc.sourcePages || [],
     kind: doc.hasSourcePdf ? "pdf" : "text", ...(doc.hasSourcePdf ? { materialId: `DOCFILE#${doc.id}#PDF` } : {}) })),
     ...groups.flatMap((group) => group.attachments.map(({ dataUrl, ...item }, index) => ({ ...item, id: `attachment:${group.id}:${index}`, materialId: group.id, attachmentIndex: index })))];
@@ -3728,6 +3731,25 @@ if (directMessageMatch && method === "POST") {
       const conversationId = url.searchParams.get("conversationId") || courseConversations.DEFAULT_ID;
       if (!(await db.getConversation(user.id, courseId, conversationId))) return sendError(res, 404, "Conversation not found.");
       return sendJson(res, 200, { messages: await chatMessagesForDisplay(user.id, courseId, conversationId) });
+    }
+    if (child === "study-source" && childId && method === "GET") {
+      res.setHeader("Cache-Control", "private, no-store");
+      const selected = require("./lib/study-source-preview").selection(url.searchParams);
+      const job = await studyJobs.get(user.id, courseId, childId);
+      if (!job || job.conversationId !== selected.conversation || !await db.getConversation(user.id, courseId, job.conversationId))
+        return sendError(res, 404, "找不到这条出处。");
+      const { source, view } = await studyJobs.citation(job, selected);
+      if (url.searchParams.get("pdf") !== "1") return sendJson(res, 200, view);
+      if (!view.pdf) return sendError(res, 404, "原始 PDF 暂不可用。");
+      const original = await studyVisual(job, source).catch((error) => {
+        if (/material is missing/i.test(error.message)) return null;
+        throw error;
+      });
+      if (!original?.dataUrl?.startsWith("data:application/pdf;base64,")) return sendError(res, 404, "原始 PDF 暂不可用。");
+      const bytes = Buffer.from(original.dataUrl.slice("data:application/pdf;base64,".length), "base64");
+      res.writeHead(200, { "Content-Type": "application/pdf", "Content-Length": bytes.length, "Content-Disposition": "inline",
+        "Content-Security-Policy": "default-src 'none'; sandbox" });
+      return res.end(bytes);
     }
     if (child === "study-jobs") {
       if (childId) {

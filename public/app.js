@@ -1225,14 +1225,22 @@
     if (!studyTasks || state.page !== "study" || state.mode !== "student") return;
     state.messages = studyTasks.mergeMessages(state.messages);
     updateStudySummaryButton();
-    const chat = root.querySelector(".study-workspace .chat-area"), follow = chat && chat.scrollHeight - chat.clientHeight - chat.scrollTop < 48;
+    const chat = root.querySelector(".study-workspace .chat-area"), source = window.StudyBridgeStudySource;
+    const openSources = source?.openDisclosures(chat) || new Set();
+    const follow = chat && !openSources.size && !source?.isOpen() && chat.scrollHeight - chat.clientHeight - chat.scrollTop < 48;
     for (const message of state.messages.filter((item) => item.role === "assistant" && item.studyTask)) {
       const node = root.querySelector(`[data-study-job="${message.studyJobId}"] > div`);
-      if (node) {
-        if (node.dataset.taskRevision !== String(message.studyTask.revision)) { node.innerHTML = replyBodyHtml(message); node.dataset.taskRevision = String(message.studyTask.revision); }
-        else { const status = node.querySelector(".study-task-status"); if (status) status.outerHTML = studyTasks.html(message.studyTask); }
+      if (!node) continue;
+      const status = node.querySelector(".study-task-status"), reply = node.querySelector(".reply-content");
+      if (!reply || !status) node.innerHTML = replyBodyHtml(message);
+      else {
+        if (node.dataset.taskRevision !== String(message.studyTask.revision))
+          window.StudyBridgeMarkdown.renderInto(reply, message.content);
+        status.outerHTML = studyTasks.html(message.studyTask);
       }
+      node.dataset.taskRevision = String(message.studyTask.revision);
     }
+    source?.restoreDisclosures(chat, openSources);
     if (follow) chat.scrollTop = chat.scrollHeight;
     const send = root.querySelector(".compose-row .send");
     if (send) {
@@ -4126,6 +4134,7 @@
   root.addEventListener("change", () => queueMicrotask(saveScheduleDraft));
 
   function render() {
+    window.StudyBridgeStudySource?.sync(state.user && state.page === "study" ? studyReplyKey() : null);
     syncScheduleDraft();
     void syncScheduleTimeZone();
     scheduleManagementUi.closeIfStale();
@@ -4168,6 +4177,8 @@
     const previousChatKey = previousChat ? studyReplyKey(state.user?.id, previousCourseId, previousConversationId) : "";
     const wasOnboardingOpen = previousChat?.querySelector(".study-start")?.open;
     const previousMessages = previousChat?.querySelector(".messages")?.innerHTML;
+    const source = window.StudyBridgeStudySource;
+    const openStudySources = source?.openDisclosures(previousChat) || new Set();
     const previousScrollTop = previousChat?.scrollTop || 0;
     const previousChatInput = $("chatInput");
     const previousChatFocus = previousChatInput && document.activeElement === previousChatInput;
@@ -4237,12 +4248,14 @@
           previousChatInput.setSelectionRange(...previousChatSelection);
         }
       } else $("chatInput").value = studyDrafts.get(studyReplyKey())?.text || "";
-      const showLatest = !previousChat || previousChatKey !== studyReplyKey()
-        || previousMessages !== chat.querySelector(".messages")?.innerHTML;
+      const sameChat = previousChatKey === studyReplyKey();
+      const keepSourcePosition = sameChat && (openStudySources.size > 0 || source?.isOpen());
+      if (sameChat) source?.restoreDisclosures(chat, openStudySources);
+      const showLatest = !sameChat || !keepSourcePosition && previousMessages !== chat.querySelector(".messages")?.innerHTML;
       if (!state.messages.length) chat.scrollTop = 0;
       else {
         chat.scrollTop = showLatest ? chat.scrollHeight : previousScrollTop;
-        keepLatestAfterFontLoad(chat);
+        if (!keepSourcePosition) keepLatestAfterFontLoad(chat);
       }
       studyComposer.resize();
     }
@@ -4340,6 +4353,17 @@
   }
 
   document.addEventListener("click", async (event) => {
+    const citation = event.target.closest("a[data-study-source]");
+    if (citation) {
+      event.preventDefault();
+      const job = citation.closest(".study-workspace .message.ai[data-study-job]")?.dataset.studyJob;
+      const href = citation.getAttribute("href");
+      const expected = `/api/courses/${encodeURIComponent(state.activeCourseId)}/study-source/${job}?`;
+      if (state.user && state.page === "study" && job && href?.startsWith(expected))
+        window.StudyBridgeStudySource?.open({ href, trigger: citation, api,
+          currentKey: () => state.user && state.page === "study" ? studyReplyKey() : null });
+      return;
+    }
     const pageTarget = event.target.closest("[data-page]");
     if (pageTarget) {
       event.preventDefault();

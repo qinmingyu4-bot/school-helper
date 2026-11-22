@@ -336,6 +336,57 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     assert.equal((await request("/api/admin/overview", { cookie: admin.cookie })).data.users.find((user) => user.id === alice.data.user.id).lastSeenAt, lastSeen);
   });
 
+  await t.test("workspace identity keeps profile image bytes off the login path", async () => {
+    const previous = (await request("/api/me", { cookie: alice.cookie })).data.user;
+    const seed = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lYQAAAAASUVORK5CYII=", "base64");
+    const avatar = Buffer.concat([seed, Buffer.alloc(264600)]);
+    const avatarUrl = "data:image/png;base64," + avatar.toString("base64");
+    const coverUrl = "data:image/png;base64," + seed.toString("base64");
+    const update = (fields) => request("/api/me/profile?view=workspace", { method: "PUT", cookie: alice.cookie,
+      body: { ...previous.profile, name: previous.name, ...fields } });
+    const saved = await update({ avatarUrl, backgroundUrl: coverUrl });
+    assert.equal(saved.status, 200);
+    const legacy = await request("/api/me", { cookie: alice.cookie });
+    assert.equal(legacy.data.user.profile.avatarUrl, avatarUrl);
+    const startup = await request("/api/me?view=workspace", { cookie: alice.cookie });
+    const { user } = startup.data;
+    assert.equal(user.id, previous.id);
+    assert.equal(user.role, previous.role);
+    assert.deepEqual(user.preferences, previous.preferences);
+    assert.equal(user.profile.sbId, previous.profile.sbId);
+    assert.equal(saved.data.user.profile.avatarUrl, user.profile.avatarUrl);
+    assert.ok(JSON.stringify(startup.data).length < 2000);
+    assert.match(user.profile.avatarUrl, /^\/api\/me\/profile-images\/avatar\/[a-f0-9]{24}$/);
+    assert.match(user.profile.backgroundUrl, /^\/api\/me\/profile-images\/cover\/[a-f0-9]{24}$/);
+    const asset = base + user.profile.avatarUrl;
+    const image = await fetch(asset, { headers: { cookie: alice.cookie } });
+    assert.equal(image.status, 200);
+    assert.equal(image.headers.get("content-type"), "image/png");
+    assert.equal(image.headers.get("cache-control"), "private, no-cache");
+    assert.equal(image.headers.get("x-content-type-options"), "nosniff");
+    assert.deepEqual(Buffer.from(await image.arrayBuffer()), avatar);
+    const etag = image.headers.get("etag");
+    const cached = await fetch(asset, { headers: { cookie: alice.cookie, "if-none-match": etag } });
+    assert.equal(cached.status, 304);
+    assert.equal((await cached.arrayBuffer()).byteLength, 0);
+    assert.equal((await fetch(asset, { headers: { cookie: bob.cookie, "if-none-match": etag } })).status, 404);
+    assert.equal((await fetch(asset)).status, 401);
+    const cover = await fetch(base + user.profile.backgroundUrl, { headers: { cookie: alice.cookie } });
+    assert.deepEqual(Buffer.from(await cover.arrayBuffer()), seed);
+
+    const fields = { ...previous.profile, name: previous.name };
+    delete fields.avatarUrl;
+    delete fields.backgroundUrl;
+    const textOnly = await request("/api/me/profile?view=workspace", { method: "PUT", cookie: alice.cookie, body: fields });
+    assert.equal(textOnly.data.user.profile.avatarUrl, user.profile.avatarUrl);
+    assert.equal(textOnly.data.user.profile.backgroundUrl, user.profile.backgroundUrl);
+    const replaced = await request("/api/me/profile?view=workspace", { method: "PUT", cookie: alice.cookie, body: { ...fields, avatarUrl: coverUrl } });
+    assert.notEqual(replaced.data.user.profile.avatarUrl, user.profile.avatarUrl);
+    assert.equal(replaced.data.user.profile.backgroundUrl, user.profile.backgroundUrl);
+    assert.equal((await fetch(asset, { headers: { cookie: alice.cookie, "if-none-match": etag } })).status, 404);
+    assert.equal((await update({ avatarUrl: previous.profile.avatarUrl || "", backgroundUrl: previous.profile.backgroundUrl || "" })).status, 200);
+  });
+
   await t.test("course isolation and document extraction", async () => {
     const course = await request("/api/courses", { method: "POST", cookie: alice.cookie, body: { name: "Calculus" } });
     assert.equal(course.status, 201);

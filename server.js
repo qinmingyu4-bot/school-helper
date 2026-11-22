@@ -19,6 +19,7 @@ const {
   sessionCookie,
   verifyPassword
 } = require("./lib/security");
+const { embeddedImage, workspaceUser } = require("./lib/profile-media");
 const { validEmail, emailPolicy, createEmailVerification } = require("./lib/email-verification");
 const { clientAddress, createLoginAttempts } = require("./lib/login-attempts");
 const { startGoogleOAuth, verifyGoogleOAuth, clearGoogleOAuthCookie } = require("./lib/google-oauth");
@@ -641,8 +642,8 @@ function cleanProfile(body = {}) {
   const backgroundUrl = String(body.backgroundUrl || "").trim();
   if (avatarUrl.length > 2200000 || backgroundUrl.length > 2200000) throw new Error("资料图片过大，请刷新页面，重新选择照片后自动压缩保存。");
   return {
-    avatarUrl,
-    backgroundUrl,
+    ...(Object.hasOwn(body, "avatarUrl") ? { avatarUrl } : {}),
+    ...(Object.hasOwn(body, "backgroundUrl") ? { backgroundUrl } : {}),
     school: String(body.school || "").trim().slice(0, 120),
     campus: String(body.campus || "").trim().slice(0, 100),
     faculty: String(body.faculty || "").trim().slice(0, 100),
@@ -2016,6 +2017,10 @@ const serviceHealth = require("./lib/service-health").createServiceHealth({
   db, workers: () => ({ push: schedulePush.health(), study: studyJobs.health(), mailbox: mailbox.health() })
 });
 
+function ownUserView(url, user) {
+  return url.searchParams.get("view") === "workspace" ? workspaceUser(user) : publicUser(user);
+}
+
 async function routeApi(req, res) {
   res.setHeader("Cache-Control", "private, no-store");
   const gradeUrl = new URL(req.url, "http://localhost");
@@ -2410,7 +2415,7 @@ async function routeApi(req, res) {
 
     const token = createSessionToken();
     await db.createSession({ tokenHash: hashToken(token), userId: user.id, passwordVersion: Number(user.passwordVersion || 0), expiresAt: Date.now() + SESSION_TTL_MS });
-    return sendJson(res, 201, { user: publicUser(withEffectiveRole(user)) }, { "set-cookie": sessionCookie(token) });
+    return sendJson(res, 201, { user: ownUserView(url, withEffectiveRole(user)) }, { "set-cookie": sessionCookie(token) });
   }
 
   if (url.pathname === "/api/auth/login" && method === "POST") {
@@ -2429,7 +2434,7 @@ async function routeApi(req, res) {
       const token = createSessionToken();
       await db.createSession({ tokenHash: hashToken(token), userId: user.id, passwordVersion: Number(user.passwordVersion || 0), expiresAt: Date.now() + SESSION_TTL_MS });
       attempt.finish("success");
-      return sendJson(res, 200, { user: publicUser(withEffectiveRole(user)) }, { "set-cookie": sessionCookie(token) });
+      return sendJson(res, 200, { user: ownUserView(url, withEffectiveRole(user)) }, { "set-cookie": sessionCookie(token) });
     } finally {
       // Database/hash-service failures release capacity without counting as a bad password.
       attempt.finish();
@@ -2476,7 +2481,7 @@ async function routeApi(req, res) {
   if (url.pathname === "/api/me" && method === "GET") {
     const user = await requireUser(req, res);
     if (!user) return;
-    return sendJson(res, 200, { user: publicUser(user) });
+    return sendJson(res, 200, { user: ownUserView(url, user) });
   }
 
   if (url.pathname === "/api/me/storage" && method === "GET") {
@@ -2492,6 +2497,27 @@ async function routeApi(req, res) {
     const body = await readJson(req, 1024);
     if (body.actorId !== user.id) return sendError(res, 409, "登录账号已变更，请刷新后再试。");
     return sendJson(res, 200, { storage: await storageQuota.requestExtra(user) });
+  }
+
+  const imageMatch = url.pathname.match(/^\/api\/me\/profile-images\/(avatar|cover)\/([a-f0-9]{24})$/);
+  if (imageMatch && (method === "GET" || method === "HEAD")) {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const image = embeddedImage(user, imageMatch[1]);
+    if (!image || image.version !== imageMatch[2]) return sendError(res, 404, "Image not found.");
+    const etag = '"' + image.version + '"';
+    const headers = {
+      "cache-control": "private, no-cache",
+      etag,
+      "content-type": image.type,
+      "x-content-type-options": "nosniff",
+      "content-security-policy": "sandbox; default-src 'none'"
+    };
+    const tags = String(req.headers["if-none-match"] || "").split(",").map(tag => tag.trim().replace(/^W\//, ""));
+    if (tags.includes(etag) || tags.includes("*")) { res.writeHead(304, headers); return res.end(); }
+    const bytes = Buffer.from(image.base64, "base64");
+    res.writeHead(200, { ...headers, "content-length": bytes.length });
+    return res.end(method === "HEAD" ? undefined : bytes);
   }
 
   if (url.pathname.startsWith("/api/mailbox")) {
@@ -2568,13 +2594,13 @@ async function routeApi(req, res) {
       || !/^application\/json(?:;|$)/i.test(req.headers["content-type"] || "")) return sendError(res, 403, "请重新打开账号设置后再试。");
     const body = await readJson(req);
     if (body.userId !== auth.user.id) return sendError(res, 409, "登录账号已变更，请重新打开设置。");
-    if (membershipTier(auth.user) === "plus") return sendJson(res, 200, { user: publicUser(auth.user), redeemed: false }, { "cache-control": "private, no-store" });
+    if (membershipTier(auth.user) === "plus") return sendJson(res, 200, { user: ownUserView(url, auth.user), redeemed: false }, { "cache-control": "private, no-store" });
     if (typeof body.inviteCode !== "string" || !body.inviteCode.trim() || body.inviteCode.trim().length > 128) return sendError(res, 400, "请填写有效的邀请码（最多 128 个字符）。");
     let grant;
     try { grant = await validateInviteForRegistration(body.inviteCode, auth.user.email); }
     catch (error) {
       const fresh = await db.getUser(auth.user.id, { consistent: true });
-      if (fresh && membershipTier(fresh) === "plus") return sendJson(res, 200, { user: publicUser(withEffectiveRole(fresh)), redeemed: false }, { "cache-control": "private, no-store" });
+      if (fresh && membershipTier(fresh) === "plus") return sendJson(res, 200, { user: ownUserView(url, withEffectiveRole(fresh)), redeemed: false }, { "cache-control": "private, no-store" });
       return sendError(res, 400, "邀请码无效、已使用或已停用，请核对后重试。");
     }
     let result;
@@ -2583,7 +2609,7 @@ async function routeApi(req, res) {
       if (error.statusCode === 403) return sendError(res, 403, "邀请码已使用或已停用，请核对后重试。");
       throw error;
     }
-    return sendJson(res, 200, { user: publicUser(withEffectiveRole(result.user)), redeemed: result.redeemed }, { "cache-control": "private, no-store" });
+    return sendJson(res, 200, { user: ownUserView(url, withEffectiveRole(result.user)), redeemed: result.redeemed }, { "cache-control": "private, no-store" });
   }
 
   if (url.pathname === "/api/me/security" && method === "GET") {
@@ -2651,8 +2677,8 @@ async function routeApi(req, res) {
     }
     try {
       await ensureSbIdAvailable(profile.sbId, user.id);
-      const updated = await db.updateUser(user.id, { name, profile });
-      return sendJson(res, 200, { user: publicUser(withEffectiveRole(updated)) });
+      const updated = await db.updateUser(user.id, { name, profile }, { mergeProfile: true });
+      return sendJson(res, 200, { user: ownUserView(url, withEffectiveRole(updated)) });
     } catch (error) {
       return sendError(res, 409, error.message);
     }
@@ -3088,7 +3114,7 @@ async function routeApi(req, res) {
     const body = await readJson(req);
     const preferences = learningStyle.normalize(body);
     const updated = await db.updateUser(user.id, { preferences });
-    return sendJson(res, 200, { user: publicUser(withEffectiveRole(updated)) });
+    return sendJson(res, 200, { user: ownUserView(url, withEffectiveRole(updated)) });
   }
 
   if (url.pathname === "/api/classmates/events" && method === "GET") {

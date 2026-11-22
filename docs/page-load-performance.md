@@ -65,6 +65,17 @@ The original performance branch passed all 600 Linux/Nginx regressions before in
   Static HTTP tests verify immutable caching and stale-key revalidation. No
   specific production speedup is promised; timings depend on network and device.
 
+## Profile images on startup
+
+- The workspace session view returns short, versioned URLs for embedded avatars
+  and covers. The sidebar shows initials while its image loads. The image route
+  serves binary bytes only after verifying the owner session and image version.
+- Private browser copies can be revalidated by ETag without re-downloading the
+  file. Changing an image changes its URL. Profile updates send only newly
+  selected files, and omitted image fields are preserved by the database write.
+- Existing image records and the default API representation remain readable.
+  No database migration or external image storage is required.
+
 ## Large courses and Office navigation
 
 - Study and Classroom Notes request `documents?summary=1`. The response omits

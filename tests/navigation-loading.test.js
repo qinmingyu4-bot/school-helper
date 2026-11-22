@@ -46,6 +46,7 @@ function harness(defer = []) {
 
 test("feature switches keep desktop sidebar scroll, scoped to the account and mode", () => {
   const sidebarHtml = source.slice(source.indexOf("  function sidebarHtml("), source.indexOf("  // Keep the main icons"));
+  const avatarHtml = source.slice(source.indexOf("  function profileAvatarHtml("), source.indexOf("  function profilePage("));
   const capture = source.slice(source.indexOf("    const previousAdminWorkspace ="), source.indexOf("    const previousSchedule ="));
   const restore = source.slice(source.indexOf('    const sidebar = root.querySelector(".sidebar");', source.indexOf("  function render()")), source.indexOf('    const chat = root.querySelector(".study-workspace .chat-area");', source.indexOf("  function render()")));
   const state = { user: { id: "alice", name: "Alice" }, mode: "student", page: "grades" };
@@ -70,7 +71,7 @@ test("feature switches keep desktop sidebar scroll, scoped to the account and mo
   context.window.StudyBridgeI18n = context.ui;
   vm.runInContext(fs.readFileSync(require.resolve("../public/storage-quota.js"), "utf8"), context);
   context.storageView = context.window.StudyBridgeStorage.create({ getUser: () => state.user });
-  vm.runInContext(`${sidebarHtml}
+  vm.runInContext(`${sidebarHtml}${avatarHtml}
     function renderSidebar() {
       ${capture}
       mount(sidebarHtml());

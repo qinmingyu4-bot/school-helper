@@ -186,6 +186,46 @@ async function checkHeavyCourse(page, context, base) {
   console.log(`Study: 24 materials and 80 messages preserved typing, focus and scrolling (list ${body.length} B, old ${legacyBytes} B)`);
 }
 
+async function checkProfileStartup(page, context, base) {
+  const previous = (await (await context.request.get(base + "/api/me")).json()).user;
+  const image = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lYQAAAAASUVORK5CYII=", "base64");
+  const saved = await context.request.put(base + "/api/me/profile?view=workspace", { data: {
+    ...previous.profile, name: previous.name, backgroundUrl: "", avatarUrl:
+      "data:image/png;base64," + Buffer.concat([image, Buffer.alloc(264600)]).toString("base64")
+  } });
+  assert.equal(saved.status(), 200, await saved.text());
+  const avatarURL = base + (await saved.json()).user.profile.avatarUrl;
+  const avatar = gate();
+  const blocked = gate();
+  const intercept = route => {
+    blocked.release();
+    return avatar.wait.then(() => route.continue());
+  };
+  await page.route(avatarURL, intercept);
+  try {
+    const response = page.waitForResponse(result => result.url() === base + "/api/me?view=workspace");
+    await page.goto(base + "/app?page=grades", { waitUntil: "domcontentloaded" });
+    const startup = await response;
+    assert.equal(startup.status(), 200);
+    const lightBytes = (await startup.body()).length;
+    const fullBytes = (await (await context.request.get(base + "/api/me")).body()).length;
+    assert.ok(lightBytes < fullBytes / 100);
+    await Promise.race([blocked.wait, new Promise((_, reject) => {
+      const timer = setTimeout(() => reject(new Error("Avatar was not requested")), 10000);
+      blocked.wait.then(() => clearTimeout(timer));
+    })]);
+    await page.getByRole("heading", { name: /^(成绩规划|Grade planner)$/ }).waitFor();
+    assert.ok(await page.locator(".profile-card .cover b").isVisible());
+    assert.equal(await page.locator(".profile-card img[data-profile-avatar-loaded]").count(), 0);
+    avatar.release();
+    await page.locator(".profile-card img[data-profile-avatar-loaded]").waitFor();
+    console.log(`Startup: Grades visible while avatar blocked; session ${lightBytes} B vs ${fullBytes} B`);
+  } finally {
+    avatar.release();
+    await page.unroute(avatarURL, intercept);
+  }
+}
+
 async function main() {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "sb-office-browser-"));
   const { child, base } = await startServer(directory);
@@ -296,6 +336,7 @@ async function main() {
     }
     await checkSlidesOpening(first, base);
     await checkHeavyCourse(first, owner, base);
+    await checkProfileStartup(first, owner, base);
     assert.deepEqual(errors, []);
   } finally {
     await browser?.close();

@@ -27,6 +27,8 @@
   border: 2px solid #fff;
   border-radius: 14px;
 }
+.cover [data-profile-avatar] { opacity: 0; }
+.cover [data-profile-avatar-loaded] { opacity: 1; }
 .profile-card-info { min-width: 0; }
 .profile-card h3 { margin: 0 0 5px; font-size: 17px; line-height: 1.3; overflow-wrap: anywhere; }
 .profile-card p { color: var(--muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }

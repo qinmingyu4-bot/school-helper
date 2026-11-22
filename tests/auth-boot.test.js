@@ -14,7 +14,7 @@ function harness(result, error, savedMode) {
     ui: require("../public/i18n"), esc: String, officeTools: { sharedLink: null, takeSharedLink() { return this.sharedLink; } },
     api: async (path) => {
       requests.push(path);
-      if (path !== "/api/me") return {};
+      if (path !== "/api/me?view=workspace") return {};
       if (error) throw error;
       return result;
     },
@@ -45,7 +45,7 @@ test("only confirmed unauthenticated responses open login", async () => {
   const h = harness(null, Object.assign(new Error("Please log in"), { status: 401 }));
   await h.context.boot();
   assert.deepEqual(h.paths, ["/login?page=tools"]);
-  assert.deepEqual(h.requests, ["/api/me", "/api/auth/google/config", "/api/auth/config"]);
+  assert.deepEqual(h.requests, ["/api/me?view=workspace", "/api/auth/google/config", "/api/auth/config"]);
   assert.equal(h.root.innerHTML, "login-form");
 });
 
@@ -64,7 +64,7 @@ test("valid session opens the requested tools workspace without requesting login
   assert.equal(h.state.user.id, "alice");
   assert.deepEqual(h.paths, []);
   assert.deepEqual(h.pages, ["tools"]);
-  assert.deepEqual(h.requests, ["/api/me"]);
+  assert.deepEqual(h.requests, ["/api/me?view=workspace"]);
   assert.deepEqual(h.marks, [
     "studybridge:boot-start", "studybridge:session-settled",
     "studybridge:workspace-mounted", "studybridge:initial-page-settled"
@@ -77,10 +77,10 @@ test("direct login starts session and configuration requests concurrently", asyn
   const pending = new Map();
   h.context.api = path => new Promise((resolve, reject) => pending.set(path, { resolve, reject }));
   const started = h.context.boot();
-  assert.deepEqual([...pending.keys()].sort(), ["/api/auth/config", "/api/auth/google/config", "/api/me"]);
+  assert.deepEqual([...pending.keys()].sort(), ["/api/auth/config", "/api/auth/google/config", "/api/me?view=workspace"]);
   pending.get("/api/auth/google/config").resolve({ enabled: true });
   pending.get("/api/auth/config").reject(new Error("offline"));
-  pending.get("/api/me").reject(Object.assign(new Error("Please log in"), { status: 401 }));
+  pending.get("/api/me?view=workspace").reject(Object.assign(new Error("Please log in"), { status: 401 }));
   await started;
   assert.equal(h.root.innerHTML, "login-form");
   assert.equal(h.state.googleEnabled, true);
@@ -93,7 +93,7 @@ test("a stalled session aborts and offers a retry at the original URL", async ()
   h.context.window.setTimeout = (callback, delay) => { expire = callback; assert.equal(delay, 10000); return 1; };
   h.context.window.clearTimeout = timer => { cleared = timer; };
   h.context.api = (path, { signal }) => new Promise((_resolve, reject) => {
-    assert.equal(path, "/api/me");
+    assert.equal(path, "/api/me?view=workspace");
     signal.addEventListener("abort", () => reject(signal.reason), { once: true });
   });
   const started = h.context.boot();

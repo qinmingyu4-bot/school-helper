@@ -76,8 +76,7 @@
         settingsProfileSave = settingsProfileSave.catch(() => {}).then(async () => {
           await getLearningStyleEditor().saver.flush();
           if (state.user?.id !== userId) throw new Error(ui.text("登录状态已变更，请重新登录。"));
-          const data = await api("/api/me/profile", { method: "PUT", body: { ...values,
-            avatarUrl: profile().avatarUrl || "", backgroundUrl: profile().backgroundUrl || "" } });
+          const data = await api("/api/me/profile?view=workspace", { method: "PUT", body: values });
           if (state.user?.id !== userId) return;
           state.user = data.user; render();
         });
@@ -94,7 +93,7 @@
         const userId = state.user.id;
         const operation = settingsProfileSave.catch(() => {}).then(async () => {
           if (state.user?.id !== userId) throw new Error(ui.text("登录账号已变更，请重新打开设置。"));
-          const result = await api("/api/me/membership/redeem", { method: "POST", headers: { "x-csrf-token": csrfToken }, body: { userId, inviteCode } });
+          const result = await api("/api/me/membership/redeem?view=workspace", { method: "POST", headers: { "x-csrf-token": csrfToken }, body: { userId, inviteCode } });
           if (state.user?.id !== userId) throw new Error(ui.text("登录账号已变更，请重新打开设置。"));
           applyMembership(result.user.membershipTier);
           return result;
@@ -263,7 +262,7 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
-  const readProfileImageFile = window.StudyBridgeProfileImages.readInput;
+  const prepareProfileImage = window.StudyBridgeProfileImages.prepareImage;
   const initials = (name) => String(name || "SB").trim().slice(0, 1).toUpperCase() || "S";
   const isAdmin = () => state.user?.role === "admin";
   const canManageInvites = () => isAdmin() || state.user?.role === "co-admin";
@@ -603,7 +602,7 @@
         ${state.mode === "student" ? `
           <button class="profile-card ${state.page === "profile" ? "active" : ""}" data-page="profile">
             <div class="cover" style="${p.backgroundUrl ? `background-image:url('${esc(p.backgroundUrl)}')` : ""}">
-              ${p.avatarUrl ? `<img src="${esc(p.avatarUrl)}" alt="">` : `<b>${esc(initials(state.user.name))}</b>`}
+              ${profileAvatarHtml(p)}
             </div>
             <div class="profile-card-info">
               <h3>${esc(state.user.name)}</h3>
@@ -835,7 +834,7 @@
       const saver = learningStyle.createSaver({ initial: state.user.preferences,
         save: async (preferences) => {
           if (state.user?.id !== userId) throw new Error(ui.text("登录状态已变更，请重新登录。"));
-          const data = await api("/api/me/preferences", { method: "PUT", body: preferences });
+          const data = await api("/api/me/preferences?view=workspace", { method: "PUT", body: preferences });
           if (state.user?.id === userId) state.user = data.user;
           return data.user.preferences;
         },
@@ -1407,6 +1406,10 @@
     }
   }
 
+  function profileAvatarHtml(p) {
+    return `<b aria-hidden="true">${esc(initials(state.user.name))}</b>${p.avatarUrl ? `<img data-profile-avatar src="${esc(p.avatarUrl)}" alt="" decoding="async" fetchpriority="low">` : ""}`;
+  }
+
   function profilePage() {
     const p = profile();
     return ui.html`
@@ -1415,7 +1418,7 @@
         <div class="profile-overview">
         <article class="profile-preview card">
           <div class="cover large" style="${p.backgroundUrl ? `background-image:url('${esc(p.backgroundUrl)}')` : ""}">
-            ${p.avatarUrl ? `<img src="${esc(p.avatarUrl)}" alt="">` : `<b>${esc(initials(state.user.name))}</b>`}
+            ${profileAvatarHtml(p)}
           </div>
           <div class="profile-identity">
             <h2>${esc(state.user.name)}</h2>
@@ -1446,9 +1449,7 @@
           <h3>头像与封面</h3>
           <div class="profile-uploads">
           <label>头像<input id="profileAvatarFile" type="file" accept="image/*"></label>
-          <input id="profileAvatar" type="hidden" value="${esc(p.avatarUrl || "")}">
           <label>封面<input id="profileCoverFile" type="file" accept="image/*"></label>
-          <input id="profileCover" type="hidden" value="${esc(p.backgroundUrl || "")}">
           </div>
           <p class="profile-upload-note">支持 25 MB 以内的照片，保存时自动缩放压缩。未选择的图片会保留；若 HEIC 无法读取，请导出为 JPG 或 PNG。</p>
           <p id="profileSaveStatus" class="profile-upload-note" role="status" aria-live="polite"></p>
@@ -3259,7 +3260,7 @@
       if (action === "login") {
         const entryUrl = new URL(location.href);
         state.toast = "";
-        const data = await api("/api/auth/login", { method: "POST", body: { email: $("authEmail")?.value || "", password: $("authPassword")?.value || "" } });
+        const data = await api("/api/auth/login?view=workspace", { method: "POST", body: { email: $("authEmail")?.value || "", password: $("authPassword")?.value || "" } });
         state.user = data.user;
         state.mode = isAdmin() && feedbackView.hasLink() ? "admin" : "student";
         await loadPage(entryUrl.searchParams.get("page") || "study", { officeShare: officeTools.takeSharedLink() });
@@ -3272,7 +3273,7 @@
           $("authEmailCode")?.focus();
           throw new Error(ui.text("请先向邮箱发送验证码，再填写收到的 6 位验证码。"));
         }
-        const data = await api("/api/auth/register", {
+        const data = await api("/api/auth/register?view=workspace", {
           method: "POST",
           body: {
             name: $("authName")?.value || "",
@@ -3610,14 +3611,13 @@
         if (message) message.textContent = ui.text("正在处理照片并保存…");
         const userId = state.user.id;
         const values = { name: $("profileName")?.value || "", school: $("profileSchool")?.value || "", campus: $("profileCampus")?.value || "", faculty: $("profileFaculty")?.value || "", major: $("profileMajor")?.value || "", sbId: $("profileSbId")?.value || "" };
-        const avatarInput = $("profileAvatarFile"), coverInput = $("profileCoverFile");
-        const avatar = $("profileAvatar")?.value || "", cover = $("profileCover")?.value || "";
+        const avatar = $("profileAvatarFile")?.files?.[0], cover = $("profileCoverFile")?.files?.[0];
         let data;
         try {
-          values.avatarUrl = await readProfileImageFile(avatarInput, avatar);
-          values.backgroundUrl = await readProfileImageFile(coverInput, cover, "cover");
+          if (avatar) values.avatarUrl = await prepareProfileImage(avatar, "avatar");
+          if (cover) values.backgroundUrl = await prepareProfileImage(cover, "cover");
           if (state.user?.id !== userId) return;
-          data = await api("/api/me/profile", { method: "PUT", body: values });
+          data = await api("/api/me/profile?view=workspace", { method: "PUT", body: values });
         } catch (error) {
           if (message) message.textContent = error.message || ui.text("保存失败，请重试。");
           return;
@@ -3625,6 +3625,7 @@
           button.disabled = false;
           button.textContent = label;
         }
+        if (state.user?.id !== userId) return;
         state.user = data.user;
         setToast(ui.text("资料已保存。"));
         await loadPage("profile");
@@ -4389,7 +4390,7 @@
     const loginConfig = entryUrl.pathname === "/login" ? loadLoginConfig() : null;
     let unauthenticated = false;
     try {
-      const data = await startupApi("/api/me").catch((error) => {
+      const data = await startupApi("/api/me?view=workspace").catch((error) => {
         if (error.status === 401) { unauthenticated = true; return null; }
         throw new Error(ui.text("暂时无法确认登录状态，请检查网络后刷新重试。"));
       }).finally(() => window.performance.mark("studybridge:session-settled"));
@@ -4875,5 +4876,9 @@
     document.title = ui.text(state.user ? "学习空间 · StudyBridge" : "登录 · StudyBridge");
     updateEmailCooldown();
   });
+  document.addEventListener("load", (event) => {
+    if (event.target.matches?.("[data-profile-avatar]")) event.target.setAttribute("data-profile-avatar-loaded", "");
+  }, true);
+
   boot();
 })();

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Open the signed-in workspace without downloading the avatar or cover in the session response. Load account images separately and reuse validated browser copies. Saving profile text retains the saved images.
+
 ## 1.22.0 — 2026-11-22 — Upload storage limits
 
 MINOR from AWS 1.21.3 (`6f21a35`): add account upload quotas and a creator storage report.

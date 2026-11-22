@@ -112,7 +112,7 @@
   }
   async function listDocuments() {
     const token = epoch, selectedCourse = course;
-    const data = await ctx.api(`/api/courses/${course}/documents`);
+    const data = await ctx.api(`/api/courses/${encodeURIComponent(course)}/documents?summary=1`);
     if (token !== epoch || selectedCourse !== course) return;
     const documents = data.documents.filter(d => d.blankNote || d.hasSourcePdf);
     $('[data-document]').innerHTML = `<option value="">${documentPlaceholder()}</option>` + documents.map(d => `<option value="${esc(d.id)}">${esc(d.title)}</option>`).join('');

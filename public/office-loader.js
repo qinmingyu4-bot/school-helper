@@ -1,7 +1,7 @@
 (function () {
   "use strict";
   const ui = window.StudyBridgeI18n;
-  const editorURL = "/vendor/office-editor.min.js?asset=3cc80a60965b43b9adda2e78";
+  const editorURL = "/vendor/office-editor.min.js?asset=d9acf42a4a2f0072cadfcaaa";
   let preload = null, account = null, listing = null;
   function warm() {
     const connection = navigator.connection;
@@ -42,6 +42,8 @@
     }
   } catch { /* Private browsing can block session storage. */ }
 
+  const mark = (tool, stage) => window.performance?.mark(`studybridge:office:${tool}:${stage}`);
+
   let promise = null,
     module = null,
     generation = 0;
@@ -55,7 +57,8 @@
         script.src = editorURL;
         script.onload = () => {
           module = window.StudyBridgeOfficeEditor;
-          resolve(module);
+          if (module?.attach) resolve(module);
+          else script.onerror();
         };
         script.onerror = () => {
           script.remove();
@@ -81,15 +84,33 @@
     }
     try {
       if (ctx.userId && !ctx.officeEntry?.share && !module?.hasWorkspace(ctx)) void projects(ctx);
+      mark(ctx.tool, "bundle-start");
       const editor = await load();
-      if (token === generation && host.isConnected) await editor.attach(host, {
+      mark(ctx.tool, "bundle-ready");
+      if (token !== generation || !host.isConnected) return;
+      mark(ctx.tool, "mount-start");
+      await editor.attach(host, {
         ...ctx,
+        async api(path, options) {
+          if (!path.startsWith("/api/office/") || (options?.method && !options.body?.initial)) return ctx.api(path, options);
+          mark(ctx.tool, "file-start");
+          try { return await ctx.api(path, options); }
+          finally { mark(ctx.tool, "file-settled"); }
+        },
         officeProjects: () => projects(ctx),
         invalidateOfficeProjects: () => invalidate(ctx.userId),
       });
+      if (token === generation && host.isConnected) mark(ctx.tool, "mounted");
     } catch (error) {
-      if (token === generation && host.isConnected)
-        host.textContent = error.message;
+      if (token !== generation || !host.isConnected) return;
+      mark(ctx.tool, "failed");
+      host.innerHTML = ui.html`<div class="office-loading"><p role="alert">暂时无法打开文件。</p><button type="button">重试打开</button></div>`;
+      const status = host.querySelector("[role=alert]");
+      if (error.message) status.append(" ", error.message);
+      host.querySelector("button").addEventListener("click", () => {
+        host.innerHTML = ui.html`<p class="office-loading" role="status">正在打开编辑器…</p>`;
+        void mount(ctx);
+      }, { once: true });
     }
   }
   window.StudyBridgeOffice = {
@@ -102,6 +123,7 @@
     },
     shareFragment: ({ id, ownerId, kind, token }) => "#" + new URLSearchParams({ office: id, owner: ownerId, kind, token }),
     supports,
+    mark,
     html,
     mount,
     list: (ctx, force = false) => { if (force && account === ctx.userId) listing = null; return projects(ctx); },

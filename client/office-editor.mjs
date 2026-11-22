@@ -1863,8 +1863,8 @@ export async function attach(host, ctx) {
     sessions.set(key, workspace);
   }
   mounted = workspace;
-  workspace.attach(host, ctx);
   try {
+    workspace.attach(host, ctx);
     await workspace.initializing;
     // Finish an earlier library transition before another entry can mutate the
     // same workspace. A detached request must never replace a newer document.
@@ -1882,15 +1882,12 @@ export async function attach(host, ctx) {
       finally { if (workspace.entryOpening === opening) workspace.entryOpening = null; }
     }
   } catch (error) {
-    if (!workspace.current) {
-      sessions.delete(key);
-      workspace.detach();
-      if (mounted === workspace) mounted = null;
-      throw error;
-    }
-    workspace.status = error.message;
-    workspace.draw();
-    workspace.updateStatus();
+    if (workspace.host !== host || !host.isConnected) return;
+    if (!workspace.current) sessions.delete(key);
+    else if (!workspace.ready) workspace.initializing = null;
+    workspace.detach();
+    if (mounted === workspace) mounted = null;
+    throw error;
   }
 }
 export function pendingDraft(ctx) {

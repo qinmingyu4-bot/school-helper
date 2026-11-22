@@ -118,7 +118,7 @@
   function rowsHTML(ctx, s) {
     const rows = filtered(items(ctx.tool, s.projects, s.jobs, s.drafts[ctx.tool]), s.queries[ctx.tool] || "", s.sources[ctx.tool] || "all");
     const errors = s.errors.map(message => `<p class="office-library-error" role="alert">${esc(ui.text(message))}</p>`).join("");
-    const blank = `<li class="office-library-card office-library-blank"><button class="office-card-open" data-action="office-library-new" aria-label="${ui.text(blankNames[ctx.tool])}"><span class="office-card-preview office-preview-blank" aria-hidden="true"><span>＋</span></span><span class="office-card-details"><strong>${ui.text(blankNames[ctx.tool])}</strong><span class="office-card-meta">${ui.text("新建空白文件")}</span></span></button></li>`;
+    const blank = `<li class="office-library-card office-library-blank" data-library-key="new"><button class="office-card-open" data-action="office-library-new" aria-label="${ui.text(blankNames[ctx.tool])}"><span class="office-card-preview office-preview-blank" aria-hidden="true"><span>＋</span></span><span class="office-card-details"><strong>${ui.text(blankNames[ctx.tool])}</strong><span class="office-card-meta">${ui.text("新建空白文件")}</span></span></button></li>`;
     const cards = rows.map(row => {
       const action = row.source === "ai" ? "office-library-generated" : row.source === "draft" ? "office-library-resume" : "office-library-open";
       const source = row.source === "ai" ? "AI 生成" : row.source === "draft" ? "本地草稿" : "自主编辑";
@@ -126,7 +126,7 @@
       const key = previewKey(row), cached = s.previews.get(key);
       const thumbnail = row.preview ? `${placeholder(row)}<img src="${fileURL({ id: row.id, file: row.preview })}?inline=1" alt="" loading="lazy" decoding="async">` : row.source === "editor" && cached ? cached : placeholder(row, cached === "");
       const download = row.source === "ai" && row.status === "ready" && row.file;
-      return `<li class="office-library-card office-library-file${download ? " office-card-downloadable" : ""}"><button class="office-card-open" data-action="${action}" data-id="${esc(row.id)}" aria-label="${esc(row.name)}" title="${esc(row.name)}"><span class="office-card-preview office-preview-${ctx.tool}" ${row.source === "editor" ? `data-preview-key="${esc(key)}"` : ""} aria-hidden="true">${thumbnail}</span><span class="office-card-details"><strong>${esc(row.name)}</strong><span class="office-card-meta"><span class="office-file-icon" aria-hidden="true">${esc(row.format.toUpperCase())}</span><time datetime="${esc(row.updatedAt || "")}" title="${ui.text("更新时间")}">${esc(date(row.updatedAt))}</time></span><span class="office-card-source">${ui.text(source)}${status ? ` · ${status}` : ""}</span></span></button>${download ? `<a class="office-card-download" href="${fileURL(row)}" aria-label="${esc(ui.message`下载 ${row.name}`)}" title="${ui.text("下载")}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 16v4h14v-4"/></svg></a>` : ""}</li>`;
+      return `<li class="office-library-card office-library-file${download ? " office-card-downloadable" : ""}" data-library-key="${esc(row.source + ':' + row.id)}"><button class="office-card-open" data-action="${action}" data-id="${esc(row.id)}" aria-label="${esc(row.name)}" title="${esc(row.name)}"><span class="office-card-preview office-preview-${ctx.tool}" ${row.source === "editor" ? `data-preview-key="${esc(key)}"` : ""} aria-hidden="true">${thumbnail}</span><span class="office-card-details"><strong>${esc(row.name)}</strong><span class="office-card-meta"><span class="office-file-icon" aria-hidden="true">${esc(row.format.toUpperCase())}</span><time datetime="${esc(row.updatedAt || "")}" title="${ui.text("更新时间")}">${esc(date(row.updatedAt))}</time></span><span class="office-card-source">${ui.text(source)}${status ? ` · ${status}` : ""}</span></span></button>${download ? `<a class="office-card-download" href="${fileURL(row)}" aria-label="${esc(ui.message`下载 ${row.name}`)}" title="${ui.text("下载")}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 16v4h14v-4"/></svg></a>` : ""}</li>`;
     }).join("");
     const message = !s.loaded ? "正在加载文件…" : rows.length ? "" : s.queries[ctx.tool] || (s.sources[ctx.tool] && s.sources[ctx.tool] !== "all") ? "没有匹配的文件" : s.errors.length ? "暂时无法显示全部文件，请重试。" : "还没有文件，从新建空白文件开始。";
     return errors + `<ul class="office-library-grid" aria-label="${ui.text("文件库")}">${blank}${cards}</ul>${message ? `<p class="office-library-empty" role="status">${ui.text(message)}</p>` : ""}`;
@@ -172,7 +172,36 @@
   }
   function drawRows() {
     if (!host?.isConnected || context?.userId !== owner) return;
-    host.querySelector("[data-library-rows]").innerHTML = rowsHTML(context, state);
+    const rows = host.querySelector("[data-library-rows]");
+    const grid = rows.querySelector(".office-library-grid");
+    const html = rowsHTML(context, state);
+    if (!grid) rows.innerHTML = html;
+    else {
+      const next = document.createElement("template");
+      next.innerHTML = html;
+      const nextGrid = next.content.querySelector(".office-library-grid");
+      const previous = new Map(Array.from(grid.children, node => [node.dataset.libraryKey, node]));
+      const keys = new Set(Array.from(nextGrid.children, node => node.dataset.libraryKey));
+      for (const [key, node] of previous) if (!keys.has(key)) node.remove();
+      let cursor = grid.firstElementChild;
+      for (const incoming of Array.from(nextGrid.children)) {
+        const old = previous.get(incoming.dataset.libraryKey);
+        const node = old?.isEqualNode(incoming) ? old : incoming;
+        if (old && old !== node) {
+          if (cursor === old) cursor = old.nextElementSibling;
+          old.remove();
+        }
+        if (node !== cursor) grid.insertBefore(node, cursor);
+        cursor = node.nextElementSibling;
+      }
+      for (const child of Array.from(rows.children)) if (child !== grid) child.remove();
+      let afterGrid = false;
+      for (const child of Array.from(next.content.children)) {
+        if (child === nextGrid) afterGrid = true;
+        else if (afterGrid) rows.append(child);
+        else grid.before(child);
+      }
+    }
     const refresh = host.querySelector("[data-library-refresh]");
     refresh.disabled = !!state.pending;
     host.setAttribute("aria-busy", String(!!state.pending));

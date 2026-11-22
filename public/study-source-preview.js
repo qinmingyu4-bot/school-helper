@@ -81,23 +81,23 @@
     }
   }
 
-  function open({ href, trigger, api, currentKey }) {
+  function open({ href, trigger, api, currentKey, material, pdfHref }) {
     active?.dialog.close();
     const contextKey = currentKey(), chat = trigger.closest(".chat-area");
     const scrollTop = chat?.scrollTop || 0;
     const anchorTop = trigger.getBoundingClientRect().top;
     const controller = new AbortController();
     const dialog = element("dialog", "", "study-source-dialog");
-    dialog.setAttribute("aria-label", ui.text("查看出处原文"));
+    dialog.setAttribute("aria-label", ui.text(material ? "查看课程资料" : "查看出处原文"));
     const heading = element("header", "", "dialog-heading");
-    const title = element("h2", ui.text("查看出处原文"));
+    const title = element("h2", material?.title || ui.text("查看出处原文"));
     const close = element("button", "×");
     close.type = "button";
     close.setAttribute("aria-label", ui.text("关闭"));
     heading.append(title, close);
     const info = element("div", "", "study-source-info");
     const body = element("div", "", "dialog-body");
-    const status = element("p", ui.text("正在加载出处…"), "study-source-status");
+    const status = element("p", ui.text(material ? "正在加载课程资料…" : "正在加载出处…"), "study-source-status");
     status.setAttribute("role", "status");
     body.append(status);
     dialog.append(heading, info, body);
@@ -115,6 +115,12 @@
       if (active?.dialog !== dialog) return;
       active = null;
       if (currentKey() !== contextKey) return;
+      if (material) {
+        const button = trigger.isConnected ? trigger : Array.from(document.querySelectorAll(".study-material-open"))
+          .find(node => node.dataset.id === material.id);
+        button?.focus({ preventScroll: true });
+        return;
+      }
       const link = trigger.isConnected ? trigger : Array.from(document.querySelectorAll(".study-workspace a[data-study-source]")).find((node) => node.getAttribute("href") === href);
       const disclosure = link?.closest(".study-source-disclosure");
       if (disclosure) disclosure.open = true;
@@ -131,6 +137,23 @@
       try {
         view = await api(href, { signal: controller.signal });
         if (!current()) return;
+        if (material) {
+          const doc = view.document;
+          if (!doc || doc.id !== material.id) throw new Error(ui.text("课程资料暂时无法打开。"));
+          title.textContent = doc.title;
+          title.title = doc.title;
+          info.textContent = doc.blankNote ? ui.text("空白笔记") : doc.type || "";
+          if (doc.hasSourcePdf) {
+            const link = element("a", ui.text("打开 PDF"));
+            link.href = pdfHref;
+            link.target = "_blank";
+            link.rel = "noopener";
+            info.append(" · ", link);
+          }
+          if (doc.text) body.replaceChildren(element("p", doc.text, "study-source-excerpt"));
+          else status.textContent = ui.text("没有可显示的资料正文。");
+          return;
+        }
         title.textContent = view.name;
         title.title = view.name;
         info.textContent = view.location;
@@ -209,6 +232,18 @@
         await draw(firstPage);
       } catch (error) {
         if (!current()) return;
+        if (material) {
+          status.textContent = ui.text("课程资料暂时无法打开。");
+          const retry = element("button", ui.text("重试加载"));
+          retry.type = "button";
+          retry.addEventListener("click", () => {
+            retry.remove();
+            status.textContent = ui.text("正在加载课程资料…");
+            void preview();
+          });
+          body.append(retry);
+          return;
+        }
         if (view && error.status === 409) status.textContent = ui.text("资料已更新，旧出处无法定位。");
         else {
           status.textContent = view ? ui.text("原始 PDF 暂不可用。") : ui.text(error.message);

@@ -3606,7 +3606,13 @@ if (directMessageMatch && method === "POST") {
     }
 
     if (child === "documents" && method === "GET") {
-      return sendJson(res, 200, { documents: await db.listDocuments(user.id, courseId) });
+      if (childId) {
+        const document = await db.readDocumentContent(user.id, courseId, childId);
+        if (!document) return sendError(res, 404, "Document not found.");
+        return sendJson(res, 200, { document });
+      }
+      const summary = url.searchParams.get("summary") === "1";
+      return sendJson(res, 200, { documents: await db.listDocuments(user.id, courseId, { summary }) });
     }
     if (child === "documents" && method === "POST") {
       const body = routedMaterial?.body || normalizeUploadBody(await readJson(req, uploadLimits.courseRequestBytes));

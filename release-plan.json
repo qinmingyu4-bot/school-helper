@@ -1,8 +1,8 @@
 {
-  "previousCommit": "8246f2c788805ce9e20c1501b2d6c0ede0dea990",
-  "previousVersion": "1.21.1",
-  "version": "1.21.2",
+  "previousCommit": "866bf7df34f34ddd4fe56726089af41d8122a37a",
+  "previousVersion": "1.21.2",
+  "version": "1.21.3",
   "level": "patch",
-  "reason": "Preserve left navigation scroll when switching desktop features.",
+  "reason": "Remove startup delays, reduce course browsing payloads, and preserve Office file clicks and retries.",
   "features": []
 }

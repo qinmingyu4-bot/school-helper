@@ -7,6 +7,30 @@ const { StudyBridgeDatabase } = require("../lib/database");
 const { DynamoStore } = require("../lib/aws-dynamodb");
 const { memoryDynamo } = require("./helpers/community-dynamo");
 
+test("course document summaries skip DynamoDB body hydration and detail reads only the selected material", async () => {
+  const db = new StudyBridgeDatabase();
+  const docs = [
+    { id: "selected", userId: "alice", courseId: "calculus", title: "Lecture", type: "PDF", hasSourcePdf: true, sourcePageCount: 2, sourcePages: ["page body"], materialStored: true },
+    { id: "second", userId: "alice", courseId: "calculus", title: "Note", type: "Note", text: "second body" }
+  ];
+  db.dynamo = {
+    query: async () => docs,
+    get: async (_key, row) => docs.find(doc => row.endsWith("#" + doc.id))
+  };
+  const reads = [];
+  db.readMaterial = async (_user, _course, key) => { reads.push(key); return { text: "selected body" }; };
+  const summaries = await db.listDocuments("alice", "calculus", { summary: true });
+  assert.deepEqual(reads, []);
+  assert.deepEqual(summaries.map(doc => doc.title), ["Lecture", "Note"]);
+  assert.ok(summaries.every(doc => !("text" in doc) && !("sourcePages" in doc)));
+  assert.equal(await db.readDocumentContent("bob", "calculus", "selected"), null);
+  assert.equal(await db.readDocumentContent("alice", "other", "selected"), null);
+  const detail = await db.readDocumentContent("alice", "calculus", "selected");
+  assert.equal(detail.text, "selected body");
+  assert.equal(detail.sourcePageCount, 2);
+  assert.deepEqual(reads, ["DOC#selected"]);
+});
+
 test("DynamoDB community likes stay in the selected channel and directory uses published labels", async () => {
   const db = new StudyBridgeDatabase();
   const { store, calls } = memoryDynamo();

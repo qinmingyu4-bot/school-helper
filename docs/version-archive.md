@@ -1,5 +1,10 @@
 # StudyBridge Version Archive
 
+## 1.21.3 — 2026-11-22
+
+- PATCH from AWS 1.21.2 (`866bf7df34f34ddd4fe56726089af41d8122a37a`): remove login-only work from app startup, retrieve course material content on demand, and preserve Office library clicks through asynchronous startup.
+- Verify delayed sign-in and course reads, large-course switching, Office retries and live service health. No dependency or data migration. Rollback target: `866bf7df34f34ddd4fe56726089af41d8122a37a`.
+
 ## 1.21.2 — 2026-11-22
 
 - PATCH from AWS 1.21.1 (`8246f2c788805ce9e20c1501b2d6c0ede0dea990`): preserve sidebar scroll across desktop feature switches. Source: `c8a06a0`.

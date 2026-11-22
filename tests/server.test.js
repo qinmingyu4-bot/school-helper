@@ -363,6 +363,17 @@ test("account, course, upload, and persistence health check", { timeout: 90000 }
     assert.equal(fileOnly.status, 201);
     assert.ok(fileOnly.data.document.text.includes("Uploaded file"));
     assert.equal((await request(`/api/courses/${courseId}/documents`, { cookie: alice.cookie })).data.documents.length, 5);
+    const listPath = `/api/courses/${courseId}/documents`;
+    const summary = await request(listPath + "?summary=1", { cookie: alice.cookie });
+    assert.equal(summary.status, 200);
+    assert.equal(summary.data.documents.length, 5);
+    assert.ok(summary.data.documents.every(doc => doc.title && doc.type && !("text" in doc) && !("sourcePages" in doc)));
+    const detailPath = listPath + "/" + fileOnly.data.document.id;
+    const detail = await request(detailPath, { cookie: alice.cookie });
+    assert.equal(detail.status, 200);
+    assert.equal(detail.data.document.text, fileOnly.data.document.text);
+    assert.equal((await request(detailPath, { cookie: bob.cookie })).status, 404);
+    assert.equal((await request(listPath + "/missing", { cookie: alice.cookie })).status, 404);
   });
 
   await t.test("schedule batch API authenticates, validates atomically, preserves fields and skips saved duplicates", async () => {

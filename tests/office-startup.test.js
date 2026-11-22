@@ -19,7 +19,7 @@ function browser(connection = {}) {
     hasWorkspace: ctx => workspaces.has(`${ctx.userId}:${ctx.tool}`),
     attach(target, ctx) { attachments.push(ctx); workspaces.add(`${ctx.userId}:${ctx.tool}`); },
   };
-  const window = { StudyBridgeI18n: { text: x => x }, StudyBridgeOfficeEditor: editor };
+  const window = { StudyBridgeI18n: { text: x => x, html: strings => strings.join("") }, StudyBridgeOfficeEditor: editor };
   vm.runInNewContext(loader, {
     window, navigator: { connection }, Date: { now: () => now },
     document: {
@@ -31,7 +31,7 @@ function browser(connection = {}) {
   });
   return {
     office: window.StudyBridgeOffice, elements, attachments,
-    host: () => { host = { isConnected: true }; return host; },
+    host: () => { host = { isConnected: true, querySelector: () => ({ append() {}, addEventListener() {} }) }; return host; },
     noHost: () => { host = null; },
     noTabs: () => { tabs = false; },
     advance: ms => { now += ms; },

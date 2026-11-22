@@ -1905,6 +1905,13 @@ PowerPoint 演示|PowerPoint presentation
 表格|Spreadsheet
 当前修改尚未保存，请先保存或另存副本。|Unsaved changes. Save or make a copy first.
 正在打开编辑器…|Opening editor…
+查看课程资料|View course material
+空白笔记|Blank note
+打开 PDF|Open PDF
+没有可显示的资料正文。|No material text is available.
+课程资料暂时无法打开。|Unable to open this course material.
+暂时无法打开文件。|Unable to open this file.
+重试打开|Try opening again
 未保存的修改|Unsaved changes
 浏览器草稿空间不足，请点击保存或导出。|Browser draft storage is full. Save or export your work.
 正在保存到云端…|Saving to cloud…

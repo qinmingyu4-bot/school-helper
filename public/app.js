@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.21.2";
+  const VERSION = "1.21.3";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -686,7 +686,7 @@
     const materials = courseMaterials();
     const status = state.studyDocsError ? ui.html`<p class="muted" role="status">课程资料暂时无法刷新，聊天仍可使用。<button data-action="retry-study-materials">重试加载</button></p>`
       : state.studyDocsLoading && !materials.length ? ui.html`<p class="muted" role="status">正在加载课程资料…</p>` : "";
-    return status + (materials.length ? materials.map(doc => `<div class="mini-row"><b>${esc(doc.title)}</b><small>${esc(doc.type || "Note")}</small></div>`).join("")
+    return status + (materials.length ? materials.map(doc => `<button type="button" class="mini-row study-material-open" data-action="open-study-material" data-id="${esc(doc.id)}"><b>${esc(doc.title)}</b><small>${esc(doc.blankNote ? ui.text("空白笔记") : doc.type || "Note")}</small></button>`).join("")
       : status ? "" : ui.html`<p class="muted">暂无课程资料</p>`);
   }
   function updateStudyMaterials() {
@@ -2694,7 +2694,7 @@
     state.studyDocsLoading = true; state.studyDocsError = false;
     updateStudyMaterials();
     try {
-      const data = await api(`/api/courses/${courseId}/documents`);
+      const data = await api(`/api/courses/${encodeURIComponent(courseId)}/documents?summary=1`);
       if (!isCurrent() || state.activeCourseId !== courseId) return;
       if (!Array.isArray(data.documents)) throw new Error("Invalid course materials");
       if (state.docs.length !== docsAtStart.length || state.docs.some((doc, index) => doc !== docsAtStart[index])) return;
@@ -2918,7 +2918,15 @@
       if (isCurrent()) {
         if (page === "study") state.studyHistoryLoading = false;
         state.busy = false;
-        render();
+        if (page === "tools" && officeTools.supports(state.tool) && state.toolView !== "generate") {
+          // A course-list response must not remove the Office button being clicked,
+          // or unmount an editor already opening on this page.
+          root.querySelector(":scope > .busy")?.remove();
+          if (state.toast) {
+            root.querySelector(":scope > .toast")?.remove();
+            root.insertAdjacentHTML("beforeend", `<div class="toast" role="status">${esc(state.toast)}</div>`);
+          }
+        } else render();
         if (state.page === "classmates") void syncClassmatesLive();
       }
     }
@@ -3380,6 +3388,17 @@
       }
       if (action === "add-course") {
         await addStudyCourse();
+        return;
+      }
+      if (action === "open-study-material") {
+        const material = courseMaterials().find(doc => doc.id === button.dataset.id);
+        if (!material || state.page !== "study" || isGeneralChat()) return;
+        const course = `/api/courses/${encodeURIComponent(state.activeCourseId)}`, id = encodeURIComponent(material.id);
+        window.StudyBridgeStudySource.open({
+          href: `${course}/documents/${id}`, trigger: button, api,
+          currentKey: () => state.user && state.page === "study" ? studyReplyKey() : null,
+          material, pdfHref: `${course}/note-source/${id}`
+        });
         return;
       }
       if (action === "retry-study-materials") {
@@ -3972,13 +3991,17 @@
         if (!officeTools.supports(state.tool)) return;
         officeTools.capture();
         creativeTools.capture();
-        const userId = state.user?.id, tool = state.tool;
-        if (action === "office-view-library") await officeTools.flush();
+        const userId = state.user?.id, tool = state.tool, entry = state.officeEntry;
+        if (action === "office-view-library") {
+          await officeTools.flush();
+          if (state.officeEntry !== entry) return;
+        }
         if (state.user?.id !== userId || state.tool !== tool || state.page !== "tools") return;
         if (state.officeEntry?.share) history.replaceState(history.state, "", location.pathname + location.search);
         state.toolView = action === "office-view-library" ? "library" : ["office-view-generate", "office-library-generated"].includes(action) ? "generate" : "edit";
         state.officeEntry = state.toolView === "edit" ? { key: crypto.randomUUID(), ...(action === "office-library-new" ? { create: true } : action === "office-library-resume" ? { resume: true } : { id: button.dataset.id }) } : null;
         if (state.toolView === "library") window.StudyBridgeOfficeLibrary.invalidate(userId);
+        if (state.toolView === "edit") officeTools.mark(tool, "selected");
         renderToolsWorkspace();
         if (state.toolView === "generate") {
           await creativeTools.load(creativeContext());

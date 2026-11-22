@@ -14,7 +14,7 @@ function harness(defer = []) {
     communityChannel: "all", communityChoices: {}, activeClassmateId: "", classmateChatOpen: false };
   let formDraft = "";
   const context = vm.createContext({ ui: require("../public/i18n"), scheduleImport: require("../public/schedule-import"),
-    state, URLSearchParams, studyTasks: null, esc: (value) => String(value ?? ""),
+    state, URLSearchParams, root: { querySelector: () => null }, studyTasks: null, esc: (value) => String(value ?? ""),
     studyDrafts: drafts, studyReplyKey: (user = state.user.id, course = state.activeCourseId, conversation = state.activeConversationId) => JSON.stringify([user, course, conversation]),
     $: () => ({ value: formDraft }), mobileNavigation: { closeStudyPanel() {} },
     setPage(page) {
@@ -152,6 +152,20 @@ test("late study responses cannot overwrite courses or redraw a newly edited pro
   assert.equal(h.requests.length, 1, "obsolete loads must stop before issuing more requests");
 });
 
+test("a late course directory does not redraw an Office file card or opening editor", async () => {
+  const h = harness(["/api/courses"]);
+  h.state.tool = "slides";
+  const pending = h.context.loadPage("tools");
+  h.state.toolView = "edit";
+  h.state.officeEntry = { id: "slides-first", key: "open" };
+  h.requests[0].resolve({ courses: [{ id: "refreshed" }] });
+  await pending;
+  assert.deepEqual(h.renders, ["tools"]);
+  assert.equal(h.state.officeEntry.id, "slides-first");
+  assert.equal(h.state.courses[0].id, "refreshed");
+  assert.equal(h.state.busy, false);
+});
+
 test("late tools and admin results cannot change the current page or its loading state", async () => {
   for (const [page, role, path] of [
     ["tools", "student", "/api/courses"],
@@ -240,7 +254,7 @@ test("late conversation and document loads cannot repopulate abandoned study sta
   assert.equal(h.requests.length, 2, "an abandoned page must not create an unnecessary conversation beyond its speculative reads");
   assert.equal(h.state.courseConversations.kept, undefined);
 
-  const docs = harness(["/api/courses/kept/documents", "/api/courses/kept/messages?conversationId=default"]);
+  const docs = harness(["/api/courses/kept/documents?summary=1", "/api/courses/kept/messages?conversationId=default"]);
   docs.state.activeCourseId = docs.state.conversationCourseId = "kept";
   const api = docs.context.api;
   docs.context.api = (path) => path === "/api/courses" ? Promise.resolve({ courses: [{ id: "kept" }] }) : api(path);
@@ -248,7 +262,7 @@ test("late conversation and document loads cannot repopulate abandoned study sta
   await new Promise((resolve) => setImmediate(resolve));
   await docs.context.loadPage("profile");
   docs.type("Keep profile input");
-  docs.requests.find((request) => request.path.endsWith("/documents")).resolve({ documents: [{ id: "stale-doc" }] });
+  docs.requests.find((request) => request.path.endsWith("/documents?summary=1")).resolve({ documents: [{ id: "stale-doc" }] });
   docs.requests.find((request) => request.path.includes("/messages?")).resolve({ messages: [{ id: "stale-message" }] });
   await loading;
   assert.equal(docs.state.docs.length, 0);
@@ -468,7 +482,7 @@ test("a loaded empty default chat is stable on repeated course and conversation 
 });
 
 test("slow materials and calendar do not block history or discard a draft on arrival", async () => {
-  const h = harness(["/api/courses/kept/documents", "/api/schedule/items"]);
+  const h = harness(["/api/courses/kept/documents?summary=1", "/api/schedule/items"]);
   Object.assign(h.state, { uploadFiles: [], docs: [], messages: [] });
   let materials = 0, schedule = 0;
   h.context.updateStudyMaterials = () => materials++;
@@ -479,7 +493,7 @@ test("slow materials and calendar do not block history or discard a draft on arr
   assert.equal(h.state.studyDocsLoading, true);
   assert.equal(h.requests.some(r => r.path === "/api/courses"), false, "known course selection avoids reloading the entire directory");
   h.type("Keep typing"); const renders = h.renders.length;
-  h.requests.find(r => r.path.endsWith("/documents")).resolve({ documents: [{ id: "material" }] });
+  h.requests.find(r => r.path.endsWith("/documents?summary=1")).resolve({ documents: [{ id: "material" }] });
   h.requests.find(r => r.path === "/api/schedule/items").resolve({ items: [] });
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(h.state.docs[0].id, "material");
@@ -489,10 +503,10 @@ test("slow materials and calendar do not block history or discard a draft on arr
 });
 
 test("material and calendar failures leave chat usable and material retry recovers independently", async () => {
-  const h = harness(["/api/courses/kept/documents", "/api/schedule/items"]);
+  const h = harness(["/api/courses/kept/documents?summary=1", "/api/schedule/items"]);
   Object.assign(h.state, { uploadFiles: [], docs: [], messages: [] });
   await h.context.selectCourse("kept");
-  h.requests.find(r => r.path.endsWith("/documents")).reject(new Error("Unavailable"));
+  h.requests.find(r => r.path.endsWith("/documents?summary=1")).reject(new Error("Unavailable"));
   h.requests.find(r => r.path === "/api/schedule/items").reject(new Error("Unavailable"));
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(h.state.studyDocsError, true);

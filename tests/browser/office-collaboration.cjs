@@ -81,6 +81,111 @@ async function expectValue(page, selector, value) {
   await page.waitForFunction(({ selector, value }) => document.querySelector(selector)?.value === value, { selector, value });
 }
 
+function gate() {
+  let release;
+  const wait = new Promise(resolve => { release = resolve; });
+  return { wait, release };
+}
+
+async function checkSlidesOpening(page, base) {
+  const courses = gate();
+  const courseRoute = route => courses.wait.then(() => route.continue());
+  await page.route("**/api/courses", courseRoute);
+  const slideRoute = "**" + routeFor("slides");
+  let failOpen = false;
+  await page.route(slideRoute, async route => {
+    if (failOpen && await page.locator("#officeHost").count()) {
+      failOpen = false;
+      return route.fulfill({ status: 503, json: { error: "Test connection interruption" } });
+    }
+    return route.continue();
+  });
+  try {
+    await page.goto(base + "/app?page=tools");
+    for (const kind of ["sheets", "slides", "sheets", "slides"])
+      await page.locator(`[data-tool="${kind}"]`).click();
+    const card = page.locator('[data-action="office-library-open"][data-id="office_browser_slides"]');
+    await card.waitFor();
+    await card.scrollIntoViewIfNeeded();
+    const box = await card.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    courses.release();
+    await page.locator("#root > .busy").waitFor({ state: "hidden" });
+    await page.mouse.up();
+    await expectValue(page, "[data-name]", "Collaboration slides");
+    await page.locator('[data-action="office-view-library"]').click();
+    await card.waitFor();
+    failOpen = true;
+    await card.click();
+    await page.locator("#officeHost [role=alert]").waitFor();
+    await page.locator("#officeHost button").click();
+    await expectValue(page, "[data-name]", "Collaboration slides");
+    const marks = await page.evaluate(() => performance.getEntriesByType("mark").map(entry => entry.name));
+    for (const stage of ["selected", "bundle-ready", "file-settled", "mounted", "failed"])
+      assert.ok(marks.includes("studybridge:office:slides:" + stage), "missing " + stage + " mark");
+  } finally {
+    courses.release();
+    await page.unroute("**/api/courses", courseRoute);
+    await page.unroute(slideRoute);
+  }
+  console.log("Slides: rapid tool switching, pending navigation click and retry passed");
+}
+
+async function checkHeavyCourse(page, context, base) {
+  const course = await context.request.post(base + "/api/courses", { data: { name: "Performance course" } });
+  assert.equal(course.status(), 201);
+  const { id } = (await course.json()).course;
+  const route = `/api/courses/${id}/documents`;
+  const text = "Course material preview. " + "Practice problem and worked example. ".repeat(650);
+  for (let index = 0; index < 24; index++) {
+    const result = await context.request.post(base + route, { data: { title: "Material " + index, text } });
+    assert.equal(result.status(), 201);
+  }
+  const full = await context.request.get(base + route);
+  const list = await context.request.get(base + route + "?summary=1");
+  const body = await list.body();
+  const legacyBytes = (await full.body()).length;
+  assert.ok(body.length < legacyBytes / 20, "expected the list to omit course material bodies");
+  const delayed = gate();
+  const materialRoute = request => delayed.wait.then(() => request.continue());
+  const messagesRoute = request => request.fulfill({ json: { messages: Array.from({ length: 80 }, (_, i) => ({
+    id: "history-" + i, content: "Course chat " + i + "\n\n" + "Previously saved response. ".repeat(50),
+    role: i % 2 ? "assistant" : "user", createdAt: "2026-11-22T15:00:00Z"
+  })) } });
+  const materialListRoute = new RegExp(route + "[?]summary=1$");
+  await page.route(materialListRoute, materialRoute);
+  const history = new RegExp("/api/courses/" + id + "/messages");
+  await page.route(history, messagesRoute);
+  try {
+    await page.goto(base + "/app?page=study");
+    await page.locator(`[data-action="select-course"][data-id="${id}"]`).click();
+    const chat = page.locator(".study-workspace .chat-area");
+    await chat.getByText(/Course chat 79/).waitFor();
+    const input = page.locator("#chatInput");
+    await input.fill("Draft while materials load");
+    const scroll = await chat.evaluate(node => { node.scrollTop = 180; return node.scrollTop; });
+    assert.ok(scroll > 0);
+    delayed.release();
+    await page.locator(".study-material-open").first().waitFor();
+    assert.equal(await input.inputValue(), "Draft while materials load");
+    assert.equal(await input.evaluate(node => node === document.activeElement), true);
+    assert.equal(await chat.evaluate(node => node.scrollTop), scroll);
+    const requested = page.waitForRequest(request => new URL(request.url()).pathname.startsWith(route + "/"));
+    await page.locator(".study-material-open").filter({ has: page.getByText("Material 0", { exact: true }) }).click();
+    await requested;
+    await page.locator(".study-source-dialog .study-source-excerpt").filter({ hasText: "Course material preview" }).waitFor();
+    await page.keyboard.press("Escape");
+    await page.locator(".study-source-dialog").waitFor({ state: "hidden" });
+    assert.equal(await input.inputValue(), "Draft while materials load");
+  } finally {
+    delayed.release();
+    await page.unroute(materialListRoute, materialRoute);
+    await page.unroute(history, messagesRoute);
+  }
+  console.log(`Study: 24 materials and 80 messages preserved typing, focus and scrolling (list ${body.length} B, old ${legacyBytes} B)`);
+}
+
 async function main() {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "sb-office-browser-"));
   const { child, base } = await startServer(directory);
@@ -189,6 +294,8 @@ async function main() {
       assert.equal(revoked.status(), 403);
       console.log(kind + ": two browser sessions, persisted edits and share revocation passed");
     }
+    await checkSlidesOpening(first, base);
+    await checkHeavyCourse(first, owner, base);
     assert.deepEqual(errors, []);
   } finally {
     await browser?.close();

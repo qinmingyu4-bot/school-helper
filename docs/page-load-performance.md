@@ -65,6 +65,18 @@ The original performance branch passed all 600 Linux/Nginx regressions before in
   Static HTTP tests verify immutable caching and stale-key revalidation. No
   specific production speedup is promised; timings depend on network and device.
 
+## Large courses and Office navigation
+
+- Study and Classroom Notes request `documents?summary=1`. The response omits
+  material text and page excerpts. The Study list fetches one authorized document
+  after a click. The original list endpoint remains available for existing
+  callers, and AI retrieval still reads the stored material.
+- A late course-directory response clears the tools loading indicator without
+  replacing an Office file card or editor. Library refreshes reuse unchanged
+  cards. Failed editor opens provide a retry in place for the selected file.
+- Local browser timings record Office selection, bundle, file and editor mount
+  stages, without recording file names, identifiers or content.
+
 ## Measured payload
 
 Local raw HTTP measurements against the isolated preview, without simulated

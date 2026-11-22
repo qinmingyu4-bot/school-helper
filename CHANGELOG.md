@@ -1,8 +1,12 @@
 # Changelog
 
-## Unreleased
+## 1.21.3 — 2026-11-22 — Faster workspace entry and reliable file opening
 
-- Show a startup screen immediately on opening or refreshing the app. Signed-in workspaces load as soon as the session is confirmed, and a session check that times out shows a retry message.
+PATCH from AWS 1.21.2 (`866bf7d`): fix startup waiting, course-material payloads and Office file opening.
+
+- Show a startup screen on opening or refreshing the app. Signed-in workspaces load as soon as the session is confirmed. A session check that times out shows a retry message.
+- Load course-material names and types first. Open a material to read its text or view the original PDF. Background material loading preserves chat drafts, focus and scrolling.
+- Keep Office library cards mounted when the course list arrives, including during rapid tab changes. Show an explicit error and retry if an editor or file cannot open.
 
 ## 1.21.2 — 2026-11-22 — Keep the sidebar in place
 

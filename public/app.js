@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.21.3";
+  const VERSION = "1.22.0";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -119,6 +119,8 @@
     })
   });
   const usageView = window.StudyBridgeAiUsage.create({ request: api, getUser: () => state.user,
+    openBilling: () => { appearanceController.open(); document.querySelector('[data-settings-section="billing"]')?.click(); } });
+  const storageView = window.StudyBridgeStorage?.create({ api, getUser: () => state.user,
     openBilling: () => { appearanceController.open(); document.querySelector('[data-settings-section="billing"]')?.click(); } });
   let settingsProfileSave = Promise.resolve();
   let membershipGeneration = 0;
@@ -353,9 +355,13 @@
       if (path !== "/api/me/ai-usage" && init.method && init.method !== "GET") void usageView.refresh(true);
     }
     if (!response.ok) {
-      if (reportable) feedbackView.remember({ ...attempt, status: response.status, requestId });
-      throw Object.assign(new Error(data.error || data.message || ui.message`请求失败 (${response.status})`), { status: response.status, retryAfter: Number(response.headers.get("retry-after")) || 0 });
+      const quota = data.code === "UPLOAD_STORAGE_LIMIT";
+      if (quota && data.storage && attempt.userId === state.user?.id) storageView?.reject(data.storage);
+      if (reportable && !quota) feedbackView.remember({ ...attempt, status: response.status, requestId });
+      throw Object.assign(new Error(data.error ? ui.text(data.error) : data.message || ui.message`请求失败 (${response.status})`), { status: response.status, retryAfter: Number(response.headers.get("retry-after")) || 0 });
     }
+    if (reportable && response.status !== 202 && attempt.userId === state.user?.id && (path === "/api/course-materials" ||
+      /^\/api\/courses\/[^/?]+(?:\/(?:documents|conversations)(?:\/[^/?]+)?)?(?:\?|$)/.test(path))) void storageView?.refresh(true);
     return data;
   }
 
@@ -608,6 +614,7 @@
             <span class="profile-card-arrow" aria-hidden="true">↗</span>
           </button>
           ${usageView.disclosureHtml()}
+          ${storageView?.button() || ""}
           <nav class="side-nav">${userNav}</nav>
         ` : ""}
         ${ui.selector()}
@@ -1318,7 +1325,8 @@
       attempt.stream = response.ok;
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw Object.assign(new Error(data.error || ui.message`请求失败 (${response.status})`), { status: response.status });
+        if (data.code === "UPLOAD_STORAGE_LIMIT" && data.storage && state.user?.id === reply.userId) storageView?.reject(data.storage);
+        throw Object.assign(new Error(data.error ? ui.text(data.error) : ui.message`请求失败 (${response.status})`), { status: response.status, code: data.code });
       }
       let completed = false;
       if (!(response.headers.get("content-type") || "").includes("text/event-stream")) {
@@ -1373,13 +1381,14 @@
         studyComposer.resize();
       }
       if (!reply.controller.signal.aborted && studyReplyKey() === reply.key) {
-        if (attempt) feedbackView.remember({ ...attempt, status: error.status || 0 });
+        if (attempt && error.code !== "UPLOAD_STORAGE_LIMIT") feedbackView.remember({ ...attempt, status: error.status || 0 });
         setToast(error.message);
         root.querySelector(".toast")?.remove();
         root.insertAdjacentHTML("beforeend", `<div class="toast">${esc(error.message)}</div>`);
       }
     } finally {
       void usageView.refresh(true);
+      if (files.length && state.user?.id === reply.userId) void storageView?.refresh(true);
       reply.assistant.pending = false;
       studyReplies.delete(reply.key);
       clearTimeout(reply.renderTimer);
@@ -2488,6 +2497,7 @@
     const users = overview?.users || [];
     return ui.html`
       ${pageHeader("CREATOR CONSOLE", ui.text("开发者端"), ui.text("查看使用情况，管理用户和邀请码。"), false)}
+      ${window.StudyBridgeStorage?.adminHtml(overview?.storageReport) || ""}
       ${adminUsage.html()}
       ${feedbackView.html()}
       ${adminStatusHtml()}
@@ -2901,9 +2911,12 @@
         } else {
           const overview = await api("/api/admin/overview");
           if (!isCurrent()) return;
-          const status = await api("/api/admin/system-status").catch(() => state.status);
+          const [status, storageReport] = await Promise.all([
+            api("/api/admin/system-status").catch(() => state.status),
+            api("/api/admin/storage").catch(() => null)
+          ]);
           if (!isCurrent()) return;
-          state.admin = overview;
+          state.admin = { ...overview, storageReport };
           state.status = status;
         }
       }
@@ -3189,6 +3202,27 @@
         return;
       }
       if (action === "open-feedback") { feedbackView.open(); return; }
+      if (action === "open-storage") { storageView?.open(); return; }
+      if (action === "refresh-admin-storage" || action === "grant-storage") {
+        if (!isAdmin() || !state.admin) return;
+        const actorId = state.user.id;
+        button.disabled = true;
+        try {
+          if (action === "grant-storage") {
+            await api("/api/admin/users/" + encodeURIComponent(button.dataset.userId) + "/storage/grant", {
+              method: "POST", headers: { "x-csrf-token": state.admin.membershipCsrfToken },
+              body: { actorId, requestId: button.dataset.requestId }
+            });
+          }
+          const report = await api("/api/admin/storage");
+          if (state.user?.id === actorId && state.page === "admin" && isAdmin()) {
+            state.admin.storageReport = report;
+            if (action === "grant-storage") setToast(ui.text("额外空间已开通。"));
+            render();
+          }
+        } finally { button.disabled = false; }
+        return;
+      }
       if (action === "user-usage") { adminUsage.toggle(button.dataset.id); return; }
       if (action.startsWith("daily-")) {
         const userId = state.user?.id, generation = pageLoadGeneration;
@@ -4239,6 +4273,7 @@
       if ($(id) && emailDraft[id] !== undefined) $(id).value = emailDraft[id];
     }
     usageView.sync();
+    storageView?.sync();
     creativeTools.restoreFocus();
     void officeTools.mount(creativeContext());
     window.StudyBridgeOfficeLibrary.mount(creativeContext());

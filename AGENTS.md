@@ -82,3 +82,16 @@ governance-only exception skips deployment.
 When the owner is testing before release or has not requested deployment, push
 changes to a task branch so they are available on GitHub for review. Merge or
 push to main when deployment is authorized by the owner.
+
+### Regression verification before every production deployment
+
+- Test the exact release candidate before updating main. Require passing project
+  CI, verify the changed behavior, and exercise existing workflows that share the
+  changed code, including account access and existing data where applicable.
+- If a relevant check fails or cannot run, resolve it and verify the candidate
+  again before deploying. A commit that changes the release candidate requires
+  fresh results. Do not report untested areas as verified.
+- Monitor AWS deployment to completion. Confirm the public site serves the
+  expected version, check service health, and smoke-test affected flows wherever
+  safe. Investigate failures promptly and use the release rollback process if the
+  release breaks production. Report what passed and any limits on verification.

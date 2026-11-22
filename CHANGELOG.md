@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.22.0 — 2026-11-22 — Upload storage limits
+
+MINOR from AWS 1.21.3 (`6f21a35`): add account upload quotas and a creator storage report.
+
+- Add account-wide limits for uploaded course materials and learning chat attachments. Standard accounts start at 512 MiB, Plus accounts at 1 GiB, with an in-app warning at 80%.
+- Show storage usage, blocked uploads and extra-storage requests in the creator dashboard. Students can open the Plus page or request extra storage, and the creator can grant 1 GiB per request.
+
 ## 1.21.3 — 2026-11-22 — Faster workspace entry and reliable file opening
 
 PATCH from AWS 1.21.2 (`866bf7d`): fix startup waiting, course-material payloads and Office file opening.

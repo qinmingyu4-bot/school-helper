@@ -27,6 +27,7 @@ const { createPushService } = require("./lib/push-service");
 const mailboxProviders = require("./lib/mailbox-providers");
 const { createMailboxService } = require("./lib/mailbox-service");
 const { membershipTier } = require("./lib/membership");
+const { createStorageQuota, bytes: storedBytes, documentBytes } = require("./lib/storage-quota");
 const { createAiUsage } = require("./lib/ai-usage");
 const { effectiveRole, inviteRole } = require("./lib/account-roles");
 const { createFeedback } = require("./lib/feedback");
@@ -212,6 +213,8 @@ const learningLoop = createLearningLoop({ db,
 });
 const billing = createBillingService({ db });
 const alipay = createAlipayService({ db });
+const storageQuota = createStorageQuota({ db, entitlement: id => alipay.entitlement(id) });
+const admitStudyUpload = ({ user, attachments }, work) => storageQuota.withUpload(user, attachments.length ? storedBytes(attachments) : 0, work);
 async function studySources({ userId, courseId, conversationId }, sourceId) {
   const [documents, groups] = await Promise.all([
     !sourceId || sourceId.startsWith("doc:") ? db.listDocuments(userId, courseId) : [],
@@ -234,7 +237,7 @@ function studyProvider(model) {
   });
 }
 const studyJobs = createStudyJobs({ db, index: studyIndex, loadSources: studySources, loadVisual: studyVisual,
-  plan: studyProvider(simpleAiModel), answer: studyProvider(complexAiModel), saveQuestion: saveChatQuestion,
+  plan: studyProvider(simpleAiModel), answer: studyProvider(complexAiModel), saveQuestion: saveChatQuestion, admitUpload: admitStudyUpload,
   observe: (job, work) => aiUsage.runOperation(job.userId, job.id, () => usage.background(job.userId, "study", work)),
   reportOutcome: (status) => {
     usage.outcome(status);
@@ -1527,19 +1530,24 @@ async function studyAnswerContext({ user, course, conversationId = courseConvers
 }
 
 async function saveChatQuestion({ user, course, conversationId, message, mode, attachments, messageId = createId("msg"), studyJobId, createdAt }) {
-  const attachmentRef = await db.saveChatAttachments(user.id, course.id, messageId, attachments, studyJobId ? `CHAT#${createdAt}#${messageId}` : undefined);
-  try {
-    const record = { id: messageId, userId: user.id, courseId: course.id, conversationId, role: "user", content: `${message}${chatAttachmentLabel(attachments)}`, displayText: message, ...(attachmentRef ? { attachments: chatAttachmentMetadata(course.id, attachmentRef, attachments), attachmentRef } : {}), mode,
-      ...(studyJobId ? { studyJobId, createdAt } : {}) };
-    return await (studyJobId ? db.saveStudyMessage(record) : db.createMessage(record));
-  } catch (error) {
-    if (attachmentRef) await db.deleteMaterials(user.id, course.id, `${attachmentRef}#`);
-    if (attachmentRef) await db.deleteMaterials(user.id, course.id, `STUDYSOURCE#${attachmentRef}#`);
-    throw error;
-  }
+  const reference = studyJobId ? ["CHAT", createdAt, messageId].join("#") : undefined;
+  const owner = studyJobId && attachments.length
+    ? { ...await db.getUser(user.id, { consistent: true }), id: user.id, paidMembershipExpiresAt: await alipay.entitlement(user.id) } : user;
+  return storageQuota.withUpload(owner, attachments.length ? storedBytes(attachments) : 0, async () => {
+    const attachmentRef = await db.saveChatAttachments(user.id, course.id, messageId, attachments, reference);
+    try {
+      const record = { id: messageId, userId: user.id, courseId: course.id, conversationId, role: "user", content: `${message}${chatAttachmentLabel(attachments)}`, displayText: message, ...(attachmentRef ? { attachments: chatAttachmentMetadata(course.id, attachmentRef, attachments), attachmentRef } : {}), mode,
+        ...(studyJobId ? { studyJobId, createdAt } : {}) };
+      return await (studyJobId ? db.saveStudyMessage(record) : db.createMessage(record));
+    } catch (error) {
+      if (attachmentRef) await db.deleteMaterials(user.id, course.id, `${attachmentRef}#`);
+      if (attachmentRef) await db.deleteMaterials(user.id, course.id, `STUDYSOURCE#${attachmentRef}#`);
+      throw error;
+    }
+  }, reference ? { courseId: course.id, id: reference } : undefined);
 }
 
-async function streamCourseChat(req, res, context) {
+async function streamCourseChat(req, res, context, acceptedMessage) {
   const { user, course, conversationId, message, mode, attachments } = context;
   const controller = new AbortController();
   let partial = "";
@@ -1563,7 +1571,7 @@ async function streamCourseChat(req, res, context) {
   }, 10000);
   const timeout = setTimeout(() => controller.abort(new Error("AI reply timed out.")), 180000);
   try {
-    userMessage = await saveChatQuestion(context);
+    userMessage = acceptedMessage || await saveChatQuestion(context);
     if (course.chatType !== "general") usage.reached("question");
     send("start", { message: userMessage });
     controller.signal.throwIfAborted();
@@ -2471,6 +2479,21 @@ async function routeApi(req, res) {
     return sendJson(res, 200, { user: publicUser(user) });
   }
 
+  if (url.pathname === "/api/me/storage" && method === "GET") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    return sendJson(res, 200, { storage: (await storageQuota.current(user)).quota }, { "cache-control": "private, no-store" });
+  }
+
+  if (url.pathname === "/api/me/storage/request" && method === "POST") {
+    const user = await requireUser(req, res);
+    if (!user) return;
+    if (!feedbackJson(req)) return sendError(res, 403, "请在当前网站申请加购空间。");
+    const body = await readJson(req, 1024);
+    if (body.actorId !== user.id) return sendError(res, 409, "登录账号已变更，请刷新后再试。");
+    return sendJson(res, 200, { storage: await storageQuota.requestExtra(user) });
+  }
+
   if (url.pathname.startsWith("/api/mailbox")) {
     const auth = await currentUser(req);
     if (!auth) return sendError(res, 401, "请先登录 StudyBridge，再管理邮箱授权。");
@@ -2851,6 +2874,26 @@ async function routeApi(req, res) {
     const auth = await requireAdminSession(req, res);
     if (!auth) return;
     return sendJson(res, 200, await aiCosts.periodReport(url.searchParams.get("period") || "7"));
+  }
+
+  if (method === "GET" && url.pathname === "/api/admin/storage") {
+    if (!await requireAdminSession(req, res)) return;
+    return sendJson(res, 200, await storageQuota.overview(), { "cache-control": "private, no-store" });
+  }
+
+  const storageGrant = url.pathname.match(/^\/api\/admin\/users\/([\w-]{1,100})\/storage\/grant$/);
+  if (storageGrant && method === "POST") {
+    const auth = await requireAdminSession(req, res);
+    if (!auth) return;
+    if (!feedbackJson(req) || req.headers["x-csrf-token"] !== hashToken("admin-membership:" + auth.tokenHash)) {
+      return sendError(res, 403, "请在当前网站管理上传空间。");
+    }
+    const body = await readJson(req, 1024);
+    if (body.actorId !== auth.user.id) return sendError(res, 409, "登录账号已变更，请刷新后再试。");
+    const target = await db.getUser(storageGrant[1], { consistent: true });
+    if (!target) return sendError(res, 404, "Account not found.");
+    await storageQuota.grantExtra(target, body.requestId);
+    return sendJson(res, 200, { ok: true });
   }
 
   const userUsage = url.pathname.match(/^\/api\/admin\/users\/([\w-]{1,100})\/usage$/);
@@ -3646,20 +3689,25 @@ if (directMessageMatch && method === "POST") {
         return sendError(res, 400, "Document text is required.");
       }
       const documentId = createId("doc");
-      if (sourcePdf) await db.writeMaterial(user.id, courseId, `DOCFILE#${documentId}#PDF`, sourcePdf);
-      let document;
-      try { document = await db.createDocument({
+      const originalId = ["DOCFILE", documentId, "PDF"].join("#");
+      const record = {
         id: documentId,
         userId: user.id,
         courseId,
         title,
         text,
+        uploadedMaterial: uploadedFile,
         ...(sourcePdf ? { hasSourcePdf: true, sourcePageCount: sourcePdf.pages || null, sourcePages: sourcePdf.sourcePages || [] } : {}),
         type: uploadedFile ? uploadedDocumentType(body) : String(body.type || "Note").slice(0, 60)
-      }); } catch (error) {
-        if (sourcePdf) await db.deleteMaterials(user.id, courseId, `DOCFILE#${documentId}#`).catch(() => {});
-        throw error;
-      }
+      };
+      const document = await storageQuota.withUpload(user, sourcePdf ? storedBytes(sourcePdf) : documentBytes(record), async () => {
+        if (sourcePdf) await db.writeMaterial(user.id, courseId, originalId, sourcePdf);
+        try { return await db.createDocument(record); }
+        catch (error) {
+          if (sourcePdf) await db.deleteMaterials(user.id, courseId, originalId).catch(() => {});
+          throw error;
+        }
+      });
       setImmediate(() => void studyIndex.prepare(user.id, courseId, { id: `doc:${document.id}`, name: document.title, text: document.text, sourcePages: document.sourcePages }).catch(() => {}));
       if (uploadedFile && course.name !== scheduleCourseName && body.type !== "Schedule") usage.reached("material");
       if (unreadable) usage.outcome(422, "UPLOAD_PARSE");
@@ -3676,17 +3724,24 @@ if (directMessageMatch && method === "POST") {
       }
       if (!title || !text) return sendError(res, 400, "Document title and text are required.");
       const previous = (await db.listDocuments(user.id, courseId)).find((item) => item.id === childId);
+      if (!previous) return sendError(res, 404, "Document not found.");
       const discardPdf = previous?.hasSourcePdf && previous.text !== text;
-      const document = await db.updateDocument(user.id, courseId, childId, {
+      const patch = {
         title,
         text,
         ...(discardPdf ? { hasSourcePdf: false, sourcePages: [] } : {}),
+        uploadedMaterial: previous.uploadedMaterial ?? (previous.hasSourcePdf || documentBytes(previous) > 0),
         type: String(body.type || "Note").slice(0, 60)
-      });
+      };
+      const originalId = ["DOCFILE", childId, "PDF"].join("#");
+      const document = await storageQuota.withUpload(user, documentBytes({ ...previous, ...patch }), async () => {
+        const updated = await db.updateDocument(user.id, courseId, childId, patch);
+        if (updated && discardPdf) await db.deleteMaterials(user.id, courseId, originalId);
+        return updated;
+      }, { courseId, documentId: childId, ...(discardPdf ? { id: originalId } : {}) });
       if (!document) return sendError(res, 404, "Document not found.");
       studyIndex.invalidate(user.id, courseId);
       setImmediate(() => void studyIndex.prepare(user.id, courseId, { id: `doc:${document.id}`, name: document.title, text: document.text, sourcePages: document.sourcePages }).catch(() => {}));
-      if (discardPdf) await db.deleteMaterials(user.id, courseId, `DOCFILE#${childId}#`);
       return sendJson(res, 200, { document });
     }
     if (child === "documents" && childId && method === "DELETE") {
@@ -3821,13 +3876,14 @@ if (directMessageMatch && method === "POST") {
         }
         const detected = studyJobs.detectSet({ message, mode, sources });
         if (detected) {
-          const job = await studyJobs.create(context, detected, body.requestId);
+          const create = () => studyJobs.create(context, detected, body.requestId);
+          const job = attachments.length ? await storageQuota.serialize(user.id, create) : await create();
           usage.reached("question");
           const question = (await db.listMessages(user.id, courseId, Infinity, conversationId)).find((item) => item.id === job.messageId);
           return sendJson(res, 202, { job: await studyJobs.publicJob(job), message: question });
         }
       }
-      if (body.stream === true) return streamCourseChat(req, res, context);
+      if (body.stream === true) return streamCourseChat(req, res, context, attachments.length ? await saveChatQuestion(context) : undefined);
       const userMessage = await saveChatQuestion(context);
       if (course.chatType !== "general") usage.reached("question");
       const { prompt, model: selectedModel, blockedReply } = await studyAnswerContext(context);
@@ -3862,6 +3918,7 @@ async function handleRequest(res, respond) {
     usage.failureKind(error);
     if (status === 500) console.error(error);
     if (res.headersSent) { usage.outcome(status); return res.end(); }
+    if (error.code === "UPLOAD_STORAGE_LIMIT") return sendJson(res, status, { error: error.message, code: error.code, storage: error.storage });
     return sendError(res, status, error.message || "Server error.");
   }
 }

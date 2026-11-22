@@ -151,7 +151,9 @@ official academic-calendar matching keep their established model choices.
 
 Syllabus extraction inspects the original text before dispatch. When weights
 and unconditional drops can be verified, a successful Luna draft is applied
-without a Sol check. Clear exceptions such as grade transfers, conflicting
+without a Sol check. Short text with a complete explicit weight table uses a
+faster Luna setting. Native PDF requests use the default reasoning settings.
+Clear exceptions such as grade transfers, conflicting
 schemes or conditional drops go directly to Sol and manual review. Original
 PDF pages are checked for conditions as well as the retained text. Scans with
 no verifiable text stay in review. Invalid or unsupported Luna output can

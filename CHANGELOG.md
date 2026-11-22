@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.21.2 — 2026-11-22 — Keep the sidebar in place
+
+PATCH from AWS 1.21.1 (`8246f2c`): keep the left navigation at its current scroll position when switching between desktop features.
+
 ## 1.21.1 — 2026-11-22 — Faster grading rule recognition
 
 PATCH from AWS 1.21.0 (`801c14b`): improve Grades recognition speed and display its progress.

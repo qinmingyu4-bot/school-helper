@@ -44,6 +44,68 @@ function harness(defer = []) {
   return { state, context, requests, notices, renders, storage, drafts, type: (text) => { formDraft = text; }, draft: () => formDraft };
 }
 
+test("feature switches keep desktop sidebar scroll, scoped to the account and mode", () => {
+  const sidebarHtml = source.slice(source.indexOf("  function sidebarHtml("), source.indexOf("  // Keep the main icons"));
+  const capture = source.slice(source.indexOf("    const previousAdminWorkspace ="), source.indexOf("    const previousSchedule ="));
+  const restore = source.slice(source.indexOf('    const sidebar = root.querySelector(".sidebar");', source.indexOf("  function render()")), source.indexOf('    const chat = root.querySelector(".study-workspace .chat-area");', source.indexOf("  function render()")));
+  const state = { user: { id: "alice", name: "Alice" }, mode: "student", page: "grades" };
+  let sidebar, workspace = { scrollTop: 0 }, mobile = false;
+  const context = vm.createContext({
+    state, ui: require("../public/i18n"), esc: (value) => String(value ?? ""),
+    profile: () => ({}), profileSbId: () => "alice", brandMarkHtml: () => "", initials: () => "A",
+    navButton: () => "", canManageInvites: () => false, isAdmin: () => false,
+    usageView: { disclosureHtml: () => "" },
+    window: { scrollX: 0, scrollY: 0, scrollTo() {} },
+    mobileNavigation: { snapshot: () => ({ active: mobile }) },
+    root: { querySelector: (selector) => selector === ".sidebar" ? sidebar : selector === ".workspace" ? workspace : null },
+    mount(nextSidebar) {
+      const tag = nextSidebar.match(/<aside[^>]*>/)[0];
+      sidebar = { scrollTop: 0, scrollHeight: 720, clientHeight: 480, dataset: {
+        sidebarContext: tag.match(/data-sidebar-context="([^"]*)"/)?.[1],
+        sidebarPage: tag.match(/data-sidebar-page="([^"]*)"/)?.[1],
+      } };
+      workspace = { scrollTop: 0 };
+    }
+  });
+  vm.runInContext(`${sidebarHtml}
+    function renderSidebar() {
+      ${capture}
+      mount(sidebarHtml());
+      ${restore}
+    }
+  `, context);
+  context.mount(context.sidebarHtml());
+  sidebar.scrollTop = 205;
+  for (const page of ["schedule", "schedule", "tools"]) {
+    state.page = page;
+    context.renderSidebar();
+    assert.equal(sidebar.scrollTop, 205);
+  }
+
+  state.user = { id: "bob", name: "Bob" };
+  context.renderSidebar();
+  assert.equal(sidebar.scrollTop, 0);
+  sidebar.scrollTop = 150;
+  state.mode = "admin";
+  state.page = "admin";
+  context.renderSidebar();
+  assert.equal(sidebar.scrollTop, 0);
+
+  mobile = true;
+  state.mode = "student";
+  state.page = "schedule";
+  context.renderSidebar();
+  sidebar.scrollTop = 205;
+  workspace.scrollTop = 180;
+  context.renderSidebar();
+  assert.equal(sidebar.scrollTop, 205);
+  assert.equal(workspace.scrollTop, 180);
+  state.page = "tools";
+  context.renderSidebar();
+  assert.equal(sidebar.scrollTop, 0);
+  assert.equal(workspace.scrollTop, 0);
+});
+
 test("a chat summary opens its saved Docs file once and leaves later navigation alone", async () => {
   const summaryRoute = "/api/courses/general/chat-summary";
   const logic = source.slice(source.indexOf("  function canSummarizeStudyChat()"), source.indexOf("  function studyPage()"));

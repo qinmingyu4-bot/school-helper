@@ -1,8 +1,8 @@
 {
-  "previousCommit": "801c14bc4c744a9111addbb9d74f8194403882e2",
-  "previousVersion": "1.21.0",
-  "version": "1.21.1",
+  "previousCommit": "8246f2c788805ce9e20c1501b2d6c0ede0dea990",
+  "previousVersion": "1.21.1",
+  "version": "1.21.2",
   "level": "patch",
-  "reason": "Show progress during grade recognition and reduce Luna latency for clear grading tables.",
+  "reason": "Preserve left navigation scroll when switching desktop features.",
   "features": []
 }

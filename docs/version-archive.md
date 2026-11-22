@@ -1,5 +1,10 @@
 # StudyBridge Version Archive
 
+## 1.21.2 — 2026-11-22
+
+- PATCH from AWS 1.21.1 (`8246f2c788805ce9e20c1501b2d6c0ede0dea990`): preserve sidebar scroll across desktop feature switches. Source: `c8a06a0`.
+- Verify consecutive feature switches, account changes, mobile menu restoration, and live service health. No dependency or database migration. Rollback target: `8246f2c788805ce9e20c1501b2d6c0ede0dea990`.
+
 ## 1.21.1 — 2026-11-22
 
 - PATCH from AWS 1.21.0 (`801c14bc4c744a9111addbb9d74f8194403882e2`): show cancellable progress during grade screenshot or syllabus recognition.

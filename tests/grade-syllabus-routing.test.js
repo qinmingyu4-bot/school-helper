@@ -18,9 +18,10 @@ function rules(drop = true, quote = weightQuote) {
   ] };
 }
 
-function fixture({ text = simpleText, reply = () => rules(), existing = [], pdf } = {}) {
+function fixture({ text = simpleText, reply = () => rules(), existing = [], pdf, syllabusModel = "Luna" } = {}) {
   const calls = [];
   const writes = [];
+  const requests = [];
   const document = { id: "source", title: "Syllabus", text, updatedAt: "v1", hasSourcePdf: !!pdf };
   const db = {
     getCourse: async () => ({ id: "course" }),
@@ -32,10 +33,11 @@ function fixture({ text = simpleText, reply = () => rules(), existing = [], pdf 
       return { ...body, version: 1 };
     }
   };
-  const service = createGradePlanner({ db, apiKey: "fixture", model: "Sol", syllabusModel: "Luna",
+  const service = createGradePlanner({ db, apiKey: "fixture", model: "Sol", syllabusModel,
     request: async (_url, options) => {
       const body = JSON.parse(options.body);
       calls.push(body.model);
+      requests.push(body);
       const result = reply(body.model);
       return result instanceof Response ? result : Response.json({ output: [{ content: [{ type: "output_text", text: JSON.stringify(result) }] }] });
     }
@@ -46,7 +48,7 @@ function fixture({ text = simpleText, reply = () => rules(), existing = [], pdf 
       kind: "syllabus", name: "Syllabus", mime: pdf ? "application/pdf" : "text/plain",
       dataUrl: pdf || "data:text/plain;base64," + Buffer.from(text).toString("base64"), autoSave, version: 0
     }, signal);
-  return { run, calls, writes };
+  return { run, calls, writes, requests };
 }
 
 for (const route of ["upload", "saved"]) {
@@ -160,4 +162,35 @@ test("an exactly quoted standalone no-drop note stays on Luna", async () => {
   const result = await f.run("upload");
   assert.deepEqual(f.calls, ["Luna"]);
   assert.equal(result.savedPlan.categories[1].specialRule, "");
+});
+
+test("short explicit text uses the faster Luna setting without skipping source verification", async () => {
+  for (const route of ["upload", "saved"]) {
+    const clear = fixture({ syllabusModel: "gpt-6-luna" });
+    assert.equal((await clear.run(route)).savedPlan.categories[0].dropLowest, 2);
+    assert.deepEqual(clear.calls, ["gpt-6-luna"]);
+    assert.deepEqual(clear.requests[0].reasoning, { effort: "none" });
+
+    const f = fixture({ syllabusModel: "gpt-6-luna", reply: model => model === "gpt-6-luna" ? rules(false) : rules() });
+    const result = await f.run(route);
+    assert.equal(result.savedPlan.categories[0].dropLowest, 2);
+    assert.deepEqual(f.calls, ["gpt-6-luna", "Sol"]);
+    assert.deepEqual(f.requests[0].reasoning, { effort: "none" });
+    assert.equal(f.requests[1].reasoning, undefined);
+  }
+});
+
+test("a readable raw PDF and text without an explicit table keep the default Luna setting", async () => {
+  const pdf = await PDFDocument.create();
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const page = pdf.addPage();
+  simpleText.split("\n").forEach((line, index) => page.drawText(line, { x: 40, y: 700 - 24 * index, font }));
+  const f = fixture({ syllabusModel: "gpt-6-luna", pdf: await pdf.saveAsBase64({ dataUri: true, useObjectStreams: false }) });
+  assert.equal((await f.run("upload")).savedPlan.categories[0].dropLowest, 2);
+  assert.deepEqual(f.calls, ["gpt-6-luna"]);
+  assert.equal(f.requests[0].reasoning, undefined);
+
+  const prose = fixture({ syllabusModel: "gpt-6-luna", text: simpleText.replace("Quizzes 30%", "Quizzes 30% of the course grade") });
+  assert.equal((await prose.run("upload")).savedPlan.categories[0].dropLowest, 2);
+  assert.equal(prose.requests[0].reasoning, undefined);
 });

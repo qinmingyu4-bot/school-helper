@@ -1,5 +1,11 @@
 # StudyBridge Version Archive
 
+## 1.21.1 — 2026-11-22
+
+- PATCH from AWS 1.21.0 (`801c14bc4c744a9111addbb9d74f8194403882e2`): show cancellable progress during grade screenshot or syllabus recognition.
+- Reduce Luna reasoning latency for short text with complete grading weights. Preserve source validation, the Sol fallback, and manual review for complex rules. Sources: `eaa3a23` and `db7ff22`.
+- Verify grading routes, the browser progress state, and live service health. No dependency or database migration. Rollback target: `801c14bc4c744a9111addbb9d74f8194403882e2`.
+
 ## 1.21.0 — 2026-11-22
 
 - MINOR from AWS 1.20.2 (`e677b20a6e46b7057064a63e02d2e1093027ad8a`): expand the compact source label to open the cited PDF page or text passage in a modal.

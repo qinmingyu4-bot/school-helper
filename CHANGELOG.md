@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.21.1 — 2026-11-22 — Faster grading rule recognition
+
+PATCH from AWS 1.21.0 (`801c14b`): improve Grades recognition speed and display its progress.
+
+- Speed up Luna for short, readable syllabus text with a complete explicit grading table. Keep the same source verification and model settings for native PDF reads and complex rules.
+- Show a cancellable progress indicator while reading a grade screenshot or extracting syllabus rules from an upload or saved material. If recognition takes longer, keep the dialog responsive and show that work is still underway.
+
 ## 1.21.0 — 2026-11-22 — Open problem-set source citations
 
 MINOR from AWS 1.20.2 (`e677b20`): open a saved answer citation directly from the worked solution.

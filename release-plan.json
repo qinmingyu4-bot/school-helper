@@ -1,11 +1,8 @@
 {
-  "previousCommit": "e677b20a6e46b7057064a63e02d2e1093027ad8a",
-  "previousVersion": "1.20.2",
-  "version": "1.21.0",
-  "level": "minor",
-  "reason": "Add an interactive source disclosure and original-material preview to worked problem-set steps without additional AI requests.",
-  "features": [
-    "Expand the compact Sources label to inspect saved filenames and citation locations",
-    "Open the cited material in a modal, highlight reliably matched formulas, and return to the original answer position"
-  ]
+  "previousCommit": "801c14bc4c744a9111addbb9d74f8194403882e2",
+  "previousVersion": "1.21.0",
+  "version": "1.21.1",
+  "level": "patch",
+  "reason": "Show progress during grade recognition and reduce Luna latency for clear grading tables.",
+  "features": []
 }

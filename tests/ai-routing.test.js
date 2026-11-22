@@ -56,6 +56,8 @@ test("simple date lookups, definitions and text edits stay on Luna inside comple
     ["exam", "MAT137 期末考试是哪天？"],
     ["assignment", "When is the finance assignment due?"],
     ["review", "机会成本是什么意思？"],
+    ["review", "机会成本是什么意思？用一句中文定义。"],
+    ["exam", "什么是置信区间？"],
     ["review", "Define opportunity cost"],
     ["exam", "Summarize the final exam instructions"],
     ["assignment", "翻译成中文：Derive the optimal value and prove uniqueness."],

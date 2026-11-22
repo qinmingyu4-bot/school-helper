@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased — Co-admin access
+## 1.17.0 — 2026-11-22 — Co-admin access
+
+MINOR from AWS 1.16.0 (`dccf210`): introduce a dedicated invitation workspace and weekly AI allowance policy for Co-admin accounts.
 
 - Restrict the full developer console and its APIs to configured creator emails. Existing invitation-based administrators resolve to Co-admin.
 - Give Co-admins a dedicated workspace to create and copy their own single-use Plus invitations.

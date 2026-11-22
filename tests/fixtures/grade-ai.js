@@ -1,9 +1,18 @@
 "use strict";
 const original = globalThis.fetch;
+let retryScreenshot = false;
 globalThis.fetch = async (url, options) => {
   if (!String(url).startsWith("https://api.openai.com/")) return original(url, options);
   const body = JSON.parse(options.body);
   if (String(url).endsWith("/input_tokens")) return Response.json({ input_tokens:100 });
+  const screenshot = body.instructions?.includes('"rows"');
+  const unclear = screenshot && body.input[0].content[0].text.includes("unclear.png");
+  const model = screenshot && !(unclear && retryScreenshot) ? "gpt-6-luna" : "gpt-6.2-sol";
+  if (body.model !== model) throw new Error("Unexpected model for grade extraction");
+  if (unclear) {
+    retryScreenshot = !retryScreenshot;
+    if (retryScreenshot) return Response.json({ output: [{ content: [{ type: "output_text", text: '{"rows":[]}' }] }] });
+  }
   const output = body.instructions?.includes('StudyBridge saved-course-grades/v1')
     ? { categories: [
       {name:"Homework",weight:40,method:"equal",plannedCount:2,items:[],sourceRefs:[{documentId:body.input[0].content.find(c=>c.text?.includes("Homework 40%")).text.match(/Source documentId: ([^\n]+)/)[1],quote:"Homework 40%",page:null}]},

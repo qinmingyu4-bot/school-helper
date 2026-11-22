@@ -7,6 +7,10 @@ globalThis.fetch = async (url, options) => {
   const body = JSON.parse(options?.body || "{}");
   if (!String(url).startsWith("https://api.openai.com/v1/") || !body.messages?.[0]?.content.match(/^StudyBridge (?:learning-loop|quiz-review)/)) return previous(url, options);
   if (body.store !== false || !options.signal || body.stream) throw new Error("Learning generation must be bounded and private.");
+  const isTopics = body.messages[0].content.includes("topics/v1");
+  if (!body.messages[0].content.startsWith("StudyBridge quiz-review/v1") && body.model !== (isTopics ? "gpt-6-luna" : "gpt-6.2-sol")) {
+    throw new Error("Unexpected model for learning generation");
+  }
   const context = JSON.parse(body.messages[1].content);
   if (body.messages[0].content.startsWith("StudyBridge quiz-review/v1")) {
     if (context.questions.some((question) => (Object.hasOwn(question, "answerIndex") || Object.hasOwn(question, "explanations")))) throw new Error("Review must independently choose the answer.");

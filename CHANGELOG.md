@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Use Luna for simple study lookups, definitions and text edits even in exam or assignment mode. Keep Sol for worked problems, proofs and mock exams.
+- Use Luna first for typed or transcribed schedule drafts, grade screenshot reading, course-topic extraction and simple single-slide edits. Retry once with Sol when the draft fails validation or a grade screenshot yields no numeric scores. Full presentation drafts, complex slide work, exercises, grading rules and official calendar verification keep their existing routes.
+
 ## 1.18.0 — 2026-11-22 — Blank classroom notes
 
 MINOR from AWS 1.17.0 (`f53240f`): introduce course-scoped blank notes and a direct Study entry point.

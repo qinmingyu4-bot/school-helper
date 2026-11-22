@@ -5,6 +5,29 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   return Object.freeze(Object.fromEntries(`
+上传空间|Upload storage
+额外空间已开通。|Extra storage is active.
+空间已满|Storage full
+接近空间上限|Storage nearly full
+空间可用|Storage available
+已用上传空间|Upload storage used
+课程资料与学习聊天附件按实际保留的数据计入空间。删除资料或对话可释放额度。|Your storage includes retained course uploads and study chat attachments. Delete materials or conversations to free up space.
+本次上传超出剩余空间，已有资料已保留。|This upload exceeds the available space. Your existing files are still available.
+额外空间|Extra space
+开发者已收到加购申请。提交申请不会扣款。|Your storage request is pending. Submitting a request does not charge you.
+正在读取上传空间…|Loading upload storage…
+查看 Plus|View Plus
+申请加购 1 GiB|Request 1 GiB of extra storage
+近 7 天上传受阻|Accounts blocked in the last 7 days
+待处理加购申请|Pending storage requests
+最近上传受阻|Last blocked upload
+开通额外 1 GiB|Grant 1 GiB of storage
+目前没有上传空间预警或加购申请。|There are no storage warnings or purchase requests.
+上传空间数据暂不可用。|Upload storage data is temporarily unavailable.
+上传空间与预警|Upload storage and alerts
+上传空间不足，请删除部分资料、升级 Plus 或申请加购空间。|Free up some space, upgrade to Plus, or request more storage to upload this file.
+申请已更新，请刷新后再试。|This request has already changed. Refresh and try again.
+另一项资料上传仍在处理中，请稍后重试。|Another upload is still processing. Try again shortly.
 来源|Sources
 查看出处原文|View source passage
 正在加载出处…|Loading the source…

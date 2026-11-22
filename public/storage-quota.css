@@ -1,0 +1,37 @@
+.storage-summary-button {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .5rem;
+  width: 100%;
+  padding: .38rem .5rem;
+  border: 0;
+  background: transparent;
+  font-size: .78rem;
+  text-align: start;
+}
+.storage-summary-button span { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.storage-summary-button [data-storage-alert] { flex-basis: 100%; font-size: inherit; }
+.storage-warning { font-weight: 650; }
+.storage-quota-dialog {
+  width: min(28rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  padding: 0;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: .75rem;
+}
+.storage-quota-dialog::backdrop { background: rgb(0 0 0 / .38); }
+.storage-quota-dialog .dialog-footer { display: flex; justify-content: end; flex-wrap: wrap; gap: .5rem; padding: 0 1rem 1rem; }
+.storage-quota-dialog .storage-usage-line {
+  display: flex;
+  justify-content: space-between;
+  gap: .5rem;
+  flex-wrap: wrap;
+  margin: 0 0 .4rem;
+}
+.storage-quota-dialog progress { width: 100%; }
+.admin-user-stats.storage-admin-metrics { grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); gap: .75rem; }
+.storage-admin-account { gap: .75rem; flex-wrap: wrap; }

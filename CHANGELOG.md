@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add account-wide limits for uploaded course materials and learning chat attachments. Standard accounts start at 512 MiB, Plus accounts at 1 GiB, with an in-app warning at 80%.
+- Show storage usage, blocked uploads and extra-storage requests in the creator dashboard. Students can open the Plus page or request extra storage, and the creator can grant 1 GiB per request.
+
 ## 1.21.2 — 2026-11-22 — Keep the sidebar in place
 
 PATCH from AWS 1.21.1 (`8246f2c`): keep the left navigation at its current scroll position when switching between desktop features.

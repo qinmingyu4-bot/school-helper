@@ -1,5 +1,11 @@
 # StudyBridge Version Archive
 
+## 1.18.0 — 2026-11-22
+
+- MINOR from AWS 1.17.0 (`f53240f596d27be2076a12aa2d71bb69ad7733a1`): add a blank A4 classroom-note source and an entry point in the Study course header.
+- Reuse existing course ownership, annotation records, autosave and PDF export. No dependency or database migration. Source: `8469546`.
+- Verify course isolation, blank-note save and reopen, PDF annotation regression, release policy and live service health. Rollback code target: `f53240f596d27be2076a12aa2d71bb69ad7733a1`.
+
 ## 1.17.0 — 2026-11-22
 
 - MINOR from verified AWS 1.16.0 (`dccf21075da0e66363c77f96a98a0395ce691133`): add a dedicated Co-admin workspace for issuing and copying personal single-use Plus invitations, and remove the Co-admin weekly AI allowance cap while retaining cost reporting.

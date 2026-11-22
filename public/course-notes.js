@@ -7,6 +7,7 @@
   let finishGesture = () => {}, exportJob, erasePreview, selectedSticky=-1;
   const $ = s => host.querySelector(s);
   const esc = s => String(s).replace(/[&<>"']/g,c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const documentPlaceholder = () => t('选择笔记或课件','Choose a note or PDF');
   const route = kind => `/api/courses/${encodeURIComponent(course)}/${kind}/${encodeURIComponent(doc)}?page=${page}`;
   const draftKey = () => `studybridge.notes.${owner}.${course}.${doc}.${page}`;
   function status(s) { if (host) { $('[role=status]').textContent = s; syncPickers(); } }
@@ -90,7 +91,7 @@
       status(local ? t('已恢复本机草稿，请保存；若有冲突可导出草稿后读取云端。','Local draft restored. Save, or export the draft before reloading cloud notes.') : t('已保存到云端','Saved to cloud'));
     } finally { syncControls(); }
   }
-  async function openDocument(id) {
+  async function openDocument(id, initialNotes) {
     const token = epoch; await save(); if (token !== epoch) return;
     try {
       const lib = await import('/vendor/pdfjs/pdf.min.mjs');
@@ -99,27 +100,59 @@
       const next = await lib.getDocument({url:`/api/courses/${course}/note-source/${id}`,cMapUrl:'/vendor/pdfjs/cmaps/',cMapPacked:true,standardFontDataUrl:'/vendor/pdfjs/standard_fonts/',wasmUrl:'/vendor/pdfjs/wasm/'}).promise;
       if (token !== epoch) { await next.destroy(); return; }
       let first;
-      try {first=await ctx.api(`/api/courses/${course}/notes/${id}?page=1`);} catch(error) {await next.destroy();throw error;}
+      try {first=initialNotes || await ctx.api(`/api/courses/${course}/notes/${id}?page=1`);} catch(error) {await next.destroy();throw error;}
       if(token!==epoch){await next.destroy();return;}
-      if (pdf) await pdf.destroy(); pdf = next; doc = id; dirty = false; page = 1; zoom = 1;items=[];undo=[];redo=[];
+      if (pdf) await pdf.destroy();
+      if (token !== epoch) { await next.destroy(); return; }
+      pdf = next; doc = id; dirty = false; page = 1; zoom = 1;items=[];undo=[];redo=[];
       $('.note-work').hidden = false;
       await loadPage(1,first);
+      if (token === epoch) { $('.note-scroll').scrollTop=0; $('.note-scroll').scrollLeft=0; }
     } finally { syncControls(); }
   }
   async function listDocuments() {
     const token = epoch, selectedCourse = course;
     const data = await ctx.api(`/api/courses/${course}/documents`);
     if (token !== epoch || selectedCourse !== course) return;
-    const documents = data.documents.filter(d => d.hasSourcePdf);
-    $('[data-document]').innerHTML = `<option value="">${t('选择 PDF 课件','Choose a PDF')}</option>` + documents.map(d => `<option value="${esc(d.id)}">${esc(d.title)}</option>`).join('');
+    const documents = data.documents.filter(d => d.blankNote || d.hasSourcePdf);
+    $('[data-document]').innerHTML = `<option value="">${documentPlaceholder()}</option>` + documents.map(d => `<option value="${esc(d.id)}">${esc(d.title)}</option>`).join('');
     $('[data-document]').value=doc;
-    status(documents.length ? t('选择课件开始笔记。','Choose a PDF to start.') : t('还没有 PDF 课件，请上传。PPT 请先导出为 PDF。','Upload a PDF to start. Export PowerPoint to PDF first.'));
+    status(documents.length ? '' : t('新建空白笔记或上传 PDF 开始。','Start with a blank note or upload a PDF.'));
+  }
+  async function createBlankNote() {
+    const token = epoch;
+    await save();
+    if (token !== epoch) return;
+    status(t('正在新建空白笔记…','Creating a blank note…'));
+    const timestamp = new Date().toLocaleString(t('zh-CN','en'),{dateStyle:'short',timeStyle:'short'});
+    const title = `${t('空白笔记','Blank note')} · ${timestamp}`;
+    const { document } = await ctx.api(`/api/courses/${encodeURIComponent(course)}/notes`,{method:'POST',body:{title}});
+    if (token !== epoch) return;
+    const select = $('[data-document]');
+    select.add(new Option(document.title, document.id), 1);
+    await openDocument(document.id, {version:0,items:[]});
+    if (token === epoch) { mode='pen'; $('[data-document]').value=doc; syncPickers(); }
   }
   async function switchCourse(id) {
-    await save(); selectedSticky=-1; course = id; doc = ''; items = []; dirty = false;
-    if (pdf) { await pdf.destroy(); pdf = null; }
+    const token = epoch;
+    await save(); if (token !== epoch) return;
+    selectedSticky=-1; course = id; doc = ''; items = []; dirty = false;
+    const previous = pdf;
+    pdf = null;
+    if (previous) await previous.destroy();
+    if (token !== epoch) return;
     $('.note-work').hidden = true;
+    $('[data-course]').value=course;
+    $('[data-document]').replaceChildren(new Option(documentPlaceholder(), ''));
     if (course) await listDocuments();
+  }
+  async function openCourse(id) {
+    if (!host?.isConnected || busy || course===id || ![...$('[data-course]').options].some(option=>option.value===id)) return;
+    const token = epoch;
+    busy=true; syncControls();
+    try { await switchCourse(id); }
+    catch (error) { if (token===epoch) status(error.message); }
+    finally { if (token===epoch) { busy=false; syncControls(); syncPickers(); } }
   }
   function download(content,name,type) {
     const url = URL.createObjectURL(new Blob([content],{type})); const a = document.createElement('a'); a.href=url; a.download=name; a.click(); setTimeout(() => URL.revokeObjectURL(url),60000);
@@ -137,6 +170,8 @@
     $('[data-note=next]').disabled=busy || !pdf || page>=pdf.numPages;
     $('[data-note=zoom-out]').disabled=busy || zoom<=1;
     $('[data-note=zoom-in]').disabled=busy || zoom>=3;
+    $('[data-note=new-blank]').disabled=busy || !$('[data-course]').value;
+    $('[data-note=study]').disabled=busy || !$('[data-course]').value;
     $('[data-picker-toggle="document"]').disabled=busy || $('[data-document]').options.length<2;
     $('[data-color]').disabled=busy || ['hand','eraser','sticky'].includes(mode);
     $('[data-width]').disabled=busy || ['hand','eraser','text','sticky'].includes(mode);
@@ -228,6 +263,7 @@
         if(action==='sticky-delete' && sticky?.type==='sticky') {remember();items.splice(selectedSticky,1);selectedSticky=-1;changed();}
         if (action === 'pdf') await exportFullPdf();
         if (action === 'save') await save();
+        if (action === 'new-blank' && course) await createBlankNote();
         if (action === 'add-course') {
           closePickers(); await save();
           if(epoch!==operationEpoch)return;
@@ -403,7 +439,7 @@
       if (!select || !trigger) continue;
       trigger.querySelector('span').textContent=select.selectedOptions[0]?.textContent || select.options[0]?.textContent || '';
       trigger.disabled=busy || key==='document' && select.options.length<2;
-      trigger.setAttribute('aria-label',`${key==='course'?t('课程','Course'):t('课件','Material')}: ${trigger.textContent}`);
+      trigger.setAttribute('aria-label',`${key==='course'?t('课程','Course'):t('笔记与课件','Notes and PDFs')}: ${trigger.textContent}`);
       if (menu.hidden) {
         const options=[...select.options].filter(option=>option.value).map(option=>`<button type="button" role="option" tabindex="-1" data-picker-option="${key}" data-value="${esc(option.value)}" aria-selected="${option.selected}"><span>${esc(option.textContent)}</span><span class="note-picker-check" aria-hidden="true">${option.selected?'✓':''}</span></button>`).join('') || `<p>${t('暂无可选项目','Nothing to select yet')}</p>`;
         menu.innerHTML=key==='course'
@@ -434,7 +470,7 @@
     };
     const icon=id=>`<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${icons[id]}</svg>`;
     const button=(id,zh,en)=>`<button type="button" data-note="${id}"${icons[id]?` class="note-icon-button" aria-label="${t(zh,en)}" title="${t(zh,en)}"`:''}>${icons[id]?icon(id):t(zh,en)}</button>`;
-    host.innerHTML=`<div class="note-picker"><div class="note-location">${picker('course',t('课程','Course'),t('选择课程','Choose a course'))}<span class="note-location-divider" aria-hidden="true">/</span>${picker('document',t('课件','Material'),t('选择 PDF 课件','Choose a PDF'))}</div><div class="note-picker-actions"><label class="note-upload"><span aria-hidden="true">＋</span>${t('上传 PDF','Upload PDF')}<input data-upload type="file" accept="application/pdf,.pdf"></label>${button('study','在学习区查看','View in Study')}</div></div>
+    host.innerHTML=`<div class="note-picker"><div class="note-location">${picker('course',t('课程','Course'),t('选择课程','Choose a course'))}<span class="note-location-divider" aria-hidden="true">/</span>${picker('document',t('笔记与课件','Notes and PDFs'),documentPlaceholder())}</div><div class="note-picker-actions">${button('new-blank','新建空白笔记','New blank note')}<label class="note-upload"><span aria-hidden="true">＋</span>${t('上传 PDF','Upload PDF')}<input data-upload type="file" accept="application/pdf,.pdf"></label>${button('study','在学习区查看','View in Study')}</div></div>
     <p role="status" aria-live="polite"></p><div class="note-work" hidden><div class="note-toolbar" role="toolbar" aria-label="${t('笔记工具','Note tools')}">${[['hand','浏览','Browse'],['pen','画笔','Pen'],['highlight','高亮','Highlight'],['text','文字','Text'],['sticky','便签','Sticky note'],['eraser','橡皮','Eraser']].map(([id,zh,en])=>`<button type="button" class="note-icon-button" data-mode="${id}" aria-pressed="false" aria-label="${t(zh,en)}" title="${t(zh,en)}">${icon(id)}</button>`).join('')}<input type="color" data-color value="${color}" aria-label="${t('颜色','Color')}"><select data-width aria-label="${t('笔宽','Stroke width')}"><option value=".0015">${t('细','Fine')}</option><option value=".003" selected>${t('中','Medium')}</option><option value=".006">${t('粗','Broad')}</option></select>${button('undo','撤销','Undo')}${button('redo','重做','Redo')}<label><input type="checkbox" data-pen-only>${t('仅触控笔书写','Stylus only')}</label><span data-tool-status></span></div>
     <div class="note-navigation">${button('prev','上一页','Previous')}<input type="number" data-page min="1" value="1" aria-label="${t('页码','Page')}"><span data-total></span>${button('next','下一页','Next')}${button('zoom-out','缩小','Zoom out')}${button('zoom-in','放大','Zoom in')}${button('save','保存','Save')}${button('pdf','导出完整 PDF','Export PDF')}<button type="button" data-note="cancel-export" hidden>${t('取消导出','Cancel export')}</button>${button('focus','专注书写','Focus')}<details><summary>${t('更多','More')}</summary>${button('image','导出当前页图片','Export page image')}${button('backup','导出草稿','Export draft')}${button('reload','重新读取云端','Reload cloud')}</details></div>
     <div class="note-scroll"><div class="note-sheet"><canvas></canvas><svg class="note-ink" xmlns="http://www.w3.org/2000/svg" aria-label="${t('课件标注画布','Annotation canvas')}"></svg></div></div>
@@ -464,12 +500,9 @@
     if (!host) build(); slot.replaceChildren(host);
     const select = $('[data-course]');
     select.innerHTML = `<option value="">${t('选择课程','Choose a course')}</option>` + ctx.courses.filter(c=>c.chatType!=='general' && c.name!=='Schedule & Deadlines').map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
-    select.value = course; syncPickers();
-    if(!course && ctx.courseId && [...$('[data-course]').options].some(o=>o.value===ctx.courseId)) {
-      $('[data-course]').value=ctx.courseId;
-      try { await switchCourse(ctx.courseId); } catch(e) {status(e.message);}
-    }
+    select.value = course; syncPickers(); syncControls();
+    if (!course && ctx.courseId) await openCourse(ctx.courseId);
   }
   window.addEventListener('beforeunload',e=>{finishGesture(false);if(dirty){backup();e.preventDefault();e.returnValue='';}});
-  window.StudyBridgeCourseNotes={mount};
+  window.StudyBridgeCourseNotes={mount,openCourse};
 })();

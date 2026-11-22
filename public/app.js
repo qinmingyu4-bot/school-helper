@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.17.0";
+  const VERSION = "1.18.0";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -280,7 +280,7 @@
     schedule: ["时", "日程", "Deadline 和课程提醒"],
     study: ["学", "学习", "课程资料、AI 对话和复习计划"],
     grades: ["分", "成绩", "成绩记录、评分规则与目标预测"],
-    tools: ["工", "工具", "课件笔记、文档和创作"],
+    tools: ["工", "工具", "课堂笔记、文档和创作"],
     email: ["邮", "邮箱助手", "学习邮件、通知与日程确认"],
     profile: ["人", "个人资料", "头像、学校、专业和 SB ID"],
     admin: ["管", "开发者端", "邀请码、用户和系统状态"]
@@ -955,7 +955,7 @@
   function onboardingHtml() {
     if (state.messages.length || state.page !== "study" || studyHistoryPending() || state.studyHistoryError) return "";
     const hasCourse = !isGeneralChat() && state.courses.some((c) => c.id === state.activeCourseId);
-    const hasDocs = hasCourse && courseMaterials().length > 0;
+    const hasDocs = hasCourse && courseMaterials().some(doc => !doc.blankNote);
     const firstCourse = courseChats.visibleCourses(state.courses)[0];
     const courseAction = firstCourse
       ? ui.html`<button type="button" data-action="select-course" data-id="${esc(firstCourse.id)}">选择课程</button>`
@@ -1001,7 +1001,7 @@
           <div class="course-chat-heading"><small>${esc(courseName || ui.text("请选择课程"))}${!isGeneralChat() ? ui.text(" · 课程资料共享") : ""}</small><h1 title="${esc(conversation?.title || courseName || ui.text("请选择课程"))}">${esc(conversation?.title || courseName || ui.text("请选择课程"))}</h1></div>
           ${dailyChecklist.entry(course?.id)}
         </div>
-        ${!isGeneralChat() && course ? ui.html`<div class="course-chat-actions"><button data-action="learning-open">学习清单 · 练习</button><button data-action="new-conversation" data-id="${esc(course.id)}">＋ 新对话</button></div>` : ""}
+        ${!isGeneralChat() && course ? ui.html`<div class="course-chat-actions"><button data-action="learning-open">学习清单 · 练习</button><button data-action="open-course-notes" data-id="${esc(course.id)}">课堂笔记</button><button data-action="new-conversation" data-id="${esc(course.id)}">＋ 新对话</button></div>` : ""}
       </header>
       ${upcomingBanner()}
       <section class="chat-area">
@@ -2336,9 +2336,9 @@
 
   function toolsPage() {
     return ui.html`
-      ${pageHeader("STUDY TOOLS", ui.text("工具"), ui.text("课件笔记、文档、表格、演示和图片"))}
+      ${pageHeader("STUDY TOOLS", ui.text("工具"), ui.text("课堂笔记、文档、表格、演示和图片"))}
       <section class="tools-tabs" aria-label="工具选择">
-        ${["notes", "docs", "sheets", "slides", "images", "cheatsheet", ...(creativeTools.videoEnabled() ? ["video"] : [])].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" aria-pressed="${(state.tool || "docs") === tool}" data-action="tool-mode" data-tool="${tool}" ${tool === "video" && !creativeTools.videoEnabled() ? ui.text('disabled title="视频生成暂未开放"') : ""}>${({ notes: ui.text("课件笔记"), docs: "SB Docs", sheets: "SB Sheets", slides: "SB Slides", images: ui.text("图片"), cheatsheet: "Cheatsheet PDF", video: creativeTools.videoEnabled() ? ui.text("视频") : ui.text("视频 · 未开放") })[tool]}</button>`).join("")}
+        ${["notes", "docs", "sheets", "slides", "images", "cheatsheet", ...(creativeTools.videoEnabled() ? ["video"] : [])].map((tool) => `<button class="${(state.tool || "docs") === tool ? "active" : ""}" aria-pressed="${(state.tool || "docs") === tool}" data-action="tool-mode" data-tool="${tool}" ${tool === "video" && !creativeTools.videoEnabled() ? ui.text('disabled title="视频生成暂未开放"') : ""}>${({ notes: ui.text("课堂笔记"), docs: "SB Docs", sheets: "SB Sheets", slides: "SB Slides", images: ui.text("图片"), cheatsheet: "Cheatsheet PDF", video: creativeTools.videoEnabled() ? ui.text("视频") : ui.text("视频 · 未开放") })[tool]}</button>`).join("")}
       </section>
       ${toolsWorkspaceHtml()}
     `;
@@ -2371,7 +2371,10 @@
     let savedCourse = "";
     try { savedCourse = localStorage.getItem(`studybridge.cheatsheetCourse.${userId}`) || ""; } catch { /* Storage may be disabled. */ }
     const preferredCourse = cheatsheetCourses.get(userId) || savedCourse;
-    const courseId = [preferredCourse, state.activeCourseId, state.courses[0]?.id].find((id) => state.courses.some((course) => course.id === id)) || "";
+    const courseId = tool === "notes"
+      ? [state.courses.find(course => course.id === state.activeCourseId), ...state.courses]
+        .find(course => course && course.chatType !== "general" && course.name !== SCHEDULE_COURSE)?.id || ""
+      : [preferredCourse, state.activeCourseId, state.courses[0]?.id].find((id) => state.courses.some((course) => course.id === id)) || "";
     return { userId, tool, officeEntry: state.officeEntry, courseId, courses: state.courses, api, readFiles, esc, render,
       isCurrent: () => state.user?.id === userId,
       confirmDelete: (_job, submit) => studyCourseDialog({ title: ui.text("删除这份作品？"),
@@ -3116,6 +3119,14 @@
         return;
       }
       if (action === "learning-open") { learningLoop.open(); return; }
+      if (action === "open-course-notes") {
+        const userId = state.user?.id, courseId = button.dataset.id;
+        state.tool = "notes";
+        localStorage.setItem("studybridge.tool", state.tool);
+        await loadPage("tools");
+        if (state.user?.id === userId && state.page === "tools" && state.tool === "notes") await window.StudyBridgeCourseNotes.openCourse(courseId);
+        return;
+      }
       if (action === "onboard-material") {
         if (!mobileNavigation.snapshot().active) $("docText")?.focus();
         return;

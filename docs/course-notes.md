@@ -1,7 +1,11 @@
 # Course notes
 
-Open **Tools → Course notes** (the first tool), select a course, then upload a
-PDF or select an existing course PDF. Uploads automatically match a course code
+Open **Tools → Class notes**, or use **Class notes** in a Study course header.
+Select a course and choose **New blank note** to open a dated, single-page A4
+sheet. Write on it with the pen or text tools. The sheet appears in the notes
+picker and the course materials list and supports the same autosave and export
+controls as annotated PDFs. Use **Upload PDF** or select an existing PDF to write
+on course materials. Uploads automatically match a course code
 in the filename, then the opening 4,000 extracted text characters when the filename
 has no code. Matching handles spaces, hyphens and underscores and reuses the course
 code normalization used by timetable imports. Distinct campus codes and duplicate
@@ -57,7 +61,7 @@ request to succeed; failures do not silently produce a partial document. Progres
 and cancellation are provided, and editing/navigation is temporarily disabled to
 keep the exported snapshot consistent.
 
-Notes save automatically after 800 ms, separately per account/course/PDF/page.
+Notes save automatically after 800 ms, separately per account, course, document and page.
 Reopening reads cloud notes. A local draft survives refresh and failed saves;
 leaving with unsaved changes triggers a browser warning. Local drafts require
 browser storage. Switching pages or PDFs waits for the current save. Cloud
@@ -70,7 +74,10 @@ is reopened, not streamed into an active canvas.
 creation flow. An unresolved match returns `needsCourse: true` without writing.
 An explicit owned `courseId` completes filing; foreign/general destinations are rejected.
 
-`GET /api/courses/:course/note-source/:document` serves an authenticated PDF.
+`POST /api/courses/:course/notes` creates a blank sheet in an owned course with
+an optional title. The sheet uses a generated background and needs no uploaded
+material. `GET /api/courses/:course/note-source/:document` serves the blank sheet
+or uploaded PDF under the same course authorization.
 `GET|PUT /api/courses/:course/notes/:document?page=N` reads/saves page records.
 `GET /api/courses/:course/notes/:document?all=true` returns all annotated pages
 under the same account/course/document authorization. The response is capped at

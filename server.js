@@ -199,7 +199,7 @@ const billing = createBillingService({ db });
 const alipay = createAlipayService({ db });
 async function studySources({ userId, courseId, conversationId }) {
   const [documents, groups] = await Promise.all([db.listDocuments(userId, courseId), db.listChatAttachmentSources(userId, courseId, conversationId)]);
-  return [...documents.filter((doc) => doc.type !== "Schedule").map((doc) => ({ id: `doc:${doc.id}`, name: doc.title, text: doc.text || "", sourcePages: doc.sourcePages || [],
+  return [...documents.filter((doc) => doc.type !== "Schedule" && !doc.blankNote).map((doc) => ({ id: `doc:${doc.id}`, name: doc.title, text: doc.text || "", sourcePages: doc.sourcePages || [],
     kind: doc.hasSourcePdf ? "pdf" : "text", ...(doc.hasSourcePdf ? { materialId: `DOCFILE#${doc.id}#PDF` } : {}) })),
     ...groups.flatMap((group) => group.attachments.map(({ dataUrl, ...item }, index) => ({ ...item, id: `attachment:${group.id}:${index}`, materialId: group.id, attachmentIndex: index })))];
 }
@@ -1472,7 +1472,7 @@ async function callAi(messages, model = simpleAiModel, stream = null) {
 
 async function studyAnswerContext({ user, course, conversationId = courseConversations.DEFAULT_ID, message, mode, attachments, signal, email = false }) {
   const [documents, history, scheduleItems, weatherContext, savedAttachments] = await Promise.all([
-    course.chatType === "general" ? [] : db.listDocuments(user.id, course.id),
+    course.chatType === "general" ? [] : db.listDocuments(user.id, course.id).then(items => items.filter(doc => !doc.blankNote)),
     db.listMessages(user.id, course.id, 80, conversationId),
     course.chatType === "general" && !/deadline|\bdue\b|\bddl\b|考试|作业|截止|提醒|日程/i.test(message) ? [] : listUserScheduleItems(user.id),
     getWeatherContextForQuestion(message, user),
@@ -3466,18 +3466,34 @@ if (directMessageMatch && method === "POST") {
       return sendError(res, 403, "General chat is not a course. Upload attachments with a chat message instead.");
     }
 
+    if (child === "notes" && !childId && method === "POST") {
+      if (course.chatType === "general" || course.name === scheduleCourseName) return sendError(res, 403, "Choose a course to create a note.");
+      const body = await readJson(req, 4096);
+      const title = typeof body?.title === "string" ? body.title.trim().slice(0, 160) : "";
+      const document = await db.createDocument({
+        id: createId("doc"), userId: user.id, courseId, title: title || "Blank note",
+        text: "", type: "Note", blankNote: true, sourcePageCount: 1
+      });
+      return sendJson(res, 201, { document });
+    }
+
     if (["note-source", "notes"].includes(child) && childId) {
       res.setHeader("Cache-Control", "private, no-store");
+      const courseNotes = require("./lib/course-notes");
       const document = (await db.listDocuments(user.id, courseId)).find(item => item.id === childId);
-      if (!document?.hasSourcePdf) return sendError(res, 404, "PDF not found.");
+      if (!courseNotes.isNoteSource(document)) return sendError(res, 404, "Note source not found.");
       if (child === "note-source" && method === "GET") {
-        const source = await db.readMaterial(user.id, courseId, `DOCFILE#${childId}#PDF`);
-        if (!source?.dataUrl) return sendError(res, 404, "PDF not found.");
-        const bytes = Buffer.from(source.dataUrl.split(",")[1], "base64");
+        let bytes;
+        if (document.blankNote) bytes = await courseNotes.blankPdf();
+        else {
+          const source = await db.readMaterial(user.id, courseId, `DOCFILE#${childId}#PDF`);
+          if (!source?.dataUrl) return sendError(res, 404, "PDF not found.");
+          bytes = Buffer.from(source.dataUrl.split(",")[1], "base64");
+        }
         res.writeHead(200, { "Content-Type": "application/pdf", "Content-Length": bytes.length, "Content-Disposition": "inline" });
         return res.end(bytes);
       }
-      const notes = require("./lib/course-notes").create(db);
+      const notes = courseNotes.create(db);
       if (child === "notes" && method === "GET" && url.searchParams.get("all") === "true") return sendJson(res, 200, await notes.readAll(user.id, courseId, childId));
       const page = Number(url.searchParams.get("page"));
       if (!Number.isInteger(page) || page < 1 || page > (document.sourcePageCount || 10000)) return sendError(res, 400, "Invalid page.");

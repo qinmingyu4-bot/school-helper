@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.18.0 — 2026-11-22 — Blank classroom notes
+
+MINOR from AWS 1.17.0 (`f53240f`): introduce course-scoped blank notes and a direct Study entry point.
+
+- Create a blank A4 note in the selected course from Tools or from the Study course header. Use the existing handwriting, text, autosave and export tools alongside uploaded PDFs.
+- Keep blank notes in the course's notes and materials lists. Store their annotations through the existing private course-note records.
+
 ## 1.17.0 — 2026-11-22 — Co-admin access
 
 MINOR from AWS 1.16.0 (`dccf210`): introduce a dedicated invitation workspace and weekly AI allowance policy for Co-admin accounts.

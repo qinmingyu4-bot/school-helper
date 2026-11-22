@@ -1,5 +1,11 @@
 # StudyBridge Version Archive
 
+## 1.17.0 — 2026-11-22
+
+- MINOR from verified AWS 1.16.0 (`dccf21075da0e66363c77f96a98a0395ce691133`): add a dedicated Co-admin workspace for issuing and copying personal single-use Plus invitations, and remove the Co-admin weekly AI allowance cap while retaining cost reporting.
+- Restrict the full developer console and its APIs to the creator email allowlist. Existing invitation-based admin accounts resolve to Co-admin at runtime without a data migration or dependency change. Source: `e3d9164`.
+- Verify creator access, Co-admin isolation, single-use redemption, existing roles, allowance accounting, release policy, and live service health. Rollback code target: `dccf21075da0e66363c77f96a98a0395ce691133`.
+
 ## 1.16.0 — 2026-11-21
 
 - MINOR from AWS 1.15.3 (`1f8968f871a8935a5c8fcb30fee23214701aaa6d`): add authenticated Office link collaboration with owner-controlled revocation and new editing tools for Docs, Sheets and Slides.

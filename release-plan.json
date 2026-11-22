@@ -1,13 +1,11 @@
 {
-  "previousCommit": "1f8968f871a8935a5c8fcb30fee23214701aaa6d",
-  "previousVersion": "1.15.3",
-  "version": "1.16.0",
+  "previousCommit": "dccf21075da0e66363c77f96a98a0395ce691133",
+  "previousVersion": "1.16.0",
+  "version": "1.17.0",
   "level": "minor",
-  "reason": "Add authenticated link collaboration and substantial native editing capabilities to SB Docs, SB Sheets and SB Slides.",
+  "reason": "Add a dedicated Co-admin invitation workspace and a Co-admin AI allowance policy while limiting the developer console to the creator allowlist.",
   "features": [
-    "Revocable links and simultaneous authenticated editing in all three Office editors",
-    "Editable Docs tables, find and replace, and paragraph layout",
-    "Sheets range editing, reference-aware row and column operations, and windowed rendering",
-    "Slides multiselection, alignment, group movement and stacking controls"
+    "Dedicated workspace for Co-admins to issue, view and copy their own single-use Plus invitations",
+    "Unlimited Co-admin weekly AI allowance with retained usage and provider cost accounting"
   ]
 }

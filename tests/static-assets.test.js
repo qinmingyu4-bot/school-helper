@@ -111,17 +111,18 @@ test("compression negotiation respects exclusions, quality preferences and ident
 test("boot requests start concurrently and retain authenticated navigation and logged-out recovery", async () => {
   const source = await fs.readFile(path.resolve(__dirname, "../public/app.js"), "utf8");
   const boot = source.slice(source.indexOf("  async function boot()"), source.indexOf('\n  document.addEventListener("click"', source.indexOf("  async function boot()")));
+  const roles = source.slice(source.indexOf("  const isAdmin ="), source.indexOf("  const profile ="));
   for (const signedIn of [true, false]) {
     const pending = new Map(), state = {}, pages = [], rendered = [];
     const context = { URL, location: { href: "https://example.test/app?page=schedule", search: "?page=schedule" },
       api: (url) => new Promise((resolve, reject) => pending.set(url, { resolve, reject })), state,
       document: {}, history: { replaceState() {} }, root: {}, ui: { text: (x) => x }, render: () => rendered.push(true),
       officeTools: { sharedLink: null, takeSharedLink: () => null },
-      reportUserActivity() {}, localStorage: { getItem: () => null }, isAdmin: () => false, loadPage: async (page) => pages.push(page) };
+      reportUserActivity() {}, localStorage: { getItem: () => null }, esc: String, loadPage: async (page) => pages.push(page) };
     vm.createContext(context);
-    const result = vm.runInContext(boot + "\nboot();", context);
+    const result = vm.runInContext(`${roles}${boot}\nboot();`, context);
     assert.deepEqual([...pending.keys()].sort(), ["/api/auth/config", "/api/auth/google/config", "/api/me"]);
-    if (signedIn) pending.get("/api/me").resolve({ user: { id: "fixture" } });
+    if (signedIn) pending.get("/api/me").resolve({ user: { id: "fixture", role: "student" } });
     else pending.get("/api/me").reject(Object.assign(new Error("Please log in"), { status: 401 }));
     pending.get("/api/auth/google/config").resolve({ enabled: true });
     pending.get("/api/auth/config")[signedIn ? "resolve" : "reject"](signedIn ? {} : new Error("offline"));

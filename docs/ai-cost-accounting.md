@@ -94,9 +94,11 @@ Private server configuration only:
 Costs reads follow pagination (up to 180 days per page), coalesce identical
 concurrent reads (including shared worker leases), serialize range changes, and persist successful snapshots for
 five minutes. A 429 honors Retry-After with at least five minutes of backoff across
-all ranges; other failures wait at least one minute. Last successful data remains
-available with its original timestamp and a stale label. No partial page total is
-published. Changing project/key scope changes the cache identity.
+all ranges; other failures wait at least one minute. During backoff, rebuild the selected range from archived official days in the
+same project/key scope. Keep their last sync timestamp and mark missing days
+explicitly. A missing day stays blank. Recorded request costs remain separately
+visible if there is no official snapshot. Incomplete provider responses are not
+archived. Changing project/key scope changes the cache identity.
 
 Ledger rows have no TTL in local/Dynamo storage. Small admission/reconciliation
 states are stored under `aiCostControl` / `AI_COST_CONTROL`. Unknown requests retain

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Keep synced official AI spending visible during reporting delays, including after a UTC date change or range switch. Identify missing days and show recorded request costs separately when no official snapshot is available.
+
 ## 1.22.1 — 2026-11-23 — Faster workspace loading
 
 PATCH from AWS 1.22.0 (`2a7169f`): load profile media separately from sign-in.

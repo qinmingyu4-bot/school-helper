@@ -31,13 +31,15 @@ test('cost range controls are independent, bilingual, and ignore superseded resp
   assert.equal((costs.controls.innerHTML.match(/data-admin-usage-days=/g) || []).length, 6);
   assert.match(costs.content.innerHTML, /总 AI 成本（官方消费）/);
   assert.match(costs.content.innerHTML, /官方账单暂不可用；不以本地估算代替/);
+  assert.match(costs.content.innerHTML, /已记录 AI 成本<\/dt><dd>USD\s3\.00/);
   assert.doesNotMatch(costs.content.innerHTML, /总 AI 成本（已记录）|AI 估算成本/);
   assert.equal((usage.controls.innerHTML.match(/data-admin-usage-days=/g) || []).length, 2);
   const choose = (value) => costs.onclick({ target: { closest: () => ({ dataset: { adminUsageDays: value } }) } });
   choose('90'); choose('all');
   pending[1]({ ...data, aiCosts: { ...data.aiCosts, calculatedUsd: 9 } }); await flush();
   pending[0](data); await flush();
-  assert.doesNotMatch(costs.content.innerHTML, /总 AI 成本（已记录）|USD.*9\.00/);
+  assert.match(costs.content.innerHTML, /已记录 AI 成本<\/dt><dd>USD\s9\.00/);
+  assert.doesNotMatch(costs.content.innerHTML, /总 AI 成本（已记录）/);
   assert.equal(calls.filter((s) => s === '/api/admin/usage?days=7').length, 1);
   assert.ok(calls.includes('/api/admin/ai-costs?period=all'));
   i18n.setLanguage('en', false); ui.sync();
@@ -96,9 +98,14 @@ test('daily costs are visible before the range report and distinguish zero from 
   assert.deepEqual(calls, ['/api/admin/ai-costs?period=7', '/api/admin/usage?days=7']);
   costs.onclick({ target: { closest: () => ({ dataset: { adminUsageDays: '30' } }) } });
   assert.match(costs.daily.innerHTML, /<strong>USD\s0\.00<\/strong>/);
-  finishRange({ ...data, aiCosts: { ...data.aiCosts, official: { ...data.aiCosts.official, days: days.filter((row) => row.day !== through) } } });
+  finishRange({ ...data, aiCosts: { ...data.aiCosts, official: { ...data.aiCosts.official,
+    from: '2026-11-16', through: '2026-11-21', coverageLimited: true, missingDays: 1, stale: true,
+    days: days.filter((row) => row.day !== through) } } });
   await flush();
   assert.match(costs.daily.innerHTML, /<strong>—<\/strong>/);
   assert.match(costs.daily.innerHTML, /billing data is not yet available/);
+  assert.match(costs.daily.innerHTML, /2026-11-21.*USD\s0\.0142/);
+  assert.match(costs.content.innerHTML, /Synced official spend/);
+  assert.match(costs.content.innerHTML, /with 1 still missing official data/);
   i18n.setLanguage('zh-CN', false);
 });

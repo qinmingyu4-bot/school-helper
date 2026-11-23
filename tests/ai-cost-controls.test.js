@@ -84,6 +84,46 @@ test('official reads coalesce, survive restart, back off across ranges and retai
   const all=await c.periodReport('all');assert.equal(all.from,'2025-01-01');assert.equal(all.aiCosts.since,new Date(Date.parse(day)).toISOString());
   assert.equal(all.aiCosts.unallocatedUsd,1);assert.equal(all.aiCosts.cash.balanceUsd,null);
 });
+test('cost backoff after UTC midnight reuses archived official days and leaves the new day missing', async t => {
+  const db = await fixture(t);
+  const lastDay = '2026-11-30', today = '2026-12-01';
+  const snapshotTime = Date.parse(lastDay + 'T23:59:59Z');
+  let time = snapshotTime, calls = 0;
+  const c = createAiCosts({db, now: () => time,
+    env: {OPENAI_COSTS_ADMIN_KEY: 'fixture', OPENAI_COSTS_PROJECT_ID: 'archive'},
+    request: async () => {
+      calls++;
+      if (calls === 2) return new Response('', {status: 429});
+      const row = {start_time: Date.parse(lastDay) / 1000, results: [{amount: {currency: 'usd', value: 3}, line_item: 'text'}]};
+      return Response.json({data: [row], has_more: false});
+    }
+  });
+  const initial = (await c.periodReport('7')).aiCosts.official;
+  assert.equal(initial.amountUsd, 3);
+  time += 2000;
+  await db.putAiCost({id: 'today', startedAt: new Date(time).toISOString(), source: 'study', amountMicros: 1e6});
+  const {aiCosts} = await c.periodReport('7');
+  assert.equal(aiCosts.official.stale, true);
+  assert.equal(aiCosts.official.fetchedAt, new Date(snapshotTime).toISOString());
+  assert.equal(aiCosts.official.from, '2026-11-25');
+  assert.equal(aiCosts.official.through, lastDay);
+  assert.equal(aiCosts.official.days.length, 6);
+  assert.equal(aiCosts.official.missingDays, 1);
+  assert.equal(aiCosts.official.amountUsd, 3);
+  assert.equal(aiCosts.reconciliation.outsideCoverageUsd, 1);
+  assert.equal(aiCosts.differenceUsd, 3);
+  assert.equal(aiCosts.official.days.some(row => row.day === today), false);
+  const month = (await c.periodReport('30')).aiCosts.official;
+  assert.equal(month.missingDays, 23);
+  assert.equal(month.amountUsd, 3);
+  assert.equal(calls, 2);
+  time += 6 * 60000;
+  const recovered = (await c.periodReport('7')).aiCosts.official;
+  assert.equal(recovered.missingDays, 0);
+  assert.deepEqual(recovered.days.at(-1), {day: today, amountUsd: 0});
+  assert.equal(recovered.stale, undefined);
+  assert.equal(calls, 3);
+});
 function wav(seconds) {
   const bytes=Buffer.alloc(44+seconds*8000);bytes.write('RIFF');bytes.writeUInt32LE(bytes.length-8,4);bytes.write('WAVEfmt ',8);
   bytes.writeUInt32LE(16,16);bytes.writeUInt16LE(1,20);bytes.writeUInt16LE(1,22);bytes.writeUInt32LE(8000,24);bytes.writeUInt32LE(8000,28);

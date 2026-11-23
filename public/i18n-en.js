@@ -117,6 +117,8 @@ AI 生成文件暂时无法加载，请刷新重试。|AI-generated files could 
 差额|Difference
 等待官方每日明细；已记录调用保留在下方，不作为官方总额。|Waiting for official daily details. Recorded calls remain below and are not presented as the official total.
 官方覆盖范围|Official coverage
+已同步的官方消费|Synced official spend
+所选区间有 {0} 天缺少官方数据，金额仅含已同步日期。|The amount covers synced days, with {0} still missing official data.
 上次成功同步，当前同步暂缓|Last successful sync; current sync paused
 活跃按前台交互或功能操作去重。回访仅统计目标日期已经结束的新用户。首次学习指收到课程回答或提交练习。费用统一查看上方总 AI 成本。|Activity is deduplicated by foreground interactions or feature actions. Retention includes new users with completed target days. First learning means a course reply or submitted exercise. See Total AI cost above for all costs.
 尚未主动检测；查看页面不会调用模型。|No explicit probe yet; viewing this page does not call a model.

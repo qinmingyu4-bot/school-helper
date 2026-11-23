@@ -94,8 +94,10 @@
     const c = data.aiCosts, official = c.official, r = c.reconciliation;
     const available = official?.status === "available";
     const headline = metricRows([
-      ["总 AI 成本（官方消费）", available ? money(official.amountUsd) : "—", ui.text(available ? "官方总额包含下方各项，不再叠加" : "官方账单暂不可用；不以本地估算代替")],
-      ["已归属功能成本", r?.status === "available" ? money(r.attributedUsd) : "—", ui.text("按调用用量计价，限同一官方覆盖范围")],
+      [available && official.coverageLimited ? "已同步的官方消费" : "总 AI 成本（官方消费）", available ? money(official.amountUsd) : "—", ui.text(available ? "官方总额包含下方各项，不再叠加" : "官方账单暂不可用；不以本地估算代替")],
+      !available && Number.isFinite(c.calculatedUsd)
+        ? costRow(data)
+        : ["已归属功能成本", r?.status === "available" ? money(r.attributedUsd) : "—", ui.text("按调用用量计价，限同一官方覆盖范围")],
       ["历史未归属费用", r?.status === "available" ? money(r.historicalUsd) : "—", ui.text("完整账本启用日之前的官方消费")]
     ]);
     const details = r?.status === "available" ? metricRows([
@@ -107,7 +109,9 @@
       <h3>${label("功能成本去向")}</h3><ul class="admin-usage-list">${r.features.map(f => `<li><span>${label(({...features,"academic-calendar":"共享校历","product-help":"使用帮助","health-check":"连通检测"})[f.source] || "调用来源未标记")} · ${esc(f.model)} · ${label(f.trigger === "background" ? "后台任务" : f.trigger === "interactive" ? "主动操作" : "早期未标记触发方式")}</span><small>${esc(money(f.amountUsd))} · ${number(f.requests)} ${label("次请求")}${f.unknownRequests ? ` · ${label("待核对请求")} ${number(f.unknownRequests)}` : ""}</small></li>`).join("")}</ul>
       <details class="admin-usage-days"><summary>${label("每日对账")}</summary><ul class="admin-usage-list">${r.daily.map(d => `<li><span>${esc(d.day)}</span><small>${label("官方消费")} ${esc(money(d.officialUsd))} · ${label("已归属")} ${esc(money(d.attributedUsd))} · ${label("未标记")} ${esc(money(d.unclassifiedUsd))} · ${label("差额")} ${esc(money(d.differenceUsd))}</small></li>`).join("")}</ul></details>`
       : `<p class="admin-usage-note">${label("等待官方每日明细；已记录调用保留在下方，不作为官方总额。")}</p>`;
-    return coverage(data) + (available ? `<p class="admin-usage-note">${label("官方覆盖范围")}: ${esc(official.from)} — ${esc(official.through)} UTC · ${label("读取时间")}: ${esc(date(official.fetchedAt))}${official.stale ? ` · ${label("上次成功同步，当前同步暂缓")}` : ""}</p>` : "") + headline + details + costs(data);
+    const missing = official?.coverageLimited && official.missingDays
+      ? `<p class="admin-usage-note">${esc(ui.message`所选区间有 ${number(official.missingDays)} 天缺少官方数据，金额仅含已同步日期。`)}</p>` : "";
+    return coverage(data) + (available ? `<p class="admin-usage-note">${label("官方覆盖范围")}: ${esc(official.from)} — ${esc(official.through)} UTC · ${label("读取时间")}: ${esc(date(official.fetchedAt))}${official.stale ? ` · ${label("上次成功同步，当前同步暂缓")}` : ""}</p>` : "") + missing + headline + details + costs(data);
   }
 
   function coverage(data) {

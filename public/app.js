@@ -4384,6 +4384,14 @@
     ]);
   }
 
+  function entryMode(url, preferredMode) {
+    if (!canManageInvites()) return "student";
+    if (isAdmin() && feedbackView.hasLink()) return "admin";
+    const page = url.searchParams.get("page");
+    if (page === "admin") return "admin";
+    return !STUDENT_PAGES.includes(page) && preferredMode === "admin" ? "admin" : "student";
+  }
+
   async function boot() {
     window.performance.mark("studybridge:boot-start");
     const entryUrl = new URL(location.href);
@@ -4411,9 +4419,9 @@
       state.user = data.user;
       const savedTool = localStorage.getItem("studybridge.tool");
       state.tool = ["notes", "docs", "sheets", "slides", "images", "cheatsheet", "email"].includes(savedTool) ? savedTool : "notes";
-      state.mode = canManageInvites() && (localStorage.getItem("studybridge.mode") === "admin" || isAdmin() && feedbackView.hasLink()) ? "admin" : "student";
+      state.mode = entryMode(entryUrl, localStorage.getItem("studybridge.mode"));
       void reportUserActivity();
-      const urlPage = new URL(location.href).searchParams.get("page");
+      const urlPage = entryUrl.searchParams.get("page");
       const billingResult = new URL(location.href).searchParams.get("billing");
       const mailboxResult = new URL(location.href).searchParams.get("mailbox");
       if (mailboxResult) mailboxView.setBanner(({ connected: ui.text("邮箱已绑定。可在设置中单独开启自动 AI 分析。"), denied: ui.text("此次邮箱授权未完成，你仍可以粘贴邮件生成回复。"), failed: ui.text("邮箱绑定未成功，请在设置中重试。") })[mailboxResult] || ui.text("请在设置中查看邮箱连接状态。"), { showInbox: mailboxResult === "connected" });

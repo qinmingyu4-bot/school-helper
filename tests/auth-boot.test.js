@@ -12,6 +12,7 @@ function harness(result, error, savedMode) {
     location: { href: "https://example.test/app?page=tools", search: "?page=tools" },
     history: { replaceState: (_state, _title, path) => paths.push(path) }, document: {},
     ui: require("../public/i18n"), esc: String, officeTools: { sharedLink: null, takeSharedLink() { return this.sharedLink; } },
+    feedbackView: { hasLink: () => false },
     api: async (path) => {
       requests.push(path);
       if (path !== "/api/me?view=workspace") return {};
@@ -23,7 +24,8 @@ function harness(result, error, savedMode) {
     loadPage: async (page, { officeShare } = {}) => pages.push(officeShare ? { page, officeShare } : page)
   });
   const roles = source.slice(source.indexOf("  const isAdmin ="), source.indexOf("  const profile ="));
-  vm.runInContext(roles + boot, context);
+  const studentPages = source.match(/^  const STUDENT_PAGES = .*;$/m)[0];
+  vm.runInContext(studentPages + "\n" + roles + boot, context);
   return { context, paths, pages, requests, marks, state, root };
 }
 
@@ -115,6 +117,28 @@ test('shared Office links open the corresponding editor after authentication', a
 test("only creators and Co-admins can restore the saved invitation or developer workspace", async () => {
   for (const role of ["student", "co-admin", "admin"]) {
     const h = harness({ user: { id: "alice", role } }, null, "admin");
+    h.context.location.href = "https://example.test/app";
+    await h.context.boot();
+    assert.equal(h.state.mode, role === "student" ? "student" : "admin");
+  }
+});
+
+test("explicit student destinations take priority over a saved developer workspace", async () => {
+  for (const role of ["admin", "co-admin"]) {
+    for (const page of ["grades", "study", "schedule", "classmates", "tools"]) {
+      const h = harness({ user: { id: "alice", role } }, null, "admin");
+      h.context.location.href = "https://example.test/app?page=" + page;
+      await h.context.boot();
+      assert.equal(h.state.mode, "student");
+      assert.deepEqual(h.pages, [page]);
+    }
+  }
+});
+
+test("explicit developer links respect the account role", async () => {
+  for (const role of ["student", "co-admin", "admin"]) {
+    const h = harness({ user: { id: "alice", role } }, null, "student");
+    h.context.location.href = "https://example.test/app?page=admin";
     await h.context.boot();
     assert.equal(h.state.mode, role === "student" ? "student" : "admin");
   }

@@ -8,22 +8,25 @@ cd "${2:-$HOME/school-helper}"
 test -z "$(git status --porcelain --untracked-files=no)"
 previous="$(git rev-parse HEAD)"
 git merge-base --is-ancestor "$previous" "$target"
-backup_root="${STUDYBRIDGE_RELEASE_BACKUP_ROOT:-$HOME/studybridge-release-backups}"
-mkdir -p "$backup_root"
-chmod 700 "$backup_root"
-backup="$(mktemp -d "$backup_root/release-${target:0:12}-XXXXXXXX")"
-git show "$target:scripts/release-backup.js" > "$backup/backup-runner.cjs"
-printf '%s\n' "$previous" > "$backup/previous-commit.txt"
+staging="$(mktemp -d "$PWD/.studybridge-deploy.XXXXXXXX")"
+backup=""
 restore_needed=0
+dependencies_changed=0
 push_config_changed=0
+candidate_started=0
 
 recover() {
   result=$?
   trap - EXIT
   if [ "$result" -ne 0 ] && [ "$restore_needed" -eq 1 ]; then
     echo "Release failed; restoring previous application code without restoring or deleting user data."
-    if [ -f "$backup/manifest.json" ] && git cat-file -e "$target:scripts/material-compat.js" 2>/dev/null; then
-      pm2 stop studybridge || true
+    if [ "$candidate_started" -eq 1 ]; then
+      if ! pm2 stop studybridge; then
+        echo "Could not stop the candidate; retained the rollback files at $staging." >&2
+        exit "$result"
+      fi
+    fi
+    if [ "$candidate_started" -eq 1 ] && [ -f "$backup/manifest.json" ] && git cat-file -e "$target:scripts/material-compat.js" 2>/dev/null; then
       git show "$target:scripts/material-compat.js" > "$backup/material-compat.cjs"
       if ! node "$backup/material-compat.cjs" "$PWD" "$backup/manifest.json"; then
         echo "Retaining current code and private data; compatibility recovery requires inspection."
@@ -31,26 +34,55 @@ recover() {
       fi
     fi
     if [ "$(git rev-parse HEAD)" != "$previous" ]; then
-      git switch --detach "$previous" && npm ci --omit=dev || true
+      git switch --detach "$previous"
+    fi
+    if [ "$dependencies_changed" -eq 1 ]; then
+      if [ -e node_modules ] || [ -L node_modules ]; then
+        mv node_modules "$staging/failed-dependencies"
+      fi
+      if [ -e "$staging/previous-dependencies" ] || [ -L "$staging/previous-dependencies" ]; then
+        mv "$staging/previous-dependencies" node_modules
+      fi
     fi
     if [ "$push_config_changed" -eq 1 ] && [ -f "$backup/environment.env" ]; then
       cp "$backup/environment.env" .env
       chmod 600 .env
     fi
-    pm2 restart studybridge --update-env && pm2 save || true
+    pm2 restart studybridge --update-env
+    pm2 save
   fi
+  rm -rf -- "$staging"
   exit "$result"
 }
 trap recover EXIT
+
+# Prepare the exact release on the same filesystem while the old service is online.
+mkdir "$staging/candidate"
+git archive "$target" | tar -x -C "$staging/candidate"
+(cd "$staging/candidate" && npm ci --omit=dev)
+test -d "$staging/candidate/node_modules"
+test "$(git rev-parse HEAD)" = "$previous"
+test -z "$(git status --porcelain --untracked-files=no)"
+
+backup_root="${STUDYBRIDGE_RELEASE_BACKUP_ROOT:-$HOME/studybridge-release-backups}"
+mkdir -p "$backup_root"
+chmod 700 "$backup_root"
+backup="$(mktemp -d "$backup_root/release-${target:0:12}-XXXXXXXX")"
+git show "$target:scripts/release-backup.js" > "$backup/backup-runner.cjs"
+printf '%s\n' "$previous" > "$backup/previous-commit.txt"
 
 # Pause writes for a consistent backup of the database and authored files.
 restore_needed=1
 pm2 stop studybridge
 node "$backup/backup-runner.cjs" "$PWD" "$backup" "$previous" "$target"
 git merge --ff-only "$target"
-npm ci --omit=dev
+if [ -e node_modules ] || [ -L node_modules ]; then
+  mv node_modules "$staging/previous-dependencies"
+fi
+dependencies_changed=1
+mv "$staging/candidate/node_modules" node_modules
 
-# Code installation must not change the configuration or local persisted data.
+# Code and dependency activation must not change configuration or persisted data.
 node - "$backup" <<'NODE'
 const fs = require('node:fs');
 const path = require('node:path');
@@ -78,6 +110,7 @@ NODE
 # after the private backup and unchanged-data check, and preserve valid keys on later releases.
 push_config_changed=1
 node scripts/configure-web-push.js "$PWD/.env" "https://studybridge.ink" --ensure
+candidate_started=1
 pm2 restart studybridge --update-env
 port="$(node -p "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')).port" "$backup/manifest.json")"
 [[ "$port" =~ ^[0-9]+$ ]] || exit 1

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Open explicit student workspace links at their requested page even when the account last used the developer workspace.
+- Prepare release dependencies before pausing the Lightsail service. Preserve the previously installed dependencies for rollback alongside the existing private data backup.
+
 ## 1.22.2 — 2026-11-23 — Keep official AI costs visible
 
 PATCH from AWS 1.22.1 (`e04d917`): retain archived official spend while billing sync is delayed.

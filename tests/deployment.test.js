@@ -25,13 +25,26 @@ async function deployment(t) {
   await fs.copyFile(path.join(__dirname, "../scripts/release-backup.js"), path.join(root, "scripts/release-backup.js"));
   await fs.copyFile(path.join(__dirname, "../scripts/deploy-release.sh"), path.join(root, "scripts/deploy-release.sh"));
   await fs.copyFile(path.join(__dirname, "../scripts/configure-web-push.js"), path.join(root, "scripts/configure-web-push.js"));
-  await fs.symlink(path.resolve(__dirname, "../node_modules"), path.join(root, "node_modules"));
   await fs.writeFile(path.join(root, "package.json"), '{"version":"1.1.107"}');
   await fs.writeFile(path.join(root, "public/app.js"), 'const VERSION = "1.1.107";');
   git("add", "."); git("commit", "-qm", "New release");
   const target = git("rev-parse", "HEAD");
   git("switch", "--detach", previous);
-  await fs.writeFile(path.join(bin, "npm"), "#!/bin/sh\nexit 0\n", { mode: 0o700 });
+  // Runtime dependencies are outside Git, just as in the server checkout.
+  await fs.mkdir(path.join(root, "node_modules"));
+  await fs.writeFile(path.join(root, "node_modules/previous-marker"), "installed");
+  await fs.writeFile(path.join(bin, "npm"), `#!/usr/bin/env node
+const fs = require('node:fs');
+const args = process.argv.slice(2);
+if (args.join(' ') !== 'ci --omit=dev' ||
+    process.cwd() === process.env.DEPLOY_TEST_ROOT ||
+    JSON.parse(fs.readFileSync('package.json', 'utf8')).version !== '1.1.107') process.exit(1);
+fs.appendFileSync(process.env.DEPLOY_TEST_LOG, 'prepare dependencies\\n');
+if (process.env.DEPLOY_TEST_BAD_PREPARATION) process.exit(1);
+fs.mkdirSync('node_modules');
+fs.writeFileSync('node_modules/candidate-marker', 'installed');
+fs.symlinkSync(process.env.DEPLOY_TEST_WEB_PUSH, 'node_modules/web-push');
+`, { mode: 0o700 });
   await fs.writeFile(path.join(bin, "pm2"), `#!/usr/bin/env node
 const fs = require('node:fs');
 fs.appendFileSync(process.env.DEPLOY_TEST_LOG, process.argv.slice(2).join(' ') + '\\n');
@@ -41,14 +54,22 @@ if (process.argv[2] === 'jlist') console.log(JSON.stringify([{name:'studybridge'
 const fs = require('node:fs');
 const path = require('node:path');
 const args = process.argv.slice(2), output = args[args.indexOf('-o') + 1];
-if (args.some(arg => arg.endsWith('/api/health'))) fs.writeFileSync(output, JSON.stringify({ok:true,db:process.env.DEPLOY_TEST_BAD_HEALTH ? 'dynamodb' : 'local',schedulePush:{configured:true,workerEnabled:!process.env.DEPLOY_TEST_BAD_PUSH}}));
-else fs.copyFileSync(path.join(process.env.DEPLOY_TEST_ROOT,'public/app.js'), output);
+if (args.some(arg => arg.endsWith('/api/health'))) {
+  if (process.env.DEPLOY_TEST_BAD_HEALTH) {
+    const live = path.join(process.env.DEPLOY_TEST_ROOT, '.data/database.json');
+    const data = JSON.parse(fs.readFileSync(live, 'utf8'));
+    data.users.alice.savedDuringRelease = true;
+    fs.writeFileSync(live, JSON.stringify(data));
+  }
+  fs.writeFileSync(output, JSON.stringify({ok:true,db:process.env.DEPLOY_TEST_BAD_HEALTH ? 'dynamodb' : 'local',schedulePush:{configured:true,workerEnabled:!process.env.DEPLOY_TEST_BAD_PUSH}}));
+} else fs.copyFileSync(path.join(process.env.DEPLOY_TEST_ROOT,'public/app.js'), output);
 `, { mode: 0o700 });
   const log = path.join(temporary, "pm2.log");
   const run = (extra = {}) => spawnSync("bash", [path.join(__dirname, "../scripts/deploy-release.sh"), target, root], {
     cwd: root, encoding: "utf8", timeout: 10000,
     env: { ...process.env, STUDYBRIDGE_RELEASE_BACKUP_ROOT: backupRoot, PATH: `${bin}${path.delimiter}${path.dirname(process.execPath)}${path.delimiter}${process.env.PATH}`,
-      DEPLOY_TEST_ROOT: root, DEPLOY_TEST_LOG: log, ...extra }
+      DEPLOY_TEST_ROOT: root, DEPLOY_TEST_LOG: log,
+      DEPLOY_TEST_WEB_PUSH: path.dirname(require.resolve("web-push/package.json")), ...extra }
   });
   return { root, backupRoot, git, previous, target, log, data, run };
 }
@@ -57,6 +78,7 @@ test("deployment backs up private data before installing the exact release and r
   const d = await deployment(t), result = d.run();
   assert.equal(result.status, 0, result.stderr);
   assert.equal(d.git("rev-parse", "HEAD"), d.target);
+  assert.equal(await fs.readFile(path.join(d.root, "node_modules/candidate-marker"), "utf8"), "installed");
   assert.equal(await fs.readFile(path.join(d.root, ".data/database.json"), "utf8"), d.data);
   const liveEnv = await fs.readFile(path.join(d.root, ".env"), "utf8");
   assert.match(liveEnv, /^SESSION_SECRET=fixture-only\n/);
@@ -71,7 +93,18 @@ test("deployment backs up private data before installing the exact release and r
   assert.equal(manifest.mode, "local");
   assert.equal(await fs.readFile(path.join(backup, "environment.env"), "utf8"), "SESSION_SECRET=fixture-only\n");
   assert.deepEqual(JSON.parse(await fs.readFile(path.join(backup, "database.json"), "utf8")), JSON.parse(d.data));
-  assert.match(await fs.readFile(d.log, "utf8"), /^stop studybridge\njlist\nrestart studybridge --update-env\nsave\n$/);
+  assert.equal(await fs.readFile(d.log, "utf8"), "prepare dependencies\nstop studybridge\njlist\nrestart studybridge --update-env\nsave\n");
+  assert.equal((await fs.readdir(d.root)).some(name => name.startsWith(".studybridge-deploy.")), false);
+});
+
+test("dependency preparation failure leaves the current service and dependencies alone", async (t) => {
+  const d = await deployment(t), result = d.run({ DEPLOY_TEST_BAD_PREPARATION: "true" });
+  assert.notEqual(result.status, 0);
+  assert.equal(d.git("rev-parse", "HEAD"), d.previous);
+  assert.equal(await fs.readFile(path.join(d.root, "node_modules/previous-marker"), "utf8"), "installed");
+  assert.equal(await fs.readFile(d.log, "utf8"), "prepare dependencies\n");
+  assert.deepEqual(await fs.readdir(d.backupRoot), []);
+  assert.equal((await fs.readdir(d.root)).some(name => name.startsWith(".studybridge-deploy.")), false);
 });
 
 test("backup failure prevents code installation and restarts the previous application", async (t) => {
@@ -87,11 +120,19 @@ test("backup failure prevents code installation and restarts the previous applic
 test("failed startup verification rolls back code while preserving user data and the verified backup", async (t) => {
   const d = await deployment(t), result = d.run({ DEPLOY_TEST_BAD_HEALTH: "true" });
   assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Application switched database mode/);
   assert.equal(d.git("rev-parse", "HEAD"), d.previous);
-  assert.equal(await fs.readFile(path.join(d.root, ".data/database.json"), "utf8"), d.data);
+  const expected = JSON.parse(d.data);
+  expected.users.alice.savedDuringRelease = true;
+  assert.deepEqual(JSON.parse(await fs.readFile(path.join(d.root, ".data/database.json"), "utf8")), expected);
+  const [backup] = await fs.readdir(d.backupRoot);
+  assert.deepEqual(JSON.parse(await fs.readFile(path.join(d.backupRoot, backup, "database.json"), "utf8")), JSON.parse(d.data));
   assert.equal(await fs.readFile(path.join(d.root, "public/app.js"), "utf8"), 'const VERSION = "1.1.106";');
   assert.equal(await fs.readFile(path.join(d.root, ".env"), "utf8"), "SESSION_SECRET=fixture-only\n");
+  assert.equal(await fs.readFile(path.join(d.root, "node_modules/previous-marker"), "utf8"), "installed");
   const calls = await fs.readFile(d.log, "utf8");
+  assert.equal(calls.split("prepare dependencies\n").length - 1, 1);
+  assert.match(calls, /restart studybridge --update-env\nstop studybridge\nrestart studybridge --update-env\nsave\n$/);
   assert.equal(calls.split("restart studybridge --update-env").length - 1, 2);
 });
 
@@ -99,6 +140,7 @@ test("failed startup verification rolls back code while preserving user data and
 test("a disabled push worker fails deployment verification and restores private environment and code", async (t) => {
   const d = await deployment(t), result = d.run({ DEPLOY_TEST_BAD_PUSH: "true" });
   assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Schedule push worker is not running/);
   assert.equal(d.git("rev-parse", "HEAD"), d.previous);
   assert.equal(await fs.readFile(path.join(d.root, ".env"), "utf8"), "SESSION_SECRET=fixture-only\n");
   assert.equal(await fs.readFile(path.join(d.root, ".data/database.json"), "utf8"), d.data);

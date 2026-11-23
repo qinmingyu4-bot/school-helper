@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Keep synced official AI spending visible during reporting delays, including after a UTC date change or range switch. Identify missing days and show recorded request costs separately when no official snapshot is available.
+- Keep synced official AI spending visible during reporting delays, including after a UTC date change or range switch. Identify missing days and show recorded request costs separately when no official snapshot is available. Show USD 0.00 with a pending label for today until official data arrives, and retain the selected range while refreshing it.
 
 ## 1.22.1 — 2026-11-23 — Faster workspace loading
 

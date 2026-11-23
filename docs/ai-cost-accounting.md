@@ -96,8 +96,10 @@ concurrent reads (including shared worker leases), serialize range changes, and 
 five minutes. A 429 honors Retry-After with at least five minutes of backoff across
 all ranges; other failures wait at least one minute. During backoff, rebuild the selected range from archived official days in the
 same project/key scope. Keep their last sync timestamp and mark missing days
-explicitly. A missing day stays blank. Recorded request costs remain separately
-visible if there is no official snapshot. Incomplete provider responses are not
+explicitly. The daily headline shows USD 0.00 with a pending label before
+today’s official data arrives. This display value is excluded from scope and
+reconciliation. Recorded request costs remain separately visible if there is no
+official snapshot. Incomplete provider responses are not
 archived. Changing project/key scope changes the cache identity.
 
 Ledger rows have no TTL in local/Dynamo storage. Small admission/reconciliation

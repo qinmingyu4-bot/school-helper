@@ -31,13 +31,14 @@
     const available = official?.status === "available";
     const daily = available && Array.isArray(official.days) ? official.days : [];
     const today = daily.find((row) => row.day === day)?.amountUsd;
+    const todaySynced = Number.isFinite(today);
     const notes = ["OpenAI 官方消费", "UTC"];
     if (target.error) notes.push("无法刷新每日成本");
     else if (!report) notes.push("正在读取使用数据…");
     else if (official?.status === "not_configured") notes.push("尚未连接官方账单");
     else if (!available) notes.push("官方账单暂不可用");
-    else if (!Number.isFinite(today)) notes.push("今日账单尚无数据");
-    else notes.push("今日数据可能延迟");
+    else if (todaySynced) notes.push("今日数据可能延迟");
+    if (!todaySynced) notes.push("今日账单待同步");
     if (available && official.stale) notes.push("上次成功同步，当前同步暂缓");
 
     const dayLabel = (value) => date(value, { month: "short", day: "numeric", timeZone: "UTC" });
@@ -45,7 +46,7 @@
     const recent = daily.filter((row) => row.day < day && Date.parse(row.day) >= first && Number.isFinite(row.amountUsd))
       .sort((a, b) => b.day.localeCompare(a.day));
     return `<div class="admin-daily-cost-headline">
-      <strong>${Number.isFinite(today) ? esc(money(today)) : "—"}</strong>
+      <strong>${esc(money(todaySynced ? today : 0))}</strong>
       <small>${[...(day ? [esc(dayLabel(day))] : []), ...notes.map(label)].join(" · ")}</small>
     </div>${recent.length ? `<dl class="admin-daily-cost-days" aria-label="${label("近 7 天每日成本")}">${recent.map((row) =>
       `<div><dt><time datetime="${esc(row.day)}">${esc(dayLabel(row.day))}</time></dt><dd>${esc(money(row.amountUsd))}</dd></div>`).join("")}</dl>` : ""}`;
@@ -196,9 +197,13 @@
       if (focusSelector) control.querySelector(focusSelector)?.focus({ preventScroll: true });
       const content = element.querySelector("[data-admin-usage-content]");
       content.setAttribute("aria-busy", String(target.pending));
-      content.innerHTML = target.pending ? `<p class="muted" role="status">${label("正在读取使用数据…")}</p>`
-        : target.error ? `<p class="muted" role="status">${label("无法读取使用数据，请刷新重试。")}</p>`
-          : target.data ? (target.costsOnly ? costOverview(target.data) : target.userId ? summary(target.data) : overview(target.data)) : "";
+      const status = target.pending ? `<p class="muted" role="status">${label("正在读取使用数据…")}</p>`
+        : target.error ? `<p class="muted" role="status">${label("无法读取使用数据，请刷新重试。")}</p>` : "";
+      if (target.costsOnly && target.data) {
+        content.innerHTML = status + costOverview(target.data);
+      } else {
+        content.innerHTML = status || (target.data ? (target.userId ? summary(target.data) : overview(target.data)) : "");
+      }
     }
 
     async function load(target) {

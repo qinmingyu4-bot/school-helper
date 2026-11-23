@@ -80,12 +80,15 @@ test('daily costs are visible before the range report and distinguish zero from 
   const data = { from: '2026-11-16', through, since: '2026-11-16T00:00:00Z', trend: [], features: [],
     firstStudy: { reached: 0, eligible: 0 }, retention: { day1: { reached: 0, eligible: 0 }, day7: { reached: 0, eligible: 0 } },
     aiCosts: { sources: [], official: { status: 'available', amountUsd: 9.7642, items: [], days } } };
-  let finishRange;
+  let finishRange, refreshRange;
   const ui = context.StudyBridgeAdminUsage.create({
     root: { querySelector: (selector) => selector === '[data-admin-costs]' ? costs : usage }, getAdmin: () => 'owner',
     api: (path) => {
       calls.push(path);
-      if (path.includes('period=30')) return new Promise((resolve) => { finishRange = resolve; });
+      if (path.includes('period=30')) return new Promise((resolve, reject) => {
+        if (finishRange) refreshRange = { resolve, reject };
+        else finishRange = resolve;
+      });
       return Promise.resolve(data);
     }
   });
@@ -93,6 +96,7 @@ test('daily costs are visible before the range report and distinguish zero from 
   assert.match(ui.html(), /Today&#39;s AI cost[\s\S]*data-admin-daily-cost[\s\S]*Total AI cost/);
   assert.match(costs.daily.innerHTML, /<strong>USD\s0\.00<\/strong>/);
   assert.match(costs.daily.innerHTML, /UTC.*Today&#39;s data may be delayed/);
+  assert.doesNotMatch(costs.daily.innerHTML, /billing sync pending/);
   assert.match(costs.daily.innerHTML, /2026-11-21.*USD\s0\.0142.*2026-11-16/);
   assert.doesNotMatch(costs.daily.innerHTML, /2026-11-15|<details|USD\s9\.7642/);
   assert.deepEqual(calls, ['/api/admin/ai-costs?period=7', '/api/admin/usage?days=7']);
@@ -102,10 +106,22 @@ test('daily costs are visible before the range report and distinguish zero from 
     from: '2026-11-16', through: '2026-11-21', coverageLimited: true, missingDays: 1, stale: true,
     days: days.filter((row) => row.day !== through) } } });
   await flush();
-  assert.match(costs.daily.innerHTML, /<strong>—<\/strong>/);
-  assert.match(costs.daily.innerHTML, /billing data is not yet available/);
+  assert.match(costs.daily.innerHTML, /<strong>USD\s0\.00<\/strong>/);
+  assert.match(costs.daily.innerHTML, /billing sync pending/);
   assert.match(costs.daily.innerHTML, /2026-11-21.*USD\s0\.0142/);
   assert.match(costs.content.innerHTML, /Synced official spend/);
   assert.match(costs.content.innerHTML, /with 1 still missing official data/);
+  const refresh = () => costs.onclick({ target: { closest: () => ({ dataset: {} }) } });
+  refresh();
+  assert.match(costs.content.innerHTML, /Synced official spend/);
+  refreshRange.reject(new Error('Temporary network failure'));
+  await flush();
+  assert.match(costs.content.innerHTML, /Synced official spend/);
+  refresh();
+  refreshRange.resolve({ ...data, aiCosts: { ...data.aiCosts, official: { ...data.aiCosts.official,
+    days: days.map(row => row.day === through ? { ...row, amountUsd: 0.25 } : row) } } });
+  await flush();
+  assert.match(costs.daily.innerHTML, /<strong>USD\s0\.25<\/strong>/);
+  assert.doesNotMatch(costs.daily.innerHTML, /billing sync pending/);
   i18n.setLanguage('zh-CN', false);
 });

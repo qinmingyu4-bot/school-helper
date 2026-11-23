@@ -150,7 +150,7 @@ AI 成本|AI costs
 今日 AI 成本|Today's AI cost
 近 7 天每日成本|Daily costs for the last 7 days
 今日数据可能延迟|Today's data may be delayed
-今日账单尚无数据|Today's billing data is not yet available
+今日账单待同步|Today’s billing sync pending
 无法刷新每日成本|Could not refresh daily costs
 总 AI 成本|Total AI cost
 总 AI 成本（已记录）|Total AI cost (recorded)

@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.22.2 — 2026-11-23 — Keep official AI costs visible
+
+PATCH from AWS 1.22.1 (`e04d917`): retain archived official spend while billing sync is delayed.
 
 - Keep synced official AI spending visible during reporting delays, including after a UTC date change or range switch. Identify missing days and show recorded request costs separately when no official snapshot is available. Show USD 0.00 with a pending label for today until official data arrives, and retain the selected range while refreshing it.
 

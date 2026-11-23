@@ -1,5 +1,11 @@
 # StudyBridge Version Archive
 
+## 1.22.2 — 2026-11-23
+
+- PATCH from AWS 1.22.1 (`e04d917b8679d3d67963bbf70e880c8a3b42902d`): retain the official AI cost snapshot across UTC dates and reporting pauses. Mark gaps in official coverage and show today's pending display as USD 0.00 outside reconciliation.
+- Keep the selected cost view visible during refresh. Source: `64ac667` and `5b82f5b`. No dependency, data migration, or configuration change.
+- Verify UTC rollover, official and local cost coverage, bilingual display, release policy and live service health. Rollback code target: `e04d917b8679d3d67963bbf70e880c8a3b42902d`.
+
 ## 1.22.1 — 2026-11-23
 
 - PATCH from AWS 1.22.0 (`2a7169f38a1b2b3a666f6086b8e7aa2735d72f2b`): return short image references in the workspace session response and load avatars and covers separately. Source: `e718138`.

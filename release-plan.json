@@ -1,8 +1,8 @@
 {
-  "previousCommit": "2a7169f38a1b2b3a666f6086b8e7aa2735d72f2b",
-  "previousVersion": "1.22.0",
-  "version": "1.22.1",
+  "previousCommit": "e04d917b8679d3d67963bbf70e880c8a3b42902d",
+  "previousVersion": "1.22.1",
+  "version": "1.22.2",
   "level": "patch",
-  "reason": "Remove embedded avatar and cover transfers from the signed-in workspace startup path.",
+  "reason": "Keep synced official billing visible during delays and show a labeled pending daily amount.",
   "features": []
 }

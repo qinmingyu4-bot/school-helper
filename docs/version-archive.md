@@ -1,5 +1,11 @@
 # StudyBridge Version Archive
 
+## 1.22.3 — 2026-11-24
+
+- PATCH from AWS 1.22.2 (`1140cedd0a4a1c9bf2fa0466d3dba928bf87a7a8`): install release dependencies before pausing Lightsail and retain the existing dependency directory for rollback.
+- Honor explicit workspace destinations for signed-in creators and Co-admins. Preserve normal login, notification routing and account permissions. Source: `5d73207`. No dependency version, database migration, or configuration change.
+- Verify candidate preparation, backup and rollback, notification routing, direct links, release policy and live health. Use the deployment log to measure the actual pause.
+
 ## 1.22.2 — 2026-11-23
 
 - PATCH from AWS 1.22.1 (`e04d917b8679d3d67963bbf70e880c8a3b42902d`): retain the official AI cost snapshot across UTC dates and reporting pauses. Mark gaps in official coverage and show today's pending display as USD 0.00 outside reconciliation.

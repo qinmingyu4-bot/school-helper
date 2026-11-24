@@ -1,8 +1,8 @@
 {
-  "previousCommit": "e04d917b8679d3d67963bbf70e880c8a3b42902d",
-  "previousVersion": "1.22.1",
-  "version": "1.22.2",
+  "previousCommit": "1140cedd0a4a1c9bf2fa0466d3dba928bf87a7a8",
+  "previousVersion": "1.22.2",
+  "version": "1.22.3",
   "level": "patch",
-  "reason": "Keep synced official billing visible during delays and show a labeled pending daily amount.",
+  "reason": "Prepare production dependencies before pausing the service and fix explicit workspace links for signed-in administrators.",
   "features": []
 }

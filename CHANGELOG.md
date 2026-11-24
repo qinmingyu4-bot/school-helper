@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.22.3 — 2026-11-24 — Shorter release pauses and direct workspace links
+
+PATCH from AWS 1.22.2 (`1140ced`): prepare release dependencies before a service pause and honor explicit workspace links.
 
 - Open explicit student workspace links at their requested page even when the account last used the developer workspace.
 - Prepare release dependencies before pausing the Lightsail service. Preserve the previously installed dependencies for rollback alongside the existing private data backup.

@@ -2,19 +2,21 @@
   "use strict";
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
-  function create({ window: win = global, navigate, resizeComposer = () => {} }) {
+  function create({ window: win = global, navigate, selectPage, onWorkspaceShown = () => {} }) {
     const media = win.matchMedia("(max-width: 900px)");
     const initialHasPage = new URL(win.location.href).searchParams.has("page");
     const initialHistory = win.history.state?.sbMobile;
     let root, userId, page, student = false, view = "menu", panel = false, initialized = false;
     let menuScroll = 0, returnPage = "study", hasMenuEntry = false, entering = "";
+    let returning = false, queuedPage = "";
     const marker = () => ({ ...(win.history.state || {}), sbMobile: { userId, view, page, hasMenuEntry } });
     const active = () => media.matches && student && Boolean(userId);
     function apply(focus = false) {
       const shell = root?.querySelector(".app-shell");
       if (!shell) return;
-      shell.dataset.mobileView = view;
-      shell.dataset.mobilePanel = panel ? "open" : "closed";
+      if (shell.dataset.mobileView !== view) shell.dataset.mobileView = view;
+      const panelState = panel ? "open" : "closed";
+      if (shell.dataset.mobilePanel !== panelState) shell.dataset.mobilePanel = panelState;
       const sidebar = shell.querySelector(".sidebar"), workspace = shell.querySelector(".workspace");
       const enabled = active();
       if (sidebar) {
@@ -24,7 +26,6 @@
       }
       if (workspace) workspace.inert = enabled && (view === "menu" || panel);
       shell.querySelector('[data-mobile-action="study-panel"]')?.setAttribute("aria-expanded", String(panel));
-      resizeComposer();
       if (enabled && focus) {
         const target = panel ? sidebar?.querySelector('[data-mobile-action="close-panel"]')
           : view === "menu" ? sidebar?.querySelector(`[data-page="${returnPage}"]`)
@@ -38,6 +39,7 @@
       if (userId !== context.userId) {
         userId = context.userId;
         initialized = false; panel = false; hasMenuEntry = false; menuScroll = 0;
+        returning = false; queuedPage = ""; entering = "";
       }
       if (!initialized && userId) {
         const saved = initialHistory;
@@ -49,17 +51,16 @@
       }
       page = context.page;
       if (page !== "study") panel = false;
-      if (active()) win.history.replaceState(marker(), "", view === "menu" ? "/app" : win.location.href);
+      if (active() && !returning) win.history.replaceState(marker(), "", view === "menu" ? "/app" : win.location.href);
       apply();
       if (active() && entering === page) {
         entering = "";
-        if (!win.matchMedia("(prefers-reduced-motion: reduce)").matches) root.querySelector(".workspace")?.animate?.(
-          [{ transform: "translateX(100%)" }, { transform: "translateX(0)" }], { duration: 240, easing: "ease-out" });
         root.querySelector('[data-mobile-action="menu"]')?.focus({ preventScroll: true });
       }
     }
     function enter(destination) {
       if (!active()) return false;
+      if (returning) { queuedPage = destination; return null; }
       const same = page === destination;
       if (!same) entering = destination;
       if (view === "menu") {
@@ -68,39 +69,52 @@
         const next = marker(); next.sbMobile.page = destination;
         win.history.pushState(next, "", `/app?page=${encodeURIComponent(destination)}`);
       } else { view = "page"; panel = false; }
-      if (same) apply(true);
+      if (same) { apply(true); onWorkspaceShown(); }
       return same;
     }
-    function menu() {
-      if (!active()) return;
+    function showMenu() {
+      if (view === "menu") return;
       returnPage = page; panel = false;
-      // Change only presentation: keep the mounted page, requests, files and drafts.
-      view = "menu";
-      win.history.replaceState(marker(), "", "/app");
+      view = "menu"; entering = "";
       apply(true);
       const sidebar = root.querySelector(".sidebar");
       if (sidebar) sidebar.scrollTop = menuScroll;
     }
-    function closePanel() { panel = false; apply(); root?.querySelector('[data-mobile-action="study-panel"]')?.focus({ preventScroll: true }); }
+    function closePanel() {
+      if (!panel) return;
+      panel = false; apply(); onWorkspaceShown();
+      root?.querySelector('[data-mobile-action="study-panel"]')?.focus({ preventScroll: true });
+    }
     function click(event) {
       const action = event.target.closest?.("[data-mobile-action]")?.dataset.mobileAction;
       if (!action || !active()) return;
       event.preventDefault();
-      if (action === "menu") {
-        if (hasMenuEntry && win.history.state?.sbMobile?.view === "page") win.history.back();
-        else menu();
+      if (action === "menu" && view === "page" && !returning) {
+        returning = hasMenuEntry && win.history.state?.sbMobile?.view === "page";
+        // Show the menu once. The history event only settles the URL and index.
+        showMenu();
+        if (returning) win.history.back();
+        else win.history.replaceState(marker(), "", "/app");
       }
-      if (action === "study-panel") { panel = true; apply(true); }
+      if (action === "study-panel" && view === "page") { panel = true; apply(true); }
       if (action === "close-panel") closePanel();
     }
     function popstate(event) {
-      if (!active() || event.state?.sbMobile?.userId !== userId) return;
-      const saved = event.state.sbMobile;
+      const saved = event.state?.sbMobile;
+      if (!saved || saved.userId !== userId) return;
+      returning = false;
+      const destination = queuedPage;
+      queuedPage = "";
+      if (!active()) { if (destination) void selectPage(destination); return; }
       panel = false; hasMenuEntry = Boolean(saved.hasMenuEntry);
-      if (saved.view === "menu") menu();
-      else {
-        view = "page"; apply(true);
+      if (saved.view === "menu") {
+        showMenu();
+        win.history.replaceState(marker(), "", "/app");
+        if (destination) void selectPage(destination);
+      } else {
+        view = "page";
         if (saved.page !== page) void navigate(saved.page);
+        else { apply(true); onWorkspaceShown(); }
       }
     }
     function keydown(event) {
@@ -120,12 +134,13 @@
     media.addEventListener("change", () => {
       panel = false;
       // Rotation/split view keeps the mounted page and drafts visible.
-      if (active()) {
+      if (active() && !returning) {
         view = "page";
         hasMenuEntry = false;
         win.history.replaceState(marker(), "", `/app?page=${encodeURIComponent(page)}`);
       }
       apply();
+      if (!active() || view === "page") onWorkspaceShown();
     });
     return { sync, enter, historyState: () => active() ? win.history.state : null,
       closeStudyPanel: () => { if (active() && panel) closePanel(); },

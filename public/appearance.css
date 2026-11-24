@@ -134,6 +134,9 @@
 .settings-footer > span { padding-right: 5px; }
 .settings-footer small { display: block; margin-top: 3px; font-size: 9px; }
 .settings-footer .settings-logout { color: var(--danger); border-color: var(--line); background: #fff; font-size: 11px; padding: 7px 9px; font-weight: 500; flex-shrink: 0; }
+.settings-dialog .settings-logout-status { margin: 4px 4px 0; }
+.settings-logout-status:empty { display: none; }
+.settings-dialog .settings-logout-status.is-error { color: var(--danger); }
 .settings-dialog .settings-learning-retry { padding: 5px 10px; font-size: 12px; flex-shrink: 0; }
 .settings-dialog .settings-export { font-size: 12px; padding: 9px 14px; margin-top: 16px; }
 .settings-dialog .is-error { color: var(--danger); }

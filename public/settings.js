@@ -41,7 +41,7 @@
     }).join("");
     const heading = (id, subtitle) => `<header class="settings-panel-heading"><span class="settings-eyebrow">STUDYBRIDGE / SETTINGS</span><h3 id="settings-${id}-heading">${sections.find((item) => item.id === id).name}</h3>${subtitle ? `<p>${subtitle}</p>` : ""}</header>`;
     dialog.innerHTML = ui.html`<header class="settings-heading"><div><h2 id="settings-title">设置</h2></div><button type="button" class="settings-close" aria-label="关闭设置">×</button></header>
-      <div class="settings-layout"><aside class="settings-sidebar"><div class="settings-account-summary"><span class="settings-account-avatar" aria-hidden="true"></span><div><strong class="settings-account-name"></strong><small class="settings-account-email"></small></div></div><nav class="settings-nav" aria-label="设置分类">${navigation}</nav><footer class="settings-footer"><span>StudyBridge <small>v${esc(version)}</small></span><button type="button" class="settings-logout">退出登录</button></footer></aside>
+      <div class="settings-layout"><aside class="settings-sidebar"><div class="settings-account-summary"><span class="settings-account-avatar" aria-hidden="true"></span><div><strong class="settings-account-name"></strong><small class="settings-account-email"></small></div></div><nav class="settings-nav" aria-label="设置分类">${navigation}</nav><footer class="settings-footer"><span>StudyBridge <small>v${esc(version)}</small></span><button type="button" class="settings-logout">退出登录</button></footer><p class="settings-caption settings-logout-status" role="status" aria-live="polite"></p></aside>
       <div class="settings-content"><button type="button" class="settings-back">‹ 返回设置</button>
         <section id="settings-panel-account" class="settings-panel" aria-labelledby="settings-account-heading">${heading("account", ui.text("管理你的个人信息，让学习与交流更贴近你。"))}
           <form class="settings-profile-form"><div class="settings-block"><h4>基本资料</h4><div class="settings-fields"><label>显示姓名<input name="name" required maxlength="80" autocomplete="name"></label><label>SB ID<input name="sbId" placeholder="例如 adam2026" required maxlength="8" pattern="[A-Za-z0-9]{1,8}" title="1–8 位数字或字母，区分大小写"></label><label>学校<input name="school" maxlength="160" autocomplete="organization"></label><label>专业<input name="major" maxlength="160"></label></div><p class="settings-caption">学校、专业和 SB ID 会用于个人资料与同学功能。</p><div class="settings-form-actions"><span class="settings-profile-status" role="status"></span><button type="submit" class="settings-primary">保存资料</button></div></div></form>
@@ -236,10 +236,19 @@
     }
     const saveLearning = async () => { clearTimeout(learningTimer); try { await learning.flush(); } catch { /* Shared saver exposes failure and retry state. */ } refreshLearning(); };
     dialog.querySelector(".settings-logout").addEventListener("click", async (event) => {
-      event.currentTarget.disabled = true;
-      // Drain queued auto-saves before ending the session, including the debounce window.
-      await Promise.allSettled([saveLearning(), flushAppearance()]);
-      if (active()) await logout();
+      const button = event.currentTarget;
+      if (button.disabled) return;
+      button.disabled = true;
+      setStatus(".settings-logout-status", ui.text("正在退出登录…"));
+      try {
+        // Drain queued auto-saves before ending the session, including the debounce window.
+        await Promise.allSettled([saveLearning(), flushAppearance()]);
+        if (!active() || await logout()) return;
+      } catch { /* Restore the sign-out control below. */ }
+      if (active()) {
+        button.disabled = false;
+        setStatus(".settings-logout-status", ui.text("退出登录未完成，请检查网络后重试。当前页面和草稿已保留。"), true);
+      }
     });
     function editLearning() {
       const draft = { ...learning.snapshot().draft };

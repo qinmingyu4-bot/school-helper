@@ -5,12 +5,23 @@ const fs = require('node:fs');
 const { startGoogleOAuth, verifyGoogleOAuth } = require('../lib/google-oauth');
 const source = fs.readFileSync(require.resolve('../public/app.js'), 'utf8');
 const handler = source.slice(source.indexOf('  async function handleAction('), source.indexOf('  function keepLatestAfterFontLoad('));
+const requestWithTimeout = source.slice(source.indexOf('  async function apiWithTimeout('), source.indexOf('  function loadLoginConfig('));
 function harness(action, fail = false) {
   const calls = [], state = { user: { id: 'alice' }, page: 'study', toast: '' };
   const cleanup = new Proxy({}, { get: (_, key) => () => calls.push(key) });
   const location = { href: 'https://example.test/login?page=classmates&classmateChat=chat_123', replace: p => calls.push(p) };
-  const context = vm.createContext({ action, state, URL, URLSearchParams, location, ui: { text: x => x }, esc: String,
-    api: async () => { calls.push('request'); if (fail) throw Error('offline'); return { user: state.user }; },
+  let expire;
+  const context = vm.createContext({ action, state, URL, URLSearchParams, AbortController, location, ui: { text: x => x }, esc: String,
+    window: { setTimeout: (callback) => { expire = callback; }, clearTimeout() {} },
+    api: async (path, options) => {
+      calls.push('request');
+      if (path === '/api/auth/logout') {
+        assert.equal(options.method, 'POST');
+        if (fail === 'timeout') await new Promise((_, reject) => options.signal.addEventListener('abort', () => reject(options.signal.reason)));
+      }
+      if (fail) throw Error('offline');
+      return { user: state.user };
+    },
     $: () => ({ value: '' }), isAdmin: () => false,
     officeTools: { takeSharedLink: () => null },
     loadPage: async page => { calls.push(page); location.href = 'https://example.test/app?page=' + page; },
@@ -18,24 +29,32 @@ function harness(action, fail = false) {
     learningLoop: cleanup, classmateNotifications: cleanup, dmAttachments: cleanup, mailboxView: cleanup,
     appearanceController: cleanup, studyHistoryCache: new Map([["kept", "history"]]), emailDraft: { kept: 'draft' }, scheduleQuickRequest: null, scheduleExtractionRequest: null,
     cancelScheduleVoice() {}, uploadPreviewUrls: new Map(), clearTimeout, learningStyleTimer: null,
-    learningStyleEditor: null, studyReplies: new Map(), studyTasks: null, localStorage: cleanup,
+    learningStyleEditor: null, studyReplies: new Map(), deferredStudyReply: {}, deferredStudyTasks: true, studyTasks: null, localStorage: cleanup,
     setToast: message => { state.toast = message; }, render: () => calls.push('render'),
     root: { querySelector: () => null, insertAdjacentHTML: () => calls.push('notice') }
   });
-  vm.runInContext(handler, context);
+  vm.runInContext(handler + requestWithTimeout, context);
   const button = { dataset: { action }, isConnected: true };
-  return { calls, state, context, button, run: () => context.handleAction(button) };
+  return { calls, state, context, button, run: () => context.handleAction(button), expire: () => expire() };
 }
-test('failed sign-out keeps workspace and drafts, reports failure and allows retry', async () => {
-  const h = harness('logout', true); await h.run();
-  assert.deepEqual(h.calls, ['request', 'notice']);
-  assert.equal(h.context.studyHistoryCache.get('kept'), 'history'); assert.equal(h.context.emailDraft.kept, 'draft'); assert.equal(h.state.user.id, 'alice');
-  assert.match(h.state.toast, /退出登录未完成/); assert.equal(h.button.disabled, false);
-});
+for (const problem of ['network error', 'timeout']) {
+  test(`sign-out ${problem} keeps workspace and drafts and lets Settings offer retry`, async () => {
+    const h = harness('logout', problem);
+    const result = h.run();
+    if (problem === 'timeout') h.expire();
+    assert.equal(await result, false);
+    assert.deepEqual(h.calls, ['request']);
+    assert.equal(h.context.studyHistoryCache.get('kept'), 'history');
+    assert.equal(h.context.emailDraft.kept, 'draft');
+    assert.equal(h.state.user.id, 'alice');
+    assert.equal(h.button.disabled, false);
+  });
+}
 test('successful sign-out confirms invalidation before clearing private client state', async () => {
-  const h = harness('logout'); await h.run();
+  const h = harness('logout'); assert.equal(await h.run(), true);
   assert.equal(h.calls[0], 'request'); assert.equal(h.calls.at(-1), '/login');
   assert.equal(h.context.emailDraft.kept, undefined); assert.equal(h.context.studyHistoryCache.size, 0);
+  assert.equal(h.context.deferredStudyReply, null); assert.equal(h.context.deferredStudyTasks, false);
 });
 for (const [page, key, id] of [['classmates', 'classmateChat', 'chat_123'], ['schedule', 'scheduleItem', 'event_123']]) {
   test(`password login resumes the exact ${page} notification after URL rewriting`, async () => {

@@ -4,7 +4,7 @@
     const doc = win.document;
     function resize() {
       const input = root.querySelector("#chatInput");
-      if (!input) return;
+      if (!input || input.closest(".workspace[inert]")) return;
       const style = win.getComputedStyle(input);
       const minimum = parseFloat(style.minHeight) || 44;
       const maximum = parseFloat(style.maxHeight) || 140;

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Highlight the workspace just left when the mobile main menu appears, including returns by swipe. Prevent touch hover from highlighting a second menu item.
+- Give image settings and SP Docs, SP Sheets, and SP Slides dropdowns enough vertical space for mobile text.
+
 ## 1.22.4 — 2026-11-24 — Reliable mobile workspace return
 
 PATCH from AWS 1.22.3 (`aeca3ee`): make mobile back gestures and the main menu button return once, and reduce work during existing navigation and sign-out.

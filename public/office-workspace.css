@@ -258,9 +258,16 @@
 }
 @media (pointer: coarse) {
   :root .app-shell .workspace .office-shell :is(button, summary) { min-height: 44px; }
-  :root .app-shell .workspace .office-shell :is(input, textarea, select):not(.office-grid input):not([type="color"]) {
+  :root .app-shell .workspace .office-shell :is(input, textarea):not(.office-grid input):not([type="color"]) {
     font-size: 16px;
     min-height: 40px;
+  }
+  :root .app-shell .workspace :is(.office-shell, .office-library-controls) select:not([multiple]):is(:not([size]), [size="0"], [size="1"]) {
+    height: auto;
+    min-height: 44px;
+    padding-block: 8px;
+    font-size: 16px;
+    line-height: 1.5;
   }
 }
 

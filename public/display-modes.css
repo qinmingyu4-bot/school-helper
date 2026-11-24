@@ -18,7 +18,10 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-:root .sidebar .side-nav .nav-card:hover { background: var(--sb-tint, #edf5f1); }
+@media (hover: hover) and (pointer: fine) {
+  :root .sidebar .side-nav .nav-card:hover { background: var(--sb-tint, #edf5f1); }
+}
+:root .sidebar .side-nav .nav-card:active { background: var(--sb-tint, #edf5f1); }
 :root .sidebar .side-nav .nav-card.active {
   background: color-mix(in srgb, var(--green) 10%, var(--panel));
   border-color: var(--green);

@@ -6,7 +6,14 @@ function harness({ mobile = true, width = null, url = "http://localhost/app", hi
   const listeners = {}, documentListeners = {}, navigations = [], animations = [];
   let backCalls = 0, settleBack, shown = 0;
   const button = { focus() {}, setAttribute() {} };
-  const sidebar = { inert: false, scrollTop: 0, querySelector: () => button, setAttribute() {}, removeAttribute() {} };
+  const items = new Map(["community", "classmates", "study", "schedule", "tools", "profile"].map((page) => {
+    const attributes = new Map(), classes = new Set();
+    return [page, { dataset: { page }, classes, classList: { toggle: (name, enabled) => enabled ? classes.add(name) : classes.delete(name) },
+      getAttribute: (name) => attributes.get(name), hasAttribute: (name) => attributes.has(name),
+      setAttribute: (name, value) => attributes.set(name, value), removeAttribute: (name) => attributes.delete(name) }];
+  }));
+  const sidebar = { inert: false, scrollTop: 0, querySelector: () => button,
+    querySelectorAll: () => items.values(), setAttribute() {}, removeAttribute() {} };
   const workspace = { inert: false, querySelector: () => button, animate: (...args) => animations.push(args) };
   const shell = { dataset: {}, querySelector: (s) => s === ".sidebar" ? sidebar : s === ".workspace" ? workspace : button };
   const root = { querySelector: (s) => s === ".app-shell" ? shell : s === ".sidebar" ? sidebar : s === ".workspace" ? workspace : button,
@@ -54,7 +61,7 @@ function harness({ mobile = true, width = null, url = "http://localhost/app", hi
     documentListeners[type]?.(event);
     return event.defaultPrevented;
   }
-  return { controller, sync, click, touch, root, shell, sidebar, workspace, media, win, entries, listeners, documentListeners, navigations, animations,
+  return { controller, sync, click, touch, root, shell, sidebar, workspace, media, win, entries, listeners, documentListeners, navigations, animations, items,
     finishBack: () => settleBack(), backCalls: () => backCalls, shown: () => shown };
 }
 
@@ -105,6 +112,29 @@ test("mobile return shows the menu immediately and settles browser history witho
   assert.equal(h.win.location.href, "http://localhost/app");
   assert.deepEqual(h.navigations, []);
   assert.deepEqual(h.animations, []);
+});
+
+test("mobile menu corrects the previous highlight before button or swipe history settles", () => {
+  for (const leave of [
+    (h) => h.click("menu"),
+    (h) => { h.touch("touchstart", 350, 320); h.touch("touchmove", 320, 322); h.touch("touchend", 230, 324); }
+  ]) {
+    const h = harness({ deferBack: true }); h.sync({ page: "classmates" });
+    h.controller.enter("study"); h.sync({ page: "study" });
+    const old = h.items.get("classmates");
+    const current = h.items.get("study");
+    assert.equal(old.classes.has("active"), true, "simulate a sidebar still highlighting the previous workspace");
+    leave(h);
+    assert.equal(h.shell.dataset.mobileView, "menu");
+    assert.equal(current.classes.has("active"), true);
+    assert.equal(current.getAttribute("aria-current"), "page");
+    assert.equal(old.classes.has("active"), false);
+    assert.equal(old.hasAttribute("aria-current"), false);
+    assert.equal(h.win.history.state.sbMobile.view, "page", "selection must update before history");
+    h.finishBack();
+    assert.equal(current.getAttribute("aria-current"), "page");
+    assert.deepEqual(h.navigations, []);
+  }
 });
 
 test("a new destination selected before back settles opens once, preserving history order", () => {

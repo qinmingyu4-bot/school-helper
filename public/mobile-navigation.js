@@ -17,11 +17,21 @@
     function apply(focus = false) {
       const shell = root?.querySelector(".app-shell");
       if (!shell) return;
+      const sidebar = shell.querySelector(".sidebar"), workspace = shell.querySelector(".workspace");
+      const enabled = active();
+      if (enabled && view === "menu" && sidebar) {
+        // Set the selection before exposing the menu, including while history is settling.
+        for (const item of sidebar.querySelectorAll(".side-nav .nav-card[data-page], .profile-card[data-page]")) {
+          const selected = item.dataset.page === page;
+          item.classList.toggle("active", selected);
+          if (selected) {
+            if (item.getAttribute("aria-current") !== "page") item.setAttribute("aria-current", "page");
+          } else if (item.hasAttribute("aria-current")) item.removeAttribute("aria-current");
+        }
+      }
       if (shell.dataset.mobileView !== view) shell.dataset.mobileView = view;
       const panelState = panel ? "open" : "closed";
       if (shell.dataset.mobilePanel !== panelState) shell.dataset.mobilePanel = panelState;
-      const sidebar = shell.querySelector(".sidebar"), workspace = shell.querySelector(".workspace");
-      const enabled = active();
       if (sidebar) {
         sidebar.inert = enabled && view === "page" && !panel;
         if (enabled && panel) sidebar.setAttribute("aria-label", ui.text("课程与资料"));

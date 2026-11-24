@@ -6,7 +6,16 @@
 .creative-input > label, .creative-settings label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 8px; }
 .creative-input textarea { width: 100%; min-height: 150px; margin: 0 0 16px; padding: 12px; font-size: 14px; line-height: 1.7; resize: vertical; }
 .creative-settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
-.creative-settings select { display: block; width: 100%; margin-top: 6px; height: 40px; font-size: 13px; }
+.creative-settings select {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  min-height: 40px;
+  padding-block: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+@media (pointer: coarse) { .creative-settings select { min-height: 44px; } }
 .cheatsheet-settings input[type="number"] { display: block; width: 100%; height: 40px; margin-top: 6px; font-size: 13px; }
 .cheatsheet-settings .cheatsheet-monochrome { display: flex; align-items: center; gap: 8px; font-size: 13px; padding-top: 16px; }
 .cheatsheet-monochrome input { width: 16px; height: 16px; }

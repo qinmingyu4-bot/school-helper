@@ -35,8 +35,8 @@
     visibility: hidden;
   }
   .app-shell:not(.admin-shell):not([data-mobile-panel="open"]) > .sidebar > .side-section { display: none; }
-  .app-shell:not(.admin-shell)[data-mobile-view="page"] > .sidebar {
-    visibility: hidden;
+  .app-shell:not(.admin-shell)[data-mobile-view="page"]:not([data-mobile-panel="open"]) > .sidebar {
+    display: none;
   }
   .app-shell:not(.admin-shell)[data-mobile-view="page"] > .workspace {
     visibility: visible;

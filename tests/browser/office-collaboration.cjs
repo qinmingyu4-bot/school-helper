@@ -268,8 +268,27 @@ async function checkMobileNavigation(browser, base) {
     await draft.waitFor();
     assert.equal(await input.evaluate(node => node === document.querySelector("#chatInput")), true);
     assert.equal(await draft.inputValue(), "Draft survives mobile back");
-    await back.tap();
+    const touch = await context.newCDPSession(page);
+    const chat = workspace.locator(".chat-area");
+    for (const direction of [-1, 1]) {
+      const bounds = await chat.boundingBox();
+      const y = Math.round(bounds.y + bounds.height / 2);
+      const x = direction === -1 ? 350 : 40;
+      await touch.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+      for (const offset of [26, 58, 105]) {
+        await touch.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x + offset * direction, y }] });
+      }
+      await touch.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      await page.waitForURL(menuUrl, { timeout: 5000 });
+      await study.tap();
+      await draft.waitFor();
+      assert.equal(await input.evaluate(node => node === document.querySelector("#chatInput")), true);
+      assert.equal(await draft.inputValue(), "Draft survives mobile back");
+    }
+    await page.goBack();
     await page.waitForURL(menuUrl);
+    assert.deepEqual(await page.evaluate(() => window.studyViewChanges),
+      ["menu", "page", "menu", "page", "menu", "page", "menu"]);
 
     await page.locator('.sidebar [data-action="settings"]').tap();
     const logout = page.locator(".settings-logout");
@@ -291,7 +310,7 @@ async function checkMobileNavigation(browser, base) {
     }
     await logout.tap();
     await page.waitForURL(url => url.pathname === "/login");
-    console.log("Mobile Study: single return, browser forward, retained draft and sign-out retry passed");
+    console.log("Mobile Study: button, both swipe directions, browser history, retained draft and sign-out retry passed");
   } finally {
     await context.close();
   }

@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Return from mobile workspaces to the main menu in one step. A hidden Study workspace retains its draft and incoming AI reply, and paints the latest reply when reopened.
+- Swipe inward near either side of a mobile workspace to return to the main menu. Vertical scrolling, horizontal document controls and native browser gestures keep their normal behavior.
 - Reduce the work required to leave a chat on desktop and mobile. Show sign-out progress in Settings and let users retry if the request fails or times out.
 
 ## 1.22.2 — 2026-11-23 — Keep official AI costs visible

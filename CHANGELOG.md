@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.22.4 — 2026-11-24 — Reliable mobile workspace return
+
+PATCH from AWS 1.22.3 (`aeca3ee`): make mobile back gestures and the main menu button return once, and reduce work during existing navigation and sign-out.
+
+- Return to the main menu in one step using the button or an inward swipe. Preserve the mounted workspace, its draft, and incoming Study replies.
+- Reduce work when leaving chats or clicking a feature already loading. Show sign-out progress and allow retry after a failed or timed-out request.
+
 ## 1.22.3 — 2026-11-24 — Shorter release pauses and direct workspace links
 
 PATCH from AWS 1.22.2 (`1140ced`): prepare release dependencies before a service pause and honor explicit workspace links.

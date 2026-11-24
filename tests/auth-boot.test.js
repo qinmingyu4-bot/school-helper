@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const { test } = require("node:test");
 const source = fs.readFileSync(require.resolve("../public/app.js"), "utf8");
-const boot = source.slice(source.indexOf("  async function startupApi("), source.indexOf('  document.addEventListener("click", async (event) => {'));
+const boot = source.slice(source.indexOf("  async function apiWithTimeout("), source.indexOf('  document.addEventListener("click", async (event) => {'));
 
 function harness(result, error, savedMode) {
   const paths = [], pages = [], requests = [], marks = [], state = {}, root = { innerHTML: "" };

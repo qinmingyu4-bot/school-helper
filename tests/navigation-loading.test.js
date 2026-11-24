@@ -5,6 +5,40 @@ const { test } = require("node:test");
 const source = fs.readFileSync(require.resolve("../public/app.js"), "utf8");
 const loaders = source.slice(source.indexOf("  const studyHistoryCache ="), source.indexOf("  function stopClassmatesLive()"));
 
+test("hidden mobile Study coalesces incoming reply paints and restores the final text on reopen", () => {
+  let view = "menu", queries = 0, composerResizes = 0, removed = false;
+  const paints = [];
+  const content = {};
+  const body = { querySelector: (selector) => selector === ".reply-content" ? content : { remove: () => { removed = true; } } };
+  const message = { setAttribute() {}, querySelector: () => body };
+  const chat = { scrollHeight: 200, scrollTop: 0, clientHeight: 100 };
+  const send = { dataset: { action: "send-chat" }, setAttribute() {} };
+  const context = vm.createContext({
+    deferredStudyReply: null, deferredStudyTasks: false, studyTasks: null,
+    state: { page: "study", mode: "student", busy: false },
+    mobileNavigation: { snapshot: () => ({ active: true, view, panel: false }) },
+    classmateNotifications: { reconcileToast() {} }, studyComposer: { resize: () => composerResizes++ },
+    studyReplyKey: () => "alice/chat", activeStudyReply: () => null, updateStudySummaryButton() {},
+    ui: require("../public/i18n"), window: { StudyBridgeMarkdown: { renderInto: (_node, text) => paints.push(text) } },
+    root: { querySelector(selector) { queries++; return selector === ".study-workspace .chat-area" ? chat
+      : selector === ".compose-row .send" ? send : selector.endsWith(" > div") ? null : message; } }
+  });
+  vm.runInContext(source.slice(source.indexOf("  function studyWorkspaceVisible()"), source.indexOf("  function mergeStudyReply(")), context);
+  const reply = { key: "alice/chat", user: { clientReplyId: "q" }, assistant: { content: "First", pending: true, clientReplyId: "a" } };
+  context.scheduleStudyReply(reply);
+  reply.assistant.content += " and final";
+  reply.assistant.pending = false;
+  context.updateStudyReply(reply);
+  assert.equal(queries, 0);
+  assert.deepEqual(paints, []);
+  view = "page";
+  context.resumeStudyWorkspace();
+  assert.deepEqual(paints, ["First and final"]);
+  assert.equal(removed, true);
+  assert.equal(composerResizes, 1);
+  assert.equal(context.deferredStudyReply, null);
+});
+
 function harness(defer = []) {
   const requests = [], notices = [], renders = [];
   const storage = new Map(), drafts = new Map();

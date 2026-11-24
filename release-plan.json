@@ -1,8 +1,8 @@
 {
-  "previousCommit": "1140cedd0a4a1c9bf2fa0466d3dba928bf87a7a8",
-  "previousVersion": "1.22.2",
-  "version": "1.22.3",
+  "previousCommit": "aeca3eeccdaf7e406cc5045a0508afc29c99be6c",
+  "previousVersion": "1.22.3",
+  "version": "1.22.4",
   "level": "patch",
-  "reason": "Prepare production dependencies before pausing the service and fix explicit workspace links for signed-in administrators.",
+  "reason": "Fix duplicate mobile workspace exits for menu taps and inward swipes, reduce workspace switching work, and expose recoverable sign-out progress.",
   "features": []
 }

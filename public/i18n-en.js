@@ -187,6 +187,7 @@ AI 费用明细与对账|AI cost details and reconciliation
 该历史任务的扣额需要核对，尚未自动退还。|This older task needs a charge review; no automatic refund has been applied.
 部分请求缺少实际用量，余额包含预估扣额；历史中断扣额可联系管理员核对。|Some requests have no reported usage, so your balance includes estimates. Contact the administrator to review older interrupted requests.
 退出登录未完成，请检查网络后重试。当前页面和草稿已保留。|Sign-out did not complete. Check your connection and try again. Your current page and drafts have been kept.
+正在退出登录…|Signing out…
 已恢复共同编辑草稿，请另存副本以保留未同步的修改。|Recovered a collaborative draft. Save a copy to retain unsynced changes.
 分享与共同编辑|Share and collaborate
 持有链接的人登录后可以编辑这份作品。关闭分享会立即阻止其他人继续同步。|Anyone with this link can edit after signing in. Turning sharing off blocks further synchronization by collaborators.

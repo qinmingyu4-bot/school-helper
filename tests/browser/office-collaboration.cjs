@@ -235,6 +235,87 @@ async function checkProfileStartup(page, context, base) {
   }
 }
 
+async function checkMobileNavigation(browser, base) {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  try {
+    await signUp(context, base, "Navigation");
+    const page = await context.newPage();
+    await page.goto(base + "/app");
+    const study = page.locator('.sidebar [data-page="study"]');
+    const shell = page.locator(".app-shell");
+    const workspace = page.locator(".study-workspace");
+    const draft = page.locator("#chatInput");
+    const back = page.locator('.mobile-page-bar [data-mobile-action="menu"]');
+    const menuUrl = url => url.pathname === "/app" && !url.searchParams.has("page");
+    await study.tap();
+    await draft.waitFor();
+    await page.locator(".course-chat-status").waitFor({ state: "hidden" });
+    await draft.fill("Draft survives mobile back");
+    const input = await draft.elementHandle();
+    await shell.evaluate(node => {
+      window.studyViewChanges = [];
+      new MutationObserver(entries => {
+        for (const entry of entries) if (entry.oldValue !== node.dataset.mobileView) window.studyViewChanges.push(node.dataset.mobileView);
+      }).observe(node, { attributes: true, attributeOldValue: true, attributeFilter: ["data-mobile-view"] });
+    });
+    await back.tap();
+    await page.waitForURL(menuUrl);
+    await study.waitFor();
+    assert.deepEqual(await page.evaluate(() => window.studyViewChanges), ["menu"]);
+    assert.equal(await workspace.evaluate(node => getComputedStyle(node).transitionDuration), "0s");
+    assert.equal(await workspace.evaluate(node => node.inert), true);
+    await page.evaluate(() => history.forward());
+    await draft.waitFor();
+    assert.equal(await input.evaluate(node => node === document.querySelector("#chatInput")), true);
+    assert.equal(await draft.inputValue(), "Draft survives mobile back");
+    const touch = await context.newCDPSession(page);
+    const chat = workspace.locator(".chat-area");
+    for (const direction of [-1, 1]) {
+      const bounds = await chat.boundingBox();
+      const y = Math.round(bounds.y + bounds.height / 2);
+      const x = direction === -1 ? 350 : 40;
+      await touch.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+      for (const offset of [26, 58, 105]) {
+        await touch.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x + offset * direction, y }] });
+      }
+      await touch.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      await page.waitForURL(menuUrl, { timeout: 5000 });
+      await study.tap();
+      await draft.waitFor();
+      assert.equal(await input.evaluate(node => node === document.querySelector("#chatInput")), true);
+      assert.equal(await draft.inputValue(), "Draft survives mobile back");
+    }
+    await page.goBack();
+    await page.waitForURL(menuUrl);
+    assert.deepEqual(await page.evaluate(() => window.studyViewChanges),
+      ["menu", "page", "menu", "page", "menu", "page", "menu"]);
+
+    await page.locator('.sidebar [data-action="settings"]').tap();
+    const logout = page.locator(".settings-logout");
+    const status = page.locator(".settings-logout-status");
+    const slow = gate();
+    const retry = route => slow.wait.then(() => route.fulfill({ status: 503, json: { error: "Test connection interruption" } }));
+    await page.route("**/api/auth/logout", retry);
+    try {
+      await logout.tap();
+      await status.waitFor();
+      assert.equal(await logout.isEnabled(), false);
+      slow.release();
+      await page.locator(".settings-logout-status.is-error").waitFor();
+      assert.equal(await logout.isEnabled(), true);
+      assert.equal(await draft.inputValue(), "Draft survives mobile back");
+    } finally {
+      slow.release();
+      await page.unroute("**/api/auth/logout", retry);
+    }
+    await logout.tap();
+    await page.waitForURL(url => url.pathname === "/login");
+    console.log("Mobile Study: button, both swipe directions, browser history, retained draft and sign-out retry passed");
+  } finally {
+    await context.close();
+  }
+}
+
 async function main() {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "sb-office-browser-"));
   const { child, base } = await startServer(directory);
@@ -346,6 +427,7 @@ async function main() {
     await checkSlidesOpening(first, base);
     await checkHeavyCourse(first, owner, base);
     await checkProfileStartup(first, owner, base);
+    await checkMobileNavigation(browser, base);
     assert.deepEqual(errors, []);
   } finally {
     await browser?.close();

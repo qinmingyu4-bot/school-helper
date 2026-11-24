@@ -3,7 +3,7 @@
   const ui = typeof module === "object" && module.exports ? require("./i18n") : globalThis.StudyBridgeI18n;
 
 
-  const VERSION = "1.22.3";
+  const VERSION = "1.22.4";
   const creativeTools = window.StudyBridgeCreativeTools;
   const officeTools = window.StudyBridgeOffice;
   const chatSpaces = window.StudyBridgeChatSpaces;
@@ -55,7 +55,9 @@
     onScheduleChange: () => loadScheduleItems(false)
   });
   const studyComposer = window.StudyBridgeComposer.create({ root });
-  const mobileNavigation = window.StudyBridgeMobileNavigation.create({ navigate: (page) => loadPage(page), resizeComposer: () => studyComposer.resize() });
+  const mobileNavigation = window.StudyBridgeMobileNavigation.create({
+    navigate: (page) => loadPage(page), selectPage: selectSidebarPage, onWorkspaceShown: resumeStudyWorkspace
+  });
   const brandMarkHtml = () => `<span class="sb-brand-symbol" aria-hidden="true"><img class="sb-logo-monochrome" src="/brand/book-bridge-monochrome.svg" width="128" height="72" alt=""><img class="sb-logo-color" src="/brand/book-bridge-color.svg" width="128" height="72" alt=""></span>`;
   const appearanceController = window.StudyBridgeAppearance.createController({
     load: async () => (await api("/api/me/appearance")).appearance,
@@ -128,6 +130,7 @@
   const mailboxView = window.StudyBridgeMailbox.create({ api, getUser: () => state.user,
     onChange: () => { if (state.user && state.page === "email") render(); }, notice: setToast });
   const studyReplies = new Map();
+  let deferredStudyReply = null, deferredStudyTasks = false;
   const studySummaries = new Set();
   const studyDrafts = new Map();
   const uploadPreviewUrls = new Map();
@@ -351,7 +354,7 @@
       if (reportable && !init.signal?.aborted && error.name !== "AbortError") feedbackView.remember({ ...attempt, status: error.status || 0, requestId, stream: true });
       throw error;
     } finally {
-      if (path !== "/api/me/ai-usage" && init.method && init.method !== "GET") void usageView.refresh(true);
+      if (path !== "/api/me/ai-usage" && path !== "/api/auth/logout" && init.method && init.method !== "GET") void usageView.refresh(true);
     }
     if (!response.ok) {
       const quota = data.code === "UPLOAD_STORAGE_LIMIT";
@@ -1185,9 +1188,26 @@
     return content + status;
   }
 
+  function studyWorkspaceVisible() {
+    const { active, view, panel } = mobileNavigation.snapshot();
+    return state.page === "study" && state.mode === "student" && (!active || view === "page" && !panel);
+  }
+
+  function resumeStudyWorkspace() {
+    classmateNotifications.reconcileToast();
+    if (state.page === "classmates") requestAnimationFrame(acknowledgeClassmateRead);
+    if (!studyWorkspaceVisible()) return;
+    const reply = deferredStudyReply;
+    deferredStudyReply = null;
+    if (reply) updateStudyReply(reply);
+    if (deferredStudyTasks) updateStudyTasks();
+    studyComposer.resize();
+  }
+
   function updateStudyReply(reply) {
     if (reply.assistant.studyJobId) { updateStudyTasks(); return; }
     if (state.page !== "study" || state.mode !== "student" || studyReplyKey() !== reply.key) return;
+    if (!studyWorkspaceVisible()) { deferredStudyReply = reply; return; }
     const message = root.querySelector(`[data-reply-id="${reply.assistant.clientReplyId}"]`);
     const chat = root.querySelector(".study-workspace .chat-area");
     if (!message || !chat) return;
@@ -1229,6 +1249,8 @@
 
   function updateStudyTasks() {
     if (!studyTasks || state.page !== "study" || state.mode !== "student") return;
+    if (!studyWorkspaceVisible()) { deferredStudyTasks = true; return; }
+    deferredStudyTasks = false;
     state.messages = studyTasks.mergeMessages(state.messages);
     updateStudySummaryButton();
     const chat = root.querySelector(".study-workspace .chat-area"), source = window.StudyBridgeStudySource;
@@ -1257,6 +1279,7 @@
   }
 
   function scheduleStudyReply(reply) {
+    if (!studyWorkspaceVisible()) { updateStudyReply(reply); return; }
     if (reply.frame || reply.renderTimer) return;
     // Coalesce network bursts without changing the accumulated answer. Leave
     // time for typing/scrolling between paints, especially on slower devices.
@@ -3385,8 +3408,7 @@
         appearanceController.open(); document.querySelector('[data-settings-section="reminders"]')?.click(); return;
       }
       if (action === "logout") {
-        try { await api("/api/auth/logout", { method: "POST" }); }
-        catch { throw new Error(ui.text("退出登录未完成，请检查网络后重试。当前页面和草稿已保留。")); }
+        await apiWithTimeout("/api/auth/logout", { method: "POST" });
         learningLoop.reset();
         classmateNotifications.stop();
         dmAttachments.reset();
@@ -3402,11 +3424,12 @@
         learningStyleEditor?.saver.dispose();
         learningStyleEditor = null;
         for (const reply of studyReplies.values()) reply.controller.abort();
+        deferredStudyReply = null; deferredStudyTasks = false;
         studyTasks?.clear();
         studyHistoryCache.clear();
         localStorage.removeItem("studybridge.page");
         location.replace("/login");
-        return;
+        return true;
       }
       if (action === "mode-student") {
         state.mode = "student";
@@ -4131,9 +4154,7 @@
       }
     } catch (error) {
       if (action === "logout") {
-        setToast(error.message);
-        root.querySelector(".toast")?.remove();
-        root.insertAdjacentHTML("beforeend", `<div class="toast" role="status" aria-live="polite">${esc(state.toast)}</div>`);
+        return false;
       } else if (!state.user && root.querySelector(".auth-feedback")) {
         authMessage(action === "login" && error.status === 429 && error.retryAfter > 0
           ? ui.message`登录尝试过于频繁，请在 ${Math.ceil(error.retryAfter)} 秒后重试。`
@@ -4223,19 +4244,22 @@
     if ($("classmateSbId")) classmateListDraft = $("classmateSbId").value;
     if (root.querySelector(".request-box")) classmateRequestsOpen = root.querySelector(".request-box").open;
     const previousDmId = previousDm?.parentElement.dataset.chatId;
-    const previousDmMessages = previousDm?.innerHTML;
+    const keepDm = previousDmId && state.page === "classmates" && state.classmateChatOpen
+      && !state.classmateProfileOpen && previousDmId === state.activeClassmateId;
+    const previousDmMessages = keepDm ? previousDm.innerHTML : null;
     const previousDmScroll = previousDm?.scrollTop || 0;
-    const previousDmAtBottom = previousDm && previousDm.scrollHeight - previousDm.clientHeight - previousDmScroll < 64;
+    const previousDmAtBottom = keepDm && previousDm.scrollHeight - previousDm.clientHeight - previousDmScroll < 64;
     const previousDmDraft = $("dmInput")?.value || "";
     if (state.user && previousDmId) state.directMessageDrafts[previousDmId] = previousDmDraft;
     const previousChat = root.querySelector(".study-workspace .chat-area");
     const previousCourseId = previousChat?.parentElement.dataset.courseId;
     const previousConversationId = previousChat?.parentElement.dataset.conversationId || "default";
     const previousChatKey = previousChat ? studyReplyKey(state.user?.id, previousCourseId, previousConversationId) : "";
-    const wasOnboardingOpen = previousChat?.querySelector(".study-start")?.open;
-    const previousMessages = previousChat?.querySelector(".messages")?.innerHTML;
+    const keepStudyChat = previousChat && state.page === "study" && previousChatKey === studyReplyKey();
+    const wasOnboardingOpen = keepStudyChat && previousChat.querySelector(".study-start")?.open;
+    const previousMessages = keepStudyChat ? previousChat.querySelector(".messages")?.innerHTML : null;
     const source = window.StudyBridgeStudySource;
-    const openStudySources = source?.openDisclosures(previousChat) || new Set();
+    const openStudySources = keepStudyChat && source?.openDisclosures(previousChat) || new Set();
     const previousScrollTop = previousChat?.scrollTop || 0;
     const previousChatInput = $("chatInput");
     const previousChatFocus = previousChatInput && document.activeElement === previousChatInput;
@@ -4319,7 +4343,7 @@
         chat.scrollTop = showLatest ? chat.scrollHeight : previousScrollTop;
         if (!keepSourcePosition) keepLatestAfterFontLoad(chat);
       }
-      studyComposer.resize();
+      if (studyWorkspaceVisible()) studyComposer.resize();
     }
     const dm = root.querySelector(".dm-list");
     if (dm) {
@@ -4367,11 +4391,11 @@
     if (url.origin === location.origin && url.pathname === "/app") void openPushLink(url).catch((error) => setToast(error.message));
   });
 
-  async function startupApi(path) {
+  async function apiWithTimeout(path, options = {}) {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 10000);
     try {
-      return await api(path, { signal: controller.signal });
+      return await api(path, { ...options, signal: controller.signal });
     } finally {
       window.clearTimeout(timeout);
     }
@@ -4379,8 +4403,8 @@
 
   function loadLoginConfig() {
     return Promise.all([
-      startupApi("/api/auth/google/config").catch(() => ({ enabled: false })),
-      startupApi("/api/auth/config").catch(() => null)
+      apiWithTimeout("/api/auth/google/config").catch(() => ({ enabled: false })),
+      apiWithTimeout("/api/auth/config").catch(() => null)
     ]);
   }
 
@@ -4398,7 +4422,7 @@
     const loginConfig = entryUrl.pathname === "/login" ? loadLoginConfig() : null;
     let unauthenticated = false;
     try {
-      const data = await startupApi("/api/me?view=workspace").catch((error) => {
+      const data = await apiWithTimeout("/api/me?view=workspace").catch((error) => {
         if (error.status === 401) { unauthenticated = true; return null; }
         throw new Error(ui.text("暂时无法确认登录状态，请检查网络后刷新重试。"));
       }).finally(() => window.performance.mark("studybridge:session-settled"));
@@ -4441,6 +4465,20 @@
     }
   }
 
+  async function selectSidebarPage(page) {
+    const entered = mobileNavigation.enter(page);
+    if (entered === null) return;
+    if (entered) {
+      if (page === "schedule" && state.dailyView === "today") {
+        state.dailyView = "calendar";
+        render();
+      }
+      return;
+    }
+    if (page === state.page && state.busy) return;
+    await loadPage(page);
+  }
+
   document.addEventListener("click", async (event) => {
     const citation = event.target.closest("a[data-study-source]");
     if (citation) {
@@ -4456,16 +4494,7 @@
     const pageTarget = event.target.closest("[data-page]");
     if (pageTarget) {
       event.preventDefault();
-      if (mobileNavigation.enter(pageTarget.dataset.page)) {
-        if (pageTarget.dataset.page === "schedule" && state.dailyView === "today") {
-          state.dailyView = "calendar";
-          render();
-        }
-        classmateNotifications.reconcileToast();
-        if (state.page === "classmates") requestAnimationFrame(acknowledgeClassmateRead);
-        return;
-      }
-      await loadPage(pageTarget.dataset.page);
+      await selectSidebarPage(pageTarget.dataset.page);
       return;
     }
     const copyTarget = event.target.closest("[data-copy]");

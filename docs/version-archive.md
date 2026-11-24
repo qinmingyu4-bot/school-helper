@@ -1,5 +1,10 @@
 # StudyBridge Version Archive
 
+## 1.22.4 — 2026-11-24
+
+- PATCH from AWS 1.22.3 (`aeca3eeccdaf7e406cc5045a0508afc29c99be6c`): correct the existing mobile return interaction for taps and inward swipes, reduce work during workspace changes, and show sign-out progress with recoverable failure.
+- Verify single mobile exits, browser history and draft restoration, desktop workspace switches, sign-out and account continuity, full CI and live service health. Source: `5c94da3` and `8a6b7b5`. No dependency version, data migration, or configuration change.
+
 ## 1.22.3 — 2026-11-24
 
 - PATCH from AWS 1.22.2 (`1140cedd0a4a1c9bf2fa0466d3dba928bf87a7a8`): install release dependencies before pausing Lightsail and retain the existing dependency directory for rollback.

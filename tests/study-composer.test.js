@@ -9,6 +9,7 @@ const spaces = require("../public/chat-spaces");
 function harness() {
   const events = {}, windowEvents = {};
   const input = { id: "chatInput", value: "未发送的草稿", scrollHeight: 44, style: {} };
+  input.closest = (selector) => selector === ".workspace[inert]" && input.inert;
   let focused = false;
   const menu = { open: true, querySelector: () => ({ focus() { focused = true; } }) };
   const root = { querySelector: () => input, querySelectorAll: () => menu.open ? [menu] : [] };
@@ -26,6 +27,18 @@ test("shared composer grows complete lines, caps long text, shrinks after cleari
   assert.equal(h.input.style.height, "140px"); assert.equal(h.input.style.overflowY, "auto");
   assert.equal(h.input.value, "未发送的草稿");
   h.input.scrollHeight = 44; h.controller.resize(); assert.equal(h.input.style.height, "44px");
+});
+
+test("hidden mobile composers skip resize events until the workspace is visible again", () => {
+  const h = harness();
+  h.controller.resize();
+  h.input.inert = true;
+  h.input.scrollHeight = 92;
+  h.windowEvents.resize();
+  assert.equal(h.input.style.height, "44px");
+  h.input.inert = false;
+  h.controller.resize();
+  assert.equal(h.input.style.height, "92px");
 });
 
 test("More remains usable inside, closes after an action/outside click and restores focus on Escape", () => {

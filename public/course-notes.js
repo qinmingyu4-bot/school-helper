@@ -260,37 +260,62 @@
     return new Promise(resolve => { dialog.onclose = () => resolve(token === epoch && dialog.returnValue === 'save' ? select.value : null); });
   }
   function bindPaperWheel(viewport) {
-    let lastUp = -Infinity;
-    let scrollPage = false;
-    const pauseMs = 180;
+    let lastTime = -Infinity, lastDirection = 0, edgeSince = null, handoff = false;
+    let previous = 0, peak = 0, quiet = 0, candidate = null;
+    function atEdge(element, direction) {
+      return direction < 0 ? element.scrollTop <= .5 :
+        element.scrollHeight - element.clientHeight - element.scrollTop <= .5;
+    }
     viewport.addEventListener('wheel', event => {
       if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.shiftKey ||
           event.altKey || !event.deltaY || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
-      if (event.deltaY > 0 || viewport.closest('.note-focus')) {
-        lastUp = -Infinity;
-        scrollPage = false;
-        return;
+      if (viewport.closest('.note-focus')) { lastTime = -Infinity; return; }
+      const direction = Math.sign(event.deltaY);
+      const edge = atEdge(viewport, direction);
+      const now = event.timeStamp, gap = now - lastTime;
+      const restart = direction !== lastDirection || gap >= 900;
+      let unit = 1;
+      if (event.deltaMode === 1) unit = parseFloat(getComputedStyle(viewport).lineHeight) || 16;
+      if (event.deltaMode === 2) unit = viewport.clientHeight;
+      const size = Math.abs(event.deltaY * unit);
+      let trigger = '';
+      if (restart || !edge) {
+        handoff = false; candidate = null; edgeSince = null; quiet = 0; peak = 0;
       }
-      const atTop = viewport.scrollTop <= 0.5;
-      // A burst that started inside the paper, including its momentum, stays there.
-      if (event.timeStamp - lastUp >= pauseMs) scrollPage = atTop;
-      if (!atTop) scrollPage = false;
-      lastUp = event.timeStamp;
-      if (!scrollPage) return;
-
+      if (edge && !restart && !handoff) {
+        // A clear, recent pause is sufficient. A short gap or a second impulse
+        // inside an inertial tail needs corroboration from two wheel samples.
+        if (gap >= 80) trigger = '短暂停顿';
+        else if (candidate && now - candidate.time <= 75 && size >= Math.max(2, candidate.size * .72)) {
+          trigger = candidate.reason;
+        } else {
+          candidate = null;
+          if (edgeSince !== null && now - edgeSince >= 55 && size >= 2) {
+            if (gap >= 28 && size >= Math.max(2,previous * 1.2)) candidate = {time:now,size,reason:'短间隔后再次滚动'};
+            else if (quiet >= 3 && size >= Math.max(3, previous * 1.7, previous + 2))
+              candidate = {time:now,size,reason:'惯性减弱后再次加力'};
+          }
+        }
+        if (trigger) handoff = true;
+      }
+      if (edge) {
+        if (edgeSince === null) edgeSince = now;
+        peak = Math.max(peak,size);
+        quiet = size <= Math.max(1.5,peak * .25) ? quiet + 1 : 0;
+      }
+      previous = size; lastTime = now; lastDirection = direction;
+      if (!handoff) return;
       const root = document.scrollingElement;
       let outer = viewport.parentElement;
       while (outer && outer !== root) {
-        if (outer.scrollTop > 0 && /^(auto|scroll|overlay)$/.test(getComputedStyle(outer).overflowY)) break;
+        if (!atEdge(outer,direction) && /^(auto|scroll|overlay)$/.test(getComputedStyle(outer).overflowY)) break;
         outer = outer.parentElement;
       }
       outer = outer || root;
-      if (!outer || outer.scrollTop <= 0) return;
+      if (!outer || atEdge(outer,direction)) return;
       if (event.cancelable) event.preventDefault();
-      let unit = 1;
-      if (event.deltaMode === 1) unit = parseFloat(getComputedStyle(viewport).lineHeight) || 16;
-      if (event.deltaMode === 2) unit = outer.clientHeight;
-      outer.scrollTop = Math.max(0, outer.scrollTop + event.deltaY * unit);
+      const delta = event.deltaY * (event.deltaMode === 2 ? outer.clientHeight : unit);
+      outer.scrollTop = Math.max(0,Math.min(outer.scrollHeight - outer.clientHeight,outer.scrollTop + delta));
     }, {passive:false});
   }
   function bind() {

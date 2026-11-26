@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.22.6 — 2026-11-26 — Gmail mailbox interface update
 
 - Add a read-only Gmail MCP connection for the free Google Standard tier. A same-address reauthorization at cutover keeps existing learning notices and avoids reanalyzing previously processed messages.
 

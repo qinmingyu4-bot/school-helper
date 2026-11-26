@@ -10,6 +10,7 @@ on:
         type: choice
         options:
           - gmail
+          - gmail-mcp
           - outlook
           - both
 
@@ -33,6 +34,8 @@ jobs:
           MAILBOX_PROVIDER: ${{ inputs.provider }}
           GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
           GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
+          GMAIL_MCP_CLIENT_ID: ${{ secrets.GMAIL_MCP_CLIENT_ID }}
+          GMAIL_MCP_CLIENT_SECRET: ${{ secrets.GMAIL_MCP_CLIENT_SECRET }}
           OUTLOOK_CLIENT_ID: ${{ secrets.OUTLOOK_CLIENT_ID }}
           OUTLOOK_CLIENT_SECRET: ${{ secrets.OUTLOOK_CLIENT_SECRET }}
         run: |
@@ -51,10 +54,18 @@ jobs:
           python3 - <<'PY' | ssh -i ~/.ssh/studybridge_mailbox_key "$LIGHTSAIL_USER@$LIGHTSAIL_HOST" "cd ~/school-helper && python3 aws/configure-mailboxes.py '$GITHUB_SHA'"
           import json, os, sys
           selected = os.environ['MAILBOX_PROVIDER']
-          if selected not in ('gmail', 'outlook', 'both'):
+          if selected not in ('gmail', 'gmail-mcp', 'outlook', 'both'):
               raise SystemExit('Invalid provider selection')
-          providers = ['gmail', 'outlook'] if selected == 'both' else [selected]
+          providers = ['gmail', 'outlook'] if selected == 'both' else ['gmail'] if selected == 'gmail-mcp' else [selected]
           payload = {'providers': providers}
+          if selected == 'gmail-mcp':
+              payload['gmailTransport'] = 'mcp'
+              for key in ('GMAIL_MCP_CLIENT_ID', 'GMAIL_MCP_CLIENT_SECRET'):
+                  if not os.environ.get(key):
+                      raise SystemExit('Set both Gmail MCP OAuth repository secrets before activation.')
+                  payload[key] = os.environ[key]
+              json.dump(payload, sys.stdout)
+              sys.exit(0)
           for provider in providers:
               for suffix in ('CLIENT_ID', 'CLIENT_SECRET'):
                   key = provider.upper() + '_' + suffix

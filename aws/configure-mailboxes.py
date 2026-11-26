@@ -52,12 +52,20 @@ def valid_key(value):
 
 
 def settings(payload, existing, persisted):
-    allowed = {"providers", "GMAIL_CLIENT_ID", "GMAIL_CLIENT_SECRET", "OUTLOOK_CLIENT_ID", "OUTLOOK_CLIENT_SECRET"}
+    allowed = {"providers", "gmailTransport", "GMAIL_CLIENT_ID", "GMAIL_CLIENT_SECRET", "GMAIL_MCP_CLIENT_ID",
+               "GMAIL_MCP_CLIENT_SECRET", "OUTLOOK_CLIENT_ID", "OUTLOOK_CLIENT_SECRET"}
     if not isinstance(payload, dict) or set(payload) - allowed:
         raise ValueError("Only selected provider credentials are accepted")
     providers = payload.get("providers")
     if not isinstance(providers, list) or not providers or len(set(providers)) != len(providers) or any(p not in ("gmail", "outlook") for p in providers):
         raise ValueError("Select gmail, outlook, or both")
+    use_mcp = payload.get("gmailTransport") == "mcp"
+    mcp_keys = {"GMAIL_MCP_CLIENT_ID", "GMAIL_MCP_CLIENT_SECRET"}
+    if use_mcp:
+        if providers != ["gmail"] or not all(payload.get(key) for key in mcp_keys) or set(payload) != mcp_keys | {"providers", "gmailTransport"}:
+            raise ValueError("Gmail MCP activation requires its dedicated OAuth pair alone")
+    elif "gmailTransport" in payload or set(payload) & mcp_keys:
+        raise ValueError("Select Gmail MCP to set its OAuth credentials")
     if existing.get("APP_BASE_URL", "").rstrip("/") != BASE_URL or existing.get("NODE_ENV") != "production":
         raise RuntimeError("Expected the existing canonical production environment")
     for candidate in (existing.get("MAILBOX_ENCRYPTION_KEY", ""), persisted.get("MAILBOX_ENCRYPTION_KEY", "")):
@@ -66,10 +74,13 @@ def settings(payload, existing, persisted):
     if existing.get("MAILBOX_ENCRYPTION_KEY") and persisted.get("MAILBOX_ENCRYPTION_KEY") and existing["MAILBOX_ENCRYPTION_KEY"] != persisted["MAILBOX_ENCRYPTION_KEY"]:
         raise RuntimeError("Runtime and persisted mailbox keys differ; refusing to rotate either key")
     key = existing.get("MAILBOX_ENCRYPTION_KEY") or persisted.get("MAILBOX_ENCRYPTION_KEY") or base64.b64encode(secrets.token_bytes(32)).decode()
-    values = {"MAILBOX_ENCRYPTION_KEY": key, "MAILBOX_SYNC_DISABLED": "false"}
+    values = {"MAILBOX_ENCRYPTION_KEY": key}
+    if not use_mcp:
+        values["MAILBOX_SYNC_DISABLED"] = "false"
     for provider in providers:
         prefix = provider.upper()
-        id_key, secret_key = prefix + "_CLIENT_ID", prefix + "_CLIENT_SECRET"
+        credential_prefix = "GMAIL_MCP" if use_mcp else prefix
+        id_key, secret_key = credential_prefix + "_CLIENT_ID", credential_prefix + "_CLIENT_SECRET"
         supplied_id, supplied_secret = payload.get(id_key, ""), payload.get(secret_key, "")
         if bool(supplied_id) != bool(supplied_secret):
             raise ValueError("Supply both credential fields, or reuse both existing fields")
@@ -81,6 +92,10 @@ def settings(payload, existing, persisted):
             raise ValueError("Missing or invalid provider client ID")
         if not isinstance(secret, str) or not 10 <= len(secret) <= 4096 or not re.fullmatch(r"[A-Za-z0-9_.~!*-]+", secret):
             raise ValueError("Missing or invalid provider secret")
+        if use_mcp:
+            if client_id in (existing.get("GOOGLE_CLIENT_ID"), existing.get("GMAIL_CLIENT_ID")):
+                raise ValueError("Gmail MCP requires a separate OAuth client")
+            values["GMAIL_MAILBOX_TRANSPORT"] = "mcp"
         # Do not copy existing Google login secrets into extra keys unless explicitly supplied.
         if supplied_id:
             values.update({id_key: client_id, secret_key: secret})

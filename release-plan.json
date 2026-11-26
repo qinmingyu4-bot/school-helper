@@ -1,8 +1,8 @@
 {
-  "previousCommit": "69c737c273f2772a4cf17c4b22d2263c9e1b487b",
-  "previousVersion": "1.22.4",
-  "version": "1.22.5",
+  "previousCommit": "6997269570599383bc003ade25d13de56ecb2c17",
+  "previousVersion": "1.22.5",
+  "version": "1.22.6",
   "level": "patch",
-  "reason": "Correct mobile menu highlighting on return and keep existing image and Office dropdown text legible.",
+  "reason": "Update the existing Gmail mailbox assistant transport for Google's Gmail MCP requirement.",
   "features": []
 }

@@ -55,6 +55,7 @@ async function checkNotesViewports(browser) {
       await page.setContent(html);
       const sticky = page.locator('.note-ink [data-sticky]');
       await sticky.first().waitFor();
+      await page.waitForFunction(() => document.querySelector('[data-mode=sticky]').getAttribute('aria-pressed') === 'true');
       await page.evaluate(() => document.fonts.ready);
       const paper = page.locator('.note-scroll');
       const rect = await paper.boundingBox();
@@ -62,6 +63,10 @@ async function checkNotesViewports(browser) {
       if (width > 900) {
         const side = await page.locator('.app-shell > .sidebar').boundingBox();
         assert.ok(side.width >= 150 && rect.x >= side.x + side.width - 1);
+      }
+      if (process.env.NOTES_SCREENSHOT_DIR && name !== 'split') {
+        fs.mkdirSync(process.env.NOTES_SCREENSHOT_DIR, {recursive:true});
+        await page.screenshot({path:path.join(process.env.NOTES_SCREENSHOT_DIR, name+'.png')});
       }
       if (touch) {
         const geometry = () => page.evaluate(() => {
@@ -74,10 +79,14 @@ async function checkNotesViewports(browser) {
         assert.ok(before.extra <= 2 && before.gap >= -1 && before.gap <= 16, name + ' bounds ' + JSON.stringify(before));
         await page.locator('[data-mode=hand]').click();
         const devtools = await page.context().newCDPSession(page);
-        const x = Math.round(rect.x + rect.width*.65), y = Math.round(rect.y + rect.height*.8);
+        const x = Math.round(rect.x + rect.width*.06), y = Math.round(rect.y + rect.height*.8);
         const send = (type, currentY) => devtools.send('Input.dispatchTouchEvent', {
           type, touchPoints: type === 'touchEnd' ? [] : [{x, y:currentY}]
         });
+        console.log(name, await page.evaluate(({x,y}) => {
+          const surface=document.elementFromPoint(x,y), p=document.querySelector('.note-scroll');
+          return {target:surface?.tagName, touch:getComputedStyle(surface).touchAction, sheet:p.scrollHeight, viewport:p.clientHeight};
+        }, {x,y}));
         await send('touchStart', y);
         for (let step=1; step<=6; step++) {
           await send('touchMove', y-step*14);
@@ -97,10 +106,6 @@ async function checkNotesViewports(browser) {
         await paper.evaluate(el => { el.scrollTop = 0; });
       }
       await page.locator('[data-mode=hand]').click();
-      if (process.env.NOTES_SCREENSHOT_DIR && name !== 'split') {
-        fs.mkdirSync(process.env.NOTES_SCREENSHOT_DIR, {recursive:true});
-        await page.screenshot({path:path.join(process.env.NOTES_SCREENSHOT_DIR, name+'.png')});
-      }
       await sticky.first().click();
       await page.keyboard.press('Backspace');
       assert.equal(await sticky.count(), 1);

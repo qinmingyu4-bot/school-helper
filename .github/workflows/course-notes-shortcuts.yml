@@ -34,7 +34,7 @@ jobs:
           NOTES_PLAYWRIGHT_MODULE: ${{ runner.temp }}/notes-test/node_modules/playwright
         run: node tests/browser/course-notes-shortcuts.cjs
       - name: Save viewport screenshots
-        if: runner.os == 'macOS'
+        if: always() && runner.os == 'macOS'
         uses: actions/upload-artifact@v4
         with:
           name: notes-viewports

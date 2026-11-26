@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- On a landscape tablet, open landscape A4 notes at the full available writing width and scroll within the paper to reach the bottom. Portrait tablet windows still fit the full page.
+- New tablet blank notes use landscape A4 paper, including their PDF source and export. The tablet workspace fits the full page at default zoom and shares one row for the main header and tool tabs on wide screens.
+- Collapse the main sidebar into a dismissible menu in the tablet classroom notes workspace. Keep the paper mounted while navigating the menu or rotating the tablet.
+- Fit the paper below the actual classroom controls on tablets and phones, with touch scrolling inside the writing area and safe-area padding at the bottom.
+- Provide an offline desktop notes preview with the website sidebar, tools navigation, bundled fonts and compact editor.
+- End the local notes layout preview at the workspace and reduce the gap below the compact editor on desktop and mobile.
+- Compact the upper classroom note tools, keeping editing controls visible and giving the paper more room on desktop, tablet and mobile.
 - Trial: hand off scrolling at either edge of a classroom note on a renewed gesture, while keeping momentum and the first movement after a long pause on the paper.
 - Add Windows Ctrl+Y redo and Mac/Windows clipboard and duplicate shortcuts for classroom sticky notes. Enter edits a selected note and Escape clears its selection or cancels a drag.
 - Resize a selected classroom sticky note from any edge or corner. Directional cursors show where to drag.

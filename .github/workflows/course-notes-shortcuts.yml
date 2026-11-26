@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/course-notes-shortcuts.yml'
+      - 'scripts/desktop-notes-preview.cjs'
       - 'public/course-notes.js'
       - 'public/course-notes-model.js'
       - 'public/course-notes.css'
@@ -29,5 +30,13 @@ jobs:
         run: npm install --prefix "$RUNNER_TEMP/notes-test" --no-save --ignore-scripts playwright@1.62.1
       - name: Exercise shortcuts in installed Chrome
         env:
+          NOTES_SCREENSHOT_DIR: ${{ runner.temp }}/notes-viewports
           NOTES_PLAYWRIGHT_MODULE: ${{ runner.temp }}/notes-test/node_modules/playwright
         run: node tests/browser/course-notes-shortcuts.cjs
+      - name: Save viewport screenshots
+        if: always() && runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: notes-viewports
+          path: ${{ runner.temp }}/notes-viewports/
+          retention-days: 3

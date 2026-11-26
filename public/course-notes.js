@@ -95,6 +95,10 @@
     const viewport = source.getViewport({scale:pixels/natural.width});
     const canvas = $('canvas'); canvas.width = viewport.width; canvas.height = viewport.height;
     const sheet = $('.note-sheet'); sheet.style.width = `${zoom*100}%`; sheet.style.aspectRatio = `${natural.width}/${natural.height}`;
+    const blankLandscape = natural.width > natural.height && Array.from($('[data-document]').options)
+      .some(option => option.value === doc && option.hasAttribute('data-blank'));
+    sheet.toggleAttribute('data-landscape-blank', blankLandscape);
+    if (blankLandscape) sheet.style.setProperty('--note-fit-width', (zoom * 100 * natural.width / natural.height) + 'cqh');
     const svg = $('svg.note-ink'); svg.setAttribute('viewBox',`0 0 1000 ${1000*natural.height/natural.width}`); svg.dataset.ratio = natural.height/natural.width;
     renderTask = source.render({canvasContext:canvas.getContext('2d'),viewport});
     await renderTask.promise; renderTask = null;
@@ -138,7 +142,7 @@
     const data = await ctx.api(`/api/courses/${encodeURIComponent(course)}/documents?summary=1`);
     if (token !== epoch || selectedCourse !== course) return;
     const documents = data.documents.filter(d => d.blankNote || d.hasSourcePdf);
-    $('[data-document]').innerHTML = `<option value="">${documentPlaceholder()}</option>` + documents.map(d => `<option value="${esc(d.id)}">${esc(d.title)}</option>`).join('');
+    $('[data-document]').innerHTML = `<option value="">${documentPlaceholder()}</option>` + documents.map(d => `<option value="${esc(d.id)}"${d.blankNote ? ' data-blank' : ''}>${esc(d.title)}</option>`).join('');
     $('[data-document]').value=doc;
     status(documents.length ? '' : t('新建空白笔记或上传 PDF 开始。','Start with a blank note or upload a PDF.'));
   }
@@ -149,10 +153,12 @@
     status(t('正在新建空白笔记…','Creating a blank note…'));
     const timestamp = new Date().toLocaleString(t('zh-CN','en'),{dateStyle:'short',timeStyle:'short'});
     const title = `${t('空白笔记','Blank note')} · ${timestamp}`;
-    const { document } = await ctx.api(`/api/courses/${encodeURIComponent(course)}/notes`,{method:'POST',body:{title}});
+    const { document } = await ctx.api(`/api/courses/${encodeURIComponent(course)}/notes`,{method:'POST',body:{title, orientation:usesTabletPaper() ? 'landscape' : 'portrait'}});
     if (token !== epoch) return;
     const select = $('[data-document]');
-    select.add(new Option(document.title, document.id), 1);
+    const option = new Option(document.title, document.id);
+    option.setAttribute('data-blank','');
+    select.add(option, 1);
     await openDocument(document.id, {version:0,items:[]});
     if (token === epoch) { mode='pen'; $('[data-document]').value=doc; syncPickers(); }
   }
@@ -647,7 +653,57 @@
     <dialog data-text-dialog><form method="dialog"><label>${t('文字笔记（清空可删除）','Text note (empty to delete)')}<textarea maxlength="4000" rows="6"></textarea></label><div><button value="cancel">${t('取消','Cancel')}</button><button value="save">${t('完成','Done')}</button></div></form></dialog>`;
     bind();
   }
+  function usesTabletPaper() {
+    const ipad = /iPad/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    return ipad || window.matchMedia('(pointer: coarse) and (min-width: 701px) and (min-height: 600px)').matches;
+  }
+  const tabletLayout = window.matchMedia?.('(min-width: 901px) and (pointer: coarse)');
+  let tabletMenu;
+
+  function syncTabletMenu() {
+    const shell = document.getElementById('courseNotesSlot')?.closest('.app-shell:not(.admin-shell)');
+    const sidebar = tabletLayout?.matches && shell?.querySelector(':scope > .sidebar');
+    const header = sidebar && shell.querySelector(':scope > .workspace > .page-header');
+    if (tabletMenu && (tabletMenu.sidebar !== sidebar || tabletMenu.header !== header)) {
+      tabletMenu.remove();
+      tabletMenu = null;
+    }
+    if (!header || !sidebar.showPopover) return;
+    if (!tabletMenu) {
+      const trigger = document.createElement('button');
+      const close = document.createElement('button');
+      trigger.type = close.type = 'button';
+      trigger.className = 'note-menu-trigger';
+      close.className = 'note-menu-close';
+      sidebar.popover = 'auto';
+      trigger.popoverTargetElement = close.popoverTargetElement = sidebar;
+      close.popoverTargetAction = 'hide';
+      function choose(event) {
+        const link = event.target.closest('[data-page], [data-action^="mode-"]');
+        if (!link || !sidebar.matches(':popover-open')) return;
+        sidebar.hidePopover();
+        if (link.dataset.page === 'tools') {
+          event.stopPropagation();
+          trigger.focus({preventScroll:true});
+        }
+      }
+      sidebar.addEventListener('click', choose);
+      header.prepend(trigger);
+      sidebar.prepend(close);
+      tabletMenu = {sidebar, header, trigger, close, remove() {
+        sidebar.removeEventListener('click', choose);
+        sidebar.removeAttribute('popover');
+        trigger.remove();
+        close.remove();
+      }};
+    }
+    tabletMenu.trigger.textContent = t('主菜单','Main menu');
+    tabletMenu.close.textContent = t('收起菜单','Close menu');
+  }
+  tabletLayout?.addEventListener('change', syncTabletMenu);
+
   async function mount(context) {
+    syncTabletMenu();
     if (host && (owner!==context.userId || !document.getElementById('courseNotesSlot'))) finishGesture(false);
     ctx=context;
     if (owner!==ctx.userId) {

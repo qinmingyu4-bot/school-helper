@@ -105,7 +105,7 @@ def verify(providers, values, previous_environment):
     # Exercise exactly the production OAuth builder, without a real session or provider request.
     check = r"""
 const assert = require('node:assert/strict');
-const {configuration, startOAuth, verifyOAuth} = require('./lib/mailbox-providers');
+const {configuration, gmailUsesMcp, startOAuth, verifyOAuth} = require('./lib/mailbox-providers');
 for (const provider of JSON.parse(process.env.SB_VERIFY_PROVIDERS)) {
   const config = configuration(provider);
   assert.equal(config.enabled, true);
@@ -115,7 +115,10 @@ for (const provider of JSON.parse(process.env.SB_VERIFY_PROVIDERS)) {
   assert.equal(url.protocol, 'https:');
   assert.equal(url.hostname, provider === 'gmail' ? 'accounts.google.com' : 'login.microsoftonline.com');
   assert.equal(query.get('redirect_uri'), `https://studybridge.ink/api/mailbox/${provider}/callback`);
-  assert.equal(query.get('scope'), provider === 'gmail' ? 'https://www.googleapis.com/auth/gmail.readonly' : 'offline_access User.Read Mail.Read');
+  const gmailScope = 'https://www.googleapis.com/auth/gmail.readonly';
+  const expectedScope = provider === 'outlook' ? 'offline_access User.Read Mail.Read'
+    : gmailUsesMcp(provider, process.env) ? 'openid email ' + gmailScope : gmailScope;
+  assert.equal(query.get('scope'), expectedScope);
   assert.equal(query.get('code_challenge_method'), 'S256');
   assert.ok(query.get('code_challenge'));
   assert.match(result.cookie, /; Secure/); assert.match(result.cookie, /; HttpOnly/);

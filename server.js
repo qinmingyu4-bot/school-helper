@@ -2561,7 +2561,7 @@ async function routeApi(req, res) {
         if (action === "start") {
           if (body.consent !== true) return sendError(res, 400, "请先同意连接邮箱并授予读取权限。");
           const current = await db.getMailbox(auth.user.id, provider);
-          const oauth = mailboxProviders.startOAuth(provider, { ...auth, mailboxGeneration: current?.generation || null }, body.timeZone || "UTC");
+          const oauth = mailboxProviders.startOAuth(provider, { ...auth, mailboxGeneration: current?.bindingVersion || current?.generation || null }, body.timeZone || "UTC");
           res.setHeader("set-cookie", oauth.cookie);
           return respond({ url: oauth.url });
         }

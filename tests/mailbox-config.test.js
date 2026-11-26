@@ -102,6 +102,9 @@ with tempfile.TemporaryDirectory(prefix='studybridge-mailbox-validation-test-') 
     try:
         with patch.dict(ns, {'process_settings':lambda:{}}), patch.dict(ns['COMMON'],{'verify':lambda client:None}), patch.object(ns['urllib'].request,'urlopen',return_value=contextlib.closing(io.StringIO('{"ok":true,"db":"local"}'))):
             ns['verify'](['gmail','outlook'],{'MAILBOX_ENCRYPTION_KEY':environment['MAILBOX_ENCRYPTION_KEY']},environment)
+        mcp = {'GMAIL_MAILBOX_TRANSPORT':'mcp','GMAIL_MCP_CLIENT_ID':'123456-agent.apps.googleusercontent.com','GMAIL_MCP_CLIENT_SECRET':'gmail-agent-fixture'}
+        with patch.dict(ns, {'process_settings':lambda:mcp}), patch.dict(ns['COMMON'],{'verify':lambda client:None}), patch.object(ns['urllib'].request,'urlopen',return_value=contextlib.closing(io.StringIO('{"ok":true,"db":"local"}'))):
+            ns['verify'](['gmail','outlook'],mcp,environment)
         with patch.dict(ns, {'process_settings':lambda:{'OUTLOOK_REDIRECT_URI':'https://wrong.example/callback'}}), patch.object(ns['urllib'].request,'urlopen',return_value=contextlib.closing(io.StringIO('{"ok":true,"db":"local"}'))):
             try: ns['verify'](['outlook'],{},environment); raise AssertionError('Wrong callback passed')
             except RuntimeError: pass

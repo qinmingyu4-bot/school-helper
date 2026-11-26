@@ -32,6 +32,8 @@ actual key, client secret, token or mailbox database:
 | `MAILBOX_ENCRYPTION_KEY` | Stable random 32-byte key, standard base64 encoding |
 | `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET` | Google Web application credentials; omitted values fall back to the existing Google login credentials |
 | `GMAIL_REDIRECT_URI` | Optional override, default `${APP_BASE_URL}/api/mailbox/gmail/callback` |
+| `GMAIL_MAILBOX_TRANSPORT` | Set to `mcp` at cutover. Existing deployments use the original Gmail transport until then. |
+| `GMAIL_MCP_CLIENT_ID`, `GMAIL_MCP_CLIENT_SECRET` | Dedicated agent-marked Google Web OAuth client for Gmail MCP |
 | `OUTLOOK_CLIENT_ID`, `OUTLOOK_CLIENT_SECRET` | Microsoft Entra Web application credentials |
 | `OUTLOOK_REDIRECT_URI` | Optional override, default `${APP_BASE_URL}/api/mailbox/outlook/callback` |
 | `MAILBOX_SYNC_INTERVAL_SECONDS` | Default 300 seconds, minimum 60; backlog batches resume after 15 seconds |
@@ -64,6 +66,14 @@ repeated runs keep the same key. It does not
 authorize a user's inbox: each user still binds through Settings and provider
 consent. Provider registration/consent and an actual mailbox sync require separate
 live validation; passing server configuration checks alone does not prove them.
+
+### Gmail MCP rollout
+
+1. In the Google Cloud project, leave Workspace API usage on Standard and enable Gmail API and Gmail MCP API. Create a separate Web OAuth client with **Use this client for an AI-powered agent** selected. Register the existing Gmail mailbox callback and the `gmail.readonly` scope. The app also requests `openid email` to verify the address being linked. Keep the existing Google sign-in client and redirect in place. See [Google's Gmail MCP setup](https://developers.google.com/workspace/gmail/api/guides/configure-mcp-server).
+2. In a test deployment, set the MCP client pair in the private server environment and set `GMAIL_MAILBOX_TRANSPORT=mcp`. Bind a test account and enable automatic AI analysis. Verify scheduled and manual sync, multiple new messages in one thread, a reconnect to the same account, and ordinary Google sign-in and Outlook. Then use the same private configuration on the production release. The existing provider bootstrap workflow provisions the original credentials.
+3. Existing Gmail connections prompt for reauthorization. Choosing the same Gmail address at cutover retains analysis consent, queued message IDs, existing notices and deduplication records. The MCP worker rebuilds its checkpoint by searching from the previous connection's existing start date. Linking a different address starts a fresh connection and requires a new opt-in.
+
+Gmail MCP searches the Inbox in paged date windows, checks each message's Inbox label and timestamp, and uses the documented read-only self-mode endpoint to retrieve plain text. Completed windows overlap by 15 minutes to cover delayed indexing. Google can omit restricted messages from search results. Normal background Gmail MCP checks run at least 30 minutes apart to reduce quota use. The Standard limit is shared by the project. Each thread-search call counts as 10 of the 5,000 daily requests, including searches with an empty inbox. Monitor actual use in [Google Cloud quotas](https://developers.google.com/workspace/gmail/api/guides/quotas).
 
 ### Production test configuration (2026-10-28)
 
@@ -113,8 +123,8 @@ contact real accounts and cannot verify provider registration or public approval
 
 ## Synchronization and review
 
-The server worker runs independently of open browser pages, only for explicitly opted-in connections. Turning analysis off preserves tokens, cursors, queued messages, deduplication markers, notices and confirmed schedules. A paid request already sent can finish and persist its result once; the lease is retained until completion so toggling off/on cannot duplicate that call. Sync and worker entry points both enforce consent; enabling does not clear retry backoff. Rebinding requires a new opt-in. The initial sync
-reads the last seven days of the Inbox. Gmail uses paginated message backfill and
+The server worker runs independently of open browser pages, only for explicitly opted-in connections. Turning analysis off preserves tokens, cursors, queued messages, deduplication markers, notices and confirmed schedules. A paid request already sent can finish and persist its result once; the lease is retained until completion so toggling off/on cannot duplicate that call. Sync and worker entry points both enforce consent; enabling does not clear retry backoff. A new mailbox address requires a new opt-in. The initial sync
+reads the last seven days of the Inbox. The original Gmail transport uses paginated message backfill and
 then history checkpoints; Outlook uses per-Inbox paginated delta queries with
 immutable IDs. Read/unread status, mailbox contents and provider calendars are
 never changed. Other folders and attachments are outside this release. Expired

@@ -281,3 +281,72 @@ test('rapid off/on while AI is in flight keeps the lease across workers and save
   await second.setAnalysisEnabled('alice', 'gmail', false); await second.setAnalysisEnabled('alice', 'gmail', true); await second.sync('alice', 'gmail');
   assert.equal(calls, 1); assert.deepEqual((await db.getMailbox('alice', 'gmail')).queue, []);
 });
+
+for (const dynamo of [false, true]) test(`Gmail MCP cutover preserves the same mailbox, queued notices and analysis deduplication (${dynamo ? "DynamoDB" : "local"})`, async t => {
+  const db = await setup(t, dynamo);
+  const received = Date.parse("2026-11-25T03:05:00Z");
+  let time = received + 60000;
+  const tokens = { accessToken: "old-access", refreshToken: "old-refresh", expiresAt: time + 86400000 };
+  const transportCalls = [], analyzed = [];
+  const legacyTransport = {
+    profile: async () => ({ email: "student@example.test" }),
+    page: async () => ({ ids: ["existing", "ignored"], sync: { historyId: "100" }, more: false }),
+    message: async (_provider, id) => ({ id, subject: id, text: id, receivedAt: new Date(received).toISOString() })
+  };
+  const options = { db, now: () => time, analyze: async (messages) => {
+    const { body } = JSON.parse(messages[1].content);
+    analyzed.push(body);
+    return JSON.stringify({ relevant: body !== "ignored", summary: "Notice", items: [] });
+  } };
+  const legacy = createMailboxService({ ...options, transport: legacyTransport, env });
+  await legacy.connect("alice", "gmail", tokens, "UTC");
+  await legacy.setAnalysisEnabled("alice", "gmail", true);
+  await legacy.sync("alice", "gmail");
+  const previous = await db.changeMailbox("alice", "gmail", row => ({ ...row, queue: ["pending"], nextSyncAt: 0 }));
+  const mcpEnv = { ...env, GMAIL_MAILBOX_TRANSPORT: "mcp", GMAIL_MCP_CLIENT_ID: "dedicated-agent", GMAIL_MCP_CLIENT_SECRET: "mcp-secret" };
+  let throttled = true;
+  const mcpTransport = {
+    profile: async () => ({ email: "Student@example.test" }),
+    page: async (connection, accessToken) => {
+      transportCalls.push(["page", accessToken]);
+      assert.deepEqual(connection.sync, {});
+      assert.equal(connection.since, previous.since);
+      return { ids: ["existing", "ignored", "pending", "new"], sync: { transport: "gmail-mcp", checkpoint: time }, more: false };
+    },
+    message: async (provider, id, accessToken) => {
+      transportCalls.push([id, accessToken]);
+      if (id === "pending" && throttled) throw Object.assign(new Error("rate limit"), { providerStatus: 429, retryAfter: 3600 });
+      const message = await legacyTransport.message(provider, id);
+      return id === "ignored" ? { ...message, receivedAt: new Date(received + 15000).toISOString(), missingInternalDate: true } : message;
+    }
+  };
+  const mcp = createMailboxService({ ...options, transport: mcpTransport, env: mcpEnv });
+  assert.equal((await mcp.status("alice")).connections[0].reconnectRequired, true);
+  await mcp.sync("alice", "gmail");
+  assert.deepEqual(transportCalls, [], "legacy OAuth tokens are never sent to MCP");
+  const newTokens = { ...tokens, accessToken: "mcp-access", refreshToken: "mcp-refresh" };
+  await mcp.connect("alice", "gmail", newTokens, "UTC", previous.generation);
+  await assert.rejects(mcp.connect("alice", "gmail", newTokens, "UTC", previous.generation), /连接已变更/);
+  const migrated = await mcp.status("alice");
+  assert.equal(migrated.connections[0].analysisEnabled, true);
+  assert.equal(migrated.connections[0].reconnectRequired, false);
+  assert.deepEqual(migrated.drafts.map(draft => draft.subject), ["existing"]);
+  await mcp.sync("alice", "gmail");
+  const rateLimited = await db.getMailbox("alice", "gmail");
+  assert.deepEqual(rateLimited.queue, ["pending"]);
+  assert.equal(rateLimited.nextSyncAt, time + 3600000);
+  assert.equal(rateLimited.reconnectRequired, false);
+  await mcp.requestSync("alice", "gmail");
+  await mcp.sync("alice", "gmail");
+  assert.deepEqual(transportCalls, [["pending", "mcp-access"]], "manual sync respects provider backoff");
+  throttled = false;
+  time += 3600000;
+  await mcp.sync("alice", "gmail");
+  time += 15000;
+  await mcp.sync("alice", "gmail");
+  time += 15000;
+  await mcp.sync("alice", "gmail");
+  assert.deepEqual(analyzed, ["existing", "ignored", "pending", "new"]);
+  assert.equal((await db.getMailbox("alice", "gmail")).nextSyncAt, time + 30 * 60000);
+  assert.equal((await mcp.status("alice")).drafts.length, 3);
+});

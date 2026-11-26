@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add a read-only Gmail MCP connection for the free Google Standard tier. A same-address reauthorization at cutover keeps existing learning notices and avoids reanalyzing previously processed messages.
+
 ## 1.22.5 — 2026-11-26 — Mobile selection and readable dropdowns
 
 PATCH from AWS 1.22.4 (`69c737c`): fix the existing mobile navigation highlight and dropdown text layout.

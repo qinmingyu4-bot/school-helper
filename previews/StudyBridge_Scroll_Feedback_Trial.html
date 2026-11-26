@@ -1,0 +1,1027 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>StudyBridge · 课堂笔记滚动试用</title><style>
+:root{--ink:#172d48;--muted:#60758b;--line:#d4dfeb;--green:#19775e;--soft:#f4f8fb;--panel:#fff;--font-ui:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;color-scheme:light dark;background:var(--panel);color:var(--ink);font-family:var(--font-ui)}
+@media(prefers-color-scheme:dark){:root{--ink:#dfe9ed;--muted:#a9bbca;--line:#3a4b58;--green:#85d2b1;--soft:#202a32;--panel:#162027}}
+*{box-sizing:border-box}body{margin:0}main,.hint-inner{max-width:1160px;margin:auto}h1{font-size:clamp(22px,3.5vw,34px);font-weight:580;margin:12px 0 5px}.heading{padding:30px 28px 12px}.heading small,.heading p{color:var(--muted);font-size:13px}.heading p{margin:6px 0}.hint{position:sticky;top:0;z-index:60;background:var(--panel);border-bottom:1px solid var(--line)}.hint-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 28px;font-size:13px;line-height:1.6}.hint button{font:inherit;color:var(--green);background:transparent;border:1px solid var(--line);border-radius:6px;padding:4px 12px;white-space:nowrap;cursor:pointer}.end{min-height:26vh}
+/* Quiet course workspace: linked values, text actions and a single paper canvas. */
+.course-notes{min-width:0;padding:0 28px 28px;color:var(--ink);font-family:var(--font-ui);font-weight:400}
+.course-notes :is(button,select,input,textarea,summary){font-family:inherit;box-shadow:none;text-shadow:none}
+.course-notes button,.course-notes select,.note-upload,.note-navigation input{width:auto;min-height:36px;padding:6px 8px;border:0;border-radius:3px;background:transparent;color:var(--muted);font-size:12px;font-weight:450;line-height:20px}
+.course-notes button:hover:not(:disabled){background:var(--soft);color:var(--ink)}
+.course-notes button:disabled{opacity:.45;cursor:default}
+.course-notes :focus-visible{outline:2px solid var(--green);outline-offset:3px}
+.course-notes [hidden]{display:none!important}
+.note-picker{display:flex;align-items:center;flex-wrap:wrap;gap:16px 28px;padding:24px 0 14px}
+.note-location{display:flex;align-items:center;gap:18px;min-width:0;flex:1 1 360px}
+.note-field{position:relative;min-width:0;max-width:340px}
+.note-field-label{display:block;color:var(--muted);font-size:11px;font-weight:400;line-height:18px}
+.course-notes .note-picker-trigger{display:flex;align-items:center;gap:10px;max-width:100%;padding:2px 0;min-height:30px;border-radius:0;color:var(--ink);font-size:13px;font-weight:500;text-align:left}
+.course-notes .note-picker-trigger:hover:not(:disabled){background:transparent;color:var(--green)}
+.note-picker-trigger>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.note-picker-trigger svg{width:14px;height:14px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.25;opacity:.55}
+.note-location-divider{align-self:flex-end;margin-bottom:7px;color:var(--line);font-size:18px;font-weight:300}
+.note-picker-actions{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-left:auto}
+.course-notes .note-picker-actions button{padding:5px 0;font-size:11px}
+.course-notes .note-picker-actions button:hover{background:transparent;color:var(--ink)}
+.course-notes .note-picker-actions button[data-note=new-blank]{padding:7px 14px;border:1px solid var(--line);border-radius:8px;color:var(--ink);font-size:12px;font-weight:500;white-space:nowrap}
+.course-notes .note-picker-actions button[data-note=new-blank]:hover:not(:disabled){background:var(--soft);border-color:var(--green)}
+.note-upload{display:inline-flex;align-items:center;gap:6px;position:relative;overflow:hidden;cursor:pointer;padding:7px 14px;border-radius:8px;background:color-mix(in srgb,var(--green) 10%,var(--panel));color:var(--green);font-weight:500;white-space:nowrap}
+.note-upload:hover{background:color-mix(in srgb,var(--green) 16%,var(--panel))}
+.note-upload:active{background:color-mix(in srgb,var(--green) 22%,var(--panel))}
+.note-upload input{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}
+.note-upload:focus-within{outline:2px solid var(--green);outline-offset:3px}
+.note-picker-menu{position:absolute;z-index:30;top:calc(100% + 8px);left:-10px;width:max-content;min-width:210px;max-width:min(340px,calc(100vw - 48px));max-height:280px;overflow:auto;padding:6px;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px #0000000a}
+.course-notes .note-picker-menu button{display:flex;align-items:center;justify-content:space-between;gap:20px;width:100%;min-height:38px;padding:8px 10px;font-size:12px;font-weight:400;color:var(--ink);text-align:left;white-space:normal}
+.course-notes .note-picker-menu button[aria-selected=true]{color:var(--green)}
+.note-picker-menu p{margin:8px 10px;font-size:12px;color:var(--muted)}
+.course-notes .note-picker-menu .note-add-course{margin-top:4px;border-top:1px solid var(--line);border-radius:0;color:var(--green)}
+.note-picker-check{flex-shrink:0;font-size:12px;color:var(--green)}
+.course-notes [role=status]{min-height:18px;margin:0 0 20px;color:var(--muted);font-size:11px;line-height:18px}
+.note-toolbar,.note-navigation{display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px;padding:8px 0;border-bottom:1px solid var(--line)}
+.note-toolbar{border-top:1px solid var(--line)}
+.course-notes .note-toolbar button{border-radius:0;border-bottom:1px solid transparent;padding:6px 0}
+.course-notes .note-toolbar button:hover{background:transparent}
+.course-notes .note-toolbar button[aria-pressed=true]{border-bottom-color:var(--green);color:var(--ink);background:transparent}
+.course-notes .note-toolbar .note-icon-button{display:inline-flex;align-items:center;justify-content:center;width:36px;min-width:36px;padding:7px;flex-shrink:0}
+.note-icon-button svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.note-toolbar label{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:11px;font-weight:400;color:var(--muted);white-space:nowrap}
+.note-toolbar input[type=checkbox]{width:14px;min-width:14px;margin:0;accent-color:var(--green)}
+.note-toolbar input[type=color]{width:24px;height:24px;min-height:24px;padding:3px;border:0;border-radius:50%;background:transparent}
+.note-toolbar input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+.note-toolbar input[type=color]::-webkit-color-swatch{border:1px solid var(--line);border-radius:50%}
+.note-toolbar select{max-width:84px;padding-inline:0;font-size:11px}
+.note-navigation{gap:4px 8px;font-size:11px;color:var(--muted)}
+.note-navigation input{width:42px;min-width:0;padding:4px 0;border-radius:0;text-align:center;color:var(--ink);font-size:12px;appearance:textfield}
+.note-navigation input::-webkit-inner-spin-button{appearance:none}
+.note-navigation details{position:relative;margin-left:auto;font-size:11px}
+.note-navigation summary{cursor:pointer;padding:8px;color:var(--muted)}
+.note-navigation details[open]{display:flex;gap:5px;flex-wrap:wrap}
+.note-scroll{overflow:auto;max-height:72dvh;background:var(--soft);padding:20px;overscroll-behavior:contain}
+.note-sheet{color-scheme:light;position:relative;background:#fff;min-width:100%;isolation:isolate}
+.note-sheet canvas{display:block;width:100%;height:100%}
+.note-ink{position:absolute;inset:0;width:100%;height:100%;user-select:none;-webkit-user-select:none}
+.note-ink polyline{pointer-events:stroke}.note-ink text{pointer-events:bounding-box}
+.course-notes dialog{width:min(420px,90vw);border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);padding:24px;box-shadow:0 16px 48px #00000014}
+.course-notes dialog::backdrop{background:#00000040}
+.course-notes dialog :is(p,label){font-size:13px;font-weight:400;line-height:1.65}
+.course-notes dialog textarea{display:block;width:100%;margin:12px 0;background:var(--panel);color:var(--ink);border:0;border-bottom:1px solid var(--line);border-radius:0;font:inherit;padding:8px 0}
+.course-notes dialog form>div{display:flex;justify-content:flex-end;gap:16px}
+.course-notes dialog button[value=save]{color:var(--green)}
+.course-notes [data-filing-dialog] select{display:block;width:100%;margin:12px 0;padding:8px 0;border-bottom:1px solid var(--line);border-radius:0;white-space:normal;color:var(--ink)}
+.note-focus{position:fixed;inset:0;z-index:1200;background:var(--panel);padding:12px max(20px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));overflow:auto}
+.note-focus .note-scroll{max-height:calc(100dvh - 235px)}
+body:has(.note-focus){overflow:hidden}
+@media(max-width:700px){
+ .course-notes{padding:0 16px 16px}.note-picker{padding-top:18px;gap:10px}.note-location{gap:12px;flex-basis:100%}.note-field{flex:1;max-width:calc(50% - 16px)}
+ .note-picker-actions{margin-left:0;gap:20px}.note-picker-menu{min-width:190px;max-width:calc(100vw - 48px)}.note-field:last-child .note-picker-menu{left:auto;right:0}
+ .note-toolbar{gap:4px 14px}.note-toolbar label{margin-left:0}.note-navigation{gap:3px 6px}.note-scroll{padding:8px;max-height:65dvh}.note-focus .note-scroll{max-height:calc(100dvh - 330px)}
+}
+@media(pointer:coarse){.course-notes button,.note-upload,.course-notes select{min-height:44px}.course-notes .note-picker-trigger,.course-notes .note-picker-menu button{min-height:44px}}
+:root .course-notes .note-toolbar select{font-size:11px;min-width:0}
+:root .course-notes .note-navigation input{font-size:12px;font-weight:450}
+
+@media(pointer:coarse){.course-notes .note-toolbar .note-icon-button{width:44px;min-width:44px}}
+/* A small mode hint complements the existing icon buttons without new chrome. */
+.course-notes [data-tool-status]{flex-basis:100%;font-size:11px;line-height:16px;color:var(--muted);padding:0 0 2px}
+.course-notes [data-note=pdf]{color:var(--green);font-weight:500}
+.course-notes [data-note=cancel-export]{color:var(--muted)}
+.note-ink{touch-action:none}
+
+.note-sticky-tools{position:sticky;bottom:0;z-index:2;background:var(--panel);display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px;padding:6px 0;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}
+.note-sticky-tools label{display:flex;align-items:center;gap:8px;font-size:11px;margin:0}
+.course-notes .note-sticky-tools input[type=color]{width:28px;height:28px;min-height:28px;padding:2px;border:0;background:transparent}
+.note-sticky-tools>span{margin-left:auto;font-size:11px}
+.note-ink [data-sticky]{cursor:inherit}
+
+.note-picker-actions,.note-picker-menu .note-add-course,[data-note=pdf],.note-navigation details{display:none!important}
+.note-scroll{border:1px solid var(--line)}button{cursor:pointer}
+@media(max-width:600px){.heading,.hint-inner{padding-left:16px;padding-right:16px}}
+
+.trial-actions,.trial-line,.choice-row,.trial-dialog footer{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}.trial-line{gap:2px 12px}.trial-line span,.trial-dialog p{color:var(--muted)}.hint-inner{flex-wrap:wrap;gap:6px 16px}.hint strong{font-weight:600}.trial-actions select,.trial-dialog select,.trial-dialog textarea{color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:5px;font:inherit;padding:5px 8px}.trial-actions label{white-space:nowrap}.trial-actions #review,.trial-dialog #copy,.trial-dialog #keep{color:var(--panel);background:var(--green);border-color:var(--green)}
+.trial-dialog{width:min(490px,92vw);max-height:85dvh;overflow:auto;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);font:14px/1.55 var(--font-ui);padding:22px}.trial-dialog::backdrop{background:#10233548}.trial-dialog h2{font-size:19px;margin:0}.trial-dialog label{display:grid;gap:4px;margin:10px 0}.choice-row label{flex:1}.trial-dialog textarea{width:100%;resize:vertical}.trial-dialog footer{justify-content:flex-end}.trial-dialog button{font:inherit;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:5px;padding:5px 10px}.trial-dialog summary{cursor:pointer;color:var(--green)}
+</style>
+<div class="hint"><div class="hint-inner">
+  <div class="trial-line"><strong>滚动手感试用</strong><span>在纸上滑到顶，停一下，再向上滑。</span></div>
+  <div class="trial-actions"><label>手感 <select id="variant"><option value="180">A · 原版</option><option value="90">B · 更快接手</option></select></label>
+  <button id="restart">从中段重试</button><button id="flag">这里不对</button><button id="review">整理反馈</button></div>
+</div></div>
+<dialog id="issue" class="trial-dialog"><form method="dialog">
+<h2>刚才哪里不对？</h2><p id="snapshot"></p>
+<label>我的感受<select id="reason"><option>外层页面动得太早</option><option>我又滑了一次，外层还是没动</option><option>切换时跳了一下</option><option>其他感受</option></select></label>
+<label>补充（选填）<textarea id="detail" maxlength="500" rows="2" placeholder="例如：我只是想看纸面顶部。"></textarea></label>
+<footer><button value="cancel">取消</button><button id="keep" value="keep">记下这次</button></footer></form></dialog>
+<dialog id="summary" class="trial-dialog"><form method="dialog"><h2>这次的滚动反馈</h2>
+<p>选最接近的感受。复制下方反馈发回聊天，我就能结合对应的滚动记录调整。</p>
+<div class="choice-row"><label>输入设备<select id="device"><option>未选择</option><option>触控板</option><option>鼠标滚轮</option><option>触控鼠标</option></select></label>
+<label>整体偏好<select id="preference"><option>暂时说不准</option><option>更喜欢 A</option><option>更喜欢 B</option><option>两版都偏慢</option><option>两版都容易误触</option></select></label></div>
+<label>其他感受（选填）<textarea id="comment" maxlength="800" rows="2"></textarea></label>
+<details><summary>查看将分享的内容</summary><textarea id="report" readonly rows="7" aria-label="完整反馈"></textarea></details>
+<p id="copy-state" role="status"></p><footer><button value="close">继续体验</button><button id="download" type="button">保存为 TXT</button><button type="button" id="copy">复制反馈</button></footer>
+</form></dialog>
+<main><header class="heading"><small>StudyBridge · 工具</small><h1>课堂笔记</h1><p>滚动体验预览 · 本地示例</p></header><div id="courseNotesSlot"></div><div class="end"></div></main>
+<script>function createScrollTrial() {
+  const get = id => document.getElementById(id);
+  const variants = {180:'A',90:'B'};
+  const counts = {A:{runs:0,handoffs:0},B:{runs:0,handoffs:0}};
+  const marks = [];
+  let recent = [], pending, round=0, pause=180;
+  const mode = () => variants[pause];
+  const observed = () => {
+    const viewer=document.querySelector('.note-scroll');
+    return {paper:Math.round(viewer?.scrollTop || 0),page:Math.round(document.scrollingElement.scrollTop)};
+  };
+  function note(kind, gap, paper, page, newHandoff) {
+    if (newHandoff) counts[mode()].handoffs++;
+    const item=recent.at(-1);
+    if (item && item.kind===kind && gap!==null && gap<pause) {
+      item.events++;
+      item.maxGap=Math.max(item.maxGap,gap);
+      return;
+    }
+    recent.push({kind,gap,events:1,maxGap:0,paper:Math.round(paper),page:Math.round(page)});
+    if (recent.length>8) recent.shift();
+  }
+  function restart() {
+    pause=Number(get('variant').value);
+    round++;
+    recent=[];
+    counts[mode()].runs++;
+  }
+  function capture(){
+    const state=observed();
+    return {mode:mode(),pause,round,...state,trace:recent.map(entry=>({...entry}))};
+  }
+  function describe(snapshot) {
+    const last=snapshot.trace.at(-1);
+    return snapshot.mode+' 版 · '+(last?last.kind:'本轮还没有纸面滚动记录')+'。纸面距顶 '+snapshot.paper+' px，外层距顶 '+snapshot.page+' px。';
+  }
+  function report(){
+    const lines=['StudyBridge 课堂笔记 · 滚动体验反馈 v2',
+      '设备：'+get('device').value+'；整体偏好：'+get('preference').value,
+      'A（180 ms）和 B（90 ms）按连续两次向上滚动事件的间隔判断停顿。'];
+    for(const k of ['A','B'])lines.push(k+'：开始 '+counts[k].runs+' 轮，带动外层 '+counts[k].handoffs+' 次');
+    function trace(s){
+      return s.trace.map(t=>t.kind+' [纸 '+t.paper+' / 页 '+t.page+' px，间隔 '+(t.gap===null?'起始':t.gap+' ms')+(t.events>1?'，连续 '+t.events+' 个事件，最大间隔 '+t.maxGap+' ms':'')+']').join(' → ');
+    }
+    marks.forEach((m,i)=>{lines.push((i+1)+'. 第 '+m.round+' 轮，'+describe(m)+' 感受：'+m.reason+(m.detail?'。'+m.detail:''));
+      if(m.trace.length)lines.push('   '+trace(m));});
+    if(!marks.length)lines.push('未标记具体问题。');
+    const latest=capture();
+    if(latest.trace.length)lines.push('最后一轮：'+describe(latest),trace(latest));
+    if(get('comment').value.trim())lines.push('补充：'+get('comment').value.trim());
+    return lines.join('\n');
+  }
+  get('variant').onchange=()=>get('restart').click();
+  get('flag').onclick=()=>{
+    pending=capture();
+    get('snapshot').textContent=describe(pending);
+    get('detail').value='';
+    get('issue').returnValue='cancel';
+    get('issue').showModal();
+  };
+  get('issue').addEventListener('close',()=>{
+    if(get('issue').returnValue==='keep' && pending){
+      marks.push({...pending,reason:get('reason').value,detail:get('detail').value.trim()});
+      get('review').textContent='整理反馈（'+marks.length+'）';
+    }
+    pending=null;
+  });
+  function refresh(){get('report').value=report();get('copy-state').textContent='';}
+  get('review').onclick=()=>{refresh();get('summary').showModal();};
+  for(const id of ['device','preference','comment'])get(id).addEventListener('input',refresh);
+  get('copy').onclick=async()=>{
+    refresh();
+    try{await navigator.clipboard.writeText(get('report').value);get('copy-state').textContent='已复制，可以粘贴回聊天。';}
+    catch{
+      get('report').closest('details').open=true;
+      get('report').focus();get('report').select();
+      get('copy-state').textContent='已选中反馈，按 ⌘C 或 Ctrl+C 复制，或保存为 TXT。';
+    }
+  };
+  get('download').onclick=()=>{
+    const url=URL.createObjectURL(new Blob(['\uFEFF'+report()],{type:'text/plain;charset=utf-8'}));
+    const link=document.createElement('a');link.href=url;link.download='StudyBridge_Scroll_Feedback.txt';
+    document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    get('copy-state').textContent='请把下载的 TXT 发回聊天。';
+  };
+  return {restart,note,get pause(){return pause;},get round(){return round;}};
+}
+const trial=createScrollTrial();
+</script><script>window.StudyBridgeI18n={getLanguage:()=>'zh'};
+window.previewBlankPaper={GlobalWorkerOptions:{},getDocument:()=>({promise:Promise.resolve({numPages:1,async destroy(){},async getPage(){return {getViewport:({scale})=>({width:700*scale,height:1200*scale}),render:()=>({promise:Promise.resolve(),cancel(){}})}}})})};
+</script><script>(function(root,factory){
+  if(typeof module==='object' && module.exports) module.exports=factory();
+  else root.StudyBridgeNoteModel=factory();
+})(typeof globalThis==='object'?globalThis:this,function(){
+  'use strict';
+  const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function contrast(hex) {
+    const rgb=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
+    return .2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2]>.179?'#182b3a':'#ffffff';
+  }
+  function wrap(text,width,font) {
+    const lines=[];
+    for(const paragraph of text.split('\n')) {
+      let line='',used=0;
+      for(const char of Array.from(paragraph)) {
+        const advance=font*(char.charCodeAt(0)>255?1:.6);
+        if(used+advance>width && line){lines.push(line);line='';used=0;}
+        line+=char;used+=advance;
+      }
+      lines.push(line);
+    }
+    return lines;
+  }
+  function sticky(point) {return {type:'sticky',x:Math.min(.68,point[0]),y:Math.min(.76,point[1]),w:.32,h:.24,background:'#fff2a8',text:'',ink:[]};}
+  function transformSticky(item, dx, dy, resize = false) {
+    if (!resize) {
+      return {...item, x:Math.max(0,Math.min(1-item.w,item.x+dx)), y:Math.max(0,Math.min(1-item.h,item.y+dy))};
+    }
+    const direction = resize === true ? 'se' : resize;
+    const next = {...item};
+    if (direction.includes('w') && dx) {
+      const right = item.x + item.w;
+      next.w = Math.min(right, Math.max(.08, item.w - dx));
+      next.x = right - next.w;
+    }
+    if (direction.includes('e')) next.w = Math.min(1-item.x, Math.max(.08, item.w + dx));
+    if (direction.includes('n') && dy) {
+      const bottom = item.y + item.h;
+      next.h = Math.min(bottom, Math.max(.05, item.h - dy));
+      next.y = bottom - next.h;
+    }
+    if (direction.includes('s')) next.h = Math.min(1-item.y, Math.max(.05, item.h + dy));
+    return next;
+  }
+  // Use the same annotation and page limits for pasted content and cloud saves.
+  const fail = (statusCode, message) => Object.assign(new Error(message), { statusCode });
+  function validate(body) {
+    if (!body || !Number.isSafeInteger(body.version) || body.version < 0 || !Array.isArray(body.items) || body.items.length > 2000) throw fail(400, 'Invalid notes.');
+    const unit = n => Number.isFinite(n) && n >= 0 && n <= 1;
+    const items = body.items.map(item => {
+      if (item?.type === 'sticky') {
+        if (!unit(item.x) || !unit(item.y) || !Number.isFinite(item.w) || !Number.isFinite(item.h) || item.w < .08 || item.h < .05 || item.x+item.w > 1.000001 || item.y+item.h > 1.000001 || !/^#[0-9a-f]{6}$/i.test(item.background) || typeof item.text !== 'string' || item.text.length > 4000 || !Array.isArray(item.ink) || item.ink.length > 500 || item.ink.some(stroke=>!['pen','highlight'].includes(stroke?.type))) throw fail(400,'Invalid sticky note.');
+        return {type:'sticky',x:item.x,y:item.y,w:item.w,h:item.h,background:item.background,text:item.text,ink:validate({version:0,items:item.ink})};
+      }
+      if (!item || !['pen', 'highlight', 'text'].includes(item.type) || !/^#[0-9a-f]{6}$/i.test(item.color) || !Number.isFinite(item.width) || item.width < .0005 || item.width > .1) throw fail(400, 'Invalid annotation.');
+      if (item.type === 'text') {
+        if (!unit(item.x) || !unit(item.y) || typeof item.text !== 'string' || item.text.length > 4000) throw fail(400, 'Invalid text.');
+        return { type: item.type, color: item.color, width: item.width, x: item.x, y: item.y, text: item.text };
+      }
+      if (!Array.isArray(item.points) || !item.points.length || item.points.length > 12000 || item.points.some(p => !Array.isArray(p) || p.length !== 2 || !p.every(unit))) throw fail(400, 'Invalid stroke.');
+      return { type: item.type, color: item.color, width: item.width, points: item.points };
+    });
+    if (new TextEncoder().encode(JSON.stringify(items)).byteLength > 260000) throw fail(413, 'This page is full. Please remove some annotations.');
+    return items;
+  }
+  function markup(items,ratio) {
+    return items.map((item,i)=>{
+      if(item.type==='sticky') {
+        const w=item.w*1000,h=item.h*1000*ratio;
+        let font=18,lines=wrap(item.text,w-24,font);
+        while(lines.length*font*1.3>h-30 && font>4){font-=.5;lines=wrap(item.text,w-24,font);}
+        const text=lines.map((line,n)=>`<tspan x="12" y="${22+n*font*1.3}">${escape(line)}</tspan>`).join('');
+        const ink=markup(item.ink,item.h*ratio/item.w).replace(/ data-index="\d+"/g,'');
+        return `<g data-index="${i}" data-sticky="${i}" transform="translate(${item.x*1000} ${item.y*1000*ratio})"><rect width="${w}" height="${h}" rx="3" fill="${escape(item.background)}"/><svg width="${w}" height="${h}" overflow="hidden"><text fill="${contrast(item.background)}" font-size="${font}" font-family="Arial, sans-serif">${text}</text><svg width="${w}" height="${h}" viewBox="0 0 1000 ${1000*item.h*ratio/item.w}">${ink}</svg></svg></g>`;
+      }
+      if(item.type==='text') return `<text data-index="${i}" x="${item.x*1000}" y="${item.y*1000*ratio}" fill="${escape(item.color)}" font-size="${item.width*1000}" font-family="Arial, sans-serif">${item.text.split('\n').map((line,n)=>`<tspan x="${item.x*1000}" dy="${n?item.width*1250:0}">${escape(line)}</tspan>`).join('')}</text>`;
+      const points=item.points.map(p=>`${p[0]*1000},${p[1]*1000*ratio}`).join(' ');
+      return `<polyline data-index="${i}" points="${points}${item.points.length===1?' '+(item.points[0][0]*1000+.01)+','+item.points[0][1]*1000*ratio:''}" fill="none" stroke="${escape(item.color)}" stroke-width="${item.width*1000}" stroke-opacity="${item.type==='highlight'?.3:1}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    }).join('');
+  }
+  function cursor(mode,color) {
+    if(mode==='sticky')return 'crosshair';
+    if(mode==='hand')return 'grab';
+    if(mode==='text')return 'text';
+    const shapes={
+      pen:'<path d="m8 24 2-8L23 3l6 6-13 13-8 2Z"/><path d="m10 16 6 6M20 6l6 6"/>',
+      highlight:'<path d="m8 24 1-6L21 6l7 7-12 12-7-1Z"/><path d="m9 18 6 6M18 9l7 7"/>',
+      eraser:'<path d="m8 24-5-5L17 5l11 11-8 8H8Z"/><path d="m10 12 11 11"/>'
+    };
+    const fill=mode==='eraser'?'#ffffff':color;
+    const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><g stroke="#ffffff" stroke-width="4" stroke-linejoin="round" fill="none">${shapes[mode]}</g><g stroke="#24344a" stroke-width="1.4" stroke-linejoin="round" fill="${fill}">${shapes[mode]}</g><circle cx="8" cy="24" r="1.5" fill="#24344a"/></svg>`;
+    return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 8 24, crosshair`;
+  }
+  function distance(p,a,b) {
+    const dx=b[0]-a[0],dy=b[1]-a[1],length=dx*dx+dy*dy;
+    const t=length?Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/length)):0;
+    return Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dy);
+  }
+  function segmentDistance(a,b,c,d) {
+    const cross=(p,q,r)=>(q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0]);
+    const abC=cross(a,b,c),abD=cross(a,b,d),cdA=cross(c,d,a),cdB=cross(c,d,b);
+    if(abC*abD<0 && cdA*cdB<0)return 0;
+    return Math.min(distance(a,c,d),distance(b,c,d),distance(c,a,b),distance(d,a,b));
+  }
+  // Work in screen pixels, so erasing stays usable at every page aspect/zoom.
+  function hit(item,from,to,size,textBox) {
+    const px=p=>[p[0]*size.width,p[1]*size.height],a=px(from),b=px(to),radius=8;
+    if(item.type==='sticky')textBox={x:item.x*size.width,y:item.y*size.height,width:item.w*size.width,height:item.h*size.height};
+    if(item.type==='text'||item.type==='sticky') {
+      if(!textBox)return false;
+      const {x,y,width,height}=textBox;
+      const inside=p=>p[0]>=x-radius&&p[0]<=x+width+radius&&p[1]>=y-radius&&p[1]<=y+height+radius;
+      const corners=[[x,y],[x+width,y],[x+width,y+height],[x,y+height]];
+      return inside(a)||inside(b)||corners.some((p,i)=>segmentDistance(a,b,p,corners[(i+1)%4])<=radius);
+    }
+    return item.points.some((p,i)=>segmentDistance(a,b,px(p),px(item.points[Math.max(0,i-1)]))<=radius+item.width*size.width/2);
+  }
+  // Invert PDF.js's display transform, including crop origin, rotation and UserUnit.
+  function placement(viewport) {
+    const [a,b,c,d,e,f]=viewport.transform,det=a*d-b*c;
+    if(!Number.isFinite(det)||!det)throw Error('Invalid PDF page transform.');
+    const inverse=(x,y)=>[(d*(x-e)-c*(y-f))/det,(-b*(x-e)+a*(y-f))/det];
+    const p=inverse(0,viewport.height),x=inverse(viewport.width,viewport.height),y=inverse(0,0);
+    return {x:p[0],y:p[1],width:Math.hypot(x[0]-p[0],x[1]-p[1]),height:Math.hypot(y[0]-p[0],y[1]-p[1]),angle:Math.atan2(x[1]-p[1],x[0]-p[0])*180/Math.PI};
+  }
+  return {validate,markup,cursor,hit,placement,sticky,transformSticky,contrast};
+});
+</script><script>(function () {
+  'use strict';
+  const t = (zh,en) => window.StudyBridgeI18n.getLanguage() === 'en' ? en : zh;
+  const localStorage = {getItem:()=>null, setItem(){}, removeItem(){}};
+  let host, ctx, owner, pdf, course = '', doc = '', page = 1, version = 0, items = [], undo = [], redo = [];
+  let mode = 'pen', color = '#24344a', width = .003, zoom = 1, dirty = false, saving, timer, busy = false, stroke, penOnly = false, renderTask, language = '', epoch = 0;
+  const model = window.StudyBridgeNoteModel;
+  let finishGesture = () => {}, exportJob, erasePreview, selectedSticky=-1;
+  const $ = s => host.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"']/g,c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const documentPlaceholder = () => t('选择笔记或课件','Choose a note or PDF');
+  const route = kind => `/api/courses/${encodeURIComponent(course)}/${kind}/${encodeURIComponent(doc)}?page=${page}`;
+  const draftKey = () => `studybridge.notes.${owner}.${course}.${doc}.${page}`;
+  function status(s) { if (host) { $('[role=status]').textContent = s; syncPickers(); } }
+  function backup() {
+    try { localStorage.setItem(draftKey(),JSON.stringify({version,items})); }
+    catch { status(t('本机空间不足，请及时保存到云端。','Local storage full. Save to cloud now.')); }
+  }
+  function changed() {
+    dirty = true; backup(); paint(); status(t('未同步 · 正在保存…','Unsynced · Saving…'));
+    clearTimeout(timer); timer = setTimeout(() => void save().catch(() => {}),800);
+  }
+  function remember() { undo.push(JSON.stringify(items)); if (undo.length > 60) undo.shift(); redo = []; }
+  // Serialize saves and retain newer local edits while a snapshot is in flight.
+  async function save() {
+    clearTimeout(timer);
+    if (saving) { await saving; if (saving) return save(); }
+    if (!dirty) return;
+    const snapshot = JSON.stringify(items), key = draftKey(), oldOwner = owner;
+    const pending = ctx.api(route('notes'),{method:'PUT',body:{version,items:JSON.parse(snapshot)}}).then(result => {
+      if (owner !== oldOwner) return;
+      version = result.version;
+      dirty = JSON.stringify(items) !== snapshot;
+      if (dirty) backup(); else { try { localStorage.removeItem(key); } catch {} status(t('本地示例','Saved to cloud')); }
+    }).catch(error => { if (owner === oldOwner) status(t('未同步，草稿已保留：','Unsynced; draft preserved: ') + error.message); throw error; }).finally(() => { if (saving === pending) saving = null; });
+    saving = pending; await pending;
+    if (owner !== oldOwner) return;
+    if (dirty) return save();
+  }
+  function stickyResizeTargets(x, y, w, h, unitsPerPixel) {
+    const target = (direction, left, top, width, height) =>
+      `<rect data-resize="${direction}" x="${left}" y="${top}" width="${width}" height="${height}" fill="transparent" style="cursor:${direction}-resize"/>`;
+    const right = x + w, bottom = y + h;
+    const grip = Math.min(w, h, 44 * unitsPerPixel);
+    if (mode !== 'sticky' && mode !== 'hand') {
+      return target('se', right - grip, bottom - grip, grip, grip);
+    }
+    // Keep the hit areas usable at different zoom levels and leave the middle free to move.
+    const edge = Math.min(6 * unitsPerPixel, w / 6, h / 6);
+    const corner = Math.min(12 * unitsPerPixel, w / 3, h / 3);
+    const se = Math.min(Math.max(grip, Math.min(24, w, h)), w / 2, h / 2);
+    return [
+      target('w', x - edge, y, 2 * edge, h),
+      target('e', right - edge, y, 2 * edge, h),
+      target('n', x, y - edge, w, 2 * edge),
+      target('s', x, bottom - edge, w, 2 * edge),
+      target('nw', x - edge, y - edge, corner + edge, corner + edge),
+      target('ne', right - corner, y - edge, corner + edge, corner + edge),
+      target('sw', x - edge, bottom - corner, corner + edge, corner + edge),
+      target('se', right - se, bottom - se, se + edge, se + edge)
+    ].join('');
+  }
+  // A fixed SVG viewBox keeps annotations aligned across viewport sizes and zoom.
+  function paint() {
+    const svg = $('svg.note-ink'); if (!svg) return;
+    const ratio = Number(svg.dataset.ratio || 1);
+    $('[data-color]').value=color; for (const option of $('[data-width]').options) option.selected=Number(option.value)===width; $('[data-pen-only]').checked=penOnly;
+    svg.innerHTML = model.markup([...(erasePreview || items),...(stroke ? [stroke] : [])],ratio);
+    const selected=(erasePreview || items)[selectedSticky];
+    const stickySelected=selected?.type==='sticky';
+    $('[data-sticky-tools]').hidden=!stickySelected;
+    $('[data-sticky-tools]').inert=!stickySelected;
+    if(stickySelected) {
+      $('[data-sticky-color]').value=selected.background;
+      const x=selected.x*1000,y=selected.y*1000*ratio,w=selected.w*1000,h=selected.h*1000*ratio;
+      const targets = stickyResizeTargets(x, y, w, h, 1000 / Math.max(1, svg.getBoundingClientRect().width));
+      svg.insertAdjacentHTML('beforeend',`<g data-sticky-control="true" data-index="${selectedSticky}"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="${model.contrast(selected.background)}" stroke-width="1" stroke-dasharray="4 3" pointer-events="none"/>${targets}<rect pointer-events="none" x="${x+w-24}" y="${y+h-24}" width="24" height="24" rx="4" fill="${model.contrast(selected.background)}" fill-opacity=".15" style="cursor:nwse-resize"/><path d="M${x+w-17} ${y+h-5}l12-12m-5 12 5-5" stroke="${model.contrast(selected.background)}" stroke-width="1.5" pointer-events="none"/></g>`);
+    }
+    $('[data-note=undo]').disabled = !undo.length;
+    $('[data-note=redo]').disabled = !redo.length;
+    svg.style.touchAction = mode === 'hand' || (penOnly && ['pen','highlight','eraser'].includes(mode)) ? 'pan-x pan-y' : 'none';
+    svg.style.cursor = busy ? 'progress' : model.cursor(mode,mode==='highlight'&&color==='#24344a'?'#ffd447':color);
+    $('[data-color]').disabled=busy || ['hand','eraser','sticky'].includes(mode);
+    $('[data-width]').disabled=busy || ['hand','eraser','text','sticky'].includes(mode);
+    $('[data-tool-status]').textContent=({sticky:t('便签 · 点击添加，拖动中间移动，拖动边或角调整大小','Sticky note · Click to add, drag the center to move, drag an edge or corner to resize'),hand:t('浏览 · 拖动移动课件','Browse · Drag to pan'),pen:t('画笔','Pen'),highlight:t('高亮','Highlight'),text:t('文字 · 点击添加或编辑','Text · Click to add or edit'),eraser:t('橡皮 · 拖动擦除整条标注','Eraser · Drag to erase annotations')})[mode];
+    syncControls();
+    host.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed',b.dataset.mode === mode));
+  }
+  async function drawPage() {
+    if (!pdf) return;
+    if (renderTask) { renderTask.cancel(); try { await renderTask.promise; } catch {} }
+    const token = epoch, currentHost = host;
+    const source = await pdf.getPage(page); if (token !== epoch || currentHost !== host) return;
+    const natural = source.getViewport({scale:1});
+    const pixels = Math.min(1800,Math.max(800,$('.note-scroll').clientWidth * Math.min(devicePixelRatio || 1,2)));
+    const viewport = source.getViewport({scale:pixels/natural.width});
+    const canvas = $('canvas'); canvas.width = viewport.width; canvas.height = viewport.height;
+    const sheet = $('.note-sheet'); sheet.style.width = `${zoom*100}%`; sheet.style.aspectRatio = `${natural.width}/${natural.height}`;
+    const svg = $('svg.note-ink'); svg.setAttribute('viewBox',`0 0 1000 ${1000*natural.height/natural.width}`); svg.dataset.ratio = natural.height/natural.width;
+    renderTask = source.render({canvasContext:canvas.getContext('2d'),viewport});
+    await renderTask.promise; renderTask = null;
+    $('[data-page]').value = page; $('[data-page]').max = pdf.numPages;
+    $('[data-total]').textContent = `/ ${pdf.numPages}`;
+    paint();
+  }
+  async function loadPage(next,loaded) {
+    const token = epoch; await save(); if (token !== epoch) return; stroke = null;
+    try {
+      const result = loaded || await ctx.api(`/api/courses/${course}/notes/${doc}?page=${next}`);
+      if (token !== epoch) return;
+      selectedSticky=-1; page = next; version = result.version; items = result.items; undo = []; redo = []; dirty = false;
+      let local; try { local = localStorage.getItem(draftKey()); } catch { /* Cloud notes remain available without browser storage. */ }
+      if (local) { const draft = JSON.parse(local); items = draft.items; version = draft.version; dirty = true; }
+      await drawPage();
+      status(local ? t('已恢复本机草稿，请保存；若有冲突可导出草稿后读取云端。','Local draft restored. Save, or export the draft before reloading cloud notes.') : t('本地示例','Saved to cloud'));
+    } finally { syncControls(); }
+  }
+  async function openDocument(id, initialNotes) {
+    const token = epoch; await save(); if (token !== epoch) return;
+    try {
+      const lib = window.previewBlankPaper;
+      if (token !== epoch) return;
+      lib.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/pdf.worker.min.mjs';
+      const next = await lib.getDocument({url:`/api/courses/${course}/note-source/${id}`,cMapUrl:'/vendor/pdfjs/cmaps/',cMapPacked:true,standardFontDataUrl:'/vendor/pdfjs/standard_fonts/',wasmUrl:'/vendor/pdfjs/wasm/'}).promise;
+      if (token !== epoch) { await next.destroy(); return; }
+      let first;
+      try {first=initialNotes || await ctx.api(`/api/courses/${course}/notes/${id}?page=1`);} catch(error) {await next.destroy();throw error;}
+      if(token!==epoch){await next.destroy();return;}
+      if (pdf) await pdf.destroy();
+      if (token !== epoch) { await next.destroy(); return; }
+      pdf = next; doc = id; dirty = false; page = 1; zoom = 1;items=[];undo=[];redo=[];
+      $('.note-work').hidden = false;
+      await loadPage(1,first);
+      if (token === epoch) { $('.note-scroll').scrollTop=0; $('.note-scroll').scrollLeft=0; }
+    } finally { syncControls(); }
+  }
+  async function listDocuments() {
+    const token = epoch, selectedCourse = course;
+    const data = await ctx.api(`/api/courses/${encodeURIComponent(course)}/documents?summary=1`);
+    if (token !== epoch || selectedCourse !== course) return;
+    const documents = data.documents.filter(d => d.blankNote || d.hasSourcePdf);
+    $('[data-document]').innerHTML = `<option value="">${documentPlaceholder()}</option>` + documents.map(d => `<option value="${esc(d.id)}">${esc(d.title)}</option>`).join('');
+    $('[data-document]').value=doc;
+    status(documents.length ? '' : t('新建空白笔记或上传 PDF 开始。','Start with a blank note or upload a PDF.'));
+  }
+  async function createBlankNote() {
+    const token = epoch;
+    await save();
+    if (token !== epoch) return;
+    status(t('正在新建空白笔记…','Creating a blank note…'));
+    const timestamp = new Date().toLocaleString(t('zh-CN','en'),{dateStyle:'short',timeStyle:'short'});
+    const title = `${t('空白笔记','Blank note')} · ${timestamp}`;
+    const { document } = await ctx.api(`/api/courses/${encodeURIComponent(course)}/notes`,{method:'POST',body:{title}});
+    if (token !== epoch) return;
+    const select = $('[data-document]');
+    select.add(new Option(document.title, document.id), 1);
+    await openDocument(document.id, {version:0,items:[]});
+    if (token === epoch) { mode='pen'; $('[data-document]').value=doc; syncPickers(); }
+  }
+  async function switchCourse(id) {
+    const token = epoch;
+    await save(); if (token !== epoch) return;
+    selectedSticky=-1; course = id; doc = ''; items = []; dirty = false;
+    const previous = pdf;
+    pdf = null;
+    if (previous) await previous.destroy();
+    if (token !== epoch) return;
+    $('.note-work').hidden = true;
+    $('[data-course]').value=course;
+    $('[data-document]').replaceChildren(new Option(documentPlaceholder(), ''));
+    if (course) await listDocuments();
+  }
+  async function openCourse(id) {
+    if (!host?.isConnected || busy || course===id || ![...$('[data-course]').options].some(option=>option.value===id)) return;
+    const token = epoch;
+    busy=true; syncControls();
+    try { await switchCourse(id); }
+    catch (error) { if (token===epoch) status(error.message); }
+    finally { if (token===epoch) { busy=false; syncControls(); syncPickers(); } }
+  }
+  function download(content,name,type) {
+    const url = URL.createObjectURL(new Blob([content],{type})); const a = document.createElement('a'); a.href=url; a.download=name; a.click(); setTimeout(() => URL.revokeObjectURL(url),60000);
+  }
+  function syncControls() {
+    if(!host)return;
+    host.setAttribute('aria-busy',String(busy));
+    host.querySelectorAll('[data-note],[data-mode],[data-upload],[data-page],[data-pen-only],[data-picker-toggle],[data-sticky-color]').forEach(el=>{
+      el.disabled=busy;
+      if(el.dataset.note==='cancel-export') {el.disabled=false;el.hidden=!exportJob;}
+    });
+    $('[data-note=undo]').disabled=busy || !undo.length;
+    $('[data-note=redo]').disabled=busy || !redo.length;
+    $('[data-note=prev]').disabled=busy || !pdf || page<=1;
+    $('[data-note=next]').disabled=busy || !pdf || page>=pdf.numPages;
+    $('[data-note=zoom-out]').disabled=busy || zoom<=1;
+    $('[data-note=zoom-in]').disabled=busy || zoom>=3;
+    $('[data-note=new-blank]').disabled=busy || !$('[data-course]').value;
+    $('[data-note=study]').disabled=busy || !$('[data-course]').value;
+    $('[data-picker-toggle="document"]').disabled=busy || $('[data-document]').options.length<2;
+    $('[data-color]').disabled=busy || ['hand','eraser','sticky'].includes(mode);
+    $('[data-width]').disabled=busy || ['hand','eraser','text','sticky'].includes(mode);
+  }
+  async function exportFullPdf() {
+    const job={canceled:false,token:epoch,source:pdf,host,course,doc,owner};
+    exportJob=job;syncControls();
+    const check=()=>{if(job.canceled || epoch!==job.token || pdf!==job.source)throw new Error(t('已取消导出，笔记未改变。','Export canceled. Notes are unchanged.'));};
+    try {
+      status(t('正在准备完整 PDF…','Preparing the complete PDF…'));
+      // A save conflict must not prevent taking a copy of the student's own draft.
+      await save().catch(()=>{});check();
+      const saved=await ctx.api(`/api/courses/${job.course}/notes/${job.doc}?all=true`);check();
+      const pages=new Map(saved.pages.map(p=>[p.page,p]));
+      let includesDraft=dirty;
+      const prefix=`studybridge.notes.${job.owner}.${job.course}.${job.doc}.`;
+      for(let i=0;i<localStorage.length;i++) {
+        const key=localStorage.key(i);if(!key?.startsWith(prefix))continue;
+        const n=Number(key.slice(prefix.length));
+        if(!Number.isInteger(n)||n<1||n>job.source.numPages)continue;
+        const draft=JSON.parse(localStorage.getItem(key));
+        if(!Array.isArray(draft?.items))throw new Error(t('本机草稿无法读取，请先检查对应页面。','A local draft could not be read. Check that page before exporting.'));
+        pages.set(n,{page:n,items:draft.items});includesDraft=true;
+      }
+      pages.set(page,{page,items:JSON.parse(JSON.stringify(items))});
+      const exporter=await import('/course-notes-export.mjs?v=1.10.0');check();
+      const bytes=await exporter.exportPdf({source:job.source,pages:[...pages.values()],check,
+        progress:(current,total)=>{check();status(t('正在导出标注页 ','Exporting annotated pages ')+`${current} / ${total}`);}});
+      check();
+      const title=$('[data-document]').selectedOptions[0]?.textContent || 'course-notes';
+      download(bytes,title.replace(/\.pdf$/i,'')+'-notes.pdf','application/pdf');
+      status(includesDraft?t('完整 PDF 已导出，包含本机未同步草稿；云端笔记未被覆盖。','Complete PDF exported, including unsynced local drafts; cloud notes were not overwritten.'):t('完整 PDF 已导出，包含全部页面和笔记。','Complete PDF exported with all pages and notes.'));
+    } finally {if(exportJob===job)exportJob=null;syncControls();}
+  }
+  function editText(point,index) {
+    const dialog = $('[data-text-dialog]'), input = dialog.querySelector('textarea');
+    dialog.querySelector('label').firstChild.textContent=items[index]?.type==='sticky'?t('便签文字','Sticky note text'):t('文字笔记（清空可删除）','Text note (empty to delete)');
+    input.value = index === undefined ? '' : items[index].text;
+    dialog.returnValue='cancel'; dialog.showModal(); input.focus();
+    dialog.onclose = () => {
+      if (dialog.returnValue !== 'save') return;
+      if(index===undefined && !input.value.trim())return;
+      if(index!==undefined && input.value===items[index]?.text)return;
+      remember();
+      if (items[index]?.type==='sticky') items[index].text=input.value;
+      else if (index !== undefined) { if (input.value.trim()) items[index].text = input.value; else items.splice(index,1); }
+      else if (input.value.trim()) items.push({type:'text',x:point[0],y:point[1],text:input.value,color,width:.022});
+      changed();
+    };
+  }
+  async function chooseFiling(match) {
+    const token = epoch;
+    const data = await ctx.api('/api/courses');
+    if (token !== epoch) return null;
+    const courses = data.courses.filter(c => c.chatType !== 'general' && c.name !== 'Schedule & Deadlines');
+    if (!courses.length) throw new Error(t('请先在学习区建立课程，再上传课件。','Create a course in Study first, then upload your PDF.'));
+    const dialog = $('[data-filing-dialog]'), select = dialog.querySelector('select');
+    select.innerHTML = `<option value="">${t('请选择归属课程','Choose the destination course')}</option>` + courses.map(c => `<option value="${esc(c.id)}">${esc(c.name)}${c.term ? ' · ' + esc(c.term) : ''}</option>`).join('');
+    dialog.querySelector('p').textContent = match.reason === 'ambiguous'
+      ? t('识别到多个课程或学期，请选择归属。','Multiple courses or terms match. Choose the destination.')
+      : t('未能明确匹配已有课程，请选择归属。','No clear course match. Choose the destination.');
+    dialog.returnValue = 'cancel'; dialog.showModal(); select.focus();
+    return new Promise(resolve => { dialog.onclose = () => resolve(token === epoch && dialog.returnValue === 'save' ? select.value : null); });
+  }
+  function bindPaperWheel(viewport) {
+    let lastUp = -Infinity;
+    let scrollPage = false;
+    let currentRound = -1;
+    viewport.addEventListener('wheel', event => {
+      if (currentRound !== trial.round) { lastUp = -Infinity; scrollPage = false; currentRound = trial.round; }
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.shiftKey ||
+          event.altKey || !event.deltaY || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+      if (event.deltaY > 0 || viewport.closest('.note-focus')) {
+        if(event.deltaY>0)trial.note('纸面向下滚动',null,viewport.scrollTop,document.scrollingElement.scrollTop,false);
+        lastUp = -Infinity;
+        scrollPage = false;
+        return;
+      }
+      const atTop = viewport.scrollTop <= 0.5;
+      // A burst that started inside the paper, including its momentum, stays there.
+      const gap=Number.isFinite(lastUp)?Math.round(event.timeStamp-lastUp):null;
+      const fresh=event.timeStamp-lastUp >= trial.pause;
+      if (fresh) scrollPage = atTop;
+      if (!atTop) scrollPage = false;
+      lastUp = event.timeStamp;
+      if (!scrollPage) {
+        trial.note(atTop?'到顶后保留本次滚动':'纸面向上滚动',gap,viewport.scrollTop,document.scrollingElement.scrollTop,false);
+        return;
+      }
+
+      const root = document.scrollingElement;
+      let outer = viewport.parentElement;
+      while (outer && outer !== root) {
+        if (outer.scrollTop > 0 && /^(auto|scroll|overlay)$/.test(getComputedStyle(outer).overflowY)) break;
+        outer = outer.parentElement;
+      }
+      outer = outer || root;
+      if (!outer || outer.scrollTop <= 0) {
+        trial.note('外层也已到顶',gap,viewport.scrollTop,0,false);
+        return;
+      }
+      trial.note('外层向上滚动',gap,viewport.scrollTop,outer.scrollTop,fresh);
+      if (event.cancelable) event.preventDefault();
+      let unit = 1;
+      if (event.deltaMode === 1) unit = parseFloat(getComputedStyle(viewport).lineHeight) || 16;
+      if (event.deltaMode === 2) unit = outer.clientHeight;
+      outer.scrollTop = Math.max(0, outer.scrollTop + event.deltaY * unit);
+    }, {passive:false});
+  }
+  function bind() {
+    host.addEventListener('click',async event => {
+      const button = event.target.closest('button'); if (!button) return;
+      const action = button.dataset.note;
+      if(action==='cancel-export') {if(exportJob)exportJob.canceled=true;return;}
+      if(busy || (!action && !button.dataset.mode && !button.dataset.pickerToggle && !button.dataset.pickerOption))return;
+      let locked=false;const operationEpoch=epoch;
+      try {
+        if (button.dataset.pickerToggle) {
+          const open=button.getAttribute('aria-expanded')==='true';
+          if (open) closePickers(); else openPicker(button.dataset.pickerToggle);
+          return;
+        }
+        if (button.dataset.pickerOption) {
+          const key=button.dataset.pickerOption, select=$(`[data-${key}]`);
+          select.value=button.dataset.value; closePickers(); syncPickers();
+          $(`[data-picker-toggle="${key}"]`).focus();
+          select.dispatchEvent(new Event('change',{bubbles:true})); return;
+        }
+        // Disabling a focused toolbar button can move keyboard focus to the document body.
+        if ((button.dataset.mode || ['undo','redo','save','sticky-delete','sticky-text'].includes(action)) && pdf) {
+          svg.focus({preventScroll:true});
+        }
+        finishGesture(false);busy=true;locked=true;syncControls();
+        if (button.dataset.mode) { mode = button.dataset.mode; paint(); }
+        const sticky=items[selectedSticky];
+        if(action==='sticky-text' && sticky?.type==='sticky') editText(null,selectedSticky);
+        if(action==='sticky-copy' && sticky?.type==='sticky') insertStickyCopy(sticky);
+        if(action==='sticky-delete' && sticky?.type==='sticky') {remember();items.splice(selectedSticky,1);selectedSticky=-1;changed();}
+        if (action === 'pdf') await exportFullPdf();
+        if (action === 'save') await save();
+        if (action === 'new-blank' && course) await createBlankNote();
+        if (action === 'add-course') {
+          closePickers(); await save();
+          if(epoch!==operationEpoch)return;
+          const created=await ctx.addStudyCourse();
+          if(created && epoch===operationEpoch) {
+            await mount({...ctx,courseId:'',courses:[created,...ctx.courses.filter(item=>item.id!==created.id)]});
+            await switchCourse(created.id);
+            $('[data-course]').value=course; syncPickers();
+          }
+        }
+        if (action === 'study' && course) { await save(); await ctx.openStudyCourse(course); }
+        if (action === 'focus') { host.classList.toggle('note-focus'); button.textContent=host.classList.contains('note-focus')?t('退出专注','Exit focus'):t('专注书写','Focus'); }
+        if (action === 'undo' && undo.length) { selectedSticky=-1; redo.push(JSON.stringify(items)); items=JSON.parse(undo.pop()); changed(); }
+        if (action === 'redo' && redo.length) { selectedSticky=-1; undo.push(JSON.stringify(items)); items=JSON.parse(redo.pop()); changed(); }
+        if (action === 'prev' && page>1) await loadPage(page-1);
+        if (action === 'next' && page<pdf.numPages) await loadPage(page+1);
+        if (action === 'zoom-in' || action === 'zoom-out') { zoom=Math.max(1,Math.min(3,zoom+(action==='zoom-in' ? .25 : -.25))); await drawPage(); }
+        if (action === 'backup') download(JSON.stringify({course,document:doc,page,version,items},null,2),`notes-${page}.json`,'application/json');
+        if (action === 'reload' && confirm(t('读取云端将替换本机这一页草稿。请先导出草稿备份。继续？','Reloading replaces this local draft. Export a backup first. Continue?'))) { dirty=false; try { localStorage.removeItem(draftKey()); } catch {} await loadPage(page); }
+        if (action === 'image') {
+          const canvas = document.createElement('canvas'), base=$('canvas'); canvas.width=base.width; canvas.height=base.height;
+          const g=canvas.getContext('2d'); g.drawImage(base,0,0);
+          const svg=$('svg.note-ink').cloneNode(true); svg.querySelectorAll('[data-sticky-control]').forEach(el=>el.remove()); svg.setAttribute('xmlns','http://www.w3.org/2000/svg'); svg.setAttribute('width',canvas.width); svg.setAttribute('height',canvas.height);
+          const url=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)],{type:'image/svg+xml'}));
+          try { const img=new Image(); img.src=url; await img.decode(); g.drawImage(img,0,0); canvas.toBlob(blob => { if(blob) download(blob,`notes-page-${page}.png`,'image/png'); }); } finally { URL.revokeObjectURL(url); }
+        }
+      } catch(e) { if(epoch===operationEpoch)status(e.message); } finally {if(locked && epoch===operationEpoch){busy=false;paint();}}
+    });
+    host.addEventListener('change', async event => {
+      const el=event.target; if (busy) return;
+      const operationEpoch=epoch;finishGesture(false); busy=true; syncControls();
+      try {
+        if (el.matches('[data-course]')) { try { await switchCourse(el.value); } finally { el.value=course; syncPickers(); } }
+        if (el.matches('[data-document]') && el.value) { try { await openDocument(el.value); } finally { el.value=doc; syncPickers(); } }
+        if (el.matches('[data-page]')) { const n=Number(el.value); if (Number.isInteger(n) && n>=1 && n<=pdf.numPages) await loadPage(n); else el.value=page; }
+        if (el.matches('[data-sticky-color]') && items[selectedSticky]?.type==='sticky') {remember();items[selectedSticky].background=el.value;changed();}
+        if (el.matches('[data-color]')) { color=el.value; paint(); }
+        if (el.matches('[data-width]')) { width=Number(el.value); paint(); }
+        if (el.matches('[data-pen-only]')) { penOnly=el.checked; paint(); }
+        if (el.matches('[data-upload]') && el.files[0]) {
+          const token = epoch;
+          await save(); const file=el.files[0]; if (!/\.pdf$/i.test(file.name) || file.size>50*1024*1024) throw new Error(t('请选择不超过 50 MB 的 PDF','Choose a PDF up to 50 MB'));
+          if (token !== epoch) return;
+          el.disabled=true; status(t('正在识别课号并归档…','Identifying the course and filing…'));
+          const [body]=await ctx.readFiles([file],50*1024*1024);
+          if (token !== epoch) return;
+          let result=await ctx.api('/api/course-materials',{method:'POST',body});
+          if (token !== epoch) return;
+          if (result.needsCourse) {
+            const selected = await chooseFiling(result);
+            if (!selected) { status(t('已取消上传，未归档文件。','Upload canceled. No file was filed.')); return; }
+            result = await ctx.api('/api/course-materials',{method:'POST',body:{...body,courseId:selected}});
+          }
+          if (token !== epoch) return;
+          await switchCourse(result.courseId); $('[data-course]').value=course;
+          await openDocument(result.document.id); $('[data-document]').value=doc;
+          status(t('已归档到学习区 · ','Filed in Study · ') + result.courseName);
+        }
+      } catch(e) { if(epoch===operationEpoch)status(e.message); } finally { if(epoch===operationEpoch) { busy=false; if (el.matches('[data-upload]')) { el.value=''; el.disabled=false; } syncControls(); paint(); } }
+    });
+    bindPaperWheel($('.note-scroll'));
+    const svg=$('svg.note-ink'); let pointer,gesture,last,initial,pan,stickyStart,stickyOrigin,stickyStroke,resizeDirection;
+    function insertStickyCopy(source) {
+      const copy = model.transformSticky(structuredClone(source), .025, .025);
+      model.validate({version:0, items:[...items, copy]});
+      remember();
+      items.push(copy);
+      selectedSticky = items.length - 1;
+      changed();
+      svg.focus({preventScroll:true});
+    }
+    const point = e => { const r=svg.getBoundingClientRect(); return [Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))].map(n=>Math.round(n*100000)/100000); };
+    function erase(from,to) {
+      const size=svg.getBoundingClientRect();
+      const remaining=erasePreview.filter((item,i)=>{
+        if(item.type==='sticky')return true;
+        let box;
+        if(item.type==='text') {
+          const rect=svg.querySelector(`[data-index="${i}"]`)?.getBoundingClientRect();
+          if(rect)box={x:rect.left-size.left,y:rect.top-size.top,width:rect.width,height:rect.height};
+        }
+        return !model.hit(item,from,to,size,box);
+      });
+      if(remaining.length!==erasePreview.length){erasePreview=remaining;paint();}
+    }
+    function eraseSticky(from,to) {
+      const note=erasePreview[selectedSticky],r=svg.getBoundingClientRect();
+      const local=p=>[(p[0]-note.x)/note.w,(p[1]-note.y)/note.h];
+      note.ink=note.ink.filter(ink=>!model.hit(ink,local(from),local(to),{width:r.width*note.w,height:r.height*note.h}));
+    }
+    finishGesture=cancel=>{
+      if(pointer===undefined)return;
+      const id=pointer;pointer=undefined;
+      if(svg.hasPointerCapture(id))svg.releasePointerCapture(id);
+      if(gesture==='eraser' || gesture?.startsWith('sticky-')) {
+        const remaining=erasePreview;erasePreview=null;
+        if(!cancel && JSON.stringify(remaining)!==initial) {items=remaining;undo.push(initial);if(undo.length>60)undo.shift();redo=[];changed();}
+      } else if(stroke && !cancel) {remember();items.push(stroke);stroke=null;changed();}
+      stroke=null;gesture=null;pan=null;stickyStroke=null;paint();
+    };
+    svg.addEventListener('pointerdown',e=>{
+      if(busy || !pdf || pointer!==undefined || e.button>0)return;
+      // Finger panning remains native, including pinch zoom; stylus/mouse can draw.
+      if(e.pointerType==='touch' && penOnly && ['pen','highlight','eraser'].includes(mode))return;
+      if(e.pointerType==='touch' && mode==='hand' && !e.target.closest('[data-sticky],[data-sticky-control]'))return;
+      e.preventDefault();
+      const p=point(e),target=e.target.closest('[data-index]'),index=target?Number(target.dataset.index):undefined;
+      const sticky=items[index]?.type==='sticky'?items[index]:null;
+      svg.focus({preventScroll:true});
+      if(sticky) {
+        selectedSticky=index;
+        if(mode==='text'){editText(null,index);paint();return;}
+        pointer=e.pointerId;svg.setPointerCapture(pointer);initial=JSON.stringify(items);erasePreview=JSON.parse(initial);
+        last=p;stickyOrigin=p;stickyStart=JSON.parse(JSON.stringify(sticky));
+        if(mode==='eraser'){gesture='sticky-erase';eraseSticky(p,p);}
+        else if(e.target.dataset.resize) {
+          gesture='sticky-resize';
+          resizeDirection=e.target.dataset.resize;
+        }
+        else if(['pen','highlight'].includes(mode)) {
+          gesture='sticky-ink';
+          stickyStroke={type:mode,color:mode==='highlight'&&color==='#24344a'?'#ffd447':color,width:Math.min(.1,width*(mode==='highlight'?7:1)/sticky.w),points:[[(p[0]-sticky.x)/sticky.w,(p[1]-sticky.y)/sticky.h]]};
+          if(sticky.ink.length>=500){pointer=undefined;svg.releasePointerCapture(e.pointerId);erasePreview=null;status(t('便签笔画已满，请新建便签。','This note is full. Add another sticky note.'));return;}
+          erasePreview[index].ink.push(stickyStroke);
+        } else gesture='sticky-move';
+        paint();return;
+      }
+      selectedSticky=-1;
+      if(mode==='sticky') {remember();items.push(model.sticky(p));selectedSticky=items.length-1;changed();return;}
+      if(mode==='text'){editText(p,items[index]?.type==='text'?index:undefined);return;}
+      pointer=e.pointerId;gesture=mode;last=p;svg.setPointerCapture(pointer);
+      if(mode==='hand') {
+        const scroll=$('.note-scroll');pan={x:e.clientX,y:e.clientY,left:scroll.scrollLeft,top:scroll.scrollTop};svg.style.cursor='grabbing';return;
+      }
+      if(mode==='eraser'){initial=JSON.stringify(items);erasePreview=items.slice();erase(p,p);return;}
+      stroke={type:mode,color:mode==='highlight'&&color==='#24344a'?'#ffd447':color,width:mode==='highlight'?width*7:width,points:[p]};paint();
+    });
+    svg.addEventListener('pointermove',e=>{
+      if(e.pointerId!==pointer)return;e.preventDefault();
+      if(gesture==='hand') {
+        const scroll=$('.note-scroll');scroll.scrollLeft=pan.left+pan.x-e.clientX;scroll.scrollTop=pan.top+pan.y-e.clientY;return;
+      }
+      if(gesture==='sticky-move'||gesture==='sticky-resize') {
+        const p=point(e);erasePreview[selectedSticky]=model.transformSticky(stickyStart,p[0]-stickyOrigin[0],p[1]-stickyOrigin[1],gesture==='sticky-resize' && resizeDirection);paint();return;
+      }
+      for(const sample of e.getCoalescedEvents?.().length?e.getCoalescedEvents():[e]) {
+        const p=point(sample);
+        if(gesture==='sticky-erase')eraseSticky(last,p);
+        else if(gesture==='sticky-ink') {
+          if(stickyStroke.points.length<12000)stickyStroke.points.push([Math.max(0,Math.min(1,(p[0]-stickyStart.x)/stickyStart.w)),Math.max(0,Math.min(1,(p[1]-stickyStart.y)/stickyStart.h))]);
+        } else if(gesture==='eraser')erase(last,p);
+        else if(stroke && stroke.points.length<12000)stroke.points.push(p);
+        last=p;
+      }
+      if(gesture!=='eraser')paint();
+    });
+    svg.addEventListener('pointerup',e=>{if(e.pointerId===pointer)finishGesture(false);});
+    svg.addEventListener('pointercancel',e=>{if(e.pointerId===pointer)finishGesture(true);});
+    svg.addEventListener('lostpointercapture',e=>{if(e.pointerId===pointer)finishGesture(false);});
+    const clipboardType = 'application/x-studybridge-sticky+json';
+    function copySelection(event) {
+      const note = items[selectedSticky];
+      if (!event.clipboardData || event.defaultPrevented || busy || pointer !== undefined || note?.type !== 'sticky') return;
+      const json = JSON.stringify(note);
+      // The HTML flavor carries the note through clipboards that only preserve standard formats.
+      event.clipboardData.setData('text/plain', note.text);
+      event.clipboardData.setData('text/html', `<span data-studybridge-sticky="${esc(json)}">${esc(note.text)}</span>`);
+      try { event.clipboardData.setData(clipboardType, json); } catch { /* Standard HTML already contains the note. */ }
+      event.preventDefault();
+      if (event.type === 'cut') $('[data-note=sticky-delete]').click();
+    }
+    svg.addEventListener('copy', copySelection);
+    svg.addEventListener('cut', copySelection);
+    svg.addEventListener('paste', event => {
+      if (!event.clipboardData || event.defaultPrevented || busy || !pdf || pointer !== undefined) return;
+      let json = event.clipboardData.getData(clipboardType);
+      if (!json) {
+        const html = event.clipboardData.getData('text/html');
+        if (!html.includes('data-studybridge-sticky=') || html.length > 2000000) return;
+        const template = document.createElement('template');
+        template.innerHTML = html;
+        json = template.content.querySelector('[data-studybridge-sticky]')?.dataset.studybridgeSticky;
+      }
+      if (!json) return;
+      event.preventDefault();
+      try {
+        if (json.length > 260000) throw new Error();
+        const note = JSON.parse(json);
+        if (note?.type !== 'sticky') throw new Error();
+        const [validated] = model.validate({version:0,items:[note]});
+        insertStickyCopy(validated);
+      } catch (error) {
+        status(error.statusCode === 413 ? t('本页空间已满','This page is full.') : t('无法粘贴此便签','Could not paste this sticky note.'));
+      }
+    });
+    host.addEventListener('keydown', event => {
+      if (event.defaultPrevented || event.isComposing || event.keyCode === 229 || event.altKey ||
+          event.target.isContentEditable || event.target.closest('input, textarea, select, dialog, .note-field') || !pdf) return;
+      const key = event.key.toLowerCase();
+      const primary = Boolean(event.ctrlKey) !== Boolean(event.metaKey);
+      const onCanvas = event.target === svg;
+      const selected = onCanvas && items[selectedSticky]?.type === 'sticky';
+      let action;
+      if (primary) {
+        if (key === 'z') action = event.shiftKey ? 'redo' : 'undo';
+        if (!event.shiftKey) {
+          if (key === 'y' && event.ctrlKey) action = 'redo';
+          if (key === 's') action = 'save';
+          if (key === 'd' && selected) action = 'sticky-copy';
+        }
+      } else if (onCanvas && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
+        if (key === 'escape' && (pointer !== undefined || selected)) {
+          event.preventDefault();
+          if (pointer !== undefined) finishGesture(true);
+          else { selectedSticky = -1; paint(); }
+          return;
+        }
+        if (selected && (key === 'delete' || key === 'backspace')) action = 'sticky-delete';
+        if (selected && key === 'enter') action = 'sticky-text';
+      }
+      if (!action) return;
+      event.preventDefault();
+      if (!event.repeat && !busy && pointer === undefined) $(`[data-note=${action}]`).click();
+    });
+    host.addEventListener('focusout',e=>{ const field=e.target.closest('.note-field'); if(field && !field.contains(e.relatedTarget))closePickers(); });
+    host.addEventListener('keydown',e=>{
+      const field=e.target.closest('.note-field'); if(!field)return;
+      const trigger=field.querySelector('[data-picker-toggle]'), menu=field.querySelector('.note-picker-menu');
+      if(e.defaultPrevented || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if(e.key==='Escape'){if(!menu.hidden){e.preventDefault();closePickers();trigger.focus();}return;}
+      if(!['ArrowDown','ArrowUp','Home','End'].includes(e.key))return;
+      e.preventDefault();
+      if(menu.hidden){
+        openPicker(field.dataset.picker,true);
+        if(e.key!=='Home' && e.key!=='End')return;
+      }
+      const options=[...menu.querySelectorAll('button')], index=options.indexOf(document.activeElement);
+      const next=e.key==='Home'?0:e.key==='End'?options.length-1:(index+(e.key==='ArrowDown'?1:-1)+options.length)%options.length;
+      options[next]?.focus();
+    });
+  }
+  function picker(key, label, placeholder) {
+    return `<div class="note-field" data-picker="${key}"><span class="note-field-label">${label}</span><button type="button" class="note-picker-trigger" data-picker-toggle="${key}" aria-haspopup="${key==='course'?'dialog':'listbox'}" aria-expanded="false" aria-controls="note-${key}-menu" aria-label="${label}"><span>${placeholder}</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m5 6 3 3 3-3"/></svg></button><select data-${key} hidden tabindex="-1" aria-hidden="true"><option value="">${placeholder}</option></select><div id="note-${key}-menu" class="note-picker-menu" role="${key==='course'?'dialog':'listbox'}" aria-label="${label}" hidden></div></div>`;
+  }
+  function closePickers() {
+    if (!host) return;
+    host.querySelectorAll('[data-picker-toggle]').forEach(button => button.setAttribute('aria-expanded','false'));
+    host.querySelectorAll('.note-picker-menu').forEach(menu => { menu.hidden=true; });
+  }
+  function syncPickers() {
+    if (!host) return;
+    for (const key of ['course','document']) {
+      const select=$(`[data-${key}]`), trigger=$(`[data-picker-toggle="${key}"]`), menu=$(`#note-${key}-menu`);
+      if (!select || !trigger) continue;
+      trigger.querySelector('span').textContent=select.selectedOptions[0]?.textContent || select.options[0]?.textContent || '';
+      trigger.disabled=busy || key==='document' && select.options.length<2;
+      trigger.setAttribute('aria-label',`${key==='course'?t('课程','Course'):t('笔记与课件','Notes and PDFs')}: ${trigger.textContent}`);
+      if (menu.hidden) {
+        const options=[...select.options].filter(option=>option.value).map(option=>`<button type="button" role="option" tabindex="-1" data-picker-option="${key}" data-value="${esc(option.value)}" aria-selected="${option.selected}"><span>${esc(option.textContent)}</span><span class="note-picker-check" aria-hidden="true">${option.selected?'✓':''}</span></button>`).join('') || `<p>${t('暂无可选项目','Nothing to select yet')}</p>`;
+        menu.innerHTML=key==='course'
+          ? `<div role="listbox" aria-label="${t('课程','Course')}">${options}</div><button type="button" class="note-add-course" data-note="add-course"><span>${t('添加课程','Add course')}</span><span aria-hidden="true">＋</span></button>`
+          : options;
+      }
+    }
+  }
+  function openPicker(key, focus=false) {
+    closePickers(); syncPickers();
+    const trigger=$(`[data-picker-toggle="${key}"]`), menu=$(`#note-${key}-menu`);
+    if (trigger.disabled) return;
+    menu.hidden=false; trigger.setAttribute('aria-expanded','true');
+    if (focus) (menu.querySelector('[aria-selected="true"]') || menu.querySelector('button'))?.focus();
+  }
+  document.addEventListener('click',event=>{if(host && !event.target.closest('.note-field'))closePickers();});
+  function build() {
+    host=document.createElement('section'); host.className='course-notes';
+    const icons={
+      sticky:'<path d="M4 3h16v12l-5 6H4V3Zm11 18v-6h5M8 8h8M8 12h5"/>',
+      hand:'<path d="M8 13V6a2 2 0 0 1 4 0v6-8a2 2 0 0 1 4 0v8-6a2 2 0 0 1 4 0v9c0 4-2.5 6-6 6h-1c-2 0-3.5-1-5-3l-4-5a2 2 0 0 1 3-2l1 1"/>',
+      pen:'<path d="m15 5 4 4M4 20l5-1L20 8a2.8 2.8 0 0 0-4-4L5 15l-1 5Z"/>',
+      highlight:'<path d="m13 4 7 7-7 7-7-7 7-7ZM6 11l-2 5 4 4 5-2M4 16l-2 5h6M14 7l3 3"/>',
+      text:'<path d="M5 7V4h14v3M12 4v16M8 20h8"/>',
+      eraser:'<path d="m15 3 6 6a1.5 1.5 0 0 1 0 2l-9 9H7l-5-5a1.5 1.5 0 0 1 0-2L13 3a1.5 1.5 0 0 1 2 0ZM7 8l9 9M12 20h9"/>',
+      undo:'<path d="m8 4-5 5 5 5M3 9h11a6 6 0 0 1 0 12h-3"/>',
+      redo:'<path d="m16 4 5 5-5 5M21 9H10a6 6 0 0 0 0 12h3"/>'
+    };
+    const icon=id=>`<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${icons[id]}</svg>`;
+    const button=(id,zh,en)=>`<button type="button" data-note="${id}"${icons[id]?` class="note-icon-button" aria-label="${t(zh,en)}" title="${t(zh,en)}"`:''}>${icons[id]?icon(id):t(zh,en)}</button>`;
+    host.innerHTML=`<div class="note-picker"><div class="note-location">${picker('course',t('课程','Course'),t('选择课程','Choose a course'))}<span class="note-location-divider" aria-hidden="true">/</span>${picker('document',t('笔记与课件','Notes and PDFs'),documentPlaceholder())}</div><div class="note-picker-actions">${button('new-blank','新建空白笔记','New blank note')}<label class="note-upload"><span aria-hidden="true">＋</span>${t('上传 PDF','Upload PDF')}<input data-upload type="file" accept="application/pdf,.pdf"></label>${button('study','在学习区查看','View in Study')}</div></div>
+    <p role="status" aria-live="polite"></p><div class="note-work" hidden><div class="note-toolbar" role="toolbar" aria-label="${t('笔记工具','Note tools')}">${[['hand','浏览','Browse'],['pen','画笔','Pen'],['highlight','高亮','Highlight'],['text','文字','Text'],['sticky','便签','Sticky note'],['eraser','橡皮','Eraser']].map(([id,zh,en])=>`<button type="button" class="note-icon-button" data-mode="${id}" aria-pressed="false" aria-label="${t(zh,en)}" title="${t(zh,en)}">${icon(id)}</button>`).join('')}<input type="color" data-color value="${color}" aria-label="${t('颜色','Color')}"><select data-width aria-label="${t('笔宽','Stroke width')}"><option value=".0015">${t('细','Fine')}</option><option value=".003" selected>${t('中','Medium')}</option><option value=".006">${t('粗','Broad')}</option></select>${button('undo','撤销','Undo')}${button('redo','重做','Redo')}<label><input type="checkbox" data-pen-only>${t('仅触控笔书写','Stylus only')}</label><span data-tool-status></span></div>
+    <div class="note-navigation">${button('prev','上一页','Previous')}<input type="number" data-page min="1" value="1" aria-label="${t('页码','Page')}"><span data-total></span>${button('next','下一页','Next')}${button('zoom-out','缩小','Zoom out')}${button('zoom-in','放大','Zoom in')}${button('save','保存','Save')}${button('pdf','导出完整 PDF','Export PDF')}<button type="button" data-note="cancel-export" hidden>${t('取消导出','Cancel export')}</button>${button('focus','专注书写','Focus')}<details><summary>${t('更多','More')}</summary>${button('image','导出当前页图片','Export page image')}${button('backup','导出草稿','Export draft')}${button('reload','重新读取云端','Reload cloud')}</details></div>
+    <div class="note-scroll"><div class="note-sheet"><canvas></canvas><svg class="note-ink" tabindex="0" aria-keyshortcuts="Delete Backspace" xmlns="http://www.w3.org/2000/svg" aria-label="${t('课件标注画布','Annotation canvas')}"></svg></div></div>
+    <div data-sticky-tools class="note-sticky-tools" hidden inert aria-label="${t('便签操作','Sticky note actions')}">${button('sticky-text','编辑文字','Edit note text')}${button('sticky-copy','复制便签','Duplicate note')}${button('sticky-delete','删除便签','Delete note')}<label>${t('背景','Background')}<input type="color" data-sticky-color value="#fff2a8" aria-label="${t('便签背景颜色','Sticky note background')}"></label><span>${t('切换画笔可在便签上手写','Use the pen to write on the note')}</span></div>
+    </div>
+    <dialog data-filing-dialog><form method="dialog"><p></p><label>${t('归属课程','Destination course')}<select required></select></label><div><button value="cancel" formnovalidate>${t('取消','Cancel')}</button><button value="save">${t('归档并打开','File and open')}</button></div></form></dialog>
+    <dialog data-text-dialog><form method="dialog"><label>${t('文字笔记（清空可删除）','Text note (empty to delete)')}<textarea maxlength="4000" rows="6"></textarea></label><div><button value="cancel">${t('取消','Cancel')}</button><button value="save">${t('完成','Done')}</button></div></form></dialog>`;
+    bind();
+  }
+  async function mount(context) {
+    if (host && (owner!==context.userId || !document.getElementById('courseNotesSlot'))) finishGesture(false);
+    ctx=context;
+    if (owner!==ctx.userId) {
+      if(exportJob)exportJob.canceled=true;
+      epoch++; saving=null; busy=false; stroke=null;selectedSticky=-1;
+      clearTimeout(timer); if(pdf) void pdf.destroy(); host=null; pdf=null; course='';doc=''; dirty=false;owner=ctx.userId;items=[]; undo=[];redo=[];
+    }
+    const slot=document.getElementById('courseNotesSlot'); if(!slot || !owner) return;
+    const nextLanguage = window.StudyBridgeI18n.getLanguage();
+    if (host && language !== nextLanguage) {
+      finishGesture(false);
+      host = null; build();
+      if (course) { await listDocuments(); $('[data-document]').value=doc; }
+      if (pdf) { $('.note-work').hidden=false; await drawPage(); status(dirty ? t('未同步，草稿已保留','Unsynced; draft preserved') : t('本地示例','Saved to cloud')); }
+    }
+    language = nextLanguage;
+    if (!host) build(); slot.replaceChildren(host);
+    const select = $('[data-course]');
+    select.innerHTML = `<option value="">${t('选择课程','Choose a course')}</option>` + ctx.courses.filter(c=>c.chatType!=='general' && c.name!=='Schedule & Deadlines').map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+    select.value = course; syncPickers(); syncControls();
+    if (!course && ctx.courseId) await openCourse(ctx.courseId);
+  }
+  window.addEventListener('beforeunload',e=>{finishGesture(false);if(dirty){backup();e.preventDefault();e.returnValue='';}});
+  window.StudyBridgeCourseNotes={mount,openCourse};
+})();
+</script><script>
+(async function(){
+  const model=StudyBridgeNoteModel;
+  let items=[
+    {...model.sticky([.12,.11]),w:.3,h:.15,text:'导数与切线\nf′(a) 是曲线在 x = a 处的斜率。'},
+    {...model.sticky([.58,.46]),w:.3,h:.16,text:'例题\nf(x) = x²，在 x = 2 处斜率为 4。'}
+  ];
+  const doc = {id:'blank', title:'导数与切线', blankNote:true};
+  await StudyBridgeCourseNotes.mount({userId:'preview',courseId:'calc',courses:[{id:'calc',name:'AP Calculus AB'}], async api(url,options){
+    if(url.includes('/documents?'))return {documents:[doc]};
+    if(options?.method==='PUT')items=structuredClone(options.body.items);
+    return {version:1,items:structuredClone(items)};
+  }});
+  const select=document.querySelector('[data-document]');select.value=doc.id;select.dispatchEvent(new Event('change',{bubbles:true}));
+  const paper=document.querySelector('.note-scroll');
+  function reset(){
+    trial.restart();
+    paper.scrollTop=Math.min(280,Math.max(0,(paper.scrollHeight-paper.clientHeight)*.55));
+    window.scrollTo(0,window.scrollY+paper.getBoundingClientRect().top-document.querySelector('.hint').offsetHeight-14);
+  }
+  function start(){
+    if(!paper.clientHeight || !paper.querySelector('[data-sticky]'))return requestAnimationFrame(start);
+    document.querySelector('[data-mode=sticky]').click();
+    reset();document.getElementById('restart').onclick=reset;
+  }
+  requestAnimationFrame(start);
+})().catch(error=>{document.querySelector('.hint-inner span').textContent='示例加载失败：'+error.message;});
+</script></html>

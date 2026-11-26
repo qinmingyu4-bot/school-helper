@@ -50,7 +50,7 @@ async function checkNotesViewports(browser) {
     ['desktop', 1440, 900, false], ['tablet', 1180, 820, true], ['phone', 390, 844, true],
     ['split', 768, 1024, true]
   ]) {
-    const page = await browser.newPage({ viewport: {width, height}, hasTouch: touch });
+    const page = await browser.newPage({ viewport: {width, height}, hasTouch: touch, isMobile: touch });
     try {
       await page.setContent(html);
       const sticky = page.locator('.note-ink [data-sticky]');
@@ -77,32 +77,17 @@ async function checkNotesViewports(browser) {
         });
         const before = await geometry();
         assert.ok(before.extra <= 2 && before.gap >= -1 && before.gap <= 16, name + ' bounds ' + JSON.stringify(before));
-        await page.locator('[data-mode=hand]').click();
+        await page.locator('[data-mode=hand]').tap();
         const devtools = await page.context().newCDPSession(page);
-        const x = Math.round(rect.x + rect.width*.06), y = Math.round(rect.y + rect.height*.8);
-        const send = (type, currentY) => devtools.send('Input.dispatchTouchEvent', {
-          type, touchPoints: type === 'touchEnd' ? [] : [{x, y:currentY}]
+        const area = await paper.boundingBox();
+        const x = Math.round(area.x + area.width*.06), y = Math.round(area.y + area.height*.8);
+        await devtools.send('Input.synthesizeScrollGesture', {
+          x, y, yDistance:-100, speed:450, gestureSourceType:'touch', preventFling:true
         });
-        console.log(name, await page.evaluate(({x,y}) => {
-          const surface=document.elementFromPoint(x,y), p=document.querySelector('.note-scroll');
-          return {target:surface?.tagName, touch:getComputedStyle(surface).touchAction, sheet:p.scrollHeight, viewport:p.clientHeight};
-        }, {x,y}));
-        await send('touchStart', y);
-        for (let step=1; step<=6; step++) {
-          await send('touchMove', y-step*14);
-          await page.waitForTimeout(25);
-        }
-        await send('touchEnd');
-        await page.waitForFunction(() => document.querySelector('.note-scroll').scrollTop > 10);
+        await page.waitForFunction(() => document.querySelector('.note-scroll').scrollTop > 10, null, {timeout:5000});
         const after = await geometry();
         assert.equal(after.root, before.root);
         assert.equal(after.outer, before.outer);
-        await page.waitForFunction(() => {
-          const paper = document.querySelector('.note-scroll');
-          const previous = window.lastPaperScroll;
-          window.lastPaperScroll = paper.scrollTop;
-          return previous === paper.scrollTop;
-        }, null, {polling:100});
         await paper.evaluate(el => { el.scrollTop = 0; });
       }
       await page.locator('[data-mode=hand]').click();

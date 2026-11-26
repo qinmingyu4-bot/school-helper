@@ -41,32 +41,77 @@ async function checkCompactPreview(browser) {
   }
 }
 
-async function checkDesktopShell(browser) {
+async function checkNotesViewports(browser) {
+  const fs = require('node:fs');
   const root = path.resolve(__dirname, '../..');
-  const source = require('node:fs').readFileSync(path.join(root, 'previews/StudyBridge_Compact_Notes.html'), 'utf8');
-  const html = require('../../scripts/desktop-notes-preview.cjs').buildDesktopPreview(root, source);
-  const page = await browser.newPage({viewport:{width:1440, height:900}});
-  try {
-    await page.setContent(html);
-    const sticky = page.locator('.note-ink [data-sticky]');
-    await sticky.first().waitFor();
-    const sidebar = await page.locator('.app-shell > .sidebar').boundingBox();
-    const paper = await page.locator('.note-scroll').boundingBox();
-    assert.ok(sidebar.width > 150 && paper.x >= sidebar.x + sidebar.width - 1);
-    assert.ok(paper.width > 600 && paper.y < 550, 'Desktop should show the sidebar and writing area together');
-    assert.ok(await page.locator('.tools-tabs [data-tool=notes]').isVisible());
-    await sticky.first().click();
-    await page.keyboard.press('Backspace');
-    assert.equal(await sticky.count(), 1);
-  } finally {
-    await page.close();
+  const comparison = fs.readFileSync(path.join(root, 'previews/StudyBridge_Compact_Notes.html'), 'utf8');
+  const html = require('../../scripts/desktop-notes-preview.cjs').buildDesktopPreview(root, comparison);
+  for (const [name, width, height, touch] of [
+    ['desktop', 1440, 900, false], ['tablet', 1180, 820, true], ['phone', 390, 844, true],
+    ['split', 768, 1024, true]
+  ]) {
+    const page = await browser.newPage({ viewport: {width, height}, hasTouch: touch });
+    try {
+      await page.setContent(html);
+      const sticky = page.locator('.note-ink [data-sticky]');
+      await sticky.first().waitFor();
+      await page.evaluate(() => document.fonts.ready);
+      const paper = page.locator('.note-scroll');
+      const rect = await paper.boundingBox();
+      assert.ok(rect.width > width * .44 && rect.height >= height * .32, name + ' needs a usable writing area');
+      if (width > 900) {
+        const side = await page.locator('.app-shell > .sidebar').boundingBox();
+        assert.ok(side.width >= 150 && rect.x >= side.x + side.width - 1);
+      }
+      if (touch) {
+        const geometry = () => page.evaluate(() => {
+          const outer = document.querySelector('.workspace'), paper = document.querySelector('.note-scroll');
+          return { inner:paper.scrollTop, outer:outer.scrollTop, root:scrollY,
+            extra:Math.max(outer.scrollHeight-outer.clientHeight, document.documentElement.scrollHeight-innerHeight),
+            gap:innerHeight-paper.getBoundingClientRect().bottom };
+        });
+        const before = await geometry();
+        assert.ok(before.extra <= 2 && before.gap >= -1 && before.gap <= 16, name + ' bounds ' + JSON.stringify(before));
+        await page.locator('[data-mode=hand]').click();
+        const devtools = await page.context().newCDPSession(page);
+        const x = Math.round(rect.x + rect.width*.65), y = Math.round(rect.y + rect.height*.8);
+        const send = (type, currentY) => devtools.send('Input.dispatchTouchEvent', {
+          type, touchPoints: type === 'touchEnd' ? [] : [{x, y:currentY}]
+        });
+        await send('touchStart', y);
+        for (let step=1; step<=6; step++) {
+          await send('touchMove', y-step*14);
+          await page.waitForTimeout(25);
+        }
+        await send('touchEnd');
+        await page.waitForFunction(() => document.querySelector('.note-scroll').scrollTop > 10);
+        const after = await geometry();
+        assert.equal(after.root, before.root);
+        assert.equal(after.outer, before.outer);
+        await page.waitForFunction(() => {
+          const paper = document.querySelector('.note-scroll');
+          const previous = window.lastPaperScroll;
+          window.lastPaperScroll = paper.scrollTop;
+          return previous === paper.scrollTop;
+        }, null, {polling:100});
+        await paper.evaluate(el => { el.scrollTop = 0; });
+      }
+      await page.locator('[data-mode=hand]').click();
+      if (process.env.NOTES_SCREENSHOT_DIR && name !== 'split') {
+        fs.mkdirSync(process.env.NOTES_SCREENSHOT_DIR, {recursive:true});
+        await page.screenshot({path:path.join(process.env.NOTES_SCREENSHOT_DIR, name+'.png')});
+      }
+      await sticky.first().click();
+      await page.keyboard.press('Backspace');
+      assert.equal(await sticky.count(), 1);
+    } finally { await page.close(); }
   }
 }
 
 async function run() {
   const browser = await chromium.launch({channel:'chrome'});
   try {
-    await checkDesktopShell(browser);
+    await checkNotesViewports(browser);
     await checkCompactPreview(browser);
     const page = await browser.newPage();
     const pdf = await blankPdf();

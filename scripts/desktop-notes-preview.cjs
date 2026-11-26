@@ -35,11 +35,10 @@ function buildDesktopPreview(root, comparison) {
 
   const mime = {'.woff2':'font/woff2','.woff':'font/woff','.ttf':'font/ttf','.svg':'image/svg+xml','.png':'image/png'};
   const embed = file => 'data:' + mime[path.extname(file)] + ';base64,' + fs.readFileSync(file).toString('base64');
-  const compact = comparison.match(/<style id="compactLayout">([\s\S]*?)<\/style>/)[1];
   const styles = [...read('index.html').matchAll(/<link rel="stylesheet" href="\/([^"?]+)(?:\?[^"]*)?"/g)].map(([,name]) => {
     // The notes workspace doesn't render mathematical markup or need its web fonts.
     if (name.includes('katex.min.css')) return '';
-    const css = name === 'course-notes.css' ? compact : read(name);
+    const css = read(name);
     return css.replace(/url\(\s*(["']?)([^)'"]+)\1\s*\)/g,(src, quote, url) => {
       if (/^(data:|#)/.test(url)) return src;
       const [asset,fragment] = url.split('#');
@@ -53,7 +52,7 @@ function buildDesktopPreview(root, comparison) {
   if(begin < 0 || end < 0) throw new Error('Preview setup changed');
   editor = editor.slice(0,begin) + editor.slice(end+'    setLayout();\n'.length);
   editor = editor.replace("document.getElementById('measure').textContent", "document.getElementById('courseNotesSlot').textContent");
-  const content = shell.replace(/src="\/(brand\/[^"]+)"/g,(_,file)=>'src="'+embed(path.join(dir,file))+'"');
+  const content = shell.replace('class="app-shell"', 'class="app-shell" data-mobile-view="page" data-mobile-panel="closed"').replace(/src="\/(brand\/[^"]+)"/g,(_,file)=>'src="'+embed(path.join(dir,file))+'"');
   return '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>课堂笔记 · StudyBridge 桌面预览</title><style>'+styles+'</style><body><div id="root">'+content+'</div><script>document.addEventListener("click",e=>{if(e.target.closest(".sidebar, .tools-tabs, .page-header") && e.target.closest("button,summary,select")){e.preventDefault();const status=document.querySelector(".course-notes [role=status]");if(status)status.textContent="本地桌面预览仅开放课堂笔记。";}},true);</script>'+editor;
 }
 module.exports = {buildDesktopPreview};

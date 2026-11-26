@@ -96,3 +96,36 @@ body:has(.note-focus){overflow:hidden}
  .note-field-label{flex:none}
  .note-location-divider{align-self:center;margin:0}
 }
+
+/* Size the touch editor from the space left below its actual, wrapped controls. */
+@media (max-width: 900px), (min-width: 901px) and (pointer: coarse) {
+  .app-shell:not(.admin-shell) > .workspace:has(> #courseNotesSlot .note-work:not([hidden])) {
+    height: 100dvh;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .workspace:has(> #courseNotesSlot) > .tools-tabs { flex-shrink: 0; }
+  .workspace > #courseNotesSlot,
+  .workspace > #courseNotesSlot .course-notes,
+  .workspace > #courseNotesSlot .note-work {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    min-width: 0;
+  }
+  #courseNotesSlot :is(.note-picker, [role=status], .note-toolbar, .note-navigation, .note-sticky-tools) { flex-shrink: 0; }
+  #courseNotesSlot .note-scroll {
+    flex: 1 1 0;
+    min-height: min(128px, 32dvh);
+    max-height: none;
+    overscroll-behavior: contain;
+  }
+}
+@media (max-width: 700px) {
+  .workspace:has(> #courseNotesSlot) > .tools-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+}

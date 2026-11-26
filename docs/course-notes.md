@@ -32,7 +32,8 @@ one undo restores everything removed in that gesture. Canceled gestures restore
 the previous state. Browse supports mouse/stylus dragging and native finger
 scrolling. Use Stylus only to avoid drawing with fingers.
 Choose **Sticky note**, then click/tap a page to place a pale yellow note. In this
-mode, drag a note to move it and its lower-right handle to resize it. Select a note
+mode, drag the center to move a note. Drag any edge or corner of a selected note
+to resize it. The shaded lower-right grip also works. Select a note
 to edit typed text, duplicate/delete it or change its background. Pen/highlighter
 strokes started inside a note stay attached when it is moved, resized or copied;
 the eraser removes its ink without deleting its background or typed text. Use

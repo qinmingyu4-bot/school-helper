@@ -47,3 +47,21 @@ test('sticky notes move and resize within page bounds while retaining independen
  assert.equal((svg.match(/data-index=/g)||[]).length,1);
  assert.equal(model.contrast('#000000'),'#ffffff');assert.equal(model.contrast('#fff2a8'),'#182b3a');
 });
+
+test('sticky resize handles move only their edges and keep the opposite edges anchored', () => {
+  const note = {...model.sticky([.3,.4]), text:'Notes', ink:[pen]};
+  const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-9);
+  for (const direction of ['n','s','w','e','nw','ne','sw','se']) {
+    for (const delta of [-2,-.03,0,.03,2]) {
+      const result = model.transformSticky(note, delta, delta, direction);
+      const right = note.x + note.w, bottom = note.y + note.h;
+      near(result.x, direction.includes('w') ? Math.max(0, Math.min(right - .08, note.x + delta)) : note.x);
+      near(result.y, direction.includes('n') ? Math.max(0, Math.min(bottom - .05, note.y + delta)) : note.y);
+      near(result.x + result.w, direction.includes('e') ? Math.min(1, Math.max(note.x + .08, right + delta)) : right);
+      near(result.y + result.h, direction.includes('s') ? Math.min(1, Math.max(note.y + .05, bottom + delta)) : bottom);
+      assert.ok(result.w >= .08 && result.h >= .05);
+      assert.deepEqual(result.ink, [pen]);
+      assert.equal(result.text, 'Notes');
+    }
+  }
+});

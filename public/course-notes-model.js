@@ -22,9 +22,25 @@
     return lines;
   }
   function sticky(point) {return {type:'sticky',x:Math.min(.68,point[0]),y:Math.min(.76,point[1]),w:.32,h:.24,background:'#fff2a8',text:'',ink:[]};}
-  function transformSticky(item,dx,dy,resize=false) {
-    return resize?{...item,w:Math.min(1-item.x,Math.max(.08,item.w+dx)),h:Math.min(1-item.y,Math.max(.05,item.h+dy))}
-      :{...item,x:Math.max(0,Math.min(1-item.w,item.x+dx)),y:Math.max(0,Math.min(1-item.h,item.y+dy))};
+  function transformSticky(item, dx, dy, resize = false) {
+    if (!resize) {
+      return {...item, x:Math.max(0,Math.min(1-item.w,item.x+dx)), y:Math.max(0,Math.min(1-item.h,item.y+dy))};
+    }
+    const direction = resize === true ? 'se' : resize;
+    const next = {...item};
+    if (direction.includes('w') && dx) {
+      const right = item.x + item.w;
+      next.w = Math.min(right, Math.max(.08, item.w - dx));
+      next.x = right - next.w;
+    }
+    if (direction.includes('e')) next.w = Math.min(1-item.x, Math.max(.08, item.w + dx));
+    if (direction.includes('n') && dy) {
+      const bottom = item.y + item.h;
+      next.h = Math.min(bottom, Math.max(.05, item.h - dy));
+      next.y = bottom - next.h;
+    }
+    if (direction.includes('s')) next.h = Math.min(1-item.y, Math.max(.05, item.h + dy));
+    return next;
   }
   function markup(items,ratio) {
     return items.map((item,i)=>{

@@ -36,6 +36,29 @@
     if (owner !== oldOwner) return;
     if (dirty) return save();
   }
+  function stickyResizeTargets(x, y, w, h, unitsPerPixel) {
+    const target = (direction, left, top, width, height) =>
+      `<rect data-resize="${direction}" x="${left}" y="${top}" width="${width}" height="${height}" fill="transparent" style="cursor:${direction}-resize"/>`;
+    const right = x + w, bottom = y + h;
+    const grip = Math.min(w, h, 44 * unitsPerPixel);
+    if (mode !== 'sticky' && mode !== 'hand') {
+      return target('se', right - grip, bottom - grip, grip, grip);
+    }
+    // Keep the hit areas usable at different zoom levels and leave the middle free to move.
+    const edge = Math.min(6 * unitsPerPixel, w / 6, h / 6);
+    const corner = Math.min(12 * unitsPerPixel, w / 3, h / 3);
+    const se = Math.min(Math.max(grip, Math.min(24, w, h)), w / 2, h / 2);
+    return [
+      target('w', x - edge, y, 2 * edge, h),
+      target('e', right - edge, y, 2 * edge, h),
+      target('n', x, y - edge, w, 2 * edge),
+      target('s', x, bottom - edge, w, 2 * edge),
+      target('nw', x - edge, y - edge, corner + edge, corner + edge),
+      target('ne', right - corner, y - edge, corner + edge, corner + edge),
+      target('sw', x - edge, bottom - corner, corner + edge, corner + edge),
+      target('se', right - se, bottom - se, se + edge, se + edge)
+    ].join('');
+  }
   // A fixed SVG viewBox keeps annotations aligned across viewport sizes and zoom.
   function paint() {
     const svg = $('svg.note-ink'); if (!svg) return;
@@ -49,8 +72,8 @@
     if(stickySelected) {
       $('[data-sticky-color]').value=selected.background;
       const x=selected.x*1000,y=selected.y*1000*ratio,w=selected.w*1000,h=selected.h*1000*ratio;
-      const handle=Math.min(w,h,44*1000/Math.max(1,svg.getBoundingClientRect().width));
-      svg.insertAdjacentHTML('beforeend',`<g data-sticky-control="true" data-index="${selectedSticky}"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="${model.contrast(selected.background)}" stroke-width="1" stroke-dasharray="4 3" pointer-events="none"/><rect data-resize="true" x="${x+w-handle}" y="${y+h-handle}" width="${handle}" height="${handle}" fill="transparent" style="cursor:nwse-resize"/><rect pointer-events="none" x="${x+w-24}" y="${y+h-24}" width="24" height="24" rx="4" fill="${model.contrast(selected.background)}" fill-opacity=".15" style="cursor:nwse-resize"/><path d="M${x+w-17} ${y+h-5}l12-12m-5 12 5-5" stroke="${model.contrast(selected.background)}" stroke-width="1.5" pointer-events="none"/></g>`);
+      const targets = stickyResizeTargets(x, y, w, h, 1000 / Math.max(1, svg.getBoundingClientRect().width));
+      svg.insertAdjacentHTML('beforeend',`<g data-sticky-control="true" data-index="${selectedSticky}"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="${model.contrast(selected.background)}" stroke-width="1" stroke-dasharray="4 3" pointer-events="none"/>${targets}<rect pointer-events="none" x="${x+w-24}" y="${y+h-24}" width="24" height="24" rx="4" fill="${model.contrast(selected.background)}" fill-opacity=".15" style="cursor:nwse-resize"/><path d="M${x+w-17} ${y+h-5}l12-12m-5 12 5-5" stroke="${model.contrast(selected.background)}" stroke-width="1.5" pointer-events="none"/></g>`);
     }
     $('[data-note=undo]').disabled = !undo.length;
     $('[data-note=redo]').disabled = !redo.length;
@@ -58,7 +81,7 @@
     svg.style.cursor = busy ? 'progress' : model.cursor(mode,mode==='highlight'&&color==='#24344a'?'#ffd447':color);
     $('[data-color]').disabled=busy || ['hand','eraser','sticky'].includes(mode);
     $('[data-width]').disabled=busy || ['hand','eraser','text','sticky'].includes(mode);
-    $('[data-tool-status]').textContent=({sticky:t('便签 · 点击添加，拖动移动，右下角调整大小','Sticky note · Click to add, drag to move, drag corner to resize'),hand:t('浏览 · 拖动移动课件','Browse · Drag to pan'),pen:t('画笔','Pen'),highlight:t('高亮','Highlight'),text:t('文字 · 点击添加或编辑','Text · Click to add or edit'),eraser:t('橡皮 · 拖动擦除整条标注','Eraser · Drag to erase annotations')})[mode];
+    $('[data-tool-status]').textContent=({sticky:t('便签 · 点击添加，拖动中间移动，拖动边或角调整大小','Sticky note · Click to add, drag the center to move, drag an edge or corner to resize'),hand:t('浏览 · 拖动移动课件','Browse · Drag to pan'),pen:t('画笔','Pen'),highlight:t('高亮','Highlight'),text:t('文字 · 点击添加或编辑','Text · Click to add or edit'),eraser:t('橡皮 · 拖动擦除整条标注','Eraser · Drag to erase annotations')})[mode];
     syncControls();
     host.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed',b.dataset.mode === mode));
   }
@@ -324,7 +347,7 @@
         }
       } catch(e) { if(epoch===operationEpoch)status(e.message); } finally { if(epoch===operationEpoch) { busy=false; if (el.matches('[data-upload]')) { el.value=''; el.disabled=false; } syncControls(); paint(); } }
     });
-    const svg=$('svg.note-ink'); let pointer,gesture,last,initial,pan,stickyStart,stickyOrigin,stickyStroke;
+    const svg=$('svg.note-ink'); let pointer,gesture,last,initial,pan,stickyStart,stickyOrigin,stickyStroke,resizeDirection;
     const point = e => { const r=svg.getBoundingClientRect(); return [Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))].map(n=>Math.round(n*100000)/100000); };
     function erase(from,to) {
       const size=svg.getBoundingClientRect();
@@ -368,7 +391,10 @@
         pointer=e.pointerId;svg.setPointerCapture(pointer);initial=JSON.stringify(items);erasePreview=JSON.parse(initial);
         last=p;stickyOrigin=p;stickyStart=JSON.parse(JSON.stringify(sticky));
         if(mode==='eraser'){gesture='sticky-erase';eraseSticky(p,p);}
-        else if(e.target.closest('[data-resize]'))gesture='sticky-resize';
+        else if(e.target.dataset.resize) {
+          gesture='sticky-resize';
+          resizeDirection=e.target.dataset.resize;
+        }
         else if(['pen','highlight'].includes(mode)) {
           gesture='sticky-ink';
           stickyStroke={type:mode,color:mode==='highlight'&&color==='#24344a'?'#ffd447':color,width:Math.min(.1,width*(mode==='highlight'?7:1)/sticky.w),points:[[(p[0]-sticky.x)/sticky.w,(p[1]-sticky.y)/sticky.h]]};
@@ -393,7 +419,7 @@
         const scroll=$('.note-scroll');scroll.scrollLeft=pan.left+pan.x-e.clientX;scroll.scrollTop=pan.top+pan.y-e.clientY;return;
       }
       if(gesture==='sticky-move'||gesture==='sticky-resize') {
-        const p=point(e);erasePreview[selectedSticky]=model.transformSticky(stickyStart,p[0]-stickyOrigin[0],p[1]-stickyOrigin[1],gesture==='sticky-resize');paint();return;
+        const p=point(e);erasePreview[selectedSticky]=model.transformSticky(stickyStart,p[0]-stickyOrigin[0],p[1]-stickyOrigin[1],gesture==='sticky-resize' && resizeDirection);paint();return;
       }
       for(const sample of e.getCoalescedEvents?.().length?e.getCoalescedEvents():[e]) {
         const p=point(sample);

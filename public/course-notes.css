@@ -1,12 +1,12 @@
 /* Quiet course workspace: linked values, text actions and a single paper canvas. */
-.course-notes{min-width:0;padding:0 28px 28px;color:var(--ink);font-family:var(--font-ui);font-weight:400}
+.course-notes{container:class-notes / inline-size;min-width:0;padding:0 28px 28px;color:var(--ink);font-family:var(--font-ui);font-weight:400}
 .course-notes :is(button,select,input,textarea,summary){font-family:inherit;box-shadow:none;text-shadow:none}
 .course-notes button,.course-notes select,.note-upload,.note-navigation input{width:auto;min-height:36px;padding:6px 8px;border:0;border-radius:3px;background:transparent;color:var(--muted);font-size:12px;font-weight:450;line-height:20px}
 .course-notes button:hover:not(:disabled){background:var(--soft);color:var(--ink)}
 .course-notes button:disabled{opacity:.45;cursor:default}
 .course-notes :focus-visible{outline:2px solid var(--green);outline-offset:3px}
 .course-notes [hidden]{display:none!important}
-.note-picker{display:flex;align-items:center;flex-wrap:wrap;gap:16px 28px;padding:24px 0 14px}
+.note-picker{display:flex;align-items:center;flex-wrap:wrap;gap:4px 20px;padding:8px 0 2px}
 .note-location{display:flex;align-items:center;gap:18px;min-width:0;flex:1 1 360px}
 .note-field{position:relative;min-width:0;max-width:340px}
 .note-field-label{display:block;color:var(--muted);font-size:11px;font-weight:400;line-height:18px}
@@ -31,8 +31,8 @@
 .note-picker-menu p{margin:8px 10px;font-size:12px;color:var(--muted)}
 .course-notes .note-picker-menu .note-add-course{margin-top:4px;border-top:1px solid var(--line);border-radius:0;color:var(--green)}
 .note-picker-check{flex-shrink:0;font-size:12px;color:var(--green)}
-.course-notes [role=status]{min-height:18px;margin:0 0 20px;color:var(--muted);font-size:11px;line-height:18px}
-.note-toolbar,.note-navigation{display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px;padding:8px 0;border-bottom:1px solid var(--line)}
+.course-notes [role=status]{margin:0 0 3px;overflow-wrap:anywhere;color:var(--muted);font-size:11px;line-height:18px}
+.note-toolbar,.note-navigation{display:flex;align-items:center;flex-wrap:wrap;gap:2px 8px;padding:3px 0;border-bottom:1px solid var(--line)}
 .note-toolbar{border-top:1px solid var(--line)}
 .course-notes .note-toolbar button{border-radius:0;border-bottom:1px solid transparent;padding:6px 0}
 .course-notes .note-toolbar button:hover{background:transparent}
@@ -51,7 +51,7 @@
 .note-navigation details{position:relative;margin-left:auto;font-size:11px}
 .note-navigation summary{cursor:pointer;padding:8px;color:var(--muted)}
 .note-navigation details[open]{display:flex;gap:5px;flex-wrap:wrap}
-.note-scroll{overflow:auto;max-height:72dvh;background:var(--soft);padding:20px;overscroll-behavior:contain}
+.note-scroll{overflow:auto;max-height:80dvh;background:var(--soft);padding:12px;overscroll-behavior:contain}
 .note-sheet{color-scheme:light;position:relative;background:#fff;min-width:100%;isolation:isolate}
 .note-sheet canvas{display:block;width:100%;height:100%}
 .note-ink{position:absolute;inset:0;width:100%;height:100%;user-select:none;-webkit-user-select:none}
@@ -67,9 +67,9 @@
 .note-focus .note-scroll{max-height:calc(100dvh - 235px)}
 body:has(.note-focus){overflow:hidden}
 @media(max-width:700px){
- .course-notes{padding:0 16px 16px}.note-picker{padding-top:18px;gap:10px}.note-location{gap:12px;flex-basis:100%}.note-field{flex:1;max-width:calc(50% - 16px)}
+ .course-notes{padding:0 16px 16px}.note-picker{padding-top:6px;gap:3px 10px}.note-location{gap:12px;flex-basis:100%}.note-field{flex:1;max-width:calc(50% - 16px)}
  .note-picker-actions{margin-left:0;gap:20px}.note-picker-menu{min-width:190px;max-width:calc(100vw - 48px)}.note-field:last-child .note-picker-menu{left:auto;right:0}
- .note-toolbar{gap:4px 14px}.note-toolbar label{margin-left:0}.note-navigation{gap:3px 6px}.note-scroll{padding:8px;max-height:65dvh}.note-focus .note-scroll{max-height:calc(100dvh - 330px)}
+ .note-toolbar{gap:2px 8px}.note-toolbar label{margin-left:0}.note-navigation{gap:3px 6px}.note-scroll{padding:8px;max-height:73dvh}.note-focus .note-scroll{max-height:calc(100dvh - 330px)}
 }
 @media(pointer:coarse){.course-notes button,.note-upload,.course-notes select{min-height:44px}.course-notes .note-picker-trigger,.course-notes .note-picker-menu button{min-height:44px}}
 :root .course-notes .note-toolbar select{font-size:11px;min-width:0}
@@ -87,3 +87,12 @@ body:has(.note-focus){overflow:hidden}
 .course-notes .note-sticky-tools input[type=color]{width:28px;height:28px;min-height:28px;padding:2px;border:0;background:transparent}
 .note-sticky-tools>span{margin-left:auto;font-size:11px}
 .note-ink [data-sticky]{cursor:inherit}
+
+/* Keep helper text alongside the tools when the editor itself has room. */
+@container class-notes (min-width: 860px) {
+ .note-toolbar label{order:1}
+ .course-notes [data-tool-status]{flex:0 1 auto;padding:0}
+ .note-field{display:flex;align-items:center;gap:8px}
+ .note-field-label{flex:none}
+ .note-location-divider{align-self:center;margin:0}
+}

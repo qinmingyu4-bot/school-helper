@@ -3,9 +3,45 @@ const path = require('node:path');
 const { chromium } = require(process.env.NOTES_PLAYWRIGHT_MODULE || 'playwright');
 const { blankPdf } = require('../../lib/course-notes');
 
+async function checkCompactPreview(browser) {
+  const preview = path.resolve(__dirname, '../../previews/StudyBridge_Compact_Notes.html');
+  for (const [width, height, touch] of [[1280, 800, false], [1024, 768, true], [390, 844, true]]) {
+    const page = await browser.newPage({ viewport: {width, height}, hasTouch: touch });
+    try {
+      await page.route('https://notes.test/layout', route => route.fulfill({path: preview, contentType:'text/html'}));
+      await page.goto('https://notes.test/layout');
+      const selector = page.locator('#layout');
+      const measure = page.locator('#measure');
+      await page.waitForFunction(() => /\d+ px/.test(document.getElementById('measure').textContent));
+      const geometry = () => page.locator('.note-scroll').evaluate(el => ({
+        top: el.getBoundingClientRect().top,
+        visible: Math.min(innerHeight, el.getBoundingClientRect().bottom) - el.getBoundingClientRect().top,
+        overflow: document.documentElement.scrollWidth - innerWidth
+      }));
+      const count = await page.locator('[data-sticky]').count();
+      const compact = await geometry();
+      const compactLabel = await measure.innerText();
+      assert.equal(compact.overflow, 0);
+      assert.ok(await page.locator('[data-mode=pen]').evaluate(el => el.offsetHeight >= (matchMedia('(pointer:coarse)').matches ? 44 : 36)));
+      for (const control of ['new-blank','pdf','save','focus']) assert.ok(await page.locator('[data-note="'+control+'"]').isVisible());
+      await selector.selectOption('original');
+      const original = await geometry();
+      assert.ok(original.top - compact.top >= 20, 'Tool area should release at least 20 px');
+      assert.ok(compact.visible > original.visible, 'More paper should be visible');
+      await selector.selectOption('compact');
+      assert.equal(await page.locator('[data-sticky]').count(), count);
+      assert.equal(await measure.innerText(), compactLabel);
+      console.log(width + 'x' + height + ': compact controls/paper gain ' + Math.round(original.top-compact.top) + '/' + Math.round(compact.visible-original.visible) + ' px');
+    } finally {
+      await page.close();
+    }
+  }
+}
+
 async function run() {
   const browser = await chromium.launch({channel:'chrome'});
   try {
+    await checkCompactPreview(browser);
     const page = await browser.newPage();
     const pdf = await blankPdf();
     const publicDir = path.resolve(__dirname, '../../public');

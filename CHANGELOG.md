@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Compact the upper classroom note tools, keeping editing controls visible and giving the paper more room on desktop, tablet and mobile.
 - Trial: hand off scrolling at either edge of a classroom note on a renewed gesture, while keeping momentum and the first movement after a long pause on the paper.
 - Add Windows Ctrl+Y redo and Mac/Windows clipboard and duplicate shortcuts for classroom sticky notes. Enter edits a selected note and Escape clears its selection or cancels a drag.
 - Resize a selected classroom sticky note from any edge or corner. Directional cursors show where to drag.

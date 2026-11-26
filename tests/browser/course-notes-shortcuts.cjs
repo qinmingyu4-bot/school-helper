@@ -80,7 +80,7 @@ async function checkNotesViewports(browser) {
         await page.locator('[data-mode=hand]').tap();
         const devtools = await page.context().newCDPSession(page);
         const area = await paper.boundingBox();
-        const x = Math.round(area.x + area.width*.06), y = Math.round(area.y + area.height*.8);
+        const x = Math.round(area.x + area.width*.06), y = Math.round(area.y + Math.min(80, area.height*.35));
         await devtools.send('Input.synthesizeScrollGesture', {
           x, y, yDistance:-100, speed:450, gestureSourceType:'touch', preventFling:true
         });
@@ -99,7 +99,7 @@ async function checkNotesViewports(browser) {
 }
 
 async function run() {
-  const browser = await chromium.launch({channel:'chrome'});
+  const browser = await chromium.launch({channel:'chrome', args:['--window-size=1600,1200']});
   try {
     await checkNotesViewports(browser);
     await checkCompactPreview(browser);

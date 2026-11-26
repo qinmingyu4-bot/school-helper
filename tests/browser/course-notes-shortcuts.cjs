@@ -60,7 +60,36 @@ async function checkNotesViewports(browser) {
       const paper = page.locator('.note-scroll');
       const rect = await paper.boundingBox();
       assert.ok(rect.width > width * .44 && rect.height >= height * .32, name + ' needs a usable writing area');
-      if (width > 900) {
+      const menu = page.locator('.note-menu-trigger');
+      if (name === 'tablet') {
+        const sidebar = page.locator('.app-shell > .sidebar');
+        assert.equal(await sidebar.isVisible(), false);
+        assert.ok(rect.width >= width * .90);
+        const paperNode = await paper.elementHandle();
+        await paper.evaluate(el => { el.scrollTop = 100; });
+        await menu.tap();
+        const links = sidebar.locator('.side-nav [data-page]');
+        assert.ok(await links.count() >= 6 && await links.first().isVisible());
+        await page.keyboard.press('Escape');
+        await sidebar.waitFor({state:'hidden'});
+        await menu.tap();
+        await sidebar.locator('.note-menu-close').tap();
+        await sidebar.waitFor({state:'hidden'});
+        await menu.tap();
+        await page.mouse.click(width-20, 24);
+        await sidebar.waitFor({state:'hidden'});
+        assert.ok(await paperNode.evaluate(el => el.isConnected && el.scrollTop >= 99));
+        await menu.tap();
+        await page.setViewportSize({width:800,height:1000});
+        await page.waitForFunction(() => !document.querySelector('.sidebar[popover]'));
+        await page.setViewportSize({width,height});
+        await menu.waitFor();
+        assert.equal(await sidebar.isVisible(),false);
+        await paper.evaluate(el => { el.scrollTop = 0; });
+      } else {
+        assert.equal(await menu.count(), 0);
+      }
+      if (width > 900 && !touch) {
         const side = await page.locator('.app-shell > .sidebar').boundingBox();
         assert.ok(side.width >= 150 && rect.x >= side.x + side.width - 1);
       }

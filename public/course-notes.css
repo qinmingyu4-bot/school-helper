@@ -129,3 +129,41 @@ body:has(.note-focus){overflow:hidden}
     overscroll-behavior-x: contain;
   }
 }
+
+/* The existing sidebar doubles as a dismissible menu while studying on a tablet. */
+@media (min-width: 901px) and (pointer: coarse) {
+  :root .app-shell:not(.admin-shell):has(> .sidebar[popover]) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .app-shell > .sidebar[popover]:not(:popover-open) { display: none; }
+  .app-shell > .sidebar[popover]:popover-open {
+    position: fixed;
+    inset: 0 auto 0 0;
+    margin: 0;
+    width: min(340px, 90vw);
+    height: 100dvh;
+    max-height: 100dvh;
+    padding-left: max(12px, env(safe-area-inset-left));
+    border: 0;
+    border-right: 1px solid var(--line);
+    background: var(--panel);
+    color: var(--ink);
+    overscroll-behavior: contain;
+  }
+  .sidebar[popover]::backdrop { background: rgb(0 0 0 / 18%); }
+  .app-shell .page-header:has(> .note-menu-trigger) { justify-content: flex-start; }
+  .page-header:has(> .note-menu-trigger) > div { flex: 1; }
+  :root .app-shell .note-menu-trigger,
+  :root .app-shell .note-menu-close {
+    width: auto;
+    min-height: 44px;
+    padding: 4px 10px;
+    border: 0;
+    background: transparent;
+    color: var(--green);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .app-shell .note-menu-close { display: block; margin-left: auto; }
+}

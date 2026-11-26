@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Collapse the main sidebar into a dismissible menu in the tablet classroom notes workspace. Keep the paper mounted while navigating the menu or rotating the tablet.
 - Fit the paper below the actual classroom controls on tablets and phones, with touch scrolling inside the writing area and safe-area padding at the bottom.
 - Provide an offline desktop notes preview with the website sidebar, tools navigation, bundled fonts and compact editor.
 - End the local notes layout preview at the workspace and reduce the gap below the compact editor on desktop and mobile.

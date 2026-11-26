@@ -647,7 +647,53 @@
     <dialog data-text-dialog><form method="dialog"><label>${t('文字笔记（清空可删除）','Text note (empty to delete)')}<textarea maxlength="4000" rows="6"></textarea></label><div><button value="cancel">${t('取消','Cancel')}</button><button value="save">${t('完成','Done')}</button></div></form></dialog>`;
     bind();
   }
+  const tabletLayout = window.matchMedia?.('(min-width: 901px) and (pointer: coarse)');
+  let tabletMenu;
+
+  function syncTabletMenu() {
+    const shell = document.getElementById('courseNotesSlot')?.closest('.app-shell:not(.admin-shell)');
+    const sidebar = tabletLayout?.matches && shell?.querySelector(':scope > .sidebar');
+    const header = sidebar && shell.querySelector(':scope > .workspace > .page-header');
+    if (tabletMenu && (tabletMenu.sidebar !== sidebar || tabletMenu.header !== header)) {
+      tabletMenu.remove();
+      tabletMenu = null;
+    }
+    if (!header || !sidebar.showPopover) return;
+    if (!tabletMenu) {
+      const trigger = document.createElement('button');
+      const close = document.createElement('button');
+      trigger.type = close.type = 'button';
+      trigger.className = 'note-menu-trigger';
+      close.className = 'note-menu-close';
+      sidebar.popover = 'auto';
+      trigger.popoverTargetElement = close.popoverTargetElement = sidebar;
+      close.popoverTargetAction = 'hide';
+      function choose(event) {
+        const link = event.target.closest('[data-page], [data-action^="mode-"]');
+        if (!link || !sidebar.matches(':popover-open')) return;
+        sidebar.hidePopover();
+        if (link.dataset.page === 'tools') {
+          event.stopPropagation();
+          trigger.focus({preventScroll:true});
+        }
+      }
+      sidebar.addEventListener('click', choose);
+      header.prepend(trigger);
+      sidebar.prepend(close);
+      tabletMenu = {sidebar, header, trigger, close, remove() {
+        sidebar.removeEventListener('click', choose);
+        sidebar.removeAttribute('popover');
+        trigger.remove();
+        close.remove();
+      }};
+    }
+    tabletMenu.trigger.textContent = t('主菜单','Main menu');
+    tabletMenu.close.textContent = t('收起菜单','Close menu');
+  }
+  tabletLayout?.addEventListener('change', syncTabletMenu);
+
   async function mount(context) {
+    syncTabletMenu();
     if (host && (owner!==context.userId || !document.getElementById('courseNotesSlot'))) finishGesture(false);
     ctx=context;
     if (owner!==ctx.userId) {

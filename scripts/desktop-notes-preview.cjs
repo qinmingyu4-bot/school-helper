@@ -47,13 +47,18 @@ function buildDesktopPreview(root, comparison) {
     });
   }).join('\n');
   let editor = comparison.slice(comparison.indexOf('<script>window.StudyBridgeI18n'));
+  const fixtureEditor = read('course-notes.js')
+    .replace("  'use strict';", "  'use strict';\n  const localStorage = {getItem:()=>null, setItem(){}, removeItem(){}};")
+    .replace("await import('/vendor/pdfjs/pdf.min.mjs')", "window.previewBlankPaper")
+    .replaceAll('已保存到云端', '本地示例');
+  editor = editor.replace(/<script>\(function \(\) \{[\s\S]*?<\/script>/, () => '<script>'+fixtureEditor+'</script>');
   const begin = editor.indexOf("    const layout = document.getElementById('layout');");
   const end = editor.indexOf('    setLayout();\n',begin);
   if(begin < 0 || end < 0) throw new Error('Preview setup changed');
   editor = editor.slice(0,begin) + editor.slice(end+'    setLayout();\n'.length);
   editor = editor.replace("document.getElementById('measure').textContent", "document.getElementById('courseNotesSlot').textContent");
   const content = shell.replace('class="app-shell"', 'class="app-shell" data-mobile-view="page" data-mobile-panel="closed"').replace(/src="\/(brand\/[^"]+)"/g,(_,file)=>'src="'+embed(path.join(dir,file))+'"');
-  return '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>课堂笔记 · StudyBridge 桌面预览</title><style>'+styles+'</style><body><div id="root">'+content+'</div><script>document.addEventListener("click",e=>{if(e.target.closest(".sidebar, .tools-tabs, .page-header") && e.target.closest("button,summary,select")){e.preventDefault();const status=document.querySelector(".course-notes [role=status]");if(status)status.textContent="本地桌面预览仅开放课堂笔记。";}},true);</script>'+editor;
+  return '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>课堂笔记 · StudyBridge 桌面预览</title><style>'+styles+'</style><body><div id="root">'+content+'</div><script>document.addEventListener("click",e=>{if(!e.target.closest(".note-menu-trigger,.note-menu-close") && e.target.closest(".sidebar, .tools-tabs, .page-header") && e.target.closest("button,summary,select")){e.preventDefault();const status=document.querySelector(".course-notes [role=status]");if(status)status.textContent="本地桌面预览仅开放课堂笔记。";}},true);</script>'+editor;
 }
 module.exports = {buildDesktopPreview};
 

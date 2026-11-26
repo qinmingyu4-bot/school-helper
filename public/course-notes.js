@@ -278,6 +278,10 @@
           $(`[data-picker-toggle="${key}"]`).focus();
           select.dispatchEvent(new Event('change',{bubbles:true})); return;
         }
+        // Disabling a focused toolbar button can move keyboard focus to the document body.
+        if ((button.dataset.mode || ['undo','redo','save','sticky-delete','sticky-text'].includes(action)) && pdf) {
+          svg.focus({preventScroll:true});
+        }
         finishGesture(false);busy=true;locked=true;syncControls();
         if (button.dataset.mode) { mode = button.dataset.mode; paint(); }
         const sticky=items[selectedSticky];

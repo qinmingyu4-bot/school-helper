@@ -43,7 +43,8 @@ async function run() {
     await press('Backspace');
     assert.equal(await input.inputValue(),'Class note');
     await page.locator('[data-text-dialog] [value=save]').click();
-    await canvas.focus();
+    await page.locator('[data-mode=hand]').click();
+    assert.ok(await canvas.evaluate(el => el === document.activeElement));
     await press(primary+'+s');
     await page.waitForFunction(() => window.saved.at(-1)?.[0]?.text === 'Class note');
     await press(primary+'+c');
@@ -62,6 +63,16 @@ async function run() {
     await press(primary+'+Shift+z'); await count(2);
     await page.locator('svg.note-ink [data-sticky]').last().click();
     await press('Delete'); await count(1);
+    await page.locator('[data-note=undo]').click();
+    await count(2);
+    await press(redo); await count(1);
+    const picker = page.locator('[data-picker-toggle=course]');
+    await picker.focus();
+    await press('End');
+    assert.ok(await page.locator('[data-note=add-course]').evaluate(el => el === document.activeElement));
+    await press('Home');
+    await press('Escape');
+    assert.ok(await picker.evaluate(el => el === document.activeElement));
     console.log(process.platform + ' Chrome passed clipboard, duplication, text editing, deletion, undo, redo, save and Escape.');
   } finally { await browser.close(); }
 }

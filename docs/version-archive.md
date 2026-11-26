@@ -1,5 +1,10 @@
 # StudyBridge Version Archive
 
+## 1.22.5 — 2026-11-26
+
+- PATCH from AWS 1.22.4 (`69c737c273f2772a4cf17c4b22d2263c9e1b487b`): update the mobile menu selection before the menu is shown and give existing image and Office dropdowns enough vertical space to render their text.
+- Verify tap and swipe return, slow history settlement, mobile dropdown rendering and selection, the regression suite, and public service health. This release has no dependency version, data migration, or configuration change. Source: `94c7d18`.
+
 ## 1.22.4 — 2026-11-24
 
 - PATCH from AWS 1.22.3 (`aeca3eeccdaf7e406cc5045a0508afc29c99be6c`): correct the existing mobile return interaction for taps and inward swipes, reduce work during workspace changes, and show sign-out progress with recoverable failure.

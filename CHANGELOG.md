@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.22.5 — 2026-11-26 — Mobile selection and readable dropdowns
+
+PATCH from AWS 1.22.4 (`69c737c`): fix the existing mobile navigation highlight and dropdown text layout.
 
 - Highlight the workspace just left when the mobile main menu appears, including returns by swipe. Prevent touch hover from highlighting a second menu item.
 - Give image settings and SP Docs, SP Sheets, and SP Slides dropdowns enough vertical space for mobile text.

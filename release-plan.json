@@ -1,8 +1,8 @@
 {
-  "previousCommit": "aeca3eeccdaf7e406cc5045a0508afc29c99be6c",
-  "previousVersion": "1.22.3",
-  "version": "1.22.4",
+  "previousCommit": "69c737c273f2772a4cf17c4b22d2263c9e1b487b",
+  "previousVersion": "1.22.4",
+  "version": "1.22.5",
   "level": "patch",
-  "reason": "Fix duplicate mobile workspace exits for menu taps and inward swipes, reduce workspace switching work, and expose recoverable sign-out progress.",
+  "reason": "Correct mobile menu highlighting on return and keep existing image and Office dropdown text legible.",
   "features": []
 }

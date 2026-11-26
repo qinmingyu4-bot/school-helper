@@ -61,10 +61,18 @@ async function checkNotesViewports(browser) {
       const rect = await paper.boundingBox();
       assert.ok(rect.width > width * .44 && rect.height >= height * .32, name + ' needs a usable writing area');
       const menu = page.locator('.note-menu-trigger');
+      if (name === 'tablet' || name === 'split') {
+        const bounds = await page.locator('.note-sheet').boundingBox();
+        assert.ok(Math.abs(bounds.width / bounds.height - 297/210) < .003);
+        assert.ok(bounds.y >= rect.y && bounds.y + bounds.height <= rect.y + rect.height + 1);
+        assert.ok(bounds.x >= rect.x && bounds.x + bounds.width <= rect.x + rect.width + 1);
+        console.log(name + ' visible workspace ' + Math.round(rect.width) + 'x' + Math.round(rect.height) + ', A4 ' + Math.round(bounds.width) + 'x' + Math.round(bounds.height));
+      }
       if (name === 'tablet') {
         const sidebar = page.locator('.app-shell > .sidebar');
         assert.equal(await sidebar.isVisible(), false);
         assert.ok(rect.width >= width * .90);
+        for (let i=0; i<3; i++) await page.locator('[data-note=zoom-in]').click();
         const paperNode = await paper.elementHandle();
         await paper.evaluate(el => { el.scrollTop = 100; });
         await menu.tap();
@@ -85,6 +93,7 @@ async function checkNotesViewports(browser) {
         await page.setViewportSize({width,height});
         await menu.waitFor();
         assert.equal(await sidebar.isVisible(),false);
+        for (let i=0; i<3; i++) await page.locator('[data-note=zoom-out]').click();
         await paper.evaluate(el => { el.scrollTop = 0; });
       } else {
         assert.equal(await menu.count(), 0);
@@ -98,6 +107,9 @@ async function checkNotesViewports(browser) {
         await page.screenshot({path:path.join(process.env.NOTES_SCREENSHOT_DIR, name+'.png')});
       }
       if (touch) {
+        if (name !== 'phone') {
+          for (let i=0; i<6; i++) await page.locator('[data-note=zoom-in]').click();
+        }
         const geometry = () => page.evaluate(() => {
           const outer = document.querySelector('.workspace'), paper = document.querySelector('.note-scroll');
           return { inner:paper.scrollTop, outer:outer.scrollTop, root:scrollY,

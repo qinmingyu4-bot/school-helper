@@ -3582,7 +3582,8 @@ if (directMessageMatch && method === "POST") {
       const title = typeof body?.title === "string" ? body.title.trim().slice(0, 160) : "";
       const document = await db.createDocument({
         id: createId("doc"), userId: user.id, courseId, title: title || "Blank note",
-        text: "", type: "Note", blankNote: true, sourcePageCount: 1
+        text: "", type: "Note", blankNote: true, sourcePageCount: 1,
+        ...(body?.orientation === "landscape" ? { blankOrientation: "landscape" } : {})
       });
       return sendJson(res, 201, { document });
     }
@@ -3594,7 +3595,7 @@ if (directMessageMatch && method === "POST") {
       if (!courseNotes.isNoteSource(document)) return sendError(res, 404, "Note source not found.");
       if (child === "note-source" && method === "GET") {
         let bytes;
-        if (document.blankNote) bytes = await courseNotes.blankPdf();
+        if (document.blankNote) bytes = await courseNotes.blankPdf(document.blankOrientation);
         else {
           const source = await db.readMaterial(user.id, courseId, `DOCFILE#${childId}#PDF`);
           if (!source?.dataUrl) return sendError(res, 404, "PDF not found.");

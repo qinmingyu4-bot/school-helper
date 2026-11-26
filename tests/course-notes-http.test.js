@@ -108,6 +108,14 @@ test("course notes HTTP isolates users, persists and guards concurrent saves", {
   assert.equal(pdf.getPageCount(),1);
   const { width, height }=pdf.getPage(0).getSize();
   assert.deepEqual([width,height],PageSizes.A4);
+  const wide = await request(blankRoute,{title:'横向白纸', orientation:'landscape'},cookie);
+  assert.equal(wide.status,201);
+  const wideSource = await fetch(base+'/api/courses/'+c+'/note-source/'+wide.data.document.id,{headers:{cookie}});
+  const widePdf = await PDFDocument.load(await wideSource.arrayBuffer());
+  assert.deepEqual(widePdf.getPage(0).getSize(), {width:height,height:width});
+  const reopened = await PDFDocument.load(await (await fetch(base+blankSource,{headers:{cookie}})).arrayBuffer());
+  assert.deepEqual(reopened.getPage(0).getSize(), {width,height});
+  await request('/api/courses/'+c+'/documents/'+wide.data.document.id,null,cookie,'DELETE');
   assert.deepEqual((await request(blankPage,null,cookie,'GET')).data,{version:0,items:[]});
   assert.equal((await request(`${blankRoute}/${blankDoc.id}?page=2`,null,cookie,'GET')).status,400);
   assert.equal((await request(blankPage,{version:0,items},second.cookie,'PUT')).status,404);

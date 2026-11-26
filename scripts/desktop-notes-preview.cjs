@@ -47,6 +47,9 @@ function buildDesktopPreview(root, comparison) {
     });
   }).join('\n');
   let editor = comparison.slice(comparison.indexOf('<script>window.StudyBridgeI18n'));
+  // Fix the demonstration document dimensions at open, just like its saved PDF.
+  editor = editor.replace('window.previewBlankPaper=', "const tabletPaper=matchMedia('(pointer: coarse) and (min-width: 701px) and (min-height: 600px)').matches;window.previewBlankPaper=")
+    .replace('width:700*scale,height:1200*scale', 'width:(tabletPaper?841.89:700)*scale,height:(tabletPaper?595.28:1200)*scale');
   const fixtureEditor = read('course-notes.js')
     .replace("  'use strict';", "  'use strict';\n  const localStorage = {getItem:()=>null, setItem(){}, removeItem(){}};")
     .replace("await import('/vendor/pdfjs/pdf.min.mjs')", "window.previewBlankPaper")

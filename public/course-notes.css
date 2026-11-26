@@ -167,3 +167,35 @@ body:has(.note-focus){overflow:hidden}
   }
   .app-shell .note-menu-close { display: block; margin-left: auto; }
 }
+
+/* On a tablet, size a landscape blank against both available dimensions. */
+@media (pointer: coarse) and (min-width: 701px) {
+  #courseNotesSlot .note-scroll:has(> [data-landscape-blank]) {
+    container-type: size;
+    padding: 6px;
+  }
+  #courseNotesSlot .note-sheet[data-landscape-blank] {
+    min-width: 0;
+    max-width: var(--note-fit-width);
+    margin-inline: auto;
+    outline: 1px solid var(--line);
+  }
+  #courseNotesSlot .note-sheet[data-landscape-blank] canvas { position: absolute; inset: 0; }
+}
+@media (pointer: coarse) and (min-width: 1024px) and (orientation: landscape) {
+  :root .app-shell > .workspace:has(> #courseNotesSlot .note-work:not([hidden])) {
+    display: grid;
+    grid-template-columns: auto minmax(0,1fr);
+    grid-template-rows: auto minmax(0,1fr);
+    align-content: stretch;
+  }
+  .workspace:has(> #courseNotesSlot) > .page-header { height: auto; padding: 3px 12px; }
+  :root .workspace:has(> #courseNotesSlot) > .tools-tabs {
+    margin: 0; padding: 0 14px; gap: 4px 16px; align-items: center;
+  }
+  .workspace > #courseNotesSlot { grid-column: 1 / -1; }
+  #courseNotesSlot .course-notes:not(.note-focus) { padding: 0 12px max(6px, env(safe-area-inset-bottom)); }
+  #courseNotesSlot .note-picker { padding-block: 2px 0; }
+  #courseNotesSlot :is(.note-toolbar,.note-navigation) { padding-block: 0; }
+  #courseNotesSlot .note-navigation { border-bottom: 1px solid var(--line); }
+}

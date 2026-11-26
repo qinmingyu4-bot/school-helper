@@ -37,7 +37,8 @@ to resize it. The shaded lower-right grip also works. Select a note
 to edit typed text, duplicate/delete it or change its background. Pen/highlighter
 strokes started inside a note stay attached when it is moved, resized or copied;
 the eraser removes its ink without deleting its background or typed text. Use
-Delete note to remove the whole note (undoable). Copies are independent. Text
+Delete note or press Delete/Backspace with the sticky note selected on the canvas.
+Undo restores the whole note, including its text and ink. Copies are independent. Text
 wraps and shrinks to fit; very small notes should be enlarged for readability.
 Each note supports 4,000 text characters and 500 ink strokes within the existing
 page storage limit. Note text chooses dark/light ink for background contrast.

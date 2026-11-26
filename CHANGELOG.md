@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Resize a selected classroom sticky note from any edge or corner. Directional cursors show where to drag.
+- Press Delete or Backspace on the notes canvas to remove the selected sticky note. Undo restores its text and handwriting.
 
 ## 1.22.5 — 2026-11-26 — Mobile selection and readable dropdowns
 

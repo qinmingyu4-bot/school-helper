@@ -282,7 +282,7 @@
         if (button.dataset.mode) { mode = button.dataset.mode; paint(); }
         const sticky=items[selectedSticky];
         if(action==='sticky-text' && sticky?.type==='sticky') editText(null,selectedSticky);
-        if(action==='sticky-copy' && sticky?.type==='sticky') {remember();items.push(model.transformSticky(JSON.parse(JSON.stringify(sticky)),.025,.025));selectedSticky=items.length-1;changed();}
+        if(action==='sticky-copy' && sticky?.type==='sticky') {remember();items.push(model.transformSticky(JSON.parse(JSON.stringify(sticky)),.025,.025));selectedSticky=items.length-1;changed();svg.focus({preventScroll:true});}
         if(action==='sticky-delete' && sticky?.type==='sticky') {remember();items.splice(selectedSticky,1);selectedSticky=-1;changed();}
         if (action === 'pdf') await exportFullPdf();
         if (action === 'save') await save();
@@ -385,6 +385,7 @@
       e.preventDefault();
       const p=point(e),target=e.target.closest('[data-index]'),index=target?Number(target.dataset.index):undefined;
       const sticky=items[index]?.type==='sticky'?items[index]:null;
+      if (sticky || mode === 'sticky') svg.focus({preventScroll:true});
       if(sticky) {
         selectedSticky=index;
         if(mode==='text'){editText(null,index);paint();return;}
@@ -435,6 +436,14 @@
     svg.addEventListener('pointerup',e=>{if(e.pointerId===pointer)finishGesture(false);});
     svg.addEventListener('pointercancel',e=>{if(e.pointerId===pointer)finishGesture(true);});
     svg.addEventListener('lostpointercapture',e=>{if(e.pointerId===pointer)finishGesture(false);});
+    svg.addEventListener('keydown', event => {
+      if (event.key !== 'Delete' && event.key !== 'Backspace') return;
+      if (event.defaultPrevented || event.isComposing || event.repeat ||
+          event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+      if (busy || pointer !== undefined || items[selectedSticky]?.type !== 'sticky') return;
+      event.preventDefault();
+      $('[data-note=sticky-delete]').click();
+    });
     host.addEventListener('keydown',e=>{if(e.key==='Escape'&&pointer!==undefined){e.preventDefault();finishGesture(true);}});
     host.addEventListener('focusout',e=>{ const field=e.target.closest('.note-field'); if(field && !field.contains(e.relatedTarget))closePickers(); });
     host.addEventListener('keydown',e=>{
@@ -499,7 +508,7 @@
     host.innerHTML=`<div class="note-picker"><div class="note-location">${picker('course',t('课程','Course'),t('选择课程','Choose a course'))}<span class="note-location-divider" aria-hidden="true">/</span>${picker('document',t('笔记与课件','Notes and PDFs'),documentPlaceholder())}</div><div class="note-picker-actions">${button('new-blank','新建空白笔记','New blank note')}<label class="note-upload"><span aria-hidden="true">＋</span>${t('上传 PDF','Upload PDF')}<input data-upload type="file" accept="application/pdf,.pdf"></label>${button('study','在学习区查看','View in Study')}</div></div>
     <p role="status" aria-live="polite"></p><div class="note-work" hidden><div class="note-toolbar" role="toolbar" aria-label="${t('笔记工具','Note tools')}">${[['hand','浏览','Browse'],['pen','画笔','Pen'],['highlight','高亮','Highlight'],['text','文字','Text'],['sticky','便签','Sticky note'],['eraser','橡皮','Eraser']].map(([id,zh,en])=>`<button type="button" class="note-icon-button" data-mode="${id}" aria-pressed="false" aria-label="${t(zh,en)}" title="${t(zh,en)}">${icon(id)}</button>`).join('')}<input type="color" data-color value="${color}" aria-label="${t('颜色','Color')}"><select data-width aria-label="${t('笔宽','Stroke width')}"><option value=".0015">${t('细','Fine')}</option><option value=".003" selected>${t('中','Medium')}</option><option value=".006">${t('粗','Broad')}</option></select>${button('undo','撤销','Undo')}${button('redo','重做','Redo')}<label><input type="checkbox" data-pen-only>${t('仅触控笔书写','Stylus only')}</label><span data-tool-status></span></div>
     <div class="note-navigation">${button('prev','上一页','Previous')}<input type="number" data-page min="1" value="1" aria-label="${t('页码','Page')}"><span data-total></span>${button('next','下一页','Next')}${button('zoom-out','缩小','Zoom out')}${button('zoom-in','放大','Zoom in')}${button('save','保存','Save')}${button('pdf','导出完整 PDF','Export PDF')}<button type="button" data-note="cancel-export" hidden>${t('取消导出','Cancel export')}</button>${button('focus','专注书写','Focus')}<details><summary>${t('更多','More')}</summary>${button('image','导出当前页图片','Export page image')}${button('backup','导出草稿','Export draft')}${button('reload','重新读取云端','Reload cloud')}</details></div>
-    <div class="note-scroll"><div class="note-sheet"><canvas></canvas><svg class="note-ink" xmlns="http://www.w3.org/2000/svg" aria-label="${t('课件标注画布','Annotation canvas')}"></svg></div></div>
+    <div class="note-scroll"><div class="note-sheet"><canvas></canvas><svg class="note-ink" tabindex="-1" aria-keyshortcuts="Delete Backspace" xmlns="http://www.w3.org/2000/svg" aria-label="${t('课件标注画布','Annotation canvas')}"></svg></div></div>
     <div data-sticky-tools class="note-sticky-tools" hidden inert aria-label="${t('便签操作','Sticky note actions')}">${button('sticky-text','编辑文字','Edit note text')}${button('sticky-copy','复制便签','Duplicate note')}${button('sticky-delete','删除便签','Delete note')}<label>${t('背景','Background')}<input type="color" data-sticky-color value="#fff2a8" aria-label="${t('便签背景颜色','Sticky note background')}"></label><span>${t('切换画笔可在便签上手写','Use the pen to write on the note')}</span></div>
     </div>
     <dialog data-filing-dialog><form method="dialog"><p></p><label>${t('归属课程','Destination course')}<select required></select></label><div><button value="cancel" formnovalidate>${t('取消','Cancel')}</button><button value="save">${t('归档并打开','File and open')}</button></div></form></dialog>

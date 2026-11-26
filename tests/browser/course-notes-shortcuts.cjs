@@ -84,6 +84,19 @@ async function checkNotesViewports(browser) {
         await devtools.send('Input.synthesizeScrollGesture', {
           x, y, yDistance:-100, speed:450, gestureSourceType:'touch', preventFling:true
         });
+        // Some desktop Chrome hosts complete synthetic gestures without sending
+        // touch moves. Exercise the same finger swipe with explicit input samples.
+        if ((await geometry()).inner <= 10) {
+          const send = (type, dy) => devtools.send('Input.dispatchTouchEvent', {
+            type, touchPoints:type === 'touchEnd' ? [] : [{x, y:y+dy, id:1}]
+          });
+          await send('touchStart', 0);
+          for (let dy=-12; dy>=-72; dy-=12) {
+            await send('touchMove', dy);
+            await page.waitForTimeout(25);
+          }
+          await send('touchEnd', -72);
+        }
         await page.waitForFunction(() => document.querySelector('.note-scroll').scrollTop > 10, null, {timeout:5000});
         const after = await geometry();
         assert.equal(after.root, before.root);

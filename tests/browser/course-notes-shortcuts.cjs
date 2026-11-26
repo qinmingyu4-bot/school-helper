@@ -41,9 +41,32 @@ async function checkCompactPreview(browser) {
   }
 }
 
+async function checkDesktopShell(browser) {
+  const root = path.resolve(__dirname, '../..');
+  const source = require('node:fs').readFileSync(path.join(root, 'previews/StudyBridge_Compact_Notes.html'), 'utf8');
+  const html = require('../../scripts/desktop-notes-preview.cjs').buildDesktopPreview(root, source);
+  const page = await browser.newPage({viewport:{width:1440, height:900}});
+  try {
+    await page.setContent(html);
+    const sticky = page.locator('.note-ink [data-sticky]');
+    await sticky.first().waitFor();
+    const sidebar = await page.locator('.app-shell > .sidebar').boundingBox();
+    const paper = await page.locator('.note-scroll').boundingBox();
+    assert.ok(sidebar.width > 150 && paper.x >= sidebar.x + sidebar.width - 1);
+    assert.ok(paper.width > 600 && paper.y < 550, 'Desktop should show the sidebar and writing area together');
+    assert.ok(await page.locator('.tools-tabs [data-tool=notes]').isVisible());
+    await sticky.first().click();
+    await page.keyboard.press('Backspace');
+    assert.equal(await sticky.count(), 1);
+  } finally {
+    await page.close();
+  }
+}
+
 async function run() {
   const browser = await chromium.launch({channel:'chrome'});
   try {
+    await checkDesktopShell(browser);
     await checkCompactPreview(browser);
     const page = await browser.newPage();
     const pdf = await blankPdf();

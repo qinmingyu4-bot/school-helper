@@ -46,7 +46,22 @@ Sticky notes save with the page and appear in PDF and page-image exports; select
 outlines and resize handles are omitted from exported files.
 
 Focus expands the workspace on tablets; Exit focus restores navigation.
-Ctrl/Cmd+Z, Shift+Ctrl/Cmd+Z and Ctrl/Cmd+S are supported outside text inputs.
+Keyboard controls with a note page open:
+
+| Action | macOS | Windows |
+| --- | --- | --- |
+| Undo | Command+Z | Ctrl+Z |
+| Redo | Command+Shift+Z | Ctrl+Y or Ctrl+Shift+Z |
+| Save | Command+S | Ctrl+S |
+| Copy / cut / paste a sticky note | Command+C / X / V | Ctrl+C / X / V |
+| Duplicate a selected sticky note | Command+D | Ctrl+D |
+| Delete a selected sticky note | Delete or Fn+Delete | Backspace or Delete |
+| Edit selected sticky note text | Return | Enter |
+| Cancel the current gesture or clear the selection | Esc | Esc |
+
+Use sticky-note shortcuts on the focused canvas. Pasting a copied note preserves its size,
+color, text and ink. In a text field, normal system text-editing shortcuts apply.
+
 More exports the current annotated page as PNG or a JSON draft backup.
 **Export PDF** downloads the entire original PDF with annotations on every marked
 page, including pages not opened in the current session. Unmarked pages remain

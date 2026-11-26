@@ -1,0 +1,33 @@
+name: Check classroom keyboard shortcuts
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/course-notes-shortcuts.yml'
+      - 'public/course-notes.js'
+      - 'public/course-notes-model.js'
+      - 'public/course-notes.css'
+      - 'tests/browser/course-notes-shortcuts.cjs'
+permissions:
+  contents: read
+jobs:
+  shortcuts:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install the browser test driver
+        shell: bash
+        run: npm install --prefix "$RUNNER_TEMP/notes-test" --no-save --ignore-scripts playwright@1.62.1
+      - name: Exercise shortcuts in installed Chrome
+        env:
+          NOTES_PLAYWRIGHT_MODULE: ${{ runner.temp }}/notes-test/node_modules/playwright
+        run: node tests/browser/course-notes-shortcuts.cjs

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add Windows Ctrl+Y redo and Mac/Windows clipboard and duplicate shortcuts for classroom sticky notes. Enter edits a selected note and Escape clears its selection or cancels a drag.
 - Resize a selected classroom sticky note from any edge or corner. Directional cursors show where to drag.
 - Press Delete or Backspace on the notes canvas to remove the selected sticky note. Undo restores its text and handwriting.
 

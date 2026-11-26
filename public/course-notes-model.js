@@ -42,6 +42,27 @@
     if (direction.includes('s')) next.h = Math.min(1-item.y, Math.max(.05, item.h + dy));
     return next;
   }
+  // Use the same annotation and page limits for pasted content and cloud saves.
+  const fail = (statusCode, message) => Object.assign(new Error(message), { statusCode });
+  function validate(body) {
+    if (!body || !Number.isSafeInteger(body.version) || body.version < 0 || !Array.isArray(body.items) || body.items.length > 2000) throw fail(400, 'Invalid notes.');
+    const unit = n => Number.isFinite(n) && n >= 0 && n <= 1;
+    const items = body.items.map(item => {
+      if (item?.type === 'sticky') {
+        if (!unit(item.x) || !unit(item.y) || !Number.isFinite(item.w) || !Number.isFinite(item.h) || item.w < .08 || item.h < .05 || item.x+item.w > 1.000001 || item.y+item.h > 1.000001 || !/^#[0-9a-f]{6}$/i.test(item.background) || typeof item.text !== 'string' || item.text.length > 4000 || !Array.isArray(item.ink) || item.ink.length > 500 || item.ink.some(stroke=>!['pen','highlight'].includes(stroke?.type))) throw fail(400,'Invalid sticky note.');
+        return {type:'sticky',x:item.x,y:item.y,w:item.w,h:item.h,background:item.background,text:item.text,ink:validate({version:0,items:item.ink})};
+      }
+      if (!item || !['pen', 'highlight', 'text'].includes(item.type) || !/^#[0-9a-f]{6}$/i.test(item.color) || !Number.isFinite(item.width) || item.width < .0005 || item.width > .1) throw fail(400, 'Invalid annotation.');
+      if (item.type === 'text') {
+        if (!unit(item.x) || !unit(item.y) || typeof item.text !== 'string' || item.text.length > 4000) throw fail(400, 'Invalid text.');
+        return { type: item.type, color: item.color, width: item.width, x: item.x, y: item.y, text: item.text };
+      }
+      if (!Array.isArray(item.points) || !item.points.length || item.points.length > 12000 || item.points.some(p => !Array.isArray(p) || p.length !== 2 || !p.every(unit))) throw fail(400, 'Invalid stroke.');
+      return { type: item.type, color: item.color, width: item.width, points: item.points };
+    });
+    if (new TextEncoder().encode(JSON.stringify(items)).byteLength > 260000) throw fail(413, 'This page is full. Please remove some annotations.');
+    return items;
+  }
   function markup(items,ratio) {
     return items.map((item,i)=>{
       if(item.type==='sticky') {
@@ -102,5 +123,5 @@
     const p=inverse(0,viewport.height),x=inverse(viewport.width,viewport.height),y=inverse(0,0);
     return {x:p[0],y:p[1],width:Math.hypot(x[0]-p[0],x[1]-p[1]),height:Math.hypot(y[0]-p[0],y[1]-p[1]),angle:Math.atan2(x[1]-p[1],x[0]-p[0])*180/Math.PI};
   }
-  return {markup,cursor,hit,placement,sticky,transformSticky,contrast};
+  return {validate,markup,cursor,hit,placement,sticky,transformSticky,contrast};
 });

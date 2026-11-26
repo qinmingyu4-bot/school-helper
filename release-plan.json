@@ -1,8 +1,12 @@
 {
-  "previousCommit": "6997269570599383bc003ade25d13de56ecb2c17",
-  "previousVersion": "1.22.5",
-  "version": "1.22.6",
-  "level": "patch",
-  "reason": "Update the existing Gmail mailbox assistant transport for Google's Gmail MCP requirement.",
-  "features": []
+  "previousCommit": "ea1cc416743ce93eeb85fec29087950dd1ce32c5",
+  "previousVersion": "1.22.6",
+  "version": "1.23.0",
+  "level": "minor",
+  "reason": "Add landscape A4 tablet note creation, cross-platform sticky note shortcuts and resizing, and responsive paper scrolling.",
+  "features": [
+    "Tablet landscape A4 blank notes with full-width writing and a collapsible main menu",
+    "Sticky note edge and corner resizing and keyboard editing commands",
+    "Bidirectional paper scrolling and a compact classroom notes workspace"
+  ]
 }

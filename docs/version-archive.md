@@ -1,5 +1,10 @@
 # StudyBridge Version Archive
 
+## 1.23.0 — 2026-11-26
+
+- MINOR from AWS 1.22.6 (`ea1cc416743ce93eeb85fec29087950dd1ce32c5`). Classroom notes add tablet landscape A4 creation, compact navigation, full-width writing, bidirectional scroll handoff and sticky note resize and keyboard commands. Source: `8cb4d50`.
+- Existing blank notes and uploaded PDFs retain their source dimensions. The orientation setting is stored on newly created blank documents. No data migration is required.
+
 ## 1.22.6 — 2026-11-26
 
 - PATCH from AWS 1.22.5 (`6997269570599383bc003ade25d13de56ecb2c17`): add Google's replacement read-only Gmail MCP transport to the existing mailbox assistant on the free Standard tier. Verify mailbox sync, pagination, deduplication, rate-limit recovery, Google sign-in, Outlook and public health. Source: `318bc19`.

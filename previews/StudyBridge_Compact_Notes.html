@@ -1,7 +1,7 @@
 <!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>StudyBridge · 课堂笔记布局试用</title><style>
 :root{--ink:#172d48;--muted:#60758b;--line:#d4dfeb;--green:#19775e;--soft:#f4f8fb;--panel:#fff;--font-ui:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;color-scheme:light dark;background:var(--panel);color:var(--ink);font-family:var(--font-ui)}
 @media(prefers-color-scheme:dark){:root{--ink:#dfe9ed;--muted:#a9bbca;--line:#3a4b58;--green:#85d2b1;--soft:#202a32;--panel:#162027}}
-*{box-sizing:border-box}body{margin:0}main,.hint-inner{max-width:1160px;margin:auto}h1{font-size:clamp(22px,3.5vw,34px);font-weight:580;margin:12px 0 5px}.heading{padding:30px 28px 12px}.heading small,.heading p{color:var(--muted);font-size:13px}.heading p{margin:6px 0}.hint{position:sticky;top:0;z-index:60;background:var(--panel);border-bottom:1px solid var(--line)}.hint-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 28px;font-size:13px;line-height:1.6}.hint button{font:inherit;color:var(--green);background:transparent;border:1px solid var(--line);border-radius:6px;padding:4px 12px;white-space:nowrap;cursor:pointer}.end{min-height:56vh;padding:16px 28px;color:var(--muted);font-size:13px}
+*{box-sizing:border-box}body{margin:0}main,.hint-inner{max-width:1160px;margin:auto}h1{font-size:clamp(22px,3.5vw,34px);font-weight:580;margin:12px 0 5px}.heading{padding:30px 28px 12px}.heading small,.heading p{color:var(--muted);font-size:13px}.heading p{margin:6px 0}.hint{position:sticky;top:0;z-index:60;background:var(--panel);border-bottom:1px solid var(--line)}.hint-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 28px;font-size:13px;line-height:1.6}.hint button{font:inherit;color:var(--green);background:transparent;border:1px solid var(--line);border-radius:6px;padding:4px 12px;white-space:nowrap;cursor:pointer}
 </style><style id="originalLayout">/* Quiet course workspace: linked values, text actions and a single paper canvas. */
 .course-notes{min-width:0;padding:0 28px 28px;color:var(--ink);font-family:var(--font-ui);font-weight:400}
 .course-notes :is(button,select,input,textarea,summary){font-family:inherit;box-shadow:none;text-shadow:none}
@@ -91,7 +91,7 @@ body:has(.note-focus){overflow:hidden}
 .course-notes .note-sticky-tools input[type=color]{width:28px;height:28px;min-height:28px;padding:2px;border:0;background:transparent}
 .note-sticky-tools>span{margin-left:auto;font-size:11px}
 .note-ink [data-sticky]{cursor:inherit}</style><style id="compactLayout">/* Quiet course workspace: linked values, text actions and a single paper canvas. */
-.course-notes{container:class-notes / inline-size;min-width:0;padding:0 28px 28px;color:var(--ink);font-family:var(--font-ui);font-weight:400}
+.course-notes{container:class-notes / inline-size;min-width:0;padding:0 28px max(12px, env(safe-area-inset-bottom));color:var(--ink);font-family:var(--font-ui);font-weight:400}
 .course-notes :is(button,select,input,textarea,summary){font-family:inherit;box-shadow:none;text-shadow:none}
 .course-notes button,.course-notes select,.note-upload,.note-navigation input{width:auto;min-height:36px;padding:6px 8px;border:0;border-radius:3px;background:transparent;color:var(--muted);font-size:12px;font-weight:450;line-height:20px}
 .course-notes button:hover:not(:disabled){background:var(--soft);color:var(--ink)}
@@ -159,7 +159,7 @@ body:has(.note-focus){overflow:hidden}
 .note-focus .note-scroll{max-height:calc(100dvh - 235px)}
 body:has(.note-focus){overflow:hidden}
 @media(max-width:700px){
- .course-notes{padding:0 16px 16px}.note-picker{padding-top:6px;gap:3px 10px}.note-location{gap:12px;flex-basis:100%}.note-field{flex:1;max-width:calc(50% - 16px)}
+ .course-notes{padding:0 16px max(8px, env(safe-area-inset-bottom))}.note-picker{padding-top:6px;gap:3px 10px}.note-location{gap:12px;flex-basis:100%}.note-field{flex:1;max-width:calc(50% - 16px)}
  .note-picker-actions{margin-left:0;gap:20px}.note-picker-menu{min-width:190px;max-width:calc(100vw - 48px)}.note-field:last-child .note-picker-menu{left:auto;right:0}
  .note-toolbar{gap:2px 8px}.note-toolbar label{margin-left:0}.note-navigation{gap:3px 6px}.note-scroll{padding:8px;max-height:73dvh}.note-focus .note-scroll{max-height:calc(100dvh - 330px)}
 }
@@ -199,7 +199,7 @@ body:has(.note-focus){overflow:hidden}
 <div class="hint"><div class="hint-inner"><strong>课堂笔记布局试用</strong>
 <label>布局 <select id="layout"><option value="compact">紧凑版</option><option value="original">原布局</option></select></label>
 <output id="measure" aria-live="off"></output></div></div>
-<main><header class="heading"><small>StudyBridge · 工具</small><h1>课堂笔记</h1><p>本地示例 · 可书写和编辑便签，改动仅在本次打开期间保留。</p></header><div id="courseNotesSlot"></div><div class="end">笔记下方 · 这里属于外层页面</div></main>
+<main><header class="heading"><small>StudyBridge · 工具</small><h1>课堂笔记</h1><p>本地示例 · 可书写和编辑便签，改动仅在本次打开期间保留。</p></header><div id="courseNotesSlot"></div></main>
 <script>window.StudyBridgeI18n={getLanguage:()=>'zh'};
 window.previewBlankPaper={GlobalWorkerOptions:{},getDocument:()=>({promise:Promise.resolve({numPages:1,async destroy(){},async getPage(){return {getViewport:({scale})=>({width:700*scale,height:1200*scale}),render:()=>({promise:Promise.resolve(),cancel(){}})}}})})};
 </script><script>(function(root,factory){

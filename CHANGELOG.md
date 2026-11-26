@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- End the local notes layout preview at the workspace and reduce the gap below the compact editor on desktop and mobile.
 - Compact the upper classroom note tools, keeping editing controls visible and giving the paper more room on desktop, tablet and mobile.
 - Trial: hand off scrolling at either edge of a classroom note on a renewed gesture, while keeping momentum and the first movement after a long pause on the paper.
 - Add Windows Ctrl+Y redo and Mac/Windows clipboard and duplicate shortcuts for classroom sticky notes. Enter edits a selected note and Escape clears its selection or cancels a drag.

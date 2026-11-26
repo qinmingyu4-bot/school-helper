@@ -1,5 +1,5 @@
 /* Quiet course workspace: linked values, text actions and a single paper canvas. */
-.course-notes{container:class-notes / inline-size;min-width:0;padding:0 28px 28px;color:var(--ink);font-family:var(--font-ui);font-weight:400}
+.course-notes{container:class-notes / inline-size;min-width:0;padding:0 28px max(12px, env(safe-area-inset-bottom));color:var(--ink);font-family:var(--font-ui);font-weight:400}
 .course-notes :is(button,select,input,textarea,summary){font-family:inherit;box-shadow:none;text-shadow:none}
 .course-notes button,.course-notes select,.note-upload,.note-navigation input{width:auto;min-height:36px;padding:6px 8px;border:0;border-radius:3px;background:transparent;color:var(--muted);font-size:12px;font-weight:450;line-height:20px}
 .course-notes button:hover:not(:disabled){background:var(--soft);color:var(--ink)}
@@ -67,7 +67,7 @@
 .note-focus .note-scroll{max-height:calc(100dvh - 235px)}
 body:has(.note-focus){overflow:hidden}
 @media(max-width:700px){
- .course-notes{padding:0 16px 16px}.note-picker{padding-top:6px;gap:3px 10px}.note-location{gap:12px;flex-basis:100%}.note-field{flex:1;max-width:calc(50% - 16px)}
+ .course-notes{padding:0 16px max(8px, env(safe-area-inset-bottom))}.note-picker{padding-top:6px;gap:3px 10px}.note-location{gap:12px;flex-basis:100%}.note-field{flex:1;max-width:calc(50% - 16px)}
  .note-picker-actions{margin-left:0;gap:20px}.note-picker-menu{min-width:190px;max-width:calc(100vw - 48px)}.note-field:last-child .note-picker-menu{left:auto;right:0}
  .note-toolbar{gap:2px 8px}.note-toolbar label{margin-left:0}.note-navigation{gap:3px 6px}.note-scroll{padding:8px;max-height:73dvh}.note-focus .note-scroll{max-height:calc(100dvh - 330px)}
 }

@@ -22,6 +22,9 @@ async function checkCompactPreview(browser) {
       const compact = await geometry();
       const compactLabel = await measure.innerText();
       assert.equal(compact.overflow, 0);
+      const bottomGap = await page.locator('.note-scroll').evaluate(el =>
+        document.body.getBoundingClientRect().bottom - el.getBoundingClientRect().bottom);
+      assert.ok(bottomGap >= 0 && bottomGap <= (width <= 700 ? 8 : 12), 'Only a small inset should follow the paper');
       assert.ok(await page.locator('[data-mode=pen]').evaluate(el => el.offsetHeight >= (matchMedia('(pointer:coarse)').matches ? 44 : 36)));
       for (const control of ['new-blank','pdf','save','focus']) assert.ok(await page.locator('[data-note="'+control+'"]').isVisible());
       await selector.selectOption('original');

@@ -1,0 +1,62 @@
+name: Verify public StudyBridge 1.23.0
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-live-notes-1230.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: b0dfad913ec9e201c1a82e30db8cf70f1235b7f4
+          fetch-depth: 0
+      - run: python3 scripts/check-release-policy.py --base ea1cc416743ce93eeb85fec29087950dd1ce32c5
+      - name: Verify current public baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api 'repos/qinmingyu4-bot/school-helper/actions/workflows/deploy.yml/runs?head_sha=ea1cc416743ce93eeb85fec29087950dd1ce32c5&event=push' --jq '.workflow_runs[] | [.id,.conclusion,.html_url] | @tsv' | tee "$RUNNER_TEMP/deploy-result"
+          grep -F success "$RUNNER_TEMP/deploy-result"
+          curl -fsSL --retry 2 --max-time 25 'https://studybridge.ink/app.js?v=1.22.6' -o "$RUNNER_TEMP/app.js"
+          git show ea1cc416743ce93eeb85fec29087950dd1ce32c5:public/app.js > "$RUNNER_TEMP/expected.js"
+          cmp "$RUNNER_TEMP/app.js" "$RUNNER_TEMP/expected.js"
+          curl -fsSL --retry 2 --max-time 25 'https://studybridge.ink/api/health' | jq -e '.ok == true'
+  verify-live:
+    needs: baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: b0dfad913ec9e201c1a82e30db8cf70f1235b7f4
+      - name: Wait for successful AWS deployment of the exact release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 140); do
+            result=$(gh api 'repos/qinmingyu4-bot/school-helper/actions/workflows/deploy.yml/runs?head_sha=b0dfad913ec9e201c1a82e30db8cf70f1235b7f4&event=push' --jq '.workflow_runs[0] | [.status,.conclusion,.html_url] | @tsv')
+            echo "$result"
+            if [[ "$result" == completed$'\t'success* ]]; then exit 0; fi
+            if [[ "$result" == completed* ]]; then exit 1; fi
+            sleep 15
+          done
+          exit 1
+      - name: Verify live health, versioned note assets and account boundaries
+        run: |
+          set -euo pipefail
+          host=https://studybridge.ink
+          curl -fsSL --retry 3 --max-time 25 "$host/api/health" | jq -e '.ok == true'
+          for asset in app.js course-notes.css course-notes.js course-notes-model.js; do
+            curl -fsSL --retry 3 --max-time 25 "$host/$asset?v=1.23.0" -o "$RUNNER_TEMP/$asset"
+            cmp "public/$asset" "$RUNNER_TEMP/$asset"
+            echo "$asset matches the release"
+          done
+          curl -fsSL --max-time 25 "$host/login" -o "$RUNNER_TEMP/login.html"
+          curl -fsSL --max-time 25 "$host/api/auth/config" | jq -e 'has("emailVerificationRequired")'
+          test "$(curl -sS --max-time 25 -o /dev/null -w '%{http_code}' "$host/api/courses")" = 401

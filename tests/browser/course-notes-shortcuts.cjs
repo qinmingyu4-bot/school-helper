@@ -64,7 +64,17 @@ async function checkNotesViewports(browser) {
       if (name === 'tablet' || name === 'split') {
         const bounds = await page.locator('.note-sheet').boundingBox();
         assert.ok(Math.abs(bounds.width / bounds.height - 297/210) < .003);
-        assert.ok(bounds.y >= rect.y && bounds.y + bounds.height <= rect.y + rect.height + 1);
+        assert.ok(bounds.y >= rect.y);
+        if (name === 'tablet') {
+          assert.ok(bounds.x - rect.x <= 8 && rect.x + rect.width - bounds.x - bounds.width <= 24,
+            'Landscape A4 must fill the viewport width at default zoom');
+          await paper.evaluate(el => { el.scrollTop = el.scrollHeight; });
+          const bottom = await page.locator('.note-sheet').boundingBox();
+          assert.ok(Math.abs(rect.y + rect.height - bottom.y - bottom.height) <= 9, 'Page bottom must be reachable');
+          await paper.evaluate(el => { el.scrollTop = 0; });
+        } else {
+          assert.ok(bounds.y + bounds.height <= rect.y + rect.height + 1);
+        }
         assert.ok(bounds.x >= rect.x && bounds.x + bounds.width <= rect.x + rect.width + 1);
         console.log(name + ' visible workspace ' + Math.round(rect.width) + 'x' + Math.round(rect.height) + ', A4 ' + Math.round(bounds.width) + 'x' + Math.round(bounds.height));
       }
@@ -107,7 +117,7 @@ async function checkNotesViewports(browser) {
         await page.screenshot({path:path.join(process.env.NOTES_SCREENSHOT_DIR, name+'.png')});
       }
       if (touch) {
-        if (name !== 'phone') {
+        if (name === 'split') {
           for (let i=0; i<6; i++) await page.locator('[data-note=zoom-in]').click();
         }
         const geometry = () => page.evaluate(() => {

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- On a landscape tablet, open landscape A4 notes at the full available writing width and scroll within the paper to reach the bottom. Portrait tablet windows still fit the full page.
 - New tablet blank notes use landscape A4 paper, including their PDF source and export. The tablet workspace fits the full page at default zoom and shares one row for the main header and tool tabs on wide screens.
 - Collapse the main sidebar into a dismissible menu in the tablet classroom notes workspace. Keep the paper mounted while navigating the menu or rotating the tablet.
 - Fit the paper below the actual classroom controls on tablets and phones, with touch scrolling inside the writing area and safe-area padding at the bottom.

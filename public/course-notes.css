@@ -168,7 +168,7 @@ body:has(.note-focus){overflow:hidden}
   .app-shell .note-menu-close { display: block; margin-left: auto; }
 }
 
-/* On a tablet, size a landscape blank against both available dimensions. */
+/* Landscape tablets use the paper width for writing. In portrait, fit the full sheet. */
 @media (pointer: coarse) and (min-width: 701px) {
   #courseNotesSlot .note-scroll:has(> [data-landscape-blank]) {
     container-type: size;
@@ -176,11 +176,13 @@ body:has(.note-focus){overflow:hidden}
   }
   #courseNotesSlot .note-sheet[data-landscape-blank] {
     min-width: 0;
-    max-width: var(--note-fit-width);
     margin-inline: auto;
     outline: 1px solid var(--line);
   }
   #courseNotesSlot .note-sheet[data-landscape-blank] canvas { position: absolute; inset: 0; }
+}
+@media (pointer: coarse) and (min-width: 701px) and (orientation: portrait) {
+  #courseNotesSlot .note-sheet[data-landscape-blank] { max-width: var(--note-fit-width); }
 }
 @media (pointer: coarse) and (min-width: 1024px) and (orientation: landscape) {
   :root .app-shell > .workspace:has(> #courseNotesSlot .note-work:not([hidden])) {

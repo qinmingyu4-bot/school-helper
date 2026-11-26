@@ -40,3 +40,16 @@ jobs:
           name: notes-viewports
           path: ${{ runner.temp }}/notes-viewports/
           retention-days: 3
+
+      - name: Return requested screenshot proof
+        if: always() && runner.os == 'macOS'
+        shell: bash
+        run: |
+          python3 - <<'PYDATA'
+          import base64, os
+          from pathlib import Path
+          for file in sorted((Path(os.environ['RUNNER_TEMP'])/'notes-viewports').glob('tablet.png')):
+              encoded = base64.b64encode(file.read_bytes()).decode('ascii')
+              for i in range(0,len(encoded),4000):
+                  print(f'PROOF {file.stem} {i} {encoded[i:i+4000]}')
+          PYDATA

@@ -1,5 +1,10 @@
 # StudyBridge Version Archive
 
+## 1.22.6 — 2026-11-26
+
+- PATCH from AWS 1.22.5 (`6997269570599383bc003ade25d13de56ecb2c17`): add Google's replacement read-only Gmail MCP transport to the existing mailbox assistant on the free Standard tier. Verify mailbox sync, pagination, deduplication, rate-limit recovery, Google sign-in, Outlook and public health. Source: `318bc19`.
+- The AWS release supports a separate Gmail-only cutover using dedicated OAuth credentials. Existing Gmail connections stay on the original transport until that configuration is applied. Same-address reauthorization at cutover retains existing notices and sync progress. There is no dependency version or batch data migration.
+
 ## 1.22.5 — 2026-11-26
 
 - PATCH from AWS 1.22.4 (`69c737c273f2772a4cf17c4b22d2263c9e1b487b`): update the mobile menu selection before the menu is shown and give existing image and Office dropdowns enough vertical space to render their text.

@@ -6,12 +6,13 @@ const path = require("node:path");
 const { spawn } = require("node:child_process");
 const { once } = require("node:events");
 
-test("mailbox HTTP binds both providers in settings, waits for confirmation and enforces session/CSRF/ownership", { timeout: 30000 }, async (t) => {
+for (const gmailTransport of ["rest", "mcp"]) test(`mailbox HTTP with Gmail ${gmailTransport} binds both providers, waits for confirmation and enforces session/CSRF/ownership`, { timeout: 30000 }, async (t) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "mailbox-http-"));
   const child = spawn(process.execPath, ["--require", "./tests/fixtures/mailbox-transport.js", "server.js"], { cwd: path.resolve(__dirname, ".."), env: {
     ...process.env, NODE_ENV: "test", PORT: "0", APP_BASE_URL: "http://localhost", STUDYBRIDGE_DB: "local", LOCAL_DB_FILE: path.join(directory, "db.json"), LOCAL_DB_BACKUP_DISABLED: "true",
     REQUIRE_EMAIL_VERIFICATION: "false", SESSION_SECRET: "mailbox-http-secret", OPENAI_API_KEY: "fixture", MAILBOX_SYNC_DISABLED: "true", MAILBOX_ENCRYPTION_KEY: Buffer.alloc(32, 9).toString("base64"),
-    GMAIL_CLIENT_ID: "gmail-client", GMAIL_CLIENT_SECRET: "gmail-secret", GMAIL_REDIRECT_URI: "http://localhost/api/mailbox/gmail/callback", OUTLOOK_CLIENT_ID: "outlook-client", OUTLOOK_CLIENT_SECRET: "outlook-secret", OUTLOOK_REDIRECT_URI: "http://localhost/api/mailbox/outlook/callback"
+    GMAIL_CLIENT_ID: "gmail-client", GMAIL_CLIENT_SECRET: "gmail-secret", GMAIL_REDIRECT_URI: "http://localhost/api/mailbox/gmail/callback", OUTLOOK_CLIENT_ID: "outlook-client", OUTLOOK_CLIENT_SECRET: "outlook-secret", OUTLOOK_REDIRECT_URI: "http://localhost/api/mailbox/outlook/callback",
+    GMAIL_MAILBOX_TRANSPORT: gmailTransport, GMAIL_MCP_CLIENT_ID: "gmail-mcp-client", GMAIL_MCP_CLIENT_SECRET: "gmail-mcp-secret"
   }, stdio: ["ignore", "pipe", "pipe"] });
   let stderr = ""; child.stderr.on("data", (chunk) => { stderr += chunk; });
   t.after(async () => { if (child.exitCode === null) { const done = once(child, "exit"); child.kill(); await done; } await fs.rm(directory, { recursive: true, force: true }); });

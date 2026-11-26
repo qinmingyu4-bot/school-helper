@@ -2,6 +2,8 @@
 if (process.env.NODE_ENV !== "test") throw new Error("Mailbox fixture is test-only.");
 const original = global.fetch;
 const gmailScope = "https://www.googleapis.com/auth/gmail.readonly";
+const gmailReceived = Date.now() - 30000;
+const gmailMessages = ["academic", "advert", "date-only"];
 global.fetch = async (input, options = {}) => {
   const url = new URL(String(input));
   if (url.hostname === "oauth2.googleapis.com" || url.hostname === "login.microsoftonline.com") {
@@ -10,7 +12,29 @@ global.fetch = async (input, options = {}) => {
     return Response.json({ access_token: "fixture-private-access", refresh_token: "fixture-private-refresh", expires_in: 3600,
       scope: url.hostname === "oauth2.googleapis.com" ? gmailScope : "Mail.Read User.Read" });
   }
+  if (url.hostname === "openidconnect.googleapis.com" && url.pathname === "/v1/userinfo") {
+    return Response.json({ email: "linked-gmail@example.test", email_verified: true });
+  }
+  if (url.hostname === "gmailmcp.googleapis.com" && url.pathname === "/mcp/v1self") {
+    const { jsonrpc, id, method, params } = JSON.parse(options.body);
+    if (method !== "tools/call") throw new Error("Unexpected Gmail MCP method");
+    const headers = { labelIds: ["INBOX"], internalDate: String(gmailReceived) };
+    let structuredContent;
+    if (params.name === "search_threads") {
+      structuredContent = { threads: [{ id: "course", messageCount: gmailMessages.length, messages: gmailMessages.map(id => ({ id, ...headers })) }] };
+    } else if (params.name === "get_message") {
+      const { messageId, messageFormat } = params.arguments;
+      if (messageFormat !== "PLAIN_TEXT") throw new Error("Unexpected Gmail MCP message format");
+      structuredContent = { id: messageId, ...headers, sender: "prof@university.test",
+        subject: messageId === "advert" ? "Shop sale" : messageId === "date-only" ? "MAT135 office hours" : "STA437 assignment",
+        plaintextBody: messageId === "advert" ? "Buy now sale" : messageId === "date-only" ? "Office hours November 15, 2026. Time to follow." : "Assignment due November 16, 2026 at 18:00 Toronto time." };
+    } else {
+      throw new Error(`Unexpected Gmail MCP tool: ${params.name}`);
+    }
+    return Response.json({ jsonrpc, id, result: { structuredContent } });
+  }
   if (url.hostname === "gmail.googleapis.com") {
+    if (process.env.GMAIL_MAILBOX_TRANSPORT === "mcp") throw new Error("Gmail MCP must never call Gmail REST");
     if (url.pathname.endsWith("/profile")) return Response.json({ emailAddress: "linked-gmail@example.test", historyId: "100" });
     if (url.pathname.endsWith("/history")) return Response.json({ historyId: "102", history: [] });
     if (url.pathname.endsWith("/messages")) return Response.json({ messages: [{ id: "academic" }, { id: "advert" }, { id: "date-only" }] });

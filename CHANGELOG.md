@@ -6,6 +6,10 @@
 - Resize a selected classroom sticky note from any edge or corner. Directional cursors show where to drag.
 - Press Delete or Backspace on the notes canvas to remove the selected sticky note. Undo restores its text and handwriting.
 
+## 1.22.6 — 2026-11-26 — Gmail mailbox interface update
+
+- Add a read-only Gmail MCP connection for the free Google Standard tier. A same-address reauthorization at cutover keeps existing learning notices and avoids reanalyzing previously processed messages.
+
 ## 1.22.5 — 2026-11-26 — Mobile selection and readable dropdowns
 
 PATCH from AWS 1.22.4 (`69c737c`): fix the existing mobile navigation highlight and dropdown text layout.

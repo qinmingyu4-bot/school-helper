@@ -21,6 +21,13 @@ payload = {'providers':['outlook'],'OUTLOOK_CLIENT_ID':'11111111-2222-3333-4444-
 outlook_values = ns['settings'](payload, stable, stable)[1]
 assert outlook_values['OUTLOOK_REDIRECT_URI'].endswith('/outlook/callback')
 assert outlook_values['MAILBOX_ENCRYPTION_KEY'] == key
+mcp_payload = {'providers':['gmail'],'gmailTransport':'mcp','GMAIL_MCP_CLIENT_ID':'123456-agent.apps.googleusercontent.com','GMAIL_MCP_CLIENT_SECRET':'gmail-agent-fixture'}
+mcp_providers, mcp_values = ns['settings'](mcp_payload, stable, stable)
+assert mcp_providers == ['gmail']
+assert mcp_values == {'GMAIL_MCP_CLIENT_ID':mcp_payload['GMAIL_MCP_CLIENT_ID'],'GMAIL_MCP_CLIENT_SECRET':mcp_payload['GMAIL_MCP_CLIENT_SECRET'],'GMAIL_MAILBOX_TRANSPORT':'mcp','MAILBOX_ENCRYPTION_KEY':key,'GMAIL_REDIRECT_URI':'https://studybridge.ink/api/mailbox/gmail/callback'}
+for bad in (dict(mcp_payload,GMAIL_MCP_CLIENT_SECRET=''),dict(mcp_payload,GMAIL_MCP_CLIENT_ID=stable['GOOGLE_CLIENT_ID']),dict(mcp_payload,providers=['gmail','outlook']),dict(mcp_payload,gmailTransport='rest'),dict(mcp_payload,GMAIL_CLIENT_ID='unexpected')):
+    try: ns['settings'](bad,stable,stable); raise AssertionError('Invalid Gmail MCP configuration accepted')
+    except ValueError: pass
 for bad in ({}, {'providers':[]}, {'providers':['unknown']}, {'providers':['gmail','gmail']}, {'providers':['gmail'],'MAILBOX_ENCRYPTION_KEY':key}, {'providers':['gmail'],'GMAIL_CLIENT_ID':existing['GOOGLE_CLIENT_ID']}, dict(payload,OUTLOOK_CLIENT_SECRET='bad\nOTHER=value'), dict(payload,OUTLOOK_CLIENT_ID='not-a-guid')):
     try: ns['settings'](bad, stable, stable); raise AssertionError('Invalid payload accepted')
     except ValueError: pass
@@ -102,6 +109,9 @@ with tempfile.TemporaryDirectory(prefix='studybridge-mailbox-validation-test-') 
     try:
         with patch.dict(ns, {'process_settings':lambda:{}}), patch.dict(ns['COMMON'],{'verify':lambda client:None}), patch.object(ns['urllib'].request,'urlopen',return_value=contextlib.closing(io.StringIO('{"ok":true,"db":"local"}'))):
             ns['verify'](['gmail','outlook'],{'MAILBOX_ENCRYPTION_KEY':environment['MAILBOX_ENCRYPTION_KEY']},environment)
+        mcp = {'GMAIL_MAILBOX_TRANSPORT':'mcp','GMAIL_MCP_CLIENT_ID':'123456-agent.apps.googleusercontent.com','GMAIL_MCP_CLIENT_SECRET':'gmail-agent-fixture'}
+        with patch.dict(ns, {'process_settings':lambda:mcp}), patch.dict(ns['COMMON'],{'verify':lambda client:None}), patch.object(ns['urllib'].request,'urlopen',return_value=contextlib.closing(io.StringIO('{"ok":true,"db":"local"}'))):
+            ns['verify'](['gmail','outlook'],mcp,environment)
         with patch.dict(ns, {'process_settings':lambda:{'OUTLOOK_REDIRECT_URI':'https://wrong.example/callback'}}), patch.object(ns['urllib'].request,'urlopen',return_value=contextlib.closing(io.StringIO('{"ok":true,"db":"local"}'))):
             try: ns['verify'](['outlook'],{},environment); raise AssertionError('Wrong callback passed')
             except RuntimeError: pass

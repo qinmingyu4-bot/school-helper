@@ -259,6 +259,40 @@
     dialog.returnValue = 'cancel'; dialog.showModal(); select.focus();
     return new Promise(resolve => { dialog.onclose = () => resolve(token === epoch && dialog.returnValue === 'save' ? select.value : null); });
   }
+  function bindPaperWheel(viewport) {
+    let lastUp = -Infinity;
+    let scrollPage = false;
+    const pauseMs = 180;
+    viewport.addEventListener('wheel', event => {
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.shiftKey ||
+          event.altKey || !event.deltaY || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+      if (event.deltaY > 0 || viewport.closest('.note-focus')) {
+        lastUp = -Infinity;
+        scrollPage = false;
+        return;
+      }
+      const atTop = viewport.scrollTop <= 0.5;
+      // A burst that started inside the paper, including its momentum, stays there.
+      if (event.timeStamp - lastUp >= pauseMs) scrollPage = atTop;
+      if (!atTop) scrollPage = false;
+      lastUp = event.timeStamp;
+      if (!scrollPage) return;
+
+      const root = document.scrollingElement;
+      let outer = viewport.parentElement;
+      while (outer && outer !== root) {
+        if (outer.scrollTop > 0 && /^(auto|scroll|overlay)$/.test(getComputedStyle(outer).overflowY)) break;
+        outer = outer.parentElement;
+      }
+      outer = outer || root;
+      if (!outer || outer.scrollTop <= 0) return;
+      if (event.cancelable) event.preventDefault();
+      let unit = 1;
+      if (event.deltaMode === 1) unit = parseFloat(getComputedStyle(viewport).lineHeight) || 16;
+      if (event.deltaMode === 2) unit = outer.clientHeight;
+      outer.scrollTop = Math.max(0, outer.scrollTop + event.deltaY * unit);
+    }, {passive:false});
+  }
   function bind() {
     host.addEventListener('click',async event => {
       const button = event.target.closest('button'); if (!button) return;
@@ -351,6 +385,7 @@
         }
       } catch(e) { if(epoch===operationEpoch)status(e.message); } finally { if(epoch===operationEpoch) { busy=false; if (el.matches('[data-upload]')) { el.value=''; el.disabled=false; } syncControls(); paint(); } }
     });
+    bindPaperWheel($('.note-scroll'));
     const svg=$('svg.note-ink'); let pointer,gesture,last,initial,pan,stickyStart,stickyOrigin,stickyStroke,resizeDirection;
     function insertStickyCopy(source) {
       const copy = model.transformSticky(structuredClone(source), .025, .025);
